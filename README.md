@@ -1,6 +1,8 @@
 # BYOS Next.js for TRMNL 🖥️
 
-[![License](https://img.shields.io/github/license/usetrmnl/byos_next)](https://github.com/usetrmnl/byos_next/blob/main/LICENSE)
+This repo now has 2 copies, one under [ghcpuman902/byos-nextjs](https://github.com/ghcpuman902/byos-nextjs) and one under [usetrmnl/byos_next](https://github.com/usetrmnl/byos_next). For issues, please use the [usetrmnl/byos_next](https://github.com/usetrmnl/byos_next) copy.
+
+[![License](https://img.shields.io/github/license/ghcpuman902/byos-nextjs)](https://github.com/ghcpuman902/byos-nextjs/blob/main/LICENSE)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
@@ -69,7 +71,7 @@ This project is in the **Alpha** stage. Here's our development roadmap:
 ### Reporting Issues
 If you encounter any problems:
 
-1. **GitHub Issues**: Open an issue on our [GitHub repository](https://github.com/usetrmnl/byos_next/issues)
+1. **GitHub Issues**: Open an issue on our [GitHub repository](https://github.com/ghcpuman902/byos-nextjs/issues)
 2. **Email**: Send details to [manglekuo@gmail.com](mailto:manglekuo@gmail.com)
 3. **Discussions**: Reply to my message in the TRMNL Discord server
 
@@ -116,7 +118,7 @@ SUPABASE_URL
 #### Installation Steps
 ```bash
 # Clone the repository
-git clone https://github.com/usetrmnl/byos_next
+git clone https://github.com/ghcpuman902/byos-nextjs
 cd byos-nextjs
 
 # Install dependencies
@@ -331,7 +333,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## 🌐 Community
 
-- 📢 [GitHub Discussions](https://github.com/usetrmnl/byos_nextjs/discussions)
+- 📢 [GitHub Discussions](https://github.com/ghcpuman902/byos-nextjsjs/discussions)
 - 🐦 [Twitter @usetrmnl](https://twitter.com/usetrmnl)
 - 💬 Join our community channels
 
