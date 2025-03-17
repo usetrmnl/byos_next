@@ -5,6 +5,7 @@ import { getHostUrl } from "@/utils/helpers";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
 import type { Device, SystemLog } from "@/lib/supabase/types";
 import { Badge } from "@/components/ui/badge";
+import WifiConnectModal from "@/components/dashboard/wifi-connect-modal";
 
 export default async function Dashboard() {
 	const { supabase, dbStatus } = await createClient();
@@ -49,7 +50,7 @@ export default async function Dashboard() {
 					<a href={hostUrl} className="underline">
 						{hostUrl}
 					</a>{" "}
-					in {process.env.NODE_ENV} mode
+					in {process.env.NODE_ENV} mode. (<WifiConnectModal customServerUrl={hostUrl} />)
 				</p>
 			</div>
 

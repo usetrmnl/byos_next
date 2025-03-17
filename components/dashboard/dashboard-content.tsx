@@ -102,7 +102,7 @@ export const DashboardContent = ({
 					</CardContent>
 				</Card>
 
-				<div className="grid grid-rows-2 gap-2">
+				<div className="grid grid-rows-2 gap-2 md:gap-4">
 					<Card>
 						<CardHeader>
 							<CardTitle>System Information</CardTitle>
@@ -136,7 +136,7 @@ export const DashboardContent = ({
 							</div>
 						</CardContent>
 					</Card>
-					<Card className="mt-2 md:mt-4 gap-4">
+					<Card>
 						<CardHeader>
 							<CardTitle>System Status</CardTitle>
 							<CardDescription>Overview of all connected devices</CardDescription>

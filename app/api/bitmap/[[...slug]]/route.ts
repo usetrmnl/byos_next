@@ -1,6 +1,5 @@
 export const revalidate = 60;
 
-export const runtime = "nodejs";
 
 import type { NextRequest } from "next/server";
 import { ImageResponse } from "next/og";

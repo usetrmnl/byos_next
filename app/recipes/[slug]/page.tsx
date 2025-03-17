@@ -1,5 +1,3 @@
-export const revalidate = 5;
-
 import fs from "fs";
 import path from "path";
 import { createElement, Suspense, use, cache } from "react";
@@ -14,6 +12,11 @@ import RecipeProps from "@/components/recipes/recipe-props";
 import { revalidateTag } from "next/cache";
 import Link from "next/link";
 import satori from "satori";
+
+export async function generateMetadata() {
+	// This empty function enables streaming for this route
+	return {}
+}
 
 // Server action for revalidating data
 async function refreshData(slug: string) {
@@ -76,11 +79,11 @@ const fetchComponent = cache(async (slug: string) => {
 // Fetch props for a recipe
 const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 	let props = config.props || {};
-	
+
 	if (!config.hasDataFetch) {
 		return props;
 	}
-	
+
 	try {
 		const { default: fetchDataFunction } = await import(
 			`@/app/recipes/screens/${slug}/getData.ts`
@@ -108,7 +111,7 @@ const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 	} catch (error) {
 		console.error(`Error fetching data for ${slug}:`, error);
 	}
-	
+
 	return props;
 });
 
@@ -117,30 +120,30 @@ const getImageOptions = (config: RecipeConfig) => {
 	// Use doubleSizeForSharperText as the single source of truth for doubling
 	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
 	const scaleFactor = useDoubling ? 2 : 1;
-	
+
 	return {
 		width: 800 * scaleFactor,
 		height: 480 * scaleFactor,
 		fonts: [
 			...(fonts?.blockKie
 				? [
-						{
-							name: "BlockKie",
-							data: fonts.blockKie,
-							weight: 400 as const,
-							style: "normal" as const,
-						},
-					]
+					{
+						name: "BlockKie",
+						data: fonts.blockKie,
+						weight: 400 as const,
+						style: "normal" as const,
+					},
+				]
 				: []),
 			...(fonts?.geneva9
 				? [
-						{
-							name: "Geneva9",
-							data: fonts.geneva9,
-							weight: 400 as const,
-							style: "normal" as const,
-						},
-					]
+					{
+						name: "Geneva9",
+						data: fonts.geneva9,
+						weight: 400 as const,
+						style: "normal" as const,
+					},
+				]
 				: []),
 		],
 		debug: false,
@@ -167,9 +170,9 @@ type RenderFunction = (
 const renderFormats: Record<string, RenderFunction> = {
 	// Generate bitmap
 	bitmap: cache(async (
-		slug: string, 
-		Component: React.ComponentType<ComponentProps>, 
-		props: ComponentProps, 
+		slug: string,
+		Component: React.ComponentType<ComponentProps>,
+		props: ComponentProps,
 		config: RecipeConfig
 	) => {
 		try {
@@ -193,9 +196,9 @@ const renderFormats: Record<string, RenderFunction> = {
 
 	// Generate PNG
 	png: cache(async (
-		slug: string, 
-		Component: React.ComponentType<ComponentProps>, 
-		props: ComponentProps, 
+		slug: string,
+		Component: React.ComponentType<ComponentProps>,
+		props: ComponentProps,
 		config: RecipeConfig
 	) => {
 		try {
@@ -216,17 +219,17 @@ const renderFormats: Record<string, RenderFunction> = {
 
 	// Generate SVG
 	svg: cache(async (
-		slug: string, 
-		Component: React.ComponentType<ComponentProps>, 
-		props: ComponentProps, 
+		slug: string,
+		Component: React.ComponentType<ComponentProps>,
+		props: ComponentProps,
 		config: RecipeConfig
 	) => {
 		try {
 			console.log(`🔄 Generating fresh SVG for: ${slug}`);
-			
+
 			const element = createElement(Component, props);
 			const svg = await satori(element, getImageOptions(config));
-			
+
 			console.log(`✅ Successfully generated SVG for: ${slug}`);
 			return svg;
 		} catch (error) {
@@ -242,13 +245,13 @@ const renderFormats: Record<string, RenderFunction> = {
 };
 
 // Render component with appropriate format
-const RenderComponent = ({ 
-	slug, 
-	format, 
-	title 
-}: { 
-	slug: string; 
-	format: "bitmap" | "png" | "svg" | "react"; 
+const RenderComponent = ({
+	slug,
+	format,
+	title
+}: {
+	slug: string;
+	format: "bitmap" | "png" | "svg" | "react";
 	title: string;
 }) => {
 	// Fetch config and handle null case
@@ -256,26 +259,26 @@ const RenderComponent = ({
 	if (!configResult) {
 		return <div className="w-full h-full flex items-center justify-center">Configuration not found</div>;
 	}
-	
+
 	// Fetch component and handle null case
 	const componentResult = use(Promise.resolve(fetchComponent(slug)));
 	if (!componentResult) {
 		return <div className="w-full h-full flex items-center justify-center">Component not found</div>;
 	}
-	
+
 	// Now we have valid config and component
 	const config = configResult;
 	const Component = componentResult;
 	const props = use(Promise.resolve(fetchProps(slug, config)));
-	
+
 	// Use doubleSizeForSharperText as the single source of truth for doubling
 	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
-	
+
 	// For React component rendering
 	if (format === "react") {
 		return (
-			<div 
-				style={{ 
+			<div
+				style={{
 					transform: useDoubling ? 'scale(0.5)' : 'none',
 					transformOrigin: 'top left',
 					width: useDoubling ? '200%' : '100%',
@@ -286,14 +289,14 @@ const RenderComponent = ({
 			</div>
 		);
 	}
-	
+
 	// For bitmap rendering
 	if (format === "bitmap") {
 		const bmpBuffer = use(Promise.resolve(renderFormats.bitmap(slug, Component, props, config)));
 		if (!bmpBuffer) {
 			return <div className="w-full h-full flex items-center justify-center">Failed to generate bitmap</div>;
 		}
-		
+
 		return (
 			<Image
 				width={800}
@@ -305,14 +308,14 @@ const RenderComponent = ({
 			/>
 		);
 	}
-	
+
 	// For PNG rendering
 	if (format === "png") {
 		const pngBuffer = use(Promise.resolve(renderFormats.png(slug, Component, props, config)));
 		if (!pngBuffer) {
 			return <div className="w-full h-full flex items-center justify-center">Failed to generate PNG</div>;
 		}
-		
+
 		return (
 			<Image
 				width={800 * (useDoubling ? 2 : 1)}
@@ -324,20 +327,20 @@ const RenderComponent = ({
 			/>
 		);
 	}
-	
+
 	// For SVG rendering
 	if (format === "svg") {
 		const svgContent = use(Promise.resolve(renderFormats.svg(slug, Component, props, config)));
 		if (!svgContent) {
 			return <div className="w-full h-full flex items-center justify-center">Failed to generate SVG</div>;
 		}
-		
+
 		return (
-			<div 
+			<div
 				className="w-full h-full"
 				// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
 				dangerouslySetInnerHTML={{ __html: svgContent as string }}
-				style={{ 
+				style={{
 					imageRendering: "pixelated",
 					transform: useDoubling ? 'scale(0.5)' : 'none',
 					transformOrigin: 'top left'
@@ -346,7 +349,7 @@ const RenderComponent = ({
 			/>
 		);
 	}
-	
+
 	return null;
 };
 
@@ -354,11 +357,11 @@ const RenderComponent = ({
 export default async function RecipePage({ params }: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params;
 	const config = await fetchConfig(slug);
-	
+
 	if (!config) {
 		notFound();
 	}
-	
+
 	return (
 		<div className="@container">
 			<div className="flex flex-col">
@@ -415,15 +418,15 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 					}
 					bmpLinkComponent={
 						<p className="leading-7 text-xs">
-						JSX → utils/pre-satori.tsx → Satori SVG → ImageResponse PNG → utils/render-bmp.ts → 
-						<Link href={`/api/bitmap/${slug}.bmp`} className="hover:underline text-blue-600 dark:text-blue-400">
-							/api/bitmap/{slug}.bmp
-						</Link>
+							JSX → utils/pre-satori.tsx → Satori SVG → ImageResponse PNG → utils/render-bmp.ts →
+							<Link href={`/api/bitmap/${slug}.bmp`} className="hover:underline text-blue-600 dark:text-blue-400">
+								/api/bitmap/{slug}.bmp
+							</Link>
 						</p>
 					}
 					pngLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → Satori SVG → <span className="text-blue-600 dark:text-blue-400">ImageResponse PNG</span> → utils/render-bmp.ts → 
+							JSX → utils/pre-satori.tsx → Satori SVG → <span className="text-blue-600 dark:text-blue-400">ImageResponse PNG</span> → utils/render-bmp.ts →
 							<Link href={`/api/bitmap/${slug}.bmp`} className="hover:underline">
 								/api/bitmap/{slug}.bmp
 							</Link>
@@ -431,7 +434,7 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 					}
 					svgLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → <span className="text-blue-600 dark:text-blue-400">Satori SVG</span> → ImageResponse PNG → utils/render-bmp.ts → 
+							JSX → utils/pre-satori.tsx → <span className="text-blue-600 dark:text-blue-400">Satori SVG</span> → ImageResponse PNG → utils/render-bmp.ts →
 							<Link href={`/api/bitmap/${slug}.bmp`} className="hover:underline">
 								/api/bitmap/{slug}.bmp
 							</Link>

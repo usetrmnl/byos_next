@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useEffect, useRef, Suspense, use } from "react";
+import { useState, useEffect, useRef, Suspense, use, memo, useMemo, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import {
 	ChevronDown,
@@ -98,60 +98,156 @@ const SidebarSkeletonFallback = () => (
 	</div>
 );
 
-// Device list component to wrap in Suspense
-const DeviceList = ({
-	devices,
-	isActiveDevicePath,
+// Single device item component that handles its own status
+const DeviceItem = memo(({ 
+	device, 
+	currentPath
+}: { 
+	device: Device,
+	currentPath: string
+}) => {
+	const [status, setStatus] = useState(getDeviceStatus(device));
+	const isActive = currentPath === `/device/${device.friendly_id}`;
+	
+	// Update status periodically without causing parent re-renders
+	useEffect(() => {
+		// Set initial status
+		setStatus(getDeviceStatus(device));
+		
+		// Check status every 30 seconds
+		const interval = setInterval(() => {
+			setStatus(getDeviceStatus(device));
+		}, 30000);
+		
+		return () => clearInterval(interval);
+	}, [device]);
+	
+	return (
+		<Button
+			key={device.id}
+			variant="ghost"
+			size="sm"
+			className={`w-full justify-start space-x-0 text-sm h-8 ${isActive ? "bg-muted" : ""}`}
+			asChild
+		>
+			<Link href={`/device/${device.friendly_id}`}>
+				<div className="flex items-center w-full">
+					<span className="truncate text-xs">{device.name}</span>
+					<StatusIndicator
+						status={status as "online" | "offline"}
+						size="sm"
+						className="ml-1"
+					/>
+				</div>
+			</Link>
+		</Button>
+	);
+});
+
+DeviceItem.displayName = "DeviceItem";
+
+// NavLink component to handle its own active state
+const NavLink = memo(({ 
+	href, 
+	currentPath, 
+	icon, 
+	label 
+}: { 
+	href: string, 
+	currentPath: string, 
+	icon: React.ReactNode, 
+	label: string 
+}) => {
+	const isActive = currentPath === href;
+	
+	return (
+		<Button
+			variant="ghost"
+			className={`w-full justify-start gap-x-0 text-sm h-9 ${isActive ? "bg-muted" : ""}`}
+			asChild
+		>
+			<Link href={href}>
+				{icon}
+				{label}
+			</Link>
+		</Button>
+	);
+});
+
+NavLink.displayName = "NavLink";
+
+// Recipe item component that handles its own active state
+const RecipeItem = memo(({
+	slug,
+	config,
+	currentPath
 }: {
-	devices: (Device & { status: string })[];
-	isActiveDevicePath: (id: string) => boolean;
+	slug: string,
+	config: typeof screens[keyof typeof screens],
+	currentPath: string
+}) => {
+	const isActive = currentPath === `/recipes/${slug}`;
+	
+	return (
+		<Button
+			key={slug}
+			variant="ghost"
+			size="sm"
+			className={`w-full justify-start space-x-0 text-sm h-8 ${isActive ? "bg-muted" : ""}`}
+			asChild
+		>
+			<Link href={`/recipes/${slug}`}>
+				<span className="truncate text-xs">{config.title}</span>
+			</Link>
+		</Button>
+	);
+});
+
+RecipeItem.displayName = "RecipeItem";
+
+// Device list component to wrap in Suspense
+const DeviceList = memo(({
+	devices,
+	currentPath,
+}: {
+	devices: Device[];
+	currentPath: string;
 }) => {
 	return (
 		<>
 			{Array.isArray(devices) ? (
 				devices.map((device) => (
-					<Button
+					<DeviceItem
 						key={device.id}
-						variant="ghost"
-						size="sm"
-						className={`w-full justify-start space-x-0 text-sm h-8 ${isActiveDevicePath(device.friendly_id) ? "bg-muted" : ""}`}
-						asChild
-					>
-						<Link href={`/device/${device.friendly_id}`}>
-							<div className="flex items-center w-full">
-								<span className="truncate text-xs">{device.name}</span>
-								<StatusIndicator
-									status={device.status as "online" | "offline"}
-									size="sm"
-									className="ml-1"
-								/>
-							</div>
-						</Link>
-					</Button>
+						device={device}
+						currentPath={currentPath}
+					/>
 				))
 			) : (
 				<div className="pl-6 space-y-2">No devices found</div>
 			)}
 		</>
 	);
-};
+});
+
+DeviceList.displayName = "DeviceList";
 
 // Recipes list component to wrap in Suspense
-const RecipesList = ({
+const RecipesList = memo(({
 	components,
-	isActiveExamplesPath,
-	isActivePath,
+	currentPath,
 }: {
 	components: [string, (typeof screens)[keyof typeof screens]][];
-	isActiveExamplesPath: (slug: string) => boolean;
-	isActivePath: (path: string) => boolean;
+	currentPath: string;
 }) => {
+	const isAllRecipesActive = currentPath === "/recipes";
+	
 	return (
 		<>
 			<Button
 				variant="ghost"
 				size="sm"
-				className={`w-full justify-start space-x-0 text-sm h-8 ${isActivePath("/recipes") ? "bg-muted" : ""}`}
+				className={`w-full justify-start space-x-0 text-sm h-8 ${isAllRecipesActive ? "bg-muted" : ""}`}
 				asChild
 			>
 				<Link href="/recipes">
@@ -160,21 +256,179 @@ const RecipesList = ({
 			</Button>
 
 			{components.map(([slug, config]) => (
-				<Button
+				<RecipeItem 
 					key={slug}
-					variant="ghost"
-					size="sm"
-					className={`w-full justify-start space-x-0 text-sm h-8 ${isActiveExamplesPath(slug) ? "bg-muted" : ""}`}
-					asChild
-				>
-					<Link href={`/recipes/${slug}`}>
-						<span className="truncate text-xs">{config.title}</span>
-					</Link>
-				</Button>
+					slug={slug}
+					config={config}
+					currentPath={currentPath}
+				/>
 			))}
 		</>
 	);
-};
+});
+
+RecipesList.displayName = "RecipesList";
+
+// Self-contained collapsible section component for devices
+const DevicesSection = memo(({ 
+	devices, 
+	currentPath,
+	initialOpen = false
+}: { 
+	devices: Device[],
+	currentPath: string,
+	initialOpen?: boolean
+}) => {
+	const [isOpen, setIsOpen] = useState(initialOpen);
+	
+	// Open devices section if a device page is active
+	useEffect(() => {
+		if (currentPath.startsWith("/device/")) {
+			setIsOpen(true);
+		}
+	}, [currentPath]);
+	
+	return (
+		<Collapsible
+			open={isOpen}
+			onOpenChange={setIsOpen}
+			className="w-full"
+		>
+			<CollapsibleTrigger asChild>
+				<Button
+					variant="ghost"
+					className="w-full justify-between text-sm h-9"
+				>
+					<div className="flex items-center">
+						<Monitor className="mr-2 size-4" />
+						Devices
+					</div>
+					{isOpen ? (
+						<ChevronDown className="size-4" />
+					) : (
+						<ChevronRight className="size-4" />
+					)}
+				</Button>
+			</CollapsibleTrigger>
+			<CollapsibleContent className="pl-6 space-y-1">
+				<Suspense fallback={<DeviceListFallback />}>
+					<DeviceList
+						devices={devices}
+						currentPath={currentPath}
+					/>
+				</Suspense>
+			</CollapsibleContent>
+		</Collapsible>
+	);
+});
+
+DevicesSection.displayName = "DevicesSection";
+
+// Self-contained collapsible section component for recipes
+const RecipesSection = memo(({ 
+	components, 
+	currentPath,
+	initialOpen = false
+}: { 
+	components: [string, (typeof screens)[keyof typeof screens]][],
+	currentPath: string,
+	initialOpen?: boolean
+}) => {
+	const [isOpen, setIsOpen] = useState(initialOpen);
+	const isRecipesPath = currentPath === "/recipes" || currentPath.startsWith("/recipes/");
+	
+	// Open recipes section if a recipes page is active
+	useEffect(() => {
+		if (currentPath.startsWith("/recipes/")) {
+			setIsOpen(true);
+		}
+	}, [currentPath]);
+	
+	return (
+		<Collapsible
+			open={isOpen}
+			onOpenChange={setIsOpen}
+			className="w-full"
+		>
+			<CollapsibleTrigger asChild>
+				<Button
+					variant="ghost"
+					className={`w-full justify-between text-sm h-9 ${isRecipesPath ? "bg-muted" : ""}`}
+				>
+					<div className="flex items-center">
+						<Palette className="mr-2 size-4" />
+						Recipes
+					</div>
+					{isOpen ? (
+						<ChevronDown className="size-4" />
+					) : (
+						<ChevronRight className="size-4" />
+					)}
+				</Button>
+			</CollapsibleTrigger>
+			<CollapsibleContent className="pl-6 space-y-1">
+				<Suspense fallback={<RecipesListFallback />}>
+					<RecipesList
+						components={components}
+						currentPath={currentPath}
+					/>
+				</Suspense>
+			</CollapsibleContent>
+		</Collapsible>
+	);
+});
+
+RecipesSection.displayName = "RecipesSection";
+
+// Sidebar navigation component to prevent main layout rerenders
+const SidebarNavigation = memo(({
+	devices,
+	recipesComponents,
+	currentPath,
+}: {
+	devices: Device[];
+	recipesComponents: [string, (typeof screens)[keyof typeof screens]][];
+	currentPath: string;
+}) => {
+	return (
+		<nav className="p-2 space-y-1">
+			<NavLink 
+				href="/" 
+				currentPath={currentPath} 
+				icon={<Server className="mr-2 size-4" />} 
+				label="Overview" 
+			/>
+
+			<DevicesSection 
+				devices={devices} 
+				currentPath={currentPath}
+				initialOpen={true}
+			/>
+
+			<RecipesSection 
+				components={recipesComponents}
+				currentPath={currentPath}
+				initialOpen={currentPath.startsWith("/recipes/")}
+			/>
+
+			<NavLink
+				href="/system-logs"
+				currentPath={currentPath}
+				icon={<Server className="mr-2 size-4" />}
+				label="System Log"
+			/>
+
+			<NavLink
+				href="/maintenance"
+				currentPath={currentPath}
+				icon={<Wrench className="mr-2 size-4" />}
+				label="Maintenance"
+			/>
+		</nav>
+	);
+});
+
+SidebarNavigation.displayName = "SidebarNavigation";
 
 interface MainLayoutProps {
 	children: React.ReactNode;
@@ -188,25 +442,14 @@ export default function MainLayout({
 	const devices = use(devicesPromise);
 	const pathname = usePathname();
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-	const [isDevicesOpen, setIsDevicesOpen] = useState(true);
-	const [isExamplesOpen, setIsExamplesOpen] = useState(false);
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	const mainRef = useRef<HTMLDivElement>(null);
 	const { theme, setTheme } = useTheme();
 
-	// Determine if a path is active
-	const isActivePath = (path: string) => pathname === path;
-	const isActiveDevicePath = (friendly_id: string) =>
-		pathname === `/device/${friendly_id}`;
-	const isActiveRecipePath = (slug: string) =>
-		pathname === `/recipes/${slug}`;
-	const isRecipesPath =
-		pathname === "/recipes" || pathname.startsWith("/recipes/");
-
-	// Toggle theme
-	const toggleTheme = () => {
+	// Toggle theme - memoize this callback
+	const toggleTheme = useCallback(() => {
 		setTheme(theme === "dark" ? "light" : "dark");
-	};
+	}, [theme, setTheme]);
 
 	// Close sidebar when clicking outside
 	useEffect(() => {
@@ -228,30 +471,24 @@ export default function MainLayout({
 		};
 	}, [isSidebarOpen]);
 
-	// Open devices section if a device page is active
-	useEffect(() => {
-		if (pathname.startsWith("/device/")) {
-			setIsDevicesOpen(true);
-		}
+	// Memoize recipes components to prevent recalculation on every render
+	const recipesComponents = useMemo(() => {
+		return Object.entries(screens)
+			.filter(
+				([, config]) => process.env.NODE_ENV !== "production" || config.published,
+			)
+			.sort((a, b) => a[1].title.localeCompare(b[1].title));
+	}, []);
 
-		// Open recipes section if a recipes page is active
-		if (pathname.startsWith("/recipes/")) {
-			setIsExamplesOpen(true);
-		}
-	}, [pathname]);
-
-	// Add status and type to devices
-	const enhancedDevices = devices.map((device) => ({
-		...device,
-		status: getDeviceStatus(device),
-	}));
-
-	// Get recipes components
-	const recipesComponents = Object.entries(screens)
-		.filter(
-			([, config]) => process.env.NODE_ENV !== "production" || config.published,
-		)
-		.sort((a, b) => a[1].title.localeCompare(b[1].title));
+	// Memoize the handler for sidebar toggle
+	const handleSidebarToggle = useCallback(() => {
+		setIsSidebarOpen(prev => !prev);
+	}, []);
+	
+	// Memoize the handler for sidebar close
+	const handleSidebarClose = useCallback(() => {
+		setIsSidebarOpen(false);
+	}, []);
 
 	return (
 		<div className="min-h-screen flex flex-col">
@@ -261,7 +498,7 @@ export default function MainLayout({
 						variant="ghost"
 						size="icon"
 						className="md:hidden"
-						onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+						onClick={handleSidebarToggle}
 					>
 						<Menu className="size-5" />
 						<span className="sr-only">Toggle Menu</span>
@@ -310,110 +547,18 @@ export default function MainLayout({
 						<Button
 							variant="ghost"
 							size="icon"
-							onClick={() => setIsSidebarOpen(false)}
+							onClick={handleSidebarClose}
 						>
 							<X className="size-5" />
 						</Button>
 					</div>
 					<div className="flex-1">
 						<Suspense fallback={<SidebarSkeletonFallback />}>
-							<nav className="p-2 space-y-1">
-								<Button
-									variant="ghost"
-									className={`w-full justify-start gap-x-0 text-sm h-9 ${isActivePath("/") ? "bg-muted" : ""}`}
-									asChild
-								>
-									<Link href="/">
-										<Server className="mr-2 size-4" />
-										Overview
-									</Link>
-								</Button>
-
-								<Collapsible
-									open={isDevicesOpen}
-									onOpenChange={setIsDevicesOpen}
-									className="w-full"
-								>
-									<CollapsibleTrigger asChild>
-										<Button
-											variant="ghost"
-											className="w-full justify-between text-sm h-9"
-										>
-											<div className="flex items-center">
-												<Monitor className="mr-2 size-4" />
-												Devices
-											</div>
-											{isDevicesOpen ? (
-												<ChevronDown className="size-4" />
-											) : (
-												<ChevronRight className="size-4" />
-											)}
-										</Button>
-									</CollapsibleTrigger>
-									<CollapsibleContent className="pl-6 space-y-1">
-										<Suspense fallback={<DeviceListFallback />}>
-											<DeviceList
-												devices={enhancedDevices}
-												isActiveDevicePath={isActiveDevicePath}
-											/>
-										</Suspense>
-									</CollapsibleContent>
-								</Collapsible>
-
-								<Collapsible
-									open={isExamplesOpen}
-									onOpenChange={setIsExamplesOpen}
-									className="w-full"
-								>
-									<CollapsibleTrigger asChild>
-										<Button
-											variant="ghost"
-											className={`w-full justify-between text-sm h-9 ${isRecipesPath ? "bg-muted" : ""}`}
-										>
-											<div className="flex items-center">
-												<Palette className="mr-2 size-4" />
-												Recipes
-											</div>
-											{isExamplesOpen ? (
-												<ChevronDown className="size-4" />
-											) : (
-												<ChevronRight className="size-4" />
-											)}
-										</Button>
-									</CollapsibleTrigger>
-									<CollapsibleContent className="pl-6 space-y-1">
-										<Suspense fallback={<RecipesListFallback />}>
-											<RecipesList
-												components={recipesComponents}
-												isActiveExamplesPath={isActiveRecipePath}
-												isActivePath={isActivePath}
-											/>
-										</Suspense>
-									</CollapsibleContent>
-								</Collapsible>
-
-								<Button
-									variant="ghost"
-									className={`w-full justify-start gap-x-0 text-sm h-9 ${isActivePath("/system-logs") ? "bg-muted" : ""}`}
-									asChild
-								>
-									<Link href="/system-logs">
-										<Server className="mr-2 size-4" />
-										System Log
-									</Link>
-								</Button>
-
-								<Button
-									variant="ghost"
-									className={`w-full justify-start gap-x-0 text-sm h-9 ${isActivePath("/maintenance") ? "bg-muted" : ""}`}
-									asChild
-								>
-									<Link href="/maintenance">
-										<Wrench className="mr-2 size-4" />
-										Maintenance
-									</Link>
-								</Button>
-							</nav>
+							<SidebarNavigation
+								devices={devices}
+								recipesComponents={recipesComponents}
+								currentPath={pathname}
+							/>
 						</Suspense>
 					</div>
 				</aside>
