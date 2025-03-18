@@ -1,0 +1,484 @@
+{
+  "size": {
+    "width": 8,
+    "height": 8
+  },
+  "format": "base64",
+  "characters": [
+    {
+      "charCode": 32,
+      "char": " ",
+      "data": "AAAAAAAAAAA="
+    },
+    {
+      "charCode": 33,
+      "char": "!",
+      "data": "EBAQEBAQABA="
+    },
+    {
+      "charCode": 34,
+      "char": "\"",
+      "data": "KCgAAAAAAAA="
+    },
+    {
+      "charCode": 35,
+      "char": "#",
+      "data": "AAAofCgofCg="
+    },
+    {
+      "charCode": 36,
+      "char": "$",
+      "data": "EDhUMBhUOBA="
+    },
+    {
+      "charCode": 37,
+      "char": "%",
+      "data": "AGJkCBAQJkY="
+    },
+    {
+      "charCode": 38,
+      "char": "&",
+      "data": "OEREKFJKRDo="
+    },
+    {
+      "charCode": 39,
+      "char": "'",
+      "data": "EBAgAAAAAAA="
+    },
+    {
+      "charCode": 40,
+      "char": "(",
+      "data": "AAQIEBAQCAQ="
+    },
+    {
+      "charCode": 41,
+      "char": ")",
+      "data": "ACAQCAgIECA="
+    },
+    {
+      "charCode": 42,
+      "char": "*",
+      "data": "VDhUAAAAAAA="
+    },
+    {
+      "charCode": 43,
+      "char": "+",
+      "data": "ABAQfBAQAAA="
+    },
+    {
+      "charCode": 44,
+      "char": ",",
+      "data": "AAAAAAAQECA="
+    },
+    {
+      "charCode": 45,
+      "char": "-",
+      "data": "AAAAPAAAAAA="
+    },
+    {
+      "charCode": 46,
+      "char": ".",
+      "data": "AAAAAAAAABA="
+    },
+    {
+      "charCode": 47,
+      "char": "/",
+      "data": "BAQICBAQICA="
+    },
+    {
+      "charCode": 48,
+      "char": "0",
+      "data": "OERkVExERDg="
+    },
+    {
+      "charCode": 49,
+      "char": "1",
+      "data": "EDAQEBAQEDg="
+    },
+    {
+      "charCode": 50,
+      "char": "2",
+      "data": "OERECBAgQHw="
+    },
+    {
+      "charCode": 51,
+      "char": "3",
+      "data": "OEQEGARERDg="
+    },
+    {
+      "charCode": 52,
+      "char": "4",
+      "data": "GCgoSEh8CAg="
+    },
+    {
+      "charCode": 53,
+      "char": "5",
+      "data": "fEBAOAQERDg="
+    },
+    {
+      "charCode": 54,
+      "char": "6",
+      "data": "OEBAeERERDg="
+    },
+    {
+      "charCode": 55,
+      "char": "7",
+      "data": "fAQICBAQICA="
+    },
+    {
+      "charCode": 56,
+      "char": "8",
+      "data": "OEREOERERDg="
+    },
+    {
+      "charCode": 57,
+      "char": "9",
+      "data": "OERERDwEBDg="
+    },
+    {
+      "charCode": 58,
+      "char": ":",
+      "data": "AAAAEAAAEAA="
+    },
+    {
+      "charCode": 59,
+      "char": ";",
+      "data": "AAAAEAAAECA="
+    },
+    {
+      "charCode": 60,
+      "char": "<",
+      "data": "AAAIECAQCAA="
+    },
+    {
+      "charCode": 61,
+      "char": "=",
+      "data": "AAB8AHwAAAA="
+    },
+    {
+      "charCode": 62,
+      "char": ">",
+      "data": "AAAgEAgQIAA="
+    },
+    {
+      "charCode": 63,
+      "char": "?",
+      "data": "OERECBAQABA="
+    },
+    {
+      "charCode": 64,
+      "char": "@",
+      "data": "OESSqqqWQDg="
+    },
+    {
+      "charCode": 65,
+      "char": "A",
+      "data": "EChEfEREREQ="
+    },
+    {
+      "charCode": 66,
+      "char": "B",
+      "data": "eEREeERERHg="
+    },
+    {
+      "charCode": 67,
+      "char": "C",
+      "data": "OERAQEBARDg="
+    },
+    {
+      "charCode": 68,
+      "char": "D",
+      "data": "eERERERERHg="
+    },
+    {
+      "charCode": 69,
+      "char": "E",
+      "data": "fEBAeEBAQHw="
+    },
+    {
+      "charCode": 70,
+      "char": "F",
+      "data": "fEBAeEBAQEA="
+    },
+    {
+      "charCode": 71,
+      "char": "G",
+      "data": "OERAQExERDg="
+    },
+    {
+      "charCode": 72,
+      "char": "H",
+      "data": "REREfEREREQ="
+    },
+    {
+      "charCode": 73,
+      "char": "I",
+      "data": "OBAQEBAQEDg="
+    },
+    {
+      "charCode": 74,
+      "char": "J",
+      "data": "HAgICAhISDA="
+    },
+    {
+      "charCode": 75,
+      "char": "K",
+      "data": "REhQYFBIREQ="
+    },
+    {
+      "charCode": 76,
+      "char": "L",
+      "data": "QEBAQEBAQHw="
+    },
+    {
+      "charCode": 77,
+      "char": "M",
+      "data": "gsaqqpKSgoI="
+    },
+    {
+      "charCode": 78,
+      "char": "N",
+      "data": "QmJSUkpKRkI="
+    },
+    {
+      "charCode": 79,
+      "char": "O",
+      "data": "HCJCQkJCRDg="
+    },
+    {
+      "charCode": 80,
+      "char": "P",
+      "data": "eERERHhAQEA="
+    },
+    {
+      "charCode": 81,
+      "char": "Q",
+      "data": "HCJCQkJKRDo="
+    },
+    {
+      "charCode": 82,
+      "char": "R",
+      "data": "eERERHhIREQ="
+    },
+    {
+      "charCode": 83,
+      "char": "S",
+      "data": "OERAOAQERDg="
+    },
+    {
+      "charCode": 84,
+      "char": "T",
+      "data": "fBAQEBAQEBA="
+    },
+    {
+      "charCode": 85,
+      "char": "U",
+      "data": "RERERERERDg="
+    },
+    {
+      "charCode": 86,
+      "char": "V",
+      "data": "REREREREKBA="
+    },
+    {
+      "charCode": 87,
+      "char": "W",
+      "data": "goKSkqqqxoI="
+    },
+    {
+      "charCode": 88,
+      "char": "X",
+      "data": "gkQoEChEgoI="
+    },
+    {
+      "charCode": 89,
+      "char": "Y",
+      "data": "gkQoEBAQEBA="
+    },
+    {
+      "charCode": 90,
+      "char": "Z",
+      "data": "fgIECBAgQH4="
+    },
+    {
+      "charCode": 91,
+      "char": "[",
+      "data": "ABgQEBAQEBg="
+    },
+    {
+      "charCode": 92,
+      "char": "\\",
+      "data": "ICAQEAgIBAQ="
+    },
+    {
+      "charCode": 93,
+      "char": "]",
+      "data": "ABgICAgICBg="
+    },
+    {
+      "charCode": 94,
+      "char": "^",
+      "data": "EChEAAAAAAA="
+    },
+    {
+      "charCode": 95,
+      "char": "_",
+      "data": "AAAAAAAAADw="
+    },
+    {
+      "charCode": 96,
+      "char": "`",
+      "data": "EAgEAAAAAAA="
+    },
+    {
+      "charCode": 97,
+      "char": "a",
+      "data": "AAAcIh4iJho="
+    },
+    {
+      "charCode": 98,
+      "char": "b",
+      "data": "QEBYZERERDg="
+    },
+    {
+      "charCode": 99,
+      "char": "c",
+      "data": "AAA4REBARDg="
+    },
+    {
+      "charCode": 100,
+      "char": "d",
+      "data": "BAQ8RERERDg="
+    },
+    {
+      "charCode": 101,
+      "char": "e",
+      "data": "AAA4RHxARDg="
+    },
+    {
+      "charCode": 102,
+      "char": "f",
+      "data": "HCB8ICAgICA="
+    },
+    {
+      "charCode": 103,
+      "char": "g",
+      "data": "AAA6REw0BDg="
+    },
+    {
+      "charCode": 104,
+      "char": "h",
+      "data": "QEBYZEREREQ="
+    },
+    {
+      "charCode": 105,
+      "char": "i",
+      "data": "EAAwEBAQEDg="
+    },
+    {
+      "charCode": 106,
+      "char": "j",
+      "data": "EAAQEBAQEGA="
+    },
+    {
+      "charCode": 107,
+      "char": "k",
+      "data": "QEBESHBIREQ="
+    },
+    {
+      "charCode": 108,
+      "char": "l",
+      "data": "MBAQEBAQEHw="
+    },
+    {
+      "charCode": 109,
+      "char": "m",
+      "data": "AAB0SkpKSko="
+    },
+    {
+      "charCode": 110,
+      "char": "n",
+      "data": "AAB4REREREQ="
+    },
+    {
+      "charCode": 111,
+      "char": "o",
+      "data": "AAA4RERERDg="
+    },
+    {
+      "charCode": 112,
+      "char": "p",
+      "data": "AAB4RER4QEA="
+    },
+    {
+      "charCode": 113,
+      "char": "q",
+      "data": "AAA8REQ8BAQ="
+    },
+    {
+      "charCode": 114,
+      "char": "r",
+      "data": "AABMUGBAQEA="
+    },
+    {
+      "charCode": 115,
+      "char": "s",
+      "data": "AAA4RDAIRDg="
+    },
+    {
+      "charCode": 116,
+      "char": "t",
+      "data": "ACB8ICAgJBg="
+    },
+    {
+      "charCode": 117,
+      "char": "u",
+      "data": "AABERERERDg="
+    },
+    {
+      "charCode": 118,
+      "char": "v",
+      "data": "AABEREREKBA="
+    },
+    {
+      "charCode": 119,
+      "char": "w",
+      "data": "AABKSkpKSnQ="
+    },
+    {
+      "charCode": 120,
+      "char": "x",
+      "data": "AABEKBAQKEQ="
+    },
+    {
+      "charCode": 121,
+      "char": "y",
+      "data": "AABEREQ8BDg="
+    },
+    {
+      "charCode": 122,
+      "char": "z",
+      "data": "AAB8CBAQIHw="
+    },
+    {
+      "charCode": 123,
+      "char": "{",
+      "data": "AAQICBAICAQ="
+    },
+    {
+      "charCode": 124,
+      "char": "|",
+      "data": "ABAQEBAQEBA="
+    },
+    {
+      "charCode": 125,
+      "char": "}",
+      "data": "ACAQEAgQECA="
+    },
+    {
+      "charCode": 126,
+      "char": "~",
+      "data": "AAAAIFQIAAA="
+    }
+  ]
+}

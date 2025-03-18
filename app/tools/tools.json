@@ -1,0 +1,30 @@
+{
+	"image-ditherer": {
+		"title": "1-Bit Image Ditherer",
+		"published": true,
+		"createdAt": "2025-03-18T00:00:00Z",
+		"updatedAt": "2025-03-18T00:00:00Z",
+		"description": "Convert your images to 1-bit dithered art with various algorithms. Adjust brightness, contrast, and other parameters to achieve the perfect retro look. Perfect for pixel art, e-ink displays, or nostalgic designs.",
+		"tags": ["bitmap", "dithering", "image", "processing"],
+		"author": {
+			"name": "Mangle Kuo",
+			"github": "ghcpuman902"
+		},
+		"version": "0.1.0",
+		"category": "image-tools"
+	},
+	"bitmap-font-designer": {
+		"title": "Bitmap Font Designer",
+		"published": true,
+		"createdAt": "2025-03-18T00:00:00Z",
+		"updatedAt": "2025-03-18T00:00:00Z",
+		"description": "Design your own bitmap font characters and export them as JSON for use on your device!",
+		"tags": ["bitmap", "font", "design", "export"],
+		"author": {
+			"name": "Mangle Kuo",
+			"github": "ghcpuman902"
+		},
+		"version": "0.1.0",
+		"category": "font-tools"
+	}
+} 

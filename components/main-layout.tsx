@@ -15,6 +15,7 @@ import {
 	X,
 	Palette,
 	Wrench,
+	PencilRuler,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +28,7 @@ import type { Device } from "@/lib/supabase/types";
 import { getDeviceStatus } from "@/utils/helpers";
 import Link from "next/link";
 import screens from "@/app/recipes/screens.json";
+import tools from "@/app/tools/tools.json";
 import { useTheme } from "next-themes";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -380,6 +382,86 @@ const RecipesSection = memo(({
 
 RecipesSection.displayName = "RecipesSection";
 
+// Self-contained collapsible section component for tools
+const ToolsSection = memo(({ 
+	currentPath,
+	initialOpen = false
+}: { 
+	currentPath: string,
+	initialOpen?: boolean
+}) => {
+	const [isOpen, setIsOpen] = useState(initialOpen);
+	const isToolsPath = currentPath === "/tools" || currentPath.startsWith("/tools/");
+	
+	// Open tools section if a tools page is active
+	useEffect(() => {
+		if (currentPath.startsWith("/tools/")) {
+			setIsOpen(true);
+		}
+	}, [currentPath]);
+
+	// Memoize tools components to prevent recalculation on every render
+	const toolsComponents = useMemo(() => {
+		return Object.entries(tools)
+			.filter(
+				([, config]) => process.env.NODE_ENV !== "production" || config.published,
+			)
+			.sort((a, b) => a[1].title.localeCompare(b[1].title));
+	}, []);
+	
+	return (
+		<Collapsible
+			open={isOpen}
+			onOpenChange={setIsOpen}
+			className="w-full"
+		>
+			<CollapsibleTrigger asChild>
+				<Button
+					variant="ghost"
+					className={`w-full justify-between text-sm h-9 ${isToolsPath ? "bg-muted" : ""}`}
+				>
+					<div className="flex items-center">
+						<PencilRuler className="mr-2 size-4" />
+						Tools
+					</div>
+					{isOpen ? (
+						<ChevronDown className="size-4" />
+					) : (
+						<ChevronRight className="size-4" />
+					)}
+				</Button>
+			</CollapsibleTrigger>
+			<CollapsibleContent className="pl-6 space-y-1">
+				<Button
+					variant="ghost"
+					size="sm"
+					className={`w-full justify-start space-x-0 text-sm h-8 ${currentPath === "/tools" ? "bg-muted" : ""}`}
+					asChild
+				>
+					<Link href="/tools">
+						<span className="truncate text-xs">All Tools</span>
+					</Link>
+				</Button>
+				{toolsComponents.map(([slug, config]) => (
+					<Button
+						key={slug}
+						variant="ghost"
+						size="sm"
+						className={`w-full justify-start space-x-0 text-sm h-8 ${currentPath === `/tools/${slug}` ? "bg-muted" : ""}`}
+						asChild
+					>
+						<Link href={`/tools/${slug}`}>
+							<span className="truncate text-xs">{config.title}</span>
+						</Link>
+					</Button>
+				))}
+			</CollapsibleContent>
+		</Collapsible>
+	);
+});
+
+ToolsSection.displayName = "ToolsSection";
+
 // Sidebar navigation component to prevent main layout rerenders
 const SidebarNavigation = memo(({
 	devices,
@@ -409,6 +491,11 @@ const SidebarNavigation = memo(({
 				components={recipesComponents}
 				currentPath={currentPath}
 				initialOpen={currentPath.startsWith("/recipes/")}
+			/>
+			
+			<ToolsSection
+				currentPath={currentPath}
+				initialOpen={currentPath.startsWith("/tools/")}
 			/>
 
 			<NavLink

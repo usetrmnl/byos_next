@@ -6,7 +6,7 @@ import { ImageResponse } from "next/og";
 import fs from "fs";
 import path from "path";
 import { createElement, cache } from "react";
-import { renderBmp, DISPLAY_BMP_IMAGE_SIZE, DitheringMethod } from "@/utils/render-bmp";
+import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
 
@@ -196,7 +196,8 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 		return await renderBmp(pngResponse, { ditheringMethod: DitheringMethod.ATKINSON });
 	} catch (error) {
 		logger.error(`Error loading recipe component ${recipeId}:`, error);
-		return null;
+		// Return an empty buffer instead of null to prevent undefined errors
+		return Buffer.from([]);
 	}
 });
 
@@ -233,7 +234,7 @@ export async function GET(
 				return new Response(item.data, {
 					headers: {
 						"Content-Type": "image/bmp",
-						"Content-Length": DISPLAY_BMP_IMAGE_SIZE.toString(),
+						"Content-Length": item.data.length.toString(),
 					},
 				});
 			}
@@ -243,7 +244,7 @@ export async function GET(
 			const staleResponse = new Response(item.data, {
 				headers: {
 					"Content-Type": "image/bmp",
-					"Content-Length": DISPLAY_BMP_IMAGE_SIZE.toString(),
+					"Content-Length": item.data.length.toString(),
 				},
 			});
 
@@ -299,7 +300,7 @@ export async function GET(
 			return new Response(buffer, {
 				headers: {
 					"Content-Type": "image/bmp",
-					"Content-Length": DISPLAY_BMP_IMAGE_SIZE.toString(),
+					"Content-Length": buffer.length.toString(),
 				},
 			});
 		} catch (fallbackError) {
@@ -315,7 +316,6 @@ export async function GET(
 }
 
 // Helper function to generate and cache bitmap
-// Now using React's cache for the recipe buffer generation
 const generateBitmap = cache(async (bitmapPath: string, cacheKey: string) => {
 	// Extract the recipe slug from the URL
 	// Format: [recipe_slug].bmp
@@ -335,29 +335,31 @@ const generateBitmap = cache(async (bitmapPath: string, cacheKey: string) => {
 	// Try to load the recipe component using our cached function
 	const recipeBuffer = await loadRecipeBuffer(recipeId);
 
-	if (recipeBuffer) {
-		const revalidate = 60;
-		const now = Date.now();
-		const expiresAt = now + revalidate * 1000;
+	// Safety check for buffer presence and non-empty
+	if (!recipeBuffer || !(recipeBuffer instanceof Buffer) || recipeBuffer.length === 0) {
+		logger.error(`Failed to generate valid buffer for ${recipeId}`);
+		throw new Error("Failed to generate recipe buffer");
+	}
 
-		// Only cache in development
-		const bitmapCache = getBitmapCache();
-		if (bitmapCache) {
-			bitmapCache.set(cacheKey, {
-				data: recipeBuffer,
-				expiresAt,
-			});
-		}
+	const revalidate = 60;
+	const now = Date.now();
+	const expiresAt = now + revalidate * 1000;
 
-		logger.success(`Successfully generated bitmap for: ${bitmapPath}`);
-
-		return new Response(recipeBuffer, {
-			headers: {
-				"Content-Type": "image/bmp",
-				"Content-Length": DISPLAY_BMP_IMAGE_SIZE.toString(),
-			},
+	// Only cache in development
+	const bitmapCache = getBitmapCache();
+	if (bitmapCache) {
+		bitmapCache.set(cacheKey, {
+			data: recipeBuffer,
+			expiresAt,
 		});
 	}
 
-	throw new Error("Failed to generate recipe buffer");
+	logger.success(`Successfully generated bitmap for: ${bitmapPath}`);
+
+	return new Response(recipeBuffer, {
+		headers: {
+			"Content-Type": "image/bmp",
+			"Content-Length": recipeBuffer.length.toString(),
+		},
+	});
 });

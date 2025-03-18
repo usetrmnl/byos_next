@@ -27,6 +27,7 @@ export interface WikipediaData {
 	ns?: number;
 	contentmodel?: string;
 	pagelanguage?: string;
+	pagelanguagedir?: string;
 	touched?: string;
 	lastrevid?: number;
 	length?: number;
@@ -41,23 +42,24 @@ export interface WikipediaData {
 const DEFAULT_FALLBACK_DATA: WikipediaData = {
 	pageid: 1234567,
 	ns: 0,
-	title: "Electronic Paper Display",
-	extract: "Electronic paper, also sometimes called e-paper, is a display technology designed to mimic the appearance of ordinary ink on paper. Unlike conventional flat panel displays that emit light, electronic paper displays reflect light like paper. This may make them more comfortable to read, and provide a wider viewing angle than most light-emitting displays.",
+	title: sanitizeRtlText("Electronic Paper Display"),
+	extract: sanitizeRtlText("Electronic paper, also sometimes called e-paper, is a display technology designed to mimic the appearance of ordinary ink on paper. Unlike conventional flat panel displays that emit light, electronic paper displays reflect light like paper. This may make them more comfortable to read, and provide a wider viewing angle than most light-emitting displays."),
 	thumbnail: {
 		source: "https://upload.wikimedia.org/wikipedia/commons/1/1a/Reading_a_kindle_on_public_transit.jpg",
-		width: 240,
-		height: 320
+		width: 320,
+		height: 240
 	},
 	contentmodel: "wikitext",
 	pagelanguage: "en",
+	pagelanguagedir: "ltr",
 	touched: "2025-03-06T03:31:30Z",
 	lastrevid: 1234567890,
 	length: 12345,
 	fullurl: "https://en.wikipedia.org/wiki/Electronic_paper",
 	editurl: "https://en.wikipedia.org/w/index.php?title=Electronic_paper&action=edit",
 	canonicalurl: "https://en.wikipedia.org/wiki/Electronic_paper",
-	displaytitle: "Electronic Paper Display",
-	description: "Display technology that mimics the appearance of ink on paper",
+	displaytitle: sanitizeRtlText("Electronic Paper Display"),
+	description: sanitizeRtlText("Display technology that mimics the appearance of ink on paper"),
 	content_urls: {
 		desktop: {
 			page: "https://en.wikipedia.org/wiki/Electronic_paper"
@@ -107,9 +109,22 @@ async function fetchWithRetry(
 	const timeoutId = setTimeout(() => controller.abort(), timeout);
 	
 	try {
+		// Add authentication token if available
+		const headers = new Headers(options.headers || {});
+		
+		// Add Authorization header with bearer token if WIKIPEDIA_ACCESS_TOKEN is available
+		const accessToken = process.env.WIKIPEDIA_ACCESS_TOKEN;
+		if (accessToken) {
+			headers.set("Authorization", `Bearer ${accessToken}`);
+			console.log("Using Wikipedia access token for authentication");
+		} else {
+			console.log("No Wikipedia access token found, proceeding without authentication");
+		}
+		
 		// Add the signal to the options
 		const fetchOptions = {
 			...options,
+			headers,
 			signal: controller.signal,
 			// Remove the cache: "no-store" option and use next: { revalidate: 0 } instead
 			next: { revalidate: 0 }
@@ -118,6 +133,10 @@ async function fetchWithRetry(
 		// Attempt the fetch
 		const response = await fetch(url, fetchOptions);
 		clearTimeout(timeoutId);
+		
+		// Log response status to help with debugging
+		console.log(`Fetch response for ${new URL(url).pathname}: Status ${response.status} ${response.statusText}`);
+		
 		return response;
 	} catch (error) {
 		clearTimeout(timeoutId);
@@ -128,12 +147,23 @@ async function fetchWithRetry(
 			 (error as DOMException).code === 20 || 
 			 error.message.includes('abort'));
 		
+		// Enhanced error logging
+		if (isAbortError) {
+			console.error(`Request timed out after ${timeout}ms for: ${new URL(url).pathname}`);
+		} else {
+			console.error(`Fetch error for ${new URL(url).pathname}:`, {
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined
+			});
+		}
+		
 		// If we have retries left, wait a short time and try again
 		// Using same timeout for all retries as requested
 		if (retries > 0) {
 			// Short backoff with consistent timeout
 			const delay = 1000; // 1 second delay between retries
-			console.warn(`Fetch ${isAbortError ? 'timeout' : 'error'} for URL: ${url}. Retries left: ${retries}`);
+			console.warn(`Fetch ${isAbortError ? 'timeout' : 'error'} for URL: ${new URL(url).pathname}. Retries left: ${retries}`);
 			await new Promise(resolve => setTimeout(resolve, delay));
 			return fetchWithRetry(url, options, retries - 1, timeout);
 		}
@@ -146,7 +176,7 @@ async function fetchWithRetry(
 		}
 		
 		// For other types of errors
-		console.error(`Fetch error for URL: ${url}:`, error);
+		console.error(`Fetch error for URL: ${url} after all retries:`, error);
 		throw error;
 	}
 }
@@ -160,24 +190,48 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 		// Use the optimized endpoint that combines random article generation with content fetching
 		// This gets random articles with their extracts and images in a single request
 		// Increased count from 5 to 10 to improve chances of finding suitable articles
+		const headers = new Headers({
+			"User-Agent": "trmnl-byos-nextjs (ghcpuman902@gmail.com)",
+		});
+		
+		
+		const apiUrl = `https://en.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=${count}&prop=pageimages|extracts|categories|info&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=300&inprop=url|displaytitle&format=json&origin=*`;
+		
+		console.log(`Fetching random articles from: ${apiUrl}`);
+		
 		const response = await fetchWithRetry(
-			`https://en.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=${count}&prop=pageimages|extracts|categories|info&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=300&inprop=url|displaytitle&format=json&origin=*`,
+			apiUrl,
 			{
-				headers: {
-					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-				},
+				headers,
 				next: { revalidate: 0 }
 			}
 		);
 
 		if (!response.ok) {
-			throw new Error(`MediaWiki API responded with status: ${response.status}`);
+			console.error(`MediaWiki API error - Status: ${response.status}, StatusText: ${response.statusText}`);
+			throw new Error(`MediaWiki API responded with status: ${response.status} (${response.statusText})`);
 		}
 
 		const data = await response.json();
 		
+		// Log a sample of the response data for debugging
+		console.log(`API response received. Response structure:`, 
+			JSON.stringify({
+				responseKeys: Object.keys(data),
+				hasQuery: !!data.query,
+				hasPages: data.query && !!data.query.pages,
+				hasError: !!data.error,
+				errorInfo: data.error ? data.error : null,
+				warnings: data.warnings ? data.warnings : null
+			}, null, 2)
+		);
+		
 		if (!data.query || !data.query.pages) {
-			throw new Error("Invalid response from MediaWiki API");
+			if (data.error) {
+				console.error(`MediaWiki API error details:`, data.error);
+				throw new Error(`MediaWiki API error: ${data.error.code} - ${data.error.info}`);
+			}
+			throw new Error("Invalid response from MediaWiki API - missing query.pages structure");
 		}
 		
 		// Define an interface for the Wikipedia API page response
@@ -251,6 +305,14 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 		return articles;
 	} catch (error) {
 		console.error("Error fetching random articles:", error);
+		// Log additional context for network errors
+		if (error instanceof TypeError && error.message.includes('fetch')) {
+			console.error("Network error details:", {
+				message: error.message,
+				stack: error.stack,
+				cause: error.cause
+			});
+		}
 		return [];
 	}
 }
@@ -262,6 +324,17 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 function isArticleSuitable(article: WikipediaData): boolean {
 	// Basic validation
 	if (!article || !article.extract || article.extract.length < 200) {
+		return false;
+	}
+	
+	// Filter out RTL language articles
+	// Check both the language direction if available and common RTL language codes
+	if (
+		// Check if language direction is explicitly 'rtl'
+		(article.pagelanguagedir && article.pagelanguagedir === 'rtl') ||
+		// Check for common RTL language codes
+		(article.pagelanguage && ['ar', 'he', 'fa', 'ur', 'yi', 'dv', 'ha', 'ps', 'sd'].includes(article.pagelanguage))
+	) {
 		return false;
 	}
 	
@@ -340,6 +413,26 @@ function checkIfDisambiguation(article: WikipediaData): boolean {
 }
 
 /**
+ * Sanitize text by removing RTL characters and scripts
+ * This provides a fallback in case RTL text slips through our filters
+ */
+function sanitizeRtlText(text: string): string {
+	if (!text) return text;
+	
+	// Remove RTL Unicode control characters
+	text = text.replace(/[\u200F\u202E\u202B\u202A\u202D\u202C\u061C]/g, '');
+	
+	// Remove common RTL script character ranges
+	// - Arabic (0600-06FF)
+	// - Hebrew (0590-05FF)
+	// - Persian/Farsi extensions
+	// - Other RTL scripts
+	text = text.replace(/[\u0590-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/g, '');
+	
+	return text;
+}
+
+/**
  * Internal function to fetch and process Wikipedia data
  * Optimized to reduce nested conditionals and improve readability
  */
@@ -410,6 +503,13 @@ async function processSelectedArticle(suitableArticles: WikipediaData[]): Promis
 		};
 	}
 	
+	// Sanitize any potential RTL characters in the text fields as a fallback protection
+	selectedArticle.title = sanitizeRtlText(selectedArticle.title);
+	selectedArticle.extract = sanitizeRtlText(selectedArticle.extract);
+	if (selectedArticle.description) {
+		selectedArticle.description = sanitizeRtlText(selectedArticle.description);
+	}
+	
 	console.log(`Using article: "${selectedArticle.title}"`);
 	return selectedArticle;
 }
@@ -426,13 +526,21 @@ async function getFallbackArticle(): Promise<WikipediaData> {
 	// Fetch the fallback article using the REST API for more complete data
 	try {
 		const encodedTitle = encodeURIComponent(fallbackArticle);
+		const headers = new Headers({
+			Accept: "application/json",
+			"Api-User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+		});
+		
+		// Add Authorization header with bearer token if WIKIPEDIA_ACCESS_TOKEN is available
+		const accessToken = process.env.WIKIPEDIA_ACCESS_TOKEN;
+		if (accessToken) {
+			headers.set("Authorization", `Bearer ${accessToken}`);
+		}
+		
 		const response = await fetchWithRetry(
 			`https://en.wikipedia.org/api/rest_v1/page/summary/${encodedTitle}`,
 			{
-				headers: {
-					Accept: "application/json",
-					"Api-User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-				},
+				headers,
 				next: { revalidate: 0 }
 			}
 		);
@@ -453,6 +561,13 @@ async function getFallbackArticle(): Promise<WikipediaData> {
 			throw new Error("Fallback article is a disambiguation page");
 		}
 		
+		// Sanitize any potential RTL characters
+		fallbackData.title = sanitizeRtlText(fallbackData.title);
+		fallbackData.extract = sanitizeRtlText(fallbackData.extract);
+		if (fallbackData.description) {
+			fallbackData.description = sanitizeRtlText(fallbackData.description);
+		}
+		
 		return {
 			title: fallbackData.title,
 			extract: fallbackData.extract,
@@ -470,13 +585,21 @@ async function getFallbackArticle(): Promise<WikipediaData> {
 			console.log("Attempting direct fallback fetch...");
 			const directFallbackArticle = "Electronic_paper"; // Most reliable fallback
 			const encodedTitle = encodeURIComponent(directFallbackArticle);
+			const headers = new Headers({
+				Accept: "application/json",
+				"Api-User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+			});
+			
+			// Add Authorization header with bearer token if WIKIPEDIA_ACCESS_TOKEN is available
+			const accessToken = process.env.WIKIPEDIA_ACCESS_TOKEN;
+			if (accessToken) {
+				headers.set("Authorization", `Bearer ${accessToken}`);
+			}
+			
 			const response = await fetchWithRetry(
 				`https://en.wikipedia.org/api/rest_v1/page/summary/${encodedTitle}`,
 				{
-					headers: {
-						Accept: "application/json",
-						"Api-User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-					},
+					headers,
 					next: { revalidate: 0 }
 				}
 			);
@@ -495,6 +618,13 @@ async function getFallbackArticle(): Promise<WikipediaData> {
 			})) {
 				console.log(`Even direct fallback "${directFallbackData.title}" is a disambiguation page, using default data`);
 				return DEFAULT_FALLBACK_DATA;
+			}
+			
+			// Sanitize any potential RTL characters
+			directFallbackData.title = sanitizeRtlText(directFallbackData.title);
+			directFallbackData.extract = sanitizeRtlText(directFallbackData.extract);
+			if (directFallbackData.description) {
+				directFallbackData.description = sanitizeRtlText(directFallbackData.description);
 			}
 			
 			return {
@@ -568,9 +698,12 @@ const getCachedWikipediaData = unstable_cache(
  * immediately rather than waiting for caching when network issues occur
  */
 export default async function getData(): Promise<WikipediaData> {
+	console.log("Wikipedia getData function called");
+	
 	// Directly try the cached approach with proper timeout handling
 	try {
 		// Try to get cached data first with a reasonable timeout
+		console.log("Attempting to fetch cached Wikipedia data");
 		return await Promise.race([
 			getCachedWikipediaData(),
 			// If the cache operation takes too long (4 seconds), proceed to fallback
@@ -589,16 +722,26 @@ export default async function getData(): Promise<WikipediaData> {
 		if (isTimeout) {
 			console.warn("Wikipedia data fetch timed out, returning default data");
 		} else {
-			console.error("Error fetching Wikipedia data:", error);
+			console.error("Error fetching Wikipedia data:", {
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
+				message: error instanceof Error ? error.message : String(error),
+				stack: error instanceof Error ? error.stack : undefined,
+				cause: error instanceof Error && error.cause ? error.cause : undefined
+			});
 		}
 		
 		try {
 			// One final attempt with uncached direct fetch with short timeout
+			console.log("Attempting direct uncached fetch as fallback");
 			// This is already configured with retry and timeout logic in fetchWithRetry
 			return await fetchWikipediaData();
 		} catch (fetchError) {
-			console.error("All Wikipedia data fetch attempts failed:", fetchError);
+			console.error("All Wikipedia data fetch attempts failed:", {
+				errorType: fetchError instanceof Error ? fetchError.constructor.name : typeof fetchError,
+				message: fetchError instanceof Error ? fetchError.message : String(fetchError)
+			});
 			// When all attempts fail, return default fallback data
+			console.log("Returning DEFAULT_FALLBACK_DATA after all fetch attempts failed");
 			return DEFAULT_FALLBACK_DATA;
 		}
 	}

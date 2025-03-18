@@ -1,4 +1,6 @@
 import { PreSatori } from "@/utils/pre-satori";
+import { BitmapText } from "@/components/bitmap-font/bitmap-text";
+import fontData from "@/components/bitmap-font/bitmap-font-8x8.json";
 
 export default function SimpleText() {
 	return (
@@ -19,6 +21,7 @@ export default function SimpleText() {
 							>
 								small text with geneva9 font
 							</div>
+							<BitmapText fontData={fontData} text="Mate this is pretty incredible isn't it?" />
 						</div>,
 					)}
 				</>
