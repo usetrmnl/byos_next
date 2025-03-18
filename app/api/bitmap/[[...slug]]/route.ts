@@ -1,3 +1,4 @@
+export const runtime = "nodejs"
 export const revalidate = 60;
 
 import type { NextRequest } from "next/server";
@@ -8,6 +9,16 @@ import { createElement, cache } from "react";
 import { renderBmp, DISPLAY_BMP_IMAGE_SIZE, DitheringMethod } from "@/utils/render-bmp";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
+
+// Generate static params for the bitmap route
+export async function generateStaticParams() {
+	const staticParams = [
+		...Object.keys(screens).map((screen) => ({
+			slug: [`${screen}.bmp`],
+		})),
+	];
+	return staticParams;
+}
 
 // Logging utility to control log output based on environment
 const logger = {
@@ -189,16 +200,6 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 	}
 });
 
-export async function generateStaticParams() {
-	return [
-		...Object.keys(screens).map((screen) => ({
-			slug: [`${screen}.bmp`],
-		})),
-		...Object.keys(screens).map((screen) => ({
-			slug: [screen],
-		})),
-	];
-}
 
 export async function GET(
 	req: NextRequest,
