@@ -193,91 +193,131 @@ export async function generateStaticParams() {
 // Type for component props
 type ComponentProps = Record<string, unknown>;
 
-// Type for render functions
-type RenderFunction = (
+// Define types for our cache
+interface CacheItem {
+	bitmap: Buffer | null;
+	png: Buffer | null;
+	svg: string | null;
+	expiresAt: number;
+}
+
+// Extend NodeJS namespace for global variables
+declare global {
+	// eslint-disable-next-line no-var
+	var renderCache: Map<string, CacheItem> | undefined;
+}
+
+// Cache management function
+const getRenderCache = (): Map<string, CacheItem> | null => {
+	// Check for forced cache usage via environment variable
+	const forceBitmapCache = process.env.FORCE_BITMAP_CACHE === 'true';
+	
+	// In production, return null unless forced
+	if (process.env.NODE_ENV === 'production' && !forceBitmapCache) {
+		return null;
+	}
+	
+	// Use global cache in development or when forced in production
+	if (!global.renderCache) {
+		global.renderCache = new Map<string, CacheItem>();
+		logger.info(`Initializing render cache (${process.env.NODE_ENV} mode${forceBitmapCache ? ', forced' : ''})`);
+	}
+	return global.renderCache;
+};
+
+// Cache duration in seconds
+const CACHE_DURATION = 60;
+
+// Combined render function for all formats
+const renderAllFormats = cache(async (
 	slug: string,
 	Component: React.ComponentType<ComponentProps>,
 	props: ComponentProps,
 	config: RecipeConfig
-) => Promise<Buffer | string | null>;
-
-// Render functions for different formats
-const renderFormats: Record<string, RenderFunction> = {
-	// Generate bitmap
-	bitmap: cache(async (
-		slug: string,
-		Component: React.ComponentType<ComponentProps>,
-		props: ComponentProps,
-		config: RecipeConfig
-	) => {
-		try {
-			logger.info(`🔄 Generating bitmap for: ${slug}`);
-			const pngResponse = await new ImageResponse(
-				createElement(Component, props),
-				getImageOptions(config),
-			);
-			const buffer = await renderBmp(pngResponse, { ditheringMethod: DitheringMethod.ATKINSON });
-
-			if (buffer) {
-				logger.success(`Successfully generated bitmap for: ${slug}`);
-				return buffer;
-			}
-			return null;
-		} catch (error) {
-			logger.error(`Error generating bitmap for ${slug}:`, error);
-			return null;
+): Promise<CacheItem> => {
+	const renderCache = getRenderCache();
+	const cacheKey = `${slug}-${JSON.stringify(props)}`;
+	
+	// Check cache first
+	if (renderCache?.has(cacheKey)) {
+		const cached = renderCache.get(cacheKey);
+		if (cached && cached.expiresAt > Date.now()) {
+			logger.info(`Cache hit for ${slug} renders`);
+			return cached;
 		}
-	}),
-
-	// Generate PNG
-	png: cache(async (
-		slug: string,
-		Component: React.ComponentType<ComponentProps>,
-		props: ComponentProps,
-		config: RecipeConfig
-	) => {
-		try {
-			logger.info(`🔄 Generating PNG for: ${slug}`);
-			const pngResponse = await new ImageResponse(
-				createElement(Component, props),
-				getImageOptions(config),
-			);
-
-			const pngBuffer = await pngResponse.arrayBuffer();
-			logger.success(`Successfully generated PNG for: ${slug}`);
-			return Buffer.from(pngBuffer);
-		} catch (error) {
-			logger.error(`Error generating PNG for ${slug}:`, error);
-			return null;
+		logger.info(`Cache expired for ${slug} renders`);
+	}
+	
+	try {
+		logger.info(`🔄 Generating all formats for: ${slug}`);
+		
+		// Generate all formats in parallel
+		const [bitmapResult, pngResult, svgResult] = await Promise.all([
+			(async () => {
+				try {
+					const pngResponse = await new ImageResponse(
+						createElement(Component, props),
+						getImageOptions(config),
+					);
+					return await renderBmp(pngResponse, { ditheringMethod: DitheringMethod.ATKINSON });
+				} catch (error) {
+					logger.error(`Error generating bitmap for ${slug}:`, error);
+					return null;
+				}
+			})(),
+			(async () => {
+				try {
+					const pngResponse = await new ImageResponse(
+						createElement(Component, props),
+						getImageOptions(config),
+					);
+					const pngBuffer = await pngResponse.arrayBuffer();
+					return Buffer.from(pngBuffer);
+				} catch (error) {
+					logger.error(`Error generating PNG for ${slug}:`, error);
+					return null;
+				}
+			})(),
+			(async () => {
+				try {
+					const element = createElement(Component, props);
+					return await satori(element, getImageOptions(config));
+				} catch (error) {
+					logger.error(`Error generating SVG for ${slug}:`, error);
+					return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+						<rect width="800" height="480" fill="#f0f0f0" />
+						<text x="400" y="240" font-family="Arial" font-size="24" text-anchor="middle">
+							Unable to generate SVG content
+						</text>
+					</svg>`;
+				}
+			})()
+		]);
+		
+		const result = {
+			bitmap: bitmapResult,
+			png: pngResult,
+			svg: svgResult,
+			expiresAt: Date.now() + (CACHE_DURATION * 1000)
+		};
+		
+		// Store in cache if enabled
+		if (renderCache) {
+			renderCache.set(cacheKey, result);
+			logger.success(`Cached all renders for: ${slug}`);
 		}
-	}),
-
-	// Generate SVG
-	svg: cache(async (
-		slug: string,
-		Component: React.ComponentType<ComponentProps>,
-		props: ComponentProps,
-		config: RecipeConfig
-	) => {
-		try {
-			logger.info(`🔄 Generating SVG for: ${slug}`);
-
-			const element = createElement(Component, props);
-			const svg = await satori(element, getImageOptions(config));
-
-			logger.success(`Successfully generated SVG for: ${slug}`);
-			return svg;
-		} catch (error) {
-			logger.error(`Error generating SVG for ${slug}:`, error);
-			return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
-				<rect width="800" height="480" fill="#f0f0f0" />
-				<text x="400" y="240" font-family="Arial" font-size="24" text-anchor="middle">
-					Unable to generate SVG content
-				</text>
-			</svg>`;
-		}
-	})
-};
+		
+		return result;
+	} catch (error) {
+		logger.error(`Error generating formats for ${slug}:`, error);
+		return {
+			bitmap: null,
+			png: null,
+			svg: null,
+			expiresAt: Date.now()
+		};
+	}
+});
 
 // Render component with appropriate format
 const RenderComponent = ({
@@ -325,10 +365,12 @@ const RenderComponent = ({
 		);
 	}
 
+	// Get all rendered formats
+	const renders = use(Promise.resolve(renderAllFormats(slug, Component, props, config)));
+
 	// For bitmap rendering
 	if (format === "bitmap") {
-		const bmpBuffer = use(Promise.resolve(renderFormats.bitmap(slug, Component, props, config)));
-		if (!bmpBuffer) {
+		if (!renders.bitmap) {
 			return <div className="w-full h-full flex items-center justify-center">Failed to generate bitmap</div>;
 		}
 
@@ -336,7 +378,7 @@ const RenderComponent = ({
 			<Image
 				width={800}
 				height={480}
-				src={`data:image/bmp;base64,${(bmpBuffer as Buffer).toString("base64")}`}
+				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} BMP render`}
 				className="w-full object-cover"
@@ -346,8 +388,7 @@ const RenderComponent = ({
 
 	// For PNG rendering
 	if (format === "png") {
-		const pngBuffer = use(Promise.resolve(renderFormats.png(slug, Component, props, config)));
-		if (!pngBuffer) {
+		if (!renders.png) {
 			return <div className="w-full h-full flex items-center justify-center">Failed to generate PNG</div>;
 		}
 
@@ -355,7 +396,7 @@ const RenderComponent = ({
 			<Image
 				width={800 * (useDoubling ? 2 : 1)}
 				height={480 * (useDoubling ? 2 : 1)}
-				src={`data:image/png;base64,${(pngBuffer as Buffer).toString("base64")}`}
+				src={`data:image/png;base64,${renders.png.toString("base64")}`}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} PNG render`}
 				className="w-full object-cover"
@@ -365,8 +406,7 @@ const RenderComponent = ({
 
 	// For SVG rendering
 	if (format === "svg") {
-		const svgContent = use(Promise.resolve(renderFormats.svg(slug, Component, props, config)));
-		if (!svgContent) {
+		if (!renders.svg) {
 			return <div className="w-full h-full flex items-center justify-center">Failed to generate SVG</div>;
 		}
 
@@ -374,7 +414,7 @@ const RenderComponent = ({
 			<div
 				className="w-full h-full"
 				// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
-				dangerouslySetInnerHTML={{ __html: svgContent as string }}
+				dangerouslySetInnerHTML={{ __html: renders.svg }}
 				style={{
 					imageRendering: "pixelated",
 					transform: useDoubling ? 'scale(0.5)' : 'none',

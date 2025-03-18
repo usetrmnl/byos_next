@@ -53,14 +53,18 @@ declare global {
 
 // Use the global bitmap cache only in development
 const getBitmapCache = (): Map<string, CacheItem> | null => {
-	// In production, return null to use Next.js built-in caching
-	if (process.env.NODE_ENV === 'production') {
+	// Check for forced cache usage via environment variable
+	const forceBitmapCache = process.env.FORCE_BITMAP_CACHE === 'true';
+	
+	// In production, return null unless forced
+	if (process.env.NODE_ENV === 'production' && !forceBitmapCache) {
 		return null;
 	}
 	
-	// In development, use our global cache
+	// Use global cache in development or when forced in production
 	if (!global.bitmapCache) {
 		global.bitmapCache = new Map<string, CacheItem>();
+		logger.info(`Initializing bitmap cache (${process.env.NODE_ENV} mode${forceBitmapCache ? ', forced' : ''})`);
 	}
 	return global.bitmapCache;
 };
