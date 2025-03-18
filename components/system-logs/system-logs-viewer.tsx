@@ -356,7 +356,7 @@ export default function SystemLogsViewer({
 											<Skeleton className="h-4 w-full" />
 										</td>
 										<td className="px-4 py-3">
-											<Skeleton className="h-4 w-[500px]" />
+											<Skeleton className="h-4 w-20" />
 										</td>
 									</tr>
 								))
@@ -419,21 +419,21 @@ export default function SystemLogsViewer({
 													""
 												)}
 											</td>
-											<td className="px-4 py-3 text-sm">{log.source}</td>
-											<td className="px-4 py-3 text-sm max-w-[400px] truncate">
+											<td className="px-4 py-3 text-sm max-w-[120px] truncate">
+												{log.source}
+											</td>
+											<td className="px-4 py-3 text-sm max-w-[200px] md:max-w-[250px] lg:max-w-[300px] truncate">
 												{log.message}
 											</td>
 											<td className="px-4 py-3 text-sm">
 												{log.metadata ? (
 													<div className="flex items-start gap-1 justify-between">
 														<div
-															className={
-																"font-mono text-xs w-[50vw] md:w-[50vw] lg:w-[500px]"
-															}
+															className="font-mono text-xs w-full max-w-[120px] md:max-w-[200px] lg:max-w-[400px]"
 														>
 															{expandedLogs[log.id] ? (
 																<div className="pt-2 h-[200px] w-full overflow-auto">
-																	<pre className="whitespace-pre">
+																	<pre className="whitespace-pre-wrap break-words">
 																		{JSON.stringify(
 																			JSON.parse(log.metadata),
 																			null,

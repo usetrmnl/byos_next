@@ -1,8 +1,6 @@
 import { PreSatori } from "@/utils/pre-satori";
-import { getHostUrl } from "@/utils/helpers";
 
 export default function Album() {
-	const hostUrl = getHostUrl();
 	return (
 		<PreSatori>
 			{(transform) => (
@@ -12,11 +10,11 @@ export default function Album() {
 						<div className="w-[800px] h-[480px] bg-white flex flex-col items-center justify-center relative">
 							<picture className="w-full h-full absolute inset-0">
 								<source
-									srcSet={`${hostUrl}/album/london.png`}
+									srcSet={`https://byos-nextjs.vercel.app/album/london.png`}
 									type="image/png"
 								/>
 								<img
-									src={`${hostUrl}/album/london.png`}
+									src={`https://byos-nextjs.vercel.app/album/london.png`}
 									alt="Album 1"
 									width={800}
 									height={480}

@@ -1,5 +1,8 @@
 import { unstable_cache } from "next/cache";
 
+// Export config to mark this component as dynamic
+export const dynamic = 'force-dynamic';
+
 export interface WikipediaData {
 	title: string;
 	extract: string;
@@ -13,35 +16,61 @@ export interface WikipediaData {
 			page: string;
 		};
 	};
-	type?: string;
+	// Essential fields from the API
+	pageid?: number;
+	fullurl?: string;
+	canonicalurl?: string;
+	displaytitle?: string;
 	description?: string;
+	
+	// Optional fields that may be useful
+	ns?: number;
+	contentmodel?: string;
+	pagelanguage?: string;
+	touched?: string;
+	lastrevid?: number;
+	length?: number;
+	editurl?: string;
+	
+	// Additional fields still needed by existing code
+	type?: string;
 	categories?: string[];
-	images?: Array<{
-		title: string;
-		url?: string;
-	}>;
-	links?: string[];
-	lastModified?: string;
-	pageId?: number;
 }
 
 // Default fallback data to use when all fetching attempts fail
 const DEFAULT_FALLBACK_DATA: WikipediaData = {
+	pageid: 1234567,
+	ns: 0,
 	title: "Electronic Paper Display",
 	extract: "Electronic paper, also sometimes called e-paper, is a display technology designed to mimic the appearance of ordinary ink on paper. Unlike conventional flat panel displays that emit light, electronic paper displays reflect light like paper. This may make them more comfortable to read, and provide a wider viewing angle than most light-emitting displays.",
 	thumbnail: {
-		source: "https://upload.wikimedia.org/wikipedia/commons/thumb/b/b3/E-book_reader_displays.jpg/320px-E-book_reader_displays.jpg",
-		width: 320,
-		height: 240
+		source: "https://upload.wikimedia.org/wikipedia/commons/1/1a/Reading_a_kindle_on_public_transit.jpg",
+		width: 240,
+		height: 320
+	},
+	contentmodel: "wikitext",
+	pagelanguage: "en",
+	touched: "2025-03-06T03:31:30Z",
+	lastrevid: 1234567890,
+	length: 12345,
+	fullurl: "https://en.wikipedia.org/wiki/Electronic_paper",
+	editurl: "https://en.wikipedia.org/w/index.php?title=Electronic_paper&action=edit",
+	canonicalurl: "https://en.wikipedia.org/wiki/Electronic_paper",
+	displaytitle: "Electronic Paper Display",
+	description: "Display technology that mimics the appearance of ink on paper",
+	content_urls: {
+		desktop: {
+			page: "https://en.wikipedia.org/wiki/Electronic_paper"
+		}
 	},
 	categories: ["Display technology", "Electronic paper technology"],
-	pageId: 1234567
+	type: "standard"
 };
 
 /**
  * Helper function to get a random fallback article
  */
-function getFallbackArticle(): string {
+function getRandomFallbackArticleTitle(): string {
 	// Curated list of non-disambiguation articles that are reliable and informative
 	const fallbackArticles = [
 		"Electronic_paper",
@@ -65,12 +94,13 @@ function getFallbackArticle(): string {
 
 /**
  * Helper function to implement fetch with timeout and retry logic
+ * Using shorter timeouts (3 seconds) as requested
  */
 async function fetchWithRetry(
 	url: string, 
 	options: RequestInit = {}, 
-	retries = 3, 
-	timeout = 5000
+	retries = 2, // Reduced to only 2 retries max
+	timeout = 3000 // Reduced to 3 seconds as requested
 ): Promise<Response> {
 	// Create an AbortController to handle timeouts
 	const controller = new AbortController();
@@ -80,7 +110,9 @@ async function fetchWithRetry(
 		// Add the signal to the options
 		const fetchOptions = {
 			...options,
-			signal: controller.signal
+			signal: controller.signal,
+			// Remove the cache: "no-store" option and use next: { revalidate: 0 } instead
+			next: { revalidate: 0 }
 		};
 		
 		// Attempt the fetch
@@ -90,15 +122,31 @@ async function fetchWithRetry(
 	} catch (error) {
 		clearTimeout(timeoutId);
 		
-		// If we have retries left, wait and try again
+		// Specifically identify abort errors
+		const isAbortError = error instanceof Error && 
+			(error.name === 'AbortError' || 
+			 (error as DOMException).code === 20 || 
+			 error.message.includes('abort'));
+		
+		// If we have retries left, wait a short time and try again
+		// Using same timeout for all retries as requested
 		if (retries > 0) {
-			// Exponential backoff: wait longer between each retry
-			const delay = 1000 * (2 ** (3 - retries));
+			// Short backoff with consistent timeout
+			const delay = 1000; // 1 second delay between retries
+			console.warn(`Fetch ${isAbortError ? 'timeout' : 'error'} for URL: ${url}. Retries left: ${retries}`);
 			await new Promise(resolve => setTimeout(resolve, delay));
 			return fetchWithRetry(url, options, retries - 1, timeout);
 		}
 		
-		// No more retries, throw the error
+		// When all retries are exhausted, log and re-throw a more informative error
+		if (isAbortError) {
+			console.error(`Request timed out for URL: ${url} after all retries`);
+			// Create a new error that doesn't have the complex properties that might cause serialization issues
+			throw new Error(`Request timed out for URL: ${url} after ${3-retries} attempts`);
+		}
+		
+		// For other types of errors
+		console.error(`Fetch error for URL: ${url}:`, error);
 		throw error;
 	}
 }
@@ -113,12 +161,12 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 		// This gets random articles with their extracts and images in a single request
 		// Increased count from 5 to 10 to improve chances of finding suitable articles
 		const response = await fetchWithRetry(
-			`https://en.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=${count}&prop=pageimages|extracts|categories|info&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=300&inprop=url|displaytitle|modified&format=json&origin=*`,
+			`https://en.wikipedia.org/w/api.php?action=query&generator=random&grnnamespace=0&grnlimit=${count}&prop=pageimages|extracts|categories|info&exintro=true&explaintext=true&piprop=thumbnail&pithumbsize=300&inprop=url|displaytitle&format=json&origin=*`,
 			{
 				headers: {
-					"User-Agent": "NextJS-Wikipedia-Display/1.0",
+					"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 				},
-				cache: "no-store",
+				next: { revalidate: 0 }
 			}
 		);
 
@@ -144,6 +192,16 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 			};
 			touched?: string;
 			categories?: Array<{ title: string }>;
+			fullurl?: string;
+			editurl?: string; 
+			canonicalurl?: string;
+			contentmodel?: string;
+			pagelanguage?: string;
+			pagelanguagehtmlcode?: string;
+			pagelanguagedir?: string;
+			displaytitle?: string;
+			lastrevid?: number;
+			length?: number;
 		}
 		
 		// Define the pages object structure
@@ -154,12 +212,22 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 		// Convert the pages object to an array of WikipediaData objects
 		const pages = data.query.pages as WikipediaApiPages;
 		const articles: WikipediaData[] = Object.values(pages).map((page) => {
+			// Create article object with all properties from the API response
 			const article: WikipediaData = {
 				title: page.title || "Unknown Title",
 				extract: page.extract || "No extract available",
-				pageId: page.pageid,
-				lastModified: page.touched,
+				pageid: page.pageid,
+				touched: page.touched,
 				thumbnail: page.thumbnail,
+				fullurl: page.fullurl,
+				editurl: page.editurl,
+				canonicalurl: page.canonicalurl,
+				contentmodel: page.contentmodel,
+				pagelanguage: page.pagelanguage,
+				displaytitle: page.displaytitle,
+				// Initialize these for our internal logic
+				categories: [],
+				type: "standard"
 			};
 			
 			// Extract categories if available
@@ -169,10 +237,11 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 					.slice(0, 5); // Limit to 5 categories
 			}
 			
-			// Add Wikipedia URL
+			// Add Wikipedia URL to content_urls for backwards compatibility
+			// This ensures it works with existing code that expects the content_urls structure
 			article.content_urls = {
 				desktop: {
-					page: `https://en.wikipedia.org/wiki/${encodeURIComponent(article.title.replace(/ /g, '_'))}`
+					page: page.fullurl || `https://en.wikipedia.org/wiki/${encodeURIComponent(article.title.replace(/ /g, '_'))}`
 				}
 			};
 			
@@ -187,105 +256,37 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 }
 
 /**
- * Fetch additional details for a specific article if needed
- * This is a fallback for when we need more information than the basic endpoint provides
- */
-async function fetchAdditionalDetails(title: string): Promise<Partial<WikipediaData>> {
-	try {
-		const encodedTitle = encodeURIComponent(title);
-		const response = await fetchWithRetry(
-			`https://en.wikipedia.org/api/rest_v1/page/summary/${encodedTitle}`,
-			{
-				headers: {
-					Accept: "application/json",
-					"Api-User-Agent": "NextJS-Wikipedia-Display/1.0",
-				},
-				cache: "no-store",
-			}
-		);
-
-		if (!response.ok) {
-			throw new Error(`Wikipedia API responded with status: ${response.status}`);
-		}
-
-		const data = await response.json();
-		return {
-			description: data.description,
-			type: data.type,
-			// If the main API didn't return a thumbnail, use this one
-			thumbnail: data.thumbnail
-		};
-	} catch (error) {
-		console.error(`Error fetching additional details for "${title}":`, error);
-		return {};
-	}
-}
-
-/**
  * Check if an article is suitable based on our criteria
+ * Centralized all disambiguation and suitability checks into a single function
  */
 function isArticleSuitable(article: WikipediaData): boolean {
+	// Basic validation
 	if (!article || !article.extract || article.extract.length < 200) {
 		return false;
 	}
 	
-	// Enhanced disambiguation detection
-	// Check the type property if available
-	if (article.type === "disambiguation") {
-		return false;
-	}
-	
-	// Check for common disambiguation phrases in the extract
-	const disambiguationPhrases = [
-		"may refer to",
-		"can refer to",
-		"commonly refers to",
-		"usually refers to",
-		"is a disambiguation page",
-		"may mean",
-		"can mean",
-		"refers to various"
-	];
-	
-	const extractLower = article.extract.toLowerCase();
-	if (disambiguationPhrases.some(phrase => extractLower.includes(phrase))) {
-		return false;
-	}
-	
-	// Check for disambiguation in title
-	if (article.title.includes("(disambiguation)")) {
-		return false;
-	}
-	
-	// Check for disambiguation categories
-	if (article.categories?.some(category => 
-		category.toLowerCase().includes("disambiguation") || 
-		category.toLowerCase().includes("disambig"))) {
+	// Centralized disambiguation detection
+	const isDisambiguation = checkIfDisambiguation(article);
+	if (isDisambiguation) {
 		return false;
 	}
 	
 	// Check for the pattern "XXX is/are a/an XXX by XXX" in the extract
+	// This typically indicates articles about books, films, songs, etc.
 	const isArePattern = /^.+?\s+(?:is|are)\s+(?:a|an)\s+.+?\s+by\s+.+?/i;
 	if (isArePattern.test(article.extract)) {
 		return false;
 	}
 	
-	// Filter out articles about people (often contain these terms)
-	if (article.extract.toLowerCase().includes("born ") || 
-	    article.extract.toLowerCase().includes(" footballer") || 
-	    article.extract.toLowerCase().includes(" politician") ||
-	    article.extract.toLowerCase().includes(" player") ||
-	    article.extract.toLowerCase().includes(" actor")) {
-		return false;
-	}
+	// Extract lowercase text once for all checks
+	const extractLower = article.extract.toLowerCase();
 	
-	// Additional filters from the original code
-	if (article.description && (
-		article.description.includes("researcher") ||
-		article.description.includes("professor") ||
-		article.description.includes("footballer") ||
-		article.description.includes("politician")
-	)) {
+	// Filter out articles about people
+	const peopleTerms = [
+		"researcher", "professor", "artist", "writer", 
+		"actor", "singer", "songwriter", "musician"
+	];
+	if (peopleTerms.some(term => extractLower.includes(term))) {
 		return false;
 	}
 	
@@ -293,8 +294,54 @@ function isArticleSuitable(article: WikipediaData): boolean {
 }
 
 /**
+ * Helper function to check if an article is a disambiguation page
+ * Extracted to avoid duplicate checks and improve readability
+ */
+function checkIfDisambiguation(article: WikipediaData): boolean {
+	// Check the type property if available
+	if (article.type === "disambiguation") {
+		return true;
+	}
+	
+	// Check for disambiguation in title
+	if (article.title.includes("(disambiguation)")) {
+		return true;
+	}
+	
+	// Check for common disambiguation phrases in the extract
+	if (article.extract) {
+		const disambiguationPhrases = [
+			"may refer to",
+			"can refer to",
+			"commonly refers to",
+			"usually refers to",
+			"is a disambiguation page",
+			"may mean",
+			"can mean",
+			"refers to various"
+		];
+		
+		const extractLower = article.extract.toLowerCase();
+		if (disambiguationPhrases.some(phrase => extractLower.includes(phrase))) {
+			return true;
+		}
+	}
+	
+	// Check for disambiguation categories
+	if (article.categories && Array.isArray(article.categories)) {
+		if (article.categories.some((category: string) => 
+			category.toLowerCase().includes("disambiguation") || 
+			category.toLowerCase().includes("disambig"))) {
+			return true;
+		}
+	}
+	
+	return false;
+}
+
+/**
  * Internal function to fetch and process Wikipedia data
- * Now using the optimized endpoint to get multiple random articles at once
+ * Optimized to reduce nested conditionals and improve readability
  */
 async function getWikipediaArticle(): Promise<WikipediaData | null> {
 	try {
@@ -307,54 +354,14 @@ async function getWikipediaArticle(): Promise<WikipediaData | null> {
 		
 		console.log(`Fetched ${randomArticles.length} random articles`);
 		
-		// Filter out unsuitable articles
-		const suitableArticles = randomArticles.filter(article => {
-			const isDisambiguation = 
-				article.type === "disambiguation" || 
-				article.title.includes("(disambiguation)") ||
-				(article.extract && /may refer to|can refer to|commonly refers to|usually refers to/i.test(article.extract));
-			
-			if (isDisambiguation) {
-				console.log(`Filtered out disambiguation page: "${article.title}"`);
-			}
-			
-			return isArticleSuitable(article);
-		});
+		// Filter out unsuitable articles - using our improved function
+		const suitableArticles = randomArticles.filter(isArticleSuitable);
 		
 		console.log(`Found ${suitableArticles.length} suitable articles out of ${randomArticles.length}`);
 		
-		// If we have suitable articles, pick one randomly
+		// If we have suitable articles, pick one randomly and process it
 		if (suitableArticles.length > 0) {
-			const selectedArticle = suitableArticles[Math.floor(Math.random() * suitableArticles.length)];
-			
-			// If the article doesn't have a description or type, fetch additional details
-			if (!selectedArticle.description || !selectedArticle.type) {
-				try {
-					const additionalDetails = await fetchAdditionalDetails(selectedArticle.title);
-					
-					// Double-check that the article with additional details is not a disambiguation page
-					if (additionalDetails.type === "disambiguation") {
-						console.log(`Article "${selectedArticle.title}" was identified as disambiguation after fetching details`);
-						// Try again with a different article if available
-						const remainingArticles = suitableArticles.filter(a => a.title !== selectedArticle.title);
-						if (remainingArticles.length > 0) {
-							const alternativeArticle = remainingArticles[Math.floor(Math.random() * remainingArticles.length)];
-							console.log(`Trying alternative article: "${alternativeArticle.title}"`);
-							return alternativeArticle;
-						}
-					}
-					
-					return {
-						...selectedArticle,
-						...additionalDetails
-					};
-				} catch (error) {
-					console.error("Error fetching additional details, using basic article data:", error);
-					return selectedArticle;
-				}
-			}
-			
-			return selectedArticle;
+			return await processSelectedArticle(suitableArticles);
 		}
 		
 		// If no suitable articles found, try a second batch
@@ -364,25 +371,113 @@ async function getWikipediaArticle(): Promise<WikipediaData | null> {
 		
 		if (secondBatchSuitable.length > 0) {
 			console.log(`Found ${secondBatchSuitable.length} suitable articles in second batch`);
-			return secondBatchSuitable[Math.floor(Math.random() * secondBatchSuitable.length)];
+			return await processSelectedArticle(secondBatchSuitable);
 		}
 		
-		// If still no suitable articles found, try a fallback article
-		console.log("No suitable articles found, trying fallback article");
-		const fallbackArticle = getFallbackArticle();
-		console.log(`Using fallback article: ${fallbackArticle}`);
+		// If still no suitable articles found, use fallback mechanisms
+		return await getFallbackArticle();
+	} catch (error) {
+		console.error("Error in getWikipediaArticle:", error);
+		return DEFAULT_FALLBACK_DATA;
+	}
+}
+
+/**
+ * Process a selected article - simplified to directly use the API data
+ */
+async function processSelectedArticle(suitableArticles: WikipediaData[]): Promise<WikipediaData> {
+	// Select a random article from the suitable ones
+	const selectedArticle = suitableArticles[Math.floor(Math.random() * suitableArticles.length)];
+	
+	// Check that the article has the required essential fields
+	if (!selectedArticle.title || !selectedArticle.extract) {
+		console.warn(`Selected article missing essential fields: ${selectedArticle.title}`);
 		
-		// Fetch the fallback article using the REST API for more complete data
+		// Try another article if available
+		const remainingArticles = suitableArticles.filter(a => a !== selectedArticle);
+		if (remainingArticles.length > 0) {
+			console.log("Trying another article from the suitable pool");
+			return remainingArticles[Math.floor(Math.random() * remainingArticles.length)];
+		}
+	}
+	
+	// Create content_urls if it doesn't exist but fullurl does
+	if (selectedArticle.fullurl && !selectedArticle.content_urls) {
+		selectedArticle.content_urls = {
+			desktop: {
+				page: selectedArticle.fullurl
+			}
+		};
+	}
+	
+	console.log(`Using article: "${selectedArticle.title}"`);
+	return selectedArticle;
+}
+
+/**
+ * Use a fallback article when random articles don't yield suitable results
+ * Extracted to improve maintainability
+ */
+async function getFallbackArticle(): Promise<WikipediaData> {
+	console.log("No suitable articles found, trying fallback article");
+	const fallbackArticle = getRandomFallbackArticleTitle();
+	console.log(`Using fallback article: ${fallbackArticle}`);
+	
+	// Fetch the fallback article using the REST API for more complete data
+	try {
+		const encodedTitle = encodeURIComponent(fallbackArticle);
+		const response = await fetchWithRetry(
+			`https://en.wikipedia.org/api/rest_v1/page/summary/${encodedTitle}`,
+			{
+				headers: {
+					Accept: "application/json",
+					"Api-User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+				},
+				next: { revalidate: 0 }
+			}
+		);
+		
+		if (!response.ok) {
+			throw new Error(`Wikipedia API responded with status: ${response.status}`);
+		}
+		
+		const fallbackData = await response.json();
+		
+		// Check if the fallback article is a disambiguation page
+		if (checkIfDisambiguation({
+			title: fallbackData.title,
+			extract: fallbackData.extract,
+			type: fallbackData.type
+		})) {
+			console.log(`Fallback article "${fallbackData.title}" is a disambiguation page, trying direct fallback`);
+			throw new Error("Fallback article is a disambiguation page");
+		}
+		
+		return {
+			title: fallbackData.title,
+			extract: fallbackData.extract,
+			thumbnail: fallbackData.thumbnail,
+			content_urls: fallbackData.content_urls,
+			description: fallbackData.description,
+			type: fallbackData.type,
+			pageid: fallbackData.pageid
+		};
+	} catch (fallbackError) {
+		console.error("Fallback article fetch failed:", fallbackError);
+		
+		// Try one more time with a specific fallback article
 		try {
-			const encodedTitle = encodeURIComponent(fallbackArticle);
+			console.log("Attempting direct fallback fetch...");
+			const directFallbackArticle = "Electronic_paper"; // Most reliable fallback
+			const encodedTitle = encodeURIComponent(directFallbackArticle);
 			const response = await fetchWithRetry(
 				`https://en.wikipedia.org/api/rest_v1/page/summary/${encodedTitle}`,
 				{
 					headers: {
 						Accept: "application/json",
-						"Api-User-Agent": "NextJS-Wikipedia-Display/1.0",
+						"Api-User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
 					},
-					cache: "no-store",
+					next: { revalidate: 0 }
 				}
 			);
 			
@@ -390,78 +485,34 @@ async function getWikipediaArticle(): Promise<WikipediaData | null> {
 				throw new Error(`Wikipedia API responded with status: ${response.status}`);
 			}
 			
-			const fallbackData = await response.json();
+			const directFallbackData = await response.json();
 			
-			// Check if the fallback article is a disambiguation page
-			if (fallbackData.type === "disambiguation" || 
-				fallbackData.extract.toLowerCase().includes("may refer to") ||
-				fallbackData.title.includes("(disambiguation)")) {
-				console.log(`Fallback article "${fallbackData.title}" is a disambiguation page, trying direct fallback`);
-				throw new Error("Fallback article is a disambiguation page");
+			// Check if even this direct fallback is a disambiguation page (very unlikely)
+			if (checkIfDisambiguation({
+				title: directFallbackData.title,
+				extract: directFallbackData.extract,
+				type: directFallbackData.type
+			})) {
+				console.log(`Even direct fallback "${directFallbackData.title}" is a disambiguation page, using default data`);
+				return DEFAULT_FALLBACK_DATA;
 			}
 			
 			return {
-				title: fallbackData.title,
-				extract: fallbackData.extract,
-				thumbnail: fallbackData.thumbnail,
-				content_urls: fallbackData.content_urls,
-				description: fallbackData.description,
-				type: fallbackData.type,
-				pageId: fallbackData.pageid
+				title: directFallbackData.title,
+				extract: directFallbackData.extract,
+				thumbnail: directFallbackData.thumbnail,
+				content_urls: directFallbackData.content_urls,
+				description: directFallbackData.description,
+				type: directFallbackData.type,
+				pageid: directFallbackData.pageid
 			};
-		} catch (fallbackError) {
-			console.error("Fallback article fetch failed:", fallbackError);
-			
-			// Try one more time with a specific fallback article
-			try {
-				console.log("Attempting direct fallback fetch...");
-				const directFallbackArticle = "Electronic_paper"; // Most reliable fallback
-				const encodedTitle = encodeURIComponent(directFallbackArticle);
-				const response = await fetchWithRetry(
-					`https://en.wikipedia.org/api/rest_v1/page/summary/${encodedTitle}`,
-					{
-						headers: {
-							Accept: "application/json",
-							"Api-User-Agent": "NextJS-Wikipedia-Display/1.0",
-						},
-						cache: "no-store",
-					}
-				);
-				
-				if (!response.ok) {
-					throw new Error(`Wikipedia API responded with status: ${response.status}`);
-				}
-				
-				const directFallbackData = await response.json();
-				
-				// Check if even this direct fallback is a disambiguation page (very unlikely)
-				if (directFallbackData.type === "disambiguation" || 
-					directFallbackData.extract.toLowerCase().includes("may refer to") ||
-					directFallbackData.title.includes("(disambiguation)")) {
-					console.log(`Even direct fallback "${directFallbackData.title}" is a disambiguation page, using default data`);
-					return DEFAULT_FALLBACK_DATA;
-				}
-				
-				return {
-					title: directFallbackData.title,
-					extract: directFallbackData.extract,
-					thumbnail: directFallbackData.thumbnail,
-					content_urls: directFallbackData.content_urls,
-					description: directFallbackData.description,
-					type: directFallbackData.type,
-					pageId: directFallbackData.pageid
-				};
-			} catch (directFallbackError) {
-				console.error("All fetch attempts failed:", directFallbackError);
-			}
+		} catch (directFallbackError) {
+			console.error("All fetch attempts failed:", directFallbackError);
 		}
-		
-		// Return the hardcoded default data as last resort
-		return DEFAULT_FALLBACK_DATA;
-	} catch (error) {
-		console.error("Error in getWikipediaArticle:", error);
-		return DEFAULT_FALLBACK_DATA;
 	}
+	
+	// Return the hardcoded default data as last resort
+	return DEFAULT_FALLBACK_DATA;
 }
 
 /**
@@ -486,18 +537,24 @@ async function fetchWikipediaData(): Promise<WikipediaData> {
 
 /**
  * Cached function that serves as the entry point for fetching Wikipedia data
- * Using a short 1.5-minute cache as requested
+ * Using a short cache time and better error handling
  */
 const getCachedWikipediaData = unstable_cache(
 	async (): Promise<WikipediaData> => {
-		const data = await getWikipediaArticle();
-		
-		// If data is null or empty, throw an error to prevent caching
-		if (!data || !data.title || !data.extract) {
-			throw new Error("Empty or invalid data - skip caching");
+		try {
+			const data = await getWikipediaArticle();
+			
+			// If data is null or empty, throw an error to prevent caching
+			if (!data || !data.title || !data.extract) {
+				throw new Error("Empty or invalid data - skip caching");
+			}
+			
+			return data;
+		} catch (error) {
+			// Convert the error to a clean one to avoid serialization issues
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			throw new Error(`Failed to fetch Wikipedia data: ${errorMessage}`);
 		}
-		
-		return data;
 	},
 	["wikipedia-random-article"],
 	{
@@ -507,15 +564,42 @@ const getCachedWikipediaData = unstable_cache(
 );
 
 /**
- * Main export function that uses a short cache
+ * Main export function with improved error handling to prioritize returning default data
+ * immediately rather than waiting for caching when network issues occur
  */
 export default async function getData(): Promise<WikipediaData> {
+	// Directly try the cached approach with proper timeout handling
 	try {
-		// Try to get cached data first
-		return await getCachedWikipediaData();
+		// Try to get cached data first with a reasonable timeout
+		return await Promise.race([
+			getCachedWikipediaData(),
+			// If the cache operation takes too long (4 seconds), proceed to fallback
+			new Promise<WikipediaData>((_, reject) => {
+				setTimeout(() => reject(new Error("Cache operation timeout")), 4000);
+			})
+		]);
 	} catch (error) {
-		console.log("Cache skipped or error:", error);
-		// Fall back to non-cached data
-		return fetchWikipediaData();
+		// Log the error but don't expose internal details
+		const isTimeout = error instanceof Error && 
+			(error.name === 'AbortError' || 
+			 (error as DOMException).code === 20 || 
+			 error.message.includes('abort') || 
+			 error.message.includes('timeout'));
+		
+		if (isTimeout) {
+			console.warn("Wikipedia data fetch timed out, returning default data");
+		} else {
+			console.error("Error fetching Wikipedia data:", error);
+		}
+		
+		try {
+			// One final attempt with uncached direct fetch with short timeout
+			// This is already configured with retry and timeout logic in fetchWithRetry
+			return await fetchWikipediaData();
+		} catch (fetchError) {
+			console.error("All Wikipedia data fetch attempts failed:", fetchError);
+			// When all attempts fail, return default fallback data
+			return DEFAULT_FALLBACK_DATA;
+		}
 	}
 }

@@ -1,5 +1,8 @@
 import { unstable_cache } from "next/cache";
 
+// Export config to mark this component as dynamic
+export const dynamic = 'force-dynamic';
+
 interface BitcoinData {
   price: string;
   change24h: string;
@@ -23,7 +26,7 @@ async function getBitcoinData(): Promise<BitcoinData | null> {
           Accept: "application/json",
           "Accept-Language": "en-US",
         },
-        cache: "no-store",
+        next: { revalidate: 0 } // Updated from cache: "no-store"
       }
     );
 

@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { createElement, Suspense, use, cache } from "react";
 import { ImageResponse } from "next/og";
-import { renderBmp } from "@/utils/render-bmp";
+import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
 import screens from "@/app/recipes/screens.json";
 import { notFound } from "next/navigation";
 import Image from "next/image";
@@ -12,6 +12,36 @@ import RecipeProps from "@/components/recipes/recipe-props";
 import { revalidateTag } from "next/cache";
 import Link from "next/link";
 import satori from "satori";
+
+// Logging utility to control log output based on environment
+const logger = {
+	info: (message: string) => {
+		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+			console.log(message);
+		}
+	},
+	error: (message: string, error?: unknown) => {
+		if (error) {
+			console.error(message, error);
+		} else {
+			console.error(message);
+		}
+	},
+	success: (message: string) => {
+		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+			console.log(`✅ ${message}`);
+		}
+	},
+	warn: (message: string, error?: unknown) => {
+		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+			if (error) {
+				console.warn(message, error);
+			} else {
+				console.warn(message);
+			}
+		}
+	}
+};
 
 export async function generateMetadata() {
 	// This empty function enables streaming for this route
@@ -34,10 +64,10 @@ const loadFont = cache(() => {
 		const geneva9Font = Buffer.from(
 			fs.readFileSync(path.resolve("./public/fonts/geneva-9.ttf")),
 		);
-		console.log("Fonts loaded successfully");
+		logger.success("Fonts loaded successfully");
 		return { blockKie: blockKieFont, geneva9: geneva9Font };
 	} catch (error) {
-		console.error("Error loading fonts:", error);
+		logger.error("Error loading fonts:", error);
 		return null;
 	}
 });
@@ -71,7 +101,7 @@ const fetchComponent = cache(async (slug: string) => {
 		);
 		return Component;
 	} catch (error) {
-		console.error(`Error loading component for ${slug}:`, error);
+		logger.error(`Error loading component for ${slug}:`, error);
 		return null;
 	}
 });
@@ -98,7 +128,7 @@ const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 		// Race between the fetch and the timeout
 		const fetchedData = await Promise.race([fetchPromise, timeoutPromise])
 			.catch((error) => {
-				console.warn(`Data fetch error for ${slug}:`, error);
+				logger.error(`Data fetch error for ${slug}:`, error);
 				return null;
 			});
 
@@ -106,10 +136,10 @@ const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 		if (fetchedData && typeof fetchedData === "object") {
 			props = fetchedData;
 		} else {
-			console.warn(`Invalid or missing data for ${slug}`);
+			logger.error(`Invalid or missing data for ${slug}`);
 		}
 	} catch (error) {
-		console.error(`Error fetching data for ${slug}:`, error);
+		logger.error(`Error fetching data for ${slug}:`, error);
 	}
 
 	return props;
@@ -132,6 +162,7 @@ const getImageOptions = (config: RecipeConfig) => {
 						data: fonts.blockKie,
 						weight: 400 as const,
 						style: "normal" as const,
+						textRendering: 0,
 					},
 				]
 				: []),
@@ -142,10 +173,14 @@ const getImageOptions = (config: RecipeConfig) => {
 						data: fonts.geneva9,
 						weight: 400 as const,
 						style: "normal" as const,
+						textRendering: 0,
 					},
 				]
 				: []),
 		],
+		shapeRendering: 1,
+		textRendering: 0,
+		imageRendering: 1,
 		debug: false,
 	};
 };
@@ -176,20 +211,20 @@ const renderFormats: Record<string, RenderFunction> = {
 		config: RecipeConfig
 	) => {
 		try {
-			console.log(`🔄 Generating fresh bitmap for: ${slug}`);
+			logger.info(`🔄 Generating bitmap for: ${slug}`);
 			const pngResponse = await new ImageResponse(
 				createElement(Component, props),
 				getImageOptions(config),
 			);
-			const buffer = await renderBmp(pngResponse);
+			const buffer = await renderBmp(pngResponse, { ditheringMethod: DitheringMethod.ATKINSON });
 
 			if (buffer) {
-				console.log(`✅ Successfully generated bitmap for: ${slug}`);
+				logger.success(`Successfully generated bitmap for: ${slug}`);
 				return buffer;
 			}
 			return null;
 		} catch (error) {
-			console.error(`Error generating bitmap for ${slug}:`, error);
+			logger.error(`Error generating bitmap for ${slug}:`, error);
 			return null;
 		}
 	}),
@@ -202,17 +237,17 @@ const renderFormats: Record<string, RenderFunction> = {
 		config: RecipeConfig
 	) => {
 		try {
-			console.log(`🔄 Generating fresh PNG for: ${slug}`);
+			logger.info(`🔄 Generating PNG for: ${slug}`);
 			const pngResponse = await new ImageResponse(
 				createElement(Component, props),
 				getImageOptions(config),
 			);
 
 			const pngBuffer = await pngResponse.arrayBuffer();
-			console.log(`✅ Successfully generated PNG for: ${slug}`);
+			logger.success(`Successfully generated PNG for: ${slug}`);
 			return Buffer.from(pngBuffer);
 		} catch (error) {
-			console.error(`Error generating PNG for ${slug}:`, error);
+			logger.error(`Error generating PNG for ${slug}:`, error);
 			return null;
 		}
 	}),
@@ -225,15 +260,15 @@ const renderFormats: Record<string, RenderFunction> = {
 		config: RecipeConfig
 	) => {
 		try {
-			console.log(`🔄 Generating fresh SVG for: ${slug}`);
+			logger.info(`🔄 Generating SVG for: ${slug}`);
 
 			const element = createElement(Component, props);
 			const svg = await satori(element, getImageOptions(config));
 
-			console.log(`✅ Successfully generated SVG for: ${slug}`);
+			logger.success(`Successfully generated SVG for: ${slug}`);
 			return svg;
 		} catch (error) {
-			console.error(`Error generating SVG for ${slug}:`, error);
+			logger.error(`Error generating SVG for ${slug}:`, error);
 			return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
 				<rect width="800" height="480" fill="#f0f0f0" />
 				<text x="400" y="240" font-family="Arial" font-size="24" text-anchor="middle">

@@ -33,7 +33,7 @@ export default function SystemLogsViewerSkeleton({
 									<Skeleton className="h-4 w-32" />
 								</th>
 								<th className="px-4 py-3 text-left text-sm font-medium">
-									<Skeleton className="h-4 w-8" />
+									<Skeleton className="h-4 w-20" />
 								</th>
 							</tr>
 						</thead>
@@ -50,10 +50,10 @@ export default function SystemLogsViewerSkeleton({
 										<Skeleton className="h-4 w-20" />
 									</td>
 									<td className="px-4 py-3">
-										<Skeleton className="h-4 w-full" />
+										<Skeleton className="h-4 w-full max-w-[200px]" />
 									</td>
 									<td className="px-4 py-3">
-										<Skeleton className="h-4 w-8" />
+										<Skeleton className="h-4 w-20" />
 									</td>
 								</tr>
 							))}

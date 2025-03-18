@@ -1,14 +1,43 @@
 export const revalidate = 60;
 
-
 import type { NextRequest } from "next/server";
 import { ImageResponse } from "next/og";
 import fs from "fs";
 import path from "path";
 import { createElement, cache } from "react";
-import { renderBmp, DISPLAY_BMP_IMAGE_SIZE } from "@/utils/render-bmp";
+import { renderBmp, DISPLAY_BMP_IMAGE_SIZE, DitheringMethod } from "@/utils/render-bmp";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
+
+// Logging utility to control log output based on environment
+const logger = {
+	info: (message: string) => {
+		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+			console.log(message);
+		}
+	},
+	error: (message: string, error?: unknown) => {
+		if (error) {
+			console.error(message, error);
+		} else {
+			console.error(message);
+		}
+	},
+	success: (message: string) => {
+		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+			console.log(`✅ ${message}`);
+		}
+	},
+	warn: (message: string, error?: unknown) => {
+		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+			if (error) {
+				console.warn(message, error);
+			} else {
+				console.warn(message);
+			}
+		}
+	}
+};
 
 // Define types for our cache
 interface CacheItem {
@@ -44,7 +73,7 @@ const loadFont = cache(() => {
 			geneva9: fs.readFileSync(path.resolve("./public/fonts/geneva-9.ttf"))
 		};
 	} catch (error) {
-		console.error("Error loading fonts:", error);
+		logger.error("Error loading fonts:", error);
 		return null;
 	}
 });
@@ -68,8 +97,6 @@ const getImageOptions = (recipeId: string) => {
 	}
 	
 	const scaleFactor = useDoubling ? 2 : 1;
-	
-	console.log(`Rendering ${recipeId} with scale factor: ${scaleFactor}`);
 	
 	return {
 		width: 800 * scaleFactor,
@@ -109,7 +136,7 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 			const { default: Component } = await import(
 				`@/app/recipes/screens/${recipeId}/${recipeId}.tsx`
 			);
-			console.log(`Recipe component loaded: ${recipeId}`);
+			logger.info(`Recipe component loaded: ${recipeId}`);
 			let props = screens[recipeId as keyof typeof screens].props || {};
 			
 			// Handle data fetching recipes
@@ -128,7 +155,7 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 					// Race between the fetch and the timeout
 					const fetchedData = await Promise.race([fetchPromise, timeoutPromise])
 						.catch(error => {
-							console.warn(`Data fetch error for ${recipeId}:`, error);
+							logger.warn(`Data fetch error for ${recipeId}:`, error);
 							return null;
 						});
 					
@@ -136,10 +163,10 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 					if (fetchedData && typeof fetchedData === 'object') {
 						props = fetchedData;
 					} else {
-						console.warn(`Invalid or missing data for ${recipeId}`);
+						logger.warn(`Invalid or missing data for ${recipeId}`);
 					}
 				} catch (error) {
-					console.warn(`Error in data fetching for ${recipeId}:`, error);
+					logger.warn(`Error in data fetching for ${recipeId}:`, error);
 					// Continue with default props
 				}
 			}
@@ -151,9 +178,9 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 
 		// Use recipe-specific image options
 		const pngResponse = await new ImageResponse(element, getImageOptions(recipeId));
-		return await renderBmp(pngResponse);
+		return await renderBmp(pngResponse, { ditheringMethod: DitheringMethod.ATKINSON });
 	} catch (error) {
-		console.error(`Error loading recipe component ${recipeId}:`, error);
+		logger.error(`Error loading recipe component ${recipeId}:`, error);
 		return null;
 	}
 });
@@ -179,7 +206,7 @@ export async function GET(
 		const bitmapPath = Array.isArray(slug) ? slug.join("/") : slug;
 		const cacheKey = `api/bitmap/${bitmapPath}`;
 
-		console.log(`Bitmap request for: ${bitmapPath}`);
+		logger.info(`Bitmap request for: ${bitmapPath}`);
 		
 		// Get the bitmap cache (will be null in production)
 		const bitmapCache = getBitmapCache();
@@ -189,7 +216,7 @@ export async function GET(
 			const item = bitmapCache.get(cacheKey);
 			// Since we've checked with .has(), item should exist, but let's be safe
 			if (!item) {
-				console.log(`⚠️ Cache inconsistency for ${cacheKey}`);
+				logger.warn(`Cache inconsistency for ${cacheKey}`);
 				return await generateBitmap(bitmapPath, cacheKey);
 			}
 
@@ -197,7 +224,7 @@ export async function GET(
 
 			// Check if the item is still valid
 			if (item.expiresAt > now) {
-				console.log(`🔵 Global cache HIT for ${cacheKey}`);
+				logger.info(`🔵 Global cache HIT for ${cacheKey}`);
 				return new Response(item.data, {
 					headers: {
 						"Content-Type": "image/bmp",
@@ -206,7 +233,7 @@ export async function GET(
 				});
 			}
 
-			console.log(`🟡 Global cache STALE for ${cacheKey}`);
+			logger.info(`🟡 Global cache STALE for ${cacheKey}`);
 			// Return stale data but trigger background revalidation
 			const staleResponse = new Response(item.data, {
 				headers: {
@@ -217,7 +244,7 @@ export async function GET(
 
 			// Revalidate in background with a fresh AbortController
 			setTimeout(() => {
-				console.log(`🔄 Background revalidation for ${cacheKey}`);
+				logger.info(`🔄 Background revalidation for ${cacheKey}`);
 				generateBitmap(bitmapPath, cacheKey);
 			}, 0);
 
@@ -227,7 +254,7 @@ export async function GET(
 		// Cache miss or in production - generate the bitmap
 		return await generateBitmap(bitmapPath, cacheKey);
 	} catch (error) {
-		console.error("Error generating image:", error);
+		logger.error("Error generating image:", error);
 
 		// Instead of returning an error, return the NotFoundScreen as a fallback
 		try {
@@ -271,7 +298,7 @@ export async function GET(
 				},
 			});
 		} catch (fallbackError) {
-			console.error("Error generating fallback image:", fallbackError);
+			logger.error("Error generating fallback image:", fallbackError);
 			return new Response("Error generating image", {
 				status: 500,
 				headers: {
@@ -295,9 +322,9 @@ const generateBitmap = cache(async (bitmapPath: string, cacheKey: string) => {
 	// Check if the requested recipe exists in our screens registry
 	if (screens[recipeSlug as keyof typeof screens]) {
 		recipeId = recipeSlug;
-		console.log(`Recipe found: ${recipeSlug}`);
+		logger.info(`Recipe found: ${recipeSlug}`);
 	} else {
-		console.log(`Recipe not found: ${recipeSlug}, using default`);
+		logger.info(`Recipe not found: ${recipeSlug}, using default`);
 	}
 
 	// Try to load the recipe component using our cached function
@@ -317,7 +344,7 @@ const generateBitmap = cache(async (bitmapPath: string, cacheKey: string) => {
 			});
 		}
 
-		console.log(`✅ Successfully generated bitmap for: ${bitmapPath}`);
+		logger.success(`Successfully generated bitmap for: ${bitmapPath}`);
 
 		return new Response(recipeBuffer, {
 			headers: {

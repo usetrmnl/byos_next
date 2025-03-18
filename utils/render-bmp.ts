@@ -4,6 +4,14 @@ import sharp from 'sharp';
 // The exact size expected by the firmware
 export const DISPLAY_BMP_IMAGE_SIZE = 48062;
 
+/** Dithering method options */
+export enum DitheringMethod {
+	FLOYD_STEINBERG = "floyd-steinberg",
+	ATKINSON = "atkinson",
+	BAYER = "bayer",
+	RANDOM = "random"
+}
+
 /** Bayer matrix (8x8) for dithering */
 const BAYER_MATRIX_8x8: number[][] = [
 	[  0,  32,  8,  40,  2,  34, 10, 42 ],
@@ -16,7 +24,173 @@ const BAYER_MATRIX_8x8: number[][] = [
 	[ 63, 31, 55, 23, 61, 29, 53, 21 ]
 ];
 
-export async function renderBmp(pngResponse: ImageResponse) {
+/** Bayer matrices of different sizes */
+const BAYER_MATRICES: Record<number, number[][]> = {
+	2: [
+		[0, 2],
+		[3, 1],
+	],
+	4: [
+		[0, 8, 2, 10],
+		[12, 4, 14, 6],
+		[3, 11, 1, 9],
+		[15, 7, 13, 5],
+	],
+	8: BAYER_MATRIX_8x8
+};
+
+/**
+ * Apply Floyd-Steinberg dithering algorithm
+ */
+const applyFloydSteinberg = (grayscale: Uint8Array, width: number, height: number, inverted: boolean = false): Uint8Array => {
+	// Create a copy of the grayscale array to avoid modifying the original
+	const result = new Uint8Array(grayscale.length);
+	const buffer = new Float32Array(grayscale.length);
+	
+	// Initialize buffer with grayscale values
+	for (let i = 0; i < grayscale.length; i++) {
+		buffer[i] = grayscale[i];
+	}
+	
+	// Apply Floyd-Steinberg dithering
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const index = y * width + x;
+			const oldPixel = buffer[index];
+			const newPixel = oldPixel < 128 ? 0 : 255;
+			result[index] = inverted ? 255 - newPixel : newPixel;
+			const error = oldPixel - newPixel;
+			
+			if (x + 1 < width) buffer[index + 1] += (error * 7) / 16;
+			if (y + 1 < height && x > 0) buffer[index + width - 1] += (error * 3) / 16;
+			if (y + 1 < height) buffer[index + width] += (error * 5) / 16;
+			if (y + 1 < height && x + 1 < width) buffer[index + width + 1] += (error * 1) / 16;
+		}
+	}
+	
+	return result;
+};
+
+/**
+ * Apply Atkinson dithering algorithm
+ */
+const applyAtkinson = (grayscale: Uint8Array, width: number, height: number, inverted: boolean = false): Uint8Array => {
+	// Create a copy of the grayscale array to avoid modifying the original
+	const result = new Uint8Array(grayscale.length);
+	const buffer = new Float32Array(grayscale.length);
+	
+	// Initialize buffer with grayscale values
+	for (let i = 0; i < grayscale.length; i++) {
+		buffer[i] = grayscale[i];
+	}
+	
+	// Apply Atkinson dithering
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const index = y * width + x;
+			const oldPixel = buffer[index];
+			const newPixel = oldPixel < 128 ? 0 : 255;
+			result[index] = inverted ? 255 - newPixel : newPixel;
+			const error = Math.floor((oldPixel - newPixel) / 8);
+			
+			if (x + 1 < width) buffer[index + 1] += error;
+			if (x + 2 < width) buffer[index + 2] += error;
+			if (y + 1 < height && x - 1 >= 0) buffer[index + width - 1] += error;
+			if (y + 1 < height) buffer[index + width] += error;
+			if (y + 1 < height && x + 1 < width) buffer[index + width + 1] += error;
+			if (y + 2 < height) buffer[index + width * 2] += error;
+		}
+	}
+	
+	return result;
+};
+
+/**
+ * Apply Bayer dithering algorithm
+ */
+const applyBayer = (grayscale: Uint8Array, width: number, height: number, patternSize: number = 8, inverted: boolean = false): Uint8Array => {
+	const result = new Uint8Array(grayscale.length);
+	
+	// Use the closest available matrix size
+	const matrixSize = patternSize <= 2 ? 2 : patternSize <= 4 ? 4 : 8;
+	const matrix = BAYER_MATRICES[matrixSize];
+	const matrixLength = matrix.length;
+	
+	// Normalize the matrix values to 0-255 range
+	const normalizedMatrix = matrix.map(row =>
+		row.map(val => Math.floor((val * 255) / (matrixLength * matrixLength)))
+	);
+	
+	// Apply Bayer dithering
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const index = y * width + x;
+			const gray = grayscale[index];
+			const matrixX = x % matrixLength;
+			const matrixY = y % matrixLength;
+			const threshold = normalizedMatrix[matrixY][matrixX];
+			const newValue = gray < threshold ? 0 : 255;
+			result[index] = inverted ? 255 - newValue : newValue;
+		}
+	}
+	
+	return result;
+};
+
+/**
+ * Apply random dithering
+ */
+const applyRandom = (grayscale: Uint8Array, width: number, height: number, inverted: boolean = false): Uint8Array => {
+	const result = new Uint8Array(grayscale.length);
+	
+	for (let i = 0; i < grayscale.length; i++) {
+		const gray = grayscale[i];
+		const randomThreshold = Math.random() * 255;
+		const newValue = gray < randomThreshold ? 0 : 255;
+		result[i] = inverted ? 255 - newValue : newValue;
+	}
+	
+	return result;
+};
+
+/**
+ * Apply the specified dithering method to the grayscale image
+ */
+const applyDithering = (
+	grayscale: Uint8Array, 
+	width: number, 
+	height: number, 
+	method: DitheringMethod = DitheringMethod.FLOYD_STEINBERG, 
+	inverted: boolean = false
+): Uint8Array => {
+	switch (method) {
+		case DitheringMethod.FLOYD_STEINBERG:
+			return applyFloydSteinberg(grayscale, width, height, inverted);
+		case DitheringMethod.ATKINSON:
+			return applyAtkinson(grayscale, width, height, inverted);
+		case DitheringMethod.BAYER:
+			return applyBayer(grayscale, width, height, 8, inverted);
+		case DitheringMethod.RANDOM:
+			return applyRandom(grayscale, width, height, inverted);
+		default:
+			return applyFloydSteinberg(grayscale, width, height, inverted);
+	}
+};
+
+export interface RenderBmpOptions {
+	ditheringMethod?: DitheringMethod;
+	inverted?: boolean;
+}
+
+export async function renderBmp(
+	pngResponse: ImageResponse, 
+	options: RenderBmpOptions = {}
+) {
+	const { 
+		ditheringMethod = DitheringMethod.FLOYD_STEINBERG, 
+		inverted = false 
+	} = options;
+	
 	const pngBuffer = await pngResponse.arrayBuffer();
 
 	// Fixed dimensions to match the device requirements
@@ -41,9 +215,8 @@ export async function renderBmp(pngResponse: ImageResponse) {
 
 	const { data } = grayscaleImage; // `data` is a Uint8Array of grayscale values
 
-	// Step 3: Apply dithering & thresholding
+	// Step 2: Process the grayscale image
 	const grayscale = new Uint8Array(targetPixelCount);
-	const dithered = new Uint8Array(targetPixelCount);
 	const isEdge = new Uint8Array(targetPixelCount);
 	
 	// First, copy grayscale data
@@ -54,21 +227,13 @@ export async function renderBmp(pngResponse: ImageResponse) {
 		}
 	}
 	
-	// Process dithering and edge detection in a single pass
+	// Step 3: Edge detection
 	for (let y = 0; y < targetHeight; y++) {
 		const yOffset = y * targetWidth;
-		const bayerY = y & 7; // y % 8 using bit mask
-		const bayerYOffset = bayerY << 3; // bayerY * 8 using bit shift
 		
 		for (let x = 0; x < targetWidth; x++) {
 			const idx = yOffset + x;
 			const gray = grayscale[idx];
-			
-			// Dithering using bit operations
-			const bayerX = x & 7; // x % 8 using bit mask
-			const thresholdValue = BAYER_MATRIX_8x8[bayerY][bayerX];
-			const normalizedGray = gray >> 2; // Divide by 4 using bit shift (approximates * 64/255)
-			dithered[idx] = normalizedGray <= thresholdValue ? 1 : 0;
 			
 			// Edge detection for pixels not on the border
 			if (y > 0 && y < targetHeight - 1 && x > 0 && x < targetWidth - 1) {
@@ -85,6 +250,9 @@ export async function renderBmp(pngResponse: ImageResponse) {
 			}
 		}
 	}
+	
+	// Step 4: Apply the selected dithering method
+	const dithered = applyDithering(grayscale, targetWidth, targetHeight, ditheringMethod, inverted);
 
 	// BMP file header (14 bytes) + Info header (40 bytes)
 	const fileHeaderSize = 14;
@@ -121,7 +289,7 @@ export async function renderBmp(pngResponse: ImageResponse) {
 	buffer.writeUInt32LE(0x00ffffff, paletteOffset); // White
 	buffer.writeUInt32LE(0x00000000, paletteOffset + 4); // Black
 
-	// Step 4: Generate the final bitmap
+	// Step 5: Generate the final bitmap
 	const dataOffset = fileHeaderSize + infoHeaderSize + paletteSize;
 	
 	// Process 8 pixels at a time where possible
@@ -156,7 +324,8 @@ export async function renderBmp(pngResponse: ImageResponse) {
 					isBlack = gray < 128;
 				} else {
 					// Not on an edge (likely in an image) - use dithered result
-					isBlack = dithered[idx] === 1;
+					const ditheredValue = dithered[idx];
+					isBlack = ditheredValue < 128; // Values are either 0 or 255
 				}
 				
 				// Set the bit in the byte if black using bit operations

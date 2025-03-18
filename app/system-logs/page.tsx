@@ -79,15 +79,17 @@ export default async function SystemLogsPage() {
 					<SystemLogsViewerSkeleton className="filter blur-[1px] pointer-events-none mt-6" />
 				</>
 			) : (
-				<Suspense fallback={<SystemLogsViewerSkeleton />}>
-					<SystemLogsViewer
-						initialData={{
-							logs: initialLogs,
-							total: totalLogs,
-							uniqueSources: uniqueSources,
-						}}
-					/>
-				</Suspense>
+				<div className="w-full overflow-hidden">
+					<Suspense fallback={<SystemLogsViewerSkeleton />}>
+						<SystemLogsViewer
+							initialData={{
+								logs: initialLogs,
+								total: totalLogs,
+								uniqueSources: uniqueSources,
+							}}
+						/>
+					</Suspense>
+				</div>
 			)}
 		</>
 	);
