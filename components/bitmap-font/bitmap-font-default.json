@@ -1,10 +1,10 @@
-{
-  "SMALL": {
+[
+  {
     "width": 5,
     "height": 7,
     "characters": []
   },
-  "MEDIUM": {
+  {
     "width": 8,
     "height": 8,
     "characters": [
@@ -490,19 +490,19 @@
       }
     ]
   },
-  "TALL": {
+  {
     "width": 8,
     "height": 12,
     "characters": []
   },
-  "LARGE": {
+  {
     "width": 8,
     "height": 16,
     "characters": []
   },
-  "SQUARE": {
+  {
     "width": 12,
     "height": 12,
     "characters": []
   }
-}
+]
