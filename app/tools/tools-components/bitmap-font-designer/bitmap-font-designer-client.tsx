@@ -16,6 +16,23 @@ import {
     TooltipTrigger
 } from "@/components/ui/tooltip"
 
+// Custom debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+    const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedValue(value);
+        }, delay);
+      
+        return () => {
+            clearTimeout(timer);
+        };
+    }, [value, delay]);
+  
+    return debouncedValue;
+}
+
 const bitmapFont = bitmapFontFile.fonts;
 
 export interface BitmapFontCharacter {
@@ -35,25 +52,64 @@ export const basicAsciiSet = Array.from({ length: 95 }, (_, i) => ({
     charCode: i + 32,
 }))
 
-// Latin-1 Supplement (128-255)
-export const latin1Set = Array.from({ length: 128 }, (_, i) => ({
-    charCode: i + 128,
-}))
+// Latin-1 Supplement (only useful printable range)
+const commonLatin1 = [
+    160, // Non-breaking space
+    161, 162, 163, 165, 166, 167, 169, // ¡ ¢ £ ¥ ¦ § ©
+    171, 172, 174, 176, 177, 181, 182, 183, // « ¬ ® ° ± µ ¶ ·
+    187, 188, 189, 190, // » ¼ ½ ¾
+    192, 193, 194, 195, 196, 197, 198,
+    199, 200, 201, 202, 203,
+    210, 211, 212, 213, 214, 216,
+    217, 218, 219, 220, 223, // ß
+    224, 225, 226, 227, 228, 229, 230,
+    231, 232, 233, 234, 235,
+    241, 242, 243, 244, 245, 246, 248, 249, 250, 251, 252, 253, 255,
+  ]
+  export const latin1Set = commonLatin1.map(charCode => ({ charCode }))
 
-// Greek and Coptic (880-1023)
-export const greekSet = Array.from({ length: 144 }, (_, i) => ({
-    charCode: i + 880,
-}))
+// Greek (subset for scientific symbols)
+const commonGreek = [
+    913, 914, 915, 916, 920, 923, 926, 928, 931, 934, 936, 937, // capitals
+    945, 946, 947, 948, 949, 950, 951, 952, 955, 960, 961, 964, 965, 966, 967, 968, 969, // lower
+  ]
+  export const greekSet = commonGreek.map(charCode => ({ charCode }))
+  
 
 // Cyrillic (1024-1279)
 export const cyrillicSet = Array.from({ length: 256 }, (_, i) => ({
     charCode: i + 1024,
 }))
 
-// Symbols and Pictographs (8592-8703)
-export const symbolsSet = Array.from({ length: 112 }, (_, i) => ({
-    charCode: i + 8592,
-}))
+// Symbols and Emojis
+const commonSymbols = [
+    // Smart quotes
+    8211, // – en dash
+    8212, // — em dash
+    8216, // ‘ left single quotation
+    8217, // ’ right single quotation ← U+2019, your priority
+    8220, // “ left double quotation
+    8221, // ” right double quotation
+    8230, // … ellipsis
+    8226, // • bullet
+    8242, 8243, // ′ ″ (prime and double prime)
+    8250, // ›
+  
+    // Arrows (U+2190–U+21FF)
+    ...Array.from({ length: 96 }, (_, i) => 0x2190 + i), // ← to ⇿
+  
+    // Common UI symbols
+    10003, // ✓
+    10005, // ✗
+    9733, 9734, // ★ ☆
+    9745, // ☑
+    9755, 9757, // ☛ ☝
+    9786, // ☺
+    9829, // ♥
+    9888, // ⚠
+  
+  ]
+  export const symbolsSet = commonSymbols.map(charCode => ({ charCode }))
 
 // generate all char codes in Basic ASCII, Latin-1, Greek, Cyrillic, Symbols
 const charCodesGroups = [
@@ -228,7 +284,10 @@ const SentencePreview = memo(({
     previewScale,
     previewGap,
     selectedCharCode,
-    currentCharacterBitmap
+    currentCharacterBitmap,
+    onPreviewTextChange,
+    onPreviewScaleChange,
+    onPreviewGapChange
 }: {
     characterBitmaps: Map<number, string>;
     selectedGridSize: string;
@@ -237,10 +296,43 @@ const SentencePreview = memo(({
     previewGap: number;
     selectedCharCode: number;
     currentCharacterBitmap: string | null;
+    onPreviewTextChange: (newPreviewText: string) => void;
+    onPreviewScaleChange: (newScale: number) => void;
+    onPreviewGapChange: (newGap: number) => void;
 }) => {
     const [width, height] = selectedGridSize.split('x').map(Number);
     const charMap = characterBitmaps;
     const uniqueChars = new Set(Array.from(previewText)).size;
+    
+    // State for the input field to prevent jank during typing
+    const [inputValue, setInputValue] = useState(previewText);
+    
+    // Update local input state when previewText prop changes
+    useEffect(() => {
+        setInputValue(previewText);
+    }, [previewText]);
+    
+    // Debounce the input to avoid performance issues when typing quickly
+    const debouncedInputValue = useDebounce(inputValue, 300);
+    
+    // Update the parent state when debounced value changes
+    useEffect(() => {
+        if (debouncedInputValue !== previewText) {
+            onPreviewTextChange(debouncedInputValue);
+        }
+    }, [debouncedInputValue, onPreviewTextChange, previewText]);
+    
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setInputValue(e.target.value);
+    };
+    
+    const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onPreviewScaleChange(parseFloat(e.target.value));
+    };
+
+    const handleGapChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onPreviewGapChange(parseInt(e.target.value, 10));
+    };
 
     // Count how many characters have bitmap data defined
     const definedChars = useMemo(() => {
@@ -321,7 +413,7 @@ const SentencePreview = memo(({
 
     return (
         <div className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-md">
-            <div className="flex justify-between items-center mb-2">
+            <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-medium">Preview</h3>
                 <TooltipProvider>
                     <Tooltip>
@@ -337,6 +429,51 @@ const SentencePreview = memo(({
                     </Tooltip>
                 </TooltipProvider>
             </div>
+            
+            {/* Input field with debounce */}
+            <div className="mb-3">
+                <Input
+                    type="text"
+                    value={inputValue}
+                    onChange={handleInputChange}
+                    placeholder="Type a custom preview sentence..."
+                    className="w-full"
+                    aria-label="Preview sentence"
+                />
+            </div>
+            
+            {/* Slider controls */}
+            <div className="flex gap-4 items-center justify-end mb-3 text-sm">
+                <div className="flex items-center gap-2">
+                    <label htmlFor="preview-scale" className="text-xs whitespace-nowrap">Scale:</label>
+                    <input
+                        id="preview-scale"
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.25"
+                        value={previewScale}
+                        onChange={handleScaleChange}
+                        className="w-24"
+                    />
+                    <span className="text-xs">{previewScale.toFixed(2)}x</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <label htmlFor="preview-gap" className="text-xs whitespace-nowrap">Gap:</label>
+                    <input
+                        id="preview-gap"
+                        type="range"
+                        min="0"
+                        max="5"
+                        step="1"
+                        value={previewGap}
+                        onChange={handleGapChange}
+                        className="w-24"
+                    />
+                    <span className="text-xs">{previewGap}px</span>
+                </div>
+            </div>
+            
             <div className="overflow-x-auto pb-2 border-b border-gray-100 dark:border-gray-800">
                 <svg
                     width={svgData.width}
@@ -372,89 +509,6 @@ const SentencePreview = memo(({
         prevProps.previewGap === nextProps.previewGap &&
         prevProps.selectedCharCode === nextProps.selectedCharCode &&
         prevProps.currentCharacterBitmap === nextProps.currentCharacterBitmap;
-});
-
-// Scale and gap controls for sentence preview
-const PreviewControls = memo(({
-    scale,
-    gap,
-    onScaleChange,
-    onGapChange
-}: {
-    scale: number;
-    gap: number;
-    onScaleChange: (newScale: number) => void;
-    onGapChange: (newGap: number) => void;
-}) => {
-    const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onScaleChange(parseFloat(e.target.value));
-    };
-
-    const handleGapChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onGapChange(parseFloat(e.target.value));
-    };
-
-    return (
-        <div className="flex gap-4 items-center justify-end mb-2 text-sm">
-            <div className="flex items-center gap-2">
-                <label htmlFor="preview-scale" className="text-xs whitespace-nowrap">Scale:</label>
-                <input
-                    id="preview-scale"
-                    type="range"
-                    min="1"
-                    max="3"
-                    step="0.25"
-                    value={scale}
-                    onChange={handleScaleChange}
-                    className="w-24"
-                />
-                <span className="text-xs">{scale.toFixed(2)}x</span>
-            </div>
-            <div className="flex items-center gap-2">
-                <label htmlFor="preview-gap" className="text-xs whitespace-nowrap">Gap:</label>
-                <input
-                    id="preview-gap"
-                    type="range"
-                    min="0"
-                    max="5"
-                    step="1"
-                    value={gap}
-                    onChange={handleGapChange}
-                    className="w-24"
-                />
-                <span className="text-xs">{gap}px</span>
-            </div>
-        </div>
-    );
-}, (prevProps, nextProps) => {
-    return prevProps.scale === nextProps.scale && prevProps.gap === nextProps.gap;
-});
-
-const SentenceInput = memo(({
-    previewText,
-    onPreviewTextChange
-}: {
-    previewText: string,
-    onPreviewTextChange: (newPreviewText: string) => void
-}) => {
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onPreviewTextChange(e.target.value);
-    };
-
-    return (
-        <div className="w-full">
-            <Input
-                type="text"
-                value={previewText}
-                onChange={handleChange}
-                placeholder="Type a custom preview sentence..."
-                className="w-full"
-                aria-label="Preview sentence"
-            />
-        </div>
-    );
-}, (prevProps, nextProps) => {
-    return prevProps.previewText === nextProps.previewText;
 });
 
 // Component for loading font data from file
@@ -565,11 +619,43 @@ export default function BitmapFontDesignerClient() {
 
     const [isPending, startTransition] = useTransition();
 
+    // Handle adding a new grid size
+    const handleAddSize = useCallback((newSize: string) => {
+        // Create a new entry in the initialFontDataObj for this size
+        if (!initialFontDataObj[newSize]) {
+            initialFontDataObj[newSize] = new Map<number, string>();
+        }
+        
+        // Update the availableGridSizes list
+        setAvailableGridSizes(prev => {
+            const newSizes = [...prev, newSize].sort((a, b) => 
+                parseInt(a.split('x')[0]) - parseInt(b.split('x')[0])
+            );
+            return newSizes;
+        });
+        
+        // Switch to the new grid size
+        setSelectedGridSize(newSize);
+        
+        // Update character bitmaps for the new size
+        setCharacterBitmaps(initialFontDataObj[newSize]);
+        
+        // Update current character bitmap
+        setCurrentCharacterBitmap(null);
+    }, []);
+
     const handleDataChange = useCallback((newBinaryData: string, charCode: number) => {
         // Update state for rerender, then update global data non-blockingly using useTransition
         startTransition(() => {
             // Update both the maps and current character data
             characterBitmaps.set(charCode, newBinaryData);
+
+            
+            // Ensure the map exists before trying to set a value on it
+            if (!initialFontDataObj[selectedGridSize]) {
+                initialFontDataObj[selectedGridSize] = new Map<number, string>();
+            }
+            
             initialFontDataObj[selectedGridSize].set(charCode, newBinaryData);
             
             // If this is the currently selected character, update its bitmap too
@@ -585,6 +671,11 @@ export default function BitmapFontDesignerClient() {
         
         // Update grid size
         setSelectedGridSize(size);
+        
+        // Ensure the font data object has an entry for this size
+        if (!initialFontDataObj[size]) {
+            initialFontDataObj[size] = new Map<number, string>();
+        }
         
         // Get the character maps for this size
         const newCharacterBitmaps = initialFontDataObj[size] ?? new Map();
@@ -621,10 +712,8 @@ export default function BitmapFontDesignerClient() {
                 throw new Error("Invalid font data format: missing 'fonts' array");
             }
             
-            // Clear existing font data
-            for (const key in initialFontDataObj) {
-                delete initialFontDataObj[key];
-            }
+            // Create a new object to replace initialFontDataObj
+            const newFontDataObj: { [fontSize: string]: Map<number, string> } = {};
             
             // Create a new set of font sizes
             const newGridSizes: string[] = [];
@@ -651,8 +740,18 @@ export default function BitmapFontDesignerClient() {
                     characterBitmapMap.set(char.charCode, base64ToBinary(char.data));
                 });
                 
-                // Add this font size to the font data object
-                initialFontDataObj[fontSizeKey] = characterBitmapMap;
+                // Add this font size to the new font data object
+                newFontDataObj[fontSizeKey] = characterBitmapMap;
+            });
+            
+            // Replace the initialFontDataObj with the new data
+            Object.keys(initialFontDataObj).forEach(key => {
+                delete initialFontDataObj[key];
+            });
+            
+            // Copy new data to initialFontDataObj
+            Object.keys(newFontDataObj).forEach(key => {
+                initialFontDataObj[key] = newFontDataObj[key];
             });
             
             // Update application state
@@ -681,23 +780,33 @@ export default function BitmapFontDesignerClient() {
 
     // Function to save the font data to JSON
     const saveFontData = useCallback(() => {
-        // Convert the internal binary string representation back to base64 for storage
-        const fontDataToSave = Object.entries(initialFontDataObj).map(([size, charMap]) => {
+        // Get the latest character maps from the local state object
+        const fontDataToSave = availableGridSizes.map(size => {
             const [width, height] = size.split('x').map(Number);
-
+            const charMap = initialFontDataObj[size] || new Map();
+            
+            // Make sure to use the latest data for the current grid size
+            const currentMap = size === selectedGridSize ? characterBitmaps : charMap;
+            
+            // Special handling for current character being edited
+            if (size === selectedGridSize && currentCharacterBitmap && selectedCharCode) {
+                currentMap.set(selectedCharCode, currentCharacterBitmap);
+            }
+            
             return {
                 width,
                 height,
-                characters: Array.from(charMap.entries())
-                    .filter(([_, binaryString]) => binaryString.includes('1')) // Only include non-empty characters
+                characters: Array.from(currentMap.entries())
+                    .filter(([_, binaryString]) => binaryString && binaryString.includes('1')) // Only include non-empty characters
                     .map(([charCode, binaryString]) => ({
                         charCode,
                         char: String.fromCharCode(charCode),
                         // Convert binary string to base64 for storage
                         data: binaryToBase64(binaryString)
                     }))
+                    .sort((a, b) => a.charCode - b.charCode) // Sort by charCode in ascending order
             };
-        });
+        }).filter(font => font.characters.length > 0); // Only include fonts with characters
 
         // Add metadata to the exported font
         const exportData = {
@@ -734,7 +843,7 @@ export default function BitmapFontDesignerClient() {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }, 0);
-    }, []);
+    }, [availableGridSizes, initialFontDataObj, selectedGridSize, characterBitmaps, currentCharacterBitmap, selectedCharCode]);
 
 
 
@@ -745,6 +854,7 @@ export default function BitmapFontDesignerClient() {
                     {availableGridSizes.map((size) => (
                         <Button
                             key={size}
+                            variant="outline"
                             className={cn(selectedGridSize === size && "bg-blue-500 hover:bg-blue-600")}
                             onClick={handleSizeChange}
                             data-size={size}
@@ -753,7 +863,10 @@ export default function BitmapFontDesignerClient() {
                             {size}
                         </Button>
                     ))}
-                    <AddGridSize setAvailableGridSizes={setAvailableGridSizes} availableGridSizes={availableGridSizes} />
+                    <AddGridSize 
+                        availableGridSizes={availableGridSizes}
+                        onAddSize={handleAddSize} 
+                    />
                 </div>
                 <div className="flex gap-2">
                     <FontFileLoader onLoadFont={loadFontData} />
@@ -773,18 +886,6 @@ export default function BitmapFontDesignerClient() {
             />
 
             <div className="space-y-2">
-                <SentenceInput
-                    previewText={previewText}
-                    onPreviewTextChange={handlePreviewTextChange}
-                />
-
-                <PreviewControls
-                    scale={previewScale}
-                    gap={previewGap}
-                    onScaleChange={handlePreviewScaleChange}
-                    onGapChange={handlePreviewGapChange}
-                />
-
                 <SentencePreview
                     characterBitmaps={characterBitmaps}
                     selectedGridSize={selectedGridSize}
@@ -793,6 +894,9 @@ export default function BitmapFontDesignerClient() {
                     previewGap={previewGap}
                     selectedCharCode={selectedCharCode}
                     currentCharacterBitmap={currentCharacterBitmap}
+                    onPreviewTextChange={handlePreviewTextChange}
+                    onPreviewScaleChange={handlePreviewScaleChange}
+                    onPreviewGapChange={handlePreviewGapChange}
                 />
             </div>
             

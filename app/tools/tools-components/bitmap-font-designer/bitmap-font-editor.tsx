@@ -17,6 +17,9 @@ import {
     RotateCw,
     Undo,
     Redo,
+    Trash,
+    ClipboardCopy,
+    Check,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
@@ -85,15 +88,59 @@ export default function BitmapFontEditor({
     const gridChangedRef = useRef(false)
     const currentCharRef = useRef<number>(selectedCharCode)
 
-    // History for undo/redo (local to this editor)
-    const historyRef = useRef<number[][][]>([[]])
-    const historyIndexRef = useRef<number>(0)
+    // Persistent history storage keyed by character code and grid size
+    const historyMapRef = useRef<Map<string, { history: number[][][], index: number }>>(new Map())
+    
+    // Current working history reference
+    const historyRef = useRef<number[][][]>([])
+    const historyIndexRef = useRef<number>(-1)
+
+    // Add states to track undo/redo availability
+    const [canUndo, setCanUndo] = useState(false)
+    const [canRedo, setCanRedo] = useState(false)
 
     // Clipboard
     const clipboardRef = useRef<number[][] | null>(null)
 
     // Force re-render for UI state that needs to be reflected in React
     const [, forceUpdate] = useState({})
+
+    // Add state for copy success indicator
+    const [showCopySuccess, setShowCopySuccess] = useState(false);
+
+    // History key
+    const getHistoryKey = useCallback(() => {
+        return `${selectedCharCode}-${selectedGridSize}`
+    }, [selectedCharCode, selectedGridSize])
+
+    // Load history for current character
+    const loadHistoryForCurrentChar = useCallback(() => {
+        const key = getHistoryKey()
+        const savedHistory = historyMapRef.current.get(key)
+        
+        if (savedHistory) {
+            historyRef.current = savedHistory.history
+            historyIndexRef.current = savedHistory.index
+        } else {
+            // If no history exists for this character, create one with current state
+            const initialGridCopy = JSON.parse(JSON.stringify(gridRef.current))
+            historyRef.current = [initialGridCopy]
+            historyIndexRef.current = 0
+        }
+        
+        // Update UI states based on loaded history
+        setCanUndo(historyIndexRef.current > 0)
+        setCanRedo(historyIndexRef.current < historyRef.current.length - 1)
+    }, [getHistoryKey])
+
+    // Save current history to the map
+    const saveHistoryForCurrentChar = useCallback(() => {
+        const key = getHistoryKey()
+        historyMapRef.current.set(key, {
+            history: [...historyRef.current], // Make a copy of the history array
+            index: historyIndexRef.current
+        })
+    }, [getHistoryKey])
 
     // Draw the grid on the canvas
     const drawGrid = useCallback(() => {
@@ -191,6 +238,9 @@ export default function BitmapFontEditor({
     // Reset grid when selectedCharacter changes
     useEffect(() => {
         if (currentCharRef.current !== selectedCharCode) {
+            // Save history for previous character
+            saveHistoryForCurrentChar()
+            
             // Initialize grid with zeros first to ensure clean state
             gridRef.current = Array(height)
                 .fill(0)
@@ -201,17 +251,16 @@ export default function BitmapFontEditor({
                 gridRef.current = binaryToGrid(currentCharacterBitmap, width, height)
             }
 
-            // Update history
-            historyRef.current = [JSON.parse(JSON.stringify(gridRef.current))]
-            historyIndexRef.current = 0
-
             // Update current character ref
             currentCharRef.current = selectedCharCode
+
+            // Load history for the new character
+            loadHistoryForCurrentChar()
 
             // Redraw the grid
             drawGrid()
         }
-    }, [selectedCharCode, currentCharacterBitmap, width, height, drawGrid])
+    }, [selectedCharCode, currentCharacterBitmap, width, height, drawGrid, saveHistoryForCurrentChar, loadHistoryForCurrentChar])
 
     // Initialize grid when size changes or component mounts
     useEffect(() => {
@@ -225,13 +274,12 @@ export default function BitmapFontEditor({
             gridRef.current = binaryToGrid(currentCharacterBitmap, width, height)
         }
 
-        // Update history
-        historyRef.current = [JSON.parse(JSON.stringify(gridRef.current))]
-        historyIndexRef.current = 0
+        // Load or initialize history for current character
+        loadHistoryForCurrentChar()
 
         // Redraw the grid
         drawGrid()
-    }, [width, height, currentCharacterBitmap, drawGrid])
+    }, [width, height, currentCharacterBitmap, drawGrid, loadHistoryForCurrentChar])
 
     // Initialize canvas
     useEffect(() => {
@@ -255,11 +303,21 @@ export default function BitmapFontEditor({
 
     // Add to history
     const addToHistory = useCallback(() => {
-        // Remove any future history if we're not at the end
-        historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1)
-
         // Create a deep copy of the current grid
-        const gridCopy = gridRef.current.map((row) => [...row])
+        const gridCopy = JSON.parse(JSON.stringify(gridRef.current))
+        
+        // Check if the current state is different from the last history entry
+        const lastEntry = historyRef.current[historyIndexRef.current];
+        if (lastEntry && JSON.stringify(lastEntry) === JSON.stringify(gridCopy)) {
+            return; // Skip if no changes made
+        }
+        
+        // Remove any future history if we're not at the end
+        if (historyIndexRef.current < historyRef.current.length - 1) {
+            historyRef.current = historyRef.current.slice(0, historyIndexRef.current + 1)
+        }
+
+        // Add current state to history
         historyRef.current.push(gridCopy)
         historyIndexRef.current = historyRef.current.length - 1
 
@@ -268,7 +326,14 @@ export default function BitmapFontEditor({
             historyRef.current = historyRef.current.slice(historyRef.current.length - 50)
             historyIndexRef.current = historyRef.current.length - 1
         }
-    }, [])
+        
+        // Update UI state
+        setCanUndo(historyIndexRef.current > 0)
+        setCanRedo(historyIndexRef.current < historyRef.current.length - 1)
+        
+        // Save updated history to the map
+        saveHistoryForCurrentChar()
+    }, [saveHistoryForCurrentChar])
 
     // Update the character data in the parent component (debounced)
     const updateCharData = useCallback(() => {
@@ -291,9 +356,12 @@ export default function BitmapFontEditor({
                 // Notify parent component
                 onDataChange?.(binaryData, selectedCharCode)
                 gridChangedRef.current = false
+                
+                // Make sure history is saved after parent updates
+                saveHistoryForCurrentChar()
             }
         }, 300) // 300ms debounce
-    }, [onDataChange, selectedCharCode, setCurrentCharacterBitmap])
+    }, [onDataChange, selectedCharCode, setCurrentCharacterBitmap, saveHistoryForCurrentChar])
 
     // Convert canvas coordinates to grid coordinates
     const canvasToGrid = useCallback(
@@ -395,9 +463,6 @@ export default function BitmapFontEditor({
 
         // Update character data (debounced)
         updateCharData()
-
-        // Force update to reflect UI state changes (like undo/redo buttons)
-        forceUpdate({})
     }, [addToHistory, updateCharData])
 
     // Handle mouse leave
@@ -412,7 +477,6 @@ export default function BitmapFontEditor({
         drawGrid()
         addToHistory()
         updateCharData()
-        forceUpdate({})
     }, [drawGrid, addToHistory, updateCharData])
 
     const flipVertical = useCallback(() => {
@@ -421,7 +485,6 @@ export default function BitmapFontEditor({
         drawGrid()
         addToHistory()
         updateCharData()
-        forceUpdate({})
     }, [drawGrid, addToHistory, updateCharData])
 
     const rotateClockwise = useCallback(() => {
@@ -440,7 +503,6 @@ export default function BitmapFontEditor({
         drawGrid()
         addToHistory()
         updateCharData()
-        forceUpdate({})
     }, [width, height, drawGrid, addToHistory, updateCharData])
 
     const rotateCounterClockwise = useCallback(() => {
@@ -459,7 +521,6 @@ export default function BitmapFontEditor({
         drawGrid()
         addToHistory()
         updateCharData()
-        forceUpdate({})
     }, [width, height, drawGrid, addToHistory, updateCharData])
 
     const shift = useCallback(
@@ -492,7 +553,6 @@ export default function BitmapFontEditor({
             drawGrid()
             addToHistory()
             updateCharData()
-            forceUpdate({})
         },
         [width, height, drawGrid, addToHistory, updateCharData],
     )
@@ -506,50 +566,87 @@ export default function BitmapFontEditor({
         drawGrid()
         addToHistory()
         updateCharData()
-        forceUpdate({})
     }, [width, height, drawGrid, addToHistory, updateCharData])
 
     const undo = useCallback(() => {
         if (historyIndexRef.current > 0) {
-            historyIndexRef.current--
-            gridRef.current = historyRef.current[historyIndexRef.current].map((row) => [...row])
-            gridChangedRef.current = true
-            drawGrid()
-            updateCharData()
-            forceUpdate({})
+            historyIndexRef.current--;
+            
+            // Get grid state from history
+            const prevState = historyRef.current[historyIndexRef.current];
+            
+            // Apply the state
+            gridRef.current = JSON.parse(JSON.stringify(prevState));
+            
+            // Mark grid as changed
+            gridChangedRef.current = true;
+            
+            // Redraw and update
+            drawGrid();
+            updateCharData();
+            
+            // Update undo/redo states
+            setCanUndo(historyIndexRef.current > 0);
+            setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+            
+            // Save updated history state
+            saveHistoryForCurrentChar();
         }
-    }, [drawGrid, updateCharData])
+    }, [drawGrid, updateCharData, saveHistoryForCurrentChar]);
 
     const redo = useCallback(() => {
         if (historyIndexRef.current < historyRef.current.length - 1) {
-            historyIndexRef.current++
-            gridRef.current = historyRef.current[historyIndexRef.current].map((row) => [...row])
-            gridChangedRef.current = true
-            drawGrid()
-            updateCharData()
-            forceUpdate({})
+            historyIndexRef.current++;
+            
+            // Get grid state from history
+            const nextState = historyRef.current[historyIndexRef.current];
+            
+            // Apply the state
+            gridRef.current = JSON.parse(JSON.stringify(nextState));
+            
+            // Mark grid as changed
+            gridChangedRef.current = true;
+            
+            // Redraw and update
+            drawGrid();
+            updateCharData();
+            
+            // Update undo/redo states
+            setCanUndo(historyIndexRef.current > 0);
+            setCanRedo(historyIndexRef.current < historyRef.current.length - 1);
+            
+            // Save updated history state
+            saveHistoryForCurrentChar();
         }
-    }, [drawGrid, updateCharData])
+    }, [drawGrid, updateCharData, saveHistoryForCurrentChar]);
 
     const copy = useCallback(() => {
+        // Simply copy the current grid to clipboard
         clipboardRef.current = gridRef.current.map((row) => [...row])
-        forceUpdate({})
+        // Show success indicator
+        setShowCopySuccess(true);
+        // Hide after 1.5 seconds
+        setTimeout(() => setShowCopySuccess(false), 1500);
+        // No need to update history or undo/redo state for copy
     }, [])
 
     const paste = useCallback(() => {
         if (clipboardRef.current) {
+            // Directly apply the copied grid
             gridRef.current = clipboardRef.current.map((row) => [...row])
             gridChangedRef.current = true
             drawGrid()
             addToHistory()
             updateCharData()
-            forceUpdate({})
         }
     }, [drawGrid, addToHistory, updateCharData])
 
     // Ensure final state is saved when component unmounts
     useEffect(() => {
         const cleanup = () => {
+            // Save the history for current character
+            saveHistoryForCurrentChar();
+            
             if (gridChangedRef.current) {
                 const binaryData = gridToBinary(gridRef.current)
 
@@ -564,7 +661,13 @@ export default function BitmapFontEditor({
         }
 
         return cleanup;
-    }, [onDataChange, selectedCharCode])
+    }, [onDataChange, selectedCharCode, saveHistoryForCurrentChar])
+
+    // Add an effect to initialize history on component mount
+    useEffect(() => {
+        // Load history for current character on component mount
+        loadHistoryForCurrentChar();
+    }, [loadHistoryForCurrentChar]);
 
     // Global mouse up handler
     useEffect(() => {
@@ -606,13 +709,60 @@ export default function BitmapFontEditor({
         setBaseline(Math.floor(height * 0.8))
     }, [height])
 
+    // After component mounts, capture initial state
+    useEffect(() => {
+        // Make sure we have an initial state in history
+        if (historyRef.current.length === 0) {
+            const initialGridCopy = JSON.parse(JSON.stringify(gridRef.current));
+            historyRef.current = [initialGridCopy];
+            historyIndexRef.current = 0;
+            setCanUndo(false);
+            setCanRedo(false);
+        }
+    }, []);
+
     return (
         <div className="flex flex-col gap-6">
             <div className="flex flex-wrap gap-2">
+            <Button
+                    onClick={undo}
+                    disabled={!canUndo}
+                    variant="outline"
+                    size="icon"
+                    title="Undo"
+                    aria-label="Undo"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+                >
+                    <Undo className="w-4 h-4" />
+                </Button>
+                <Button
+                    onClick={redo}
+                    disabled={!canRedo}
+                    variant="outline"
+                    size="icon"
+                    title="Redo"
+                    aria-label="Redo"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+                >
+                    <Redo className="w-4 h-4" />
+                </Button>
+                <Button
+                    onClick={clear}
+                    variant="outline"
+                    size="icon"
+                    title="Clear"
+                    aria-label="Clear"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+                >
+                    <Trash className="w-4 h-4" />
+                </Button>
                 <Button
                     onClick={flipHorizontal}
                     variant="outline"
                     size="icon"
+                    title="Flip Horizontal"
+                    aria-label="Flip Horizontal"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
                 >
                     <FlipHorizontal className="w-4 h-4" />
                 </Button>
@@ -620,6 +770,9 @@ export default function BitmapFontEditor({
                     onClick={flipVertical}
                     variant="outline"
                     size="icon"
+                    title="Flip Vertical"
+                    aria-label="Flip Vertical"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
                 >
                     <FlipVertical className="w-4 h-4" />
                 </Button>
@@ -627,6 +780,9 @@ export default function BitmapFontEditor({
                     onClick={rotateClockwise}
                     variant="outline"
                     size="icon"
+                    title="Rotate Clockwise"
+                    aria-label="Rotate Clockwise"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
                 >
                     <RotateCw className="w-4 h-4" />
                 </Button>
@@ -634,78 +790,83 @@ export default function BitmapFontEditor({
                     onClick={rotateCounterClockwise}
                     variant="outline"
                     size="icon"
+                    title="Rotate Counter-clockwise"
+                    aria-label="Rotate Counter-clockwise"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
                 >
                     <RotateCcw className="w-4 h-4" />
                 </Button>
-                <Button
-                    onClick={() => shift("up")}
-                    variant="outline"
-                    size="icon"
-                >
-                    <ArrowUp className="w-4 h-4" />
-                </Button>
-                <Button
-                    onClick={() => shift("down")}
-                    variant="outline"
-                    size="icon"
-                >
-                    <ArrowDown className="w-4 h-4" />
-                </Button>
-                <Button
-                    onClick={() => shift("left")}
-                    variant="outline"
-                    size="icon"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                </Button>
-                <Button
-                    onClick={() => shift("right")}
-                    variant="outline"
-                    size="icon"
-                >
-                    <ArrowRight className="w-4 h-4" />
-                </Button>
-                <Button
-                    onClick={clear}
-                    variant="outline"
-                    size="icon"
-                >
-                    <Eraser className="w-4 h-4" />
-                </Button>
-                <Button
-                    onClick={undo}
-                    disabled={historyIndexRef.current <= 0}
-                    variant="outline"
-                    size="icon"
-                >
-                    <Undo className="w-4 h-4" />
-                </Button>
-                <Button
-                    onClick={redo}
-                    disabled={historyIndexRef.current >= historyRef.current.length - 1}
-                    variant="outline"
-                    size="icon"
-                >
-                    <Redo className="w-4 h-4" />
-                </Button>
+                
+                {/* Group the shifting buttons together with no gap */}
+                <div className="flex">
+                    <Button
+                        onClick={() => shift("up")}
+                        variant="outline"
+                        size="icon"
+                        title="Shift Up"
+                        aria-label="Shift Up"
+                        className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 rounded-r-none border-r-0"
+                    >
+                        <ArrowUp className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        onClick={() => shift("down")}
+                        variant="outline"
+                        size="icon"
+                        title="Shift Down"
+                        aria-label="Shift Down"
+                        className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 rounded-none border-r-0"
+                    >
+                        <ArrowDown className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        onClick={() => shift("left")}
+                        variant="outline"
+                        size="icon"
+                        title="Shift Left"
+                        aria-label="Shift Left"
+                        className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 rounded-none border-r-0"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </Button>
+                    <Button
+                        onClick={() => shift("right")}
+                        variant="outline"
+                        size="icon"
+                        title="Shift Right"
+                        aria-label="Shift Right"
+                        className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 rounded-l-none"
+                    >
+                        <ArrowRight className="w-4 h-4" />
+                    </Button>
+                </div>
+
                 <Button
                     onClick={copy}
                     variant="outline"
                     size="icon"
+                    title="Copy"
+                    aria-label="Copy"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 relative"
                 >
-                    <Copy className="w-4 h-4" />
+                    {showCopySuccess ? (
+                        <Check className="w-4 h-4 text-green-500" />
+                    ) : (
+                        <ClipboardCopy className="w-4 h-4" />
+                    )}
                 </Button>
                 <Button
                     onClick={paste}
                     disabled={!clipboardRef.current}
                     variant="outline"
                     size="icon"
+                    title="Paste"
+                    aria-label="Paste"
+                    className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
                 >
                     <Paste className="w-4 h-4" />
                 </Button>
             </div>
-
-
 
             <div className="flex flex-row gap-4 items-start">
                 <div className="relative">

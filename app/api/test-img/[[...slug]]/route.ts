@@ -5,8 +5,9 @@ import { unstable_cacheLife as cacheLife } from 'next/cache'
 import { ImageResponse } from "next/og";
 import { createElement } from "react";
 import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
-import { BitmapText } from "@/components/bitmap-font/bitmap-text";
-import fontData from "@/components/bitmap-font/bitmap-font-8x8.json";
+// import BitmapText from "@/components/bitmap-font/bitmap-text";
+// import fontData from "@/components/bitmap-font/bitmap-font.json";
+import simpleText from "@/app/recipes/screens/simple-text/simple-text";
 
 
 // Constants for cache configuration
@@ -36,33 +37,59 @@ async function generateFallbackImage(errorMessage: string): Promise<{ data: Buff
 	if (IS_DEV) console.log("🔄 Generating fallback image for error:", errorMessage);
 	const timestamp = new Date().toISOString();
 
-	// Create a simple div with error text
-	const element = createElement(
-		"div",
-		{
-			style: {
-				display: "flex",
-				flexDirection: "column",
-				fontSize: 30,
-				color: "red",
-				background: "#f8f8f8",
-				width: "100%",
-				height: "100%",
-				padding: "50px",
-				alignItems: "center",
-				justifyContent: "center",
-				fontFamily: "system-ui",
-				textAlign: "center",
-				gap: "20px",
-				border: "5px solid red",
+	// // Create a simple div with error text
+	// const element = createElement(
+	// 	"div",
+	// 	{
+	// 		style: {
+	// 			display: "flex",
+	// 			flexDirection: "column",
+	// 			fontSize: 30,
+	// 			color: "red",
+	// 			background: "#f8f8f8",
+	// 			width: "100%",
+	// 			height: "100%",
+	// 			padding: "50px",
+	// 			alignItems: "center",
+	// 			justifyContent: "center",
+	// 			fontFamily: "system-ui",
+	// 			textAlign: "center",
+	// 			gap: "20px",
+	// 			border: "5px solid red",
+	// 		},
+	// 	},
+	// 	[
+	// 		createElement(BitmapText, { text: "Error", fontData }),
+	// 		createElement(BitmapText, { text: errorMessage, fontData }),
+	// 		createElement(BitmapText, { text: `Time: ${timestamp}`, fontData })
+	// 	]
+	// );
+
+		// Create a simple div with error text
+		const element = createElement(
+			"div",
+			{
+				style: {
+					display: "flex",
+					flexDirection: "column",
+					fontSize: 30,
+					color: "red",
+					background: "#f8f8f8",
+					width: "100%",
+					height: "100%",
+					padding: "50px",
+					alignItems: "center",
+					justifyContent: "center",
+					fontFamily: "system-ui",
+					textAlign: "center",
+					gap: "20px",
+					border: "5px solid red",
+				},
 			},
-		},
-		[
-			createElement(BitmapText, { text: "Error", fontData }),
-			createElement(BitmapText, { text: errorMessage, fontData }),
-			createElement(BitmapText, { text: `Time: ${timestamp}`, fontData })
-		]
-	);
+			[
+				"hello"
+			]
+		);
 
 	// Generate the image response
 	const imageResponse = new ImageResponse(element, {
