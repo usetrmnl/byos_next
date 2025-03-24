@@ -17,7 +17,7 @@ const maxGridSize = 17
 
 
 
-export default function AddGridSize({ setGridSize, gridSizes }: { setGridSize: React.Dispatch<React.SetStateAction<string[]>>, gridSizes: string[] }) {
+export default function AddGridSize({ setAvailableGridSizes, availableGridSizes }: { setAvailableGridSizes: React.Dispatch<React.SetStateAction<string[]>>, availableGridSizes: string[] }) {
     const [hoveredSize, setHoveredSize] = useState<string | null>(null)
     // make a grid of 17x17 boxes, each box is a button, when clicked, add the size to the list
     const gridBtnIndexes = []
@@ -28,8 +28,8 @@ export default function AddGridSize({ setGridSize, gridSizes }: { setGridSize: R
     }
 
     const handleGridSizeClick = (size: string) => {
-        const newGridSizes = [...gridSizes, size].sort((a, b) => parseInt(a.split('x')[0]) - parseInt(b.split('x')[0]))
-        setGridSize(newGridSizes)
+        const newAvailableGridSizes = [...availableGridSizes, size].sort((a, b) => parseInt(a.split('x')[0]) - parseInt(b.split('x')[0]))
+        setAvailableGridSizes(newAvailableGridSizes)
         toast.success(`Added grid size: ${size}`)
     }
 
@@ -44,7 +44,7 @@ export default function AddGridSize({ setGridSize, gridSizes }: { setGridSize: R
                     onMouseLeave={() => setHoveredSize(null)}
                 >
                     {gridBtnIndexes.map((size) => {
-                        const isDisabled = gridSizes.includes(size) || (parseInt(size.split('x')[0]) <= 4 && parseInt(size.split('x')[1]) <= 4)
+                        const isDisabled = availableGridSizes.includes(size) || (parseInt(size.split('x')[0]) <= 4 && parseInt(size.split('x')[1]) <= 4)
                         return (
                             <div
                                 key={size}

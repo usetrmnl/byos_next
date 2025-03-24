@@ -2,7 +2,7 @@
   "metadata": {
     "name": "Bitmap Font",
     "creator": "Bitmap Font Designer",
-    "createdAt": "2025-03-22T03:49:08.086Z",
+    "createdAt": "2025-03-24T00:31:15.379Z",
     "version": "1.0",
     "description": "Custom bitmap font created with Bitmap Font Designer"
   },
@@ -760,57 +760,252 @@
         {
           "charCode": 72,
           "char": "H",
-          "data": "goKCgoL+goKCgoKC"
+          "data": "gYGBgY/xgYGBgQAA"
         },
         {
           "charCode": 87,
           "char": "W",
-          "data": "goKCgoKSkqqqxsaC"
+          "data": "w4GBgYmJiYmVYgAA"
         },
         {
           "charCode": 101,
           "char": "e",
-          "data": "AAAAOESCgv6AgkQ4"
+          "data": "AAA8QoSIkKFCPAAA"
         },
         {
           "charCode": 111,
           "char": "o",
-          "data": "AAAAOESCgoKCgkQ4"
+          "data": "AAA8QoGBgYFCPAAA"
         },
         {
           "charCode": 108,
           "char": "l",
-          "data": "cBAQEBAQEBAQEBD+"
+          "data": "IFCIiIiIUCBQjgAA"
         },
         {
           "charCode": 114,
           "char": "r",
-          "data": "AAAAhoiQoMCAgICA"
+          "data": "AACOkKDAgICAgAAA"
         },
         {
           "charCode": 100,
           "char": "d",
-          "data": "AgICOkaCgoKCgkY6"
+          "data": "AQE9Q4GBgYFDPQAA"
         },
         {
           "charCode": 33,
           "char": "!",
-          "data": "EBAQEBAQEBAAABAQ"
+          "data": "EBAQEBAQEAAQEAAA"
         },
         {
           "charCode": 77,
           "char": "M",
-          "data": "gsbGqqqSkoKCgoKC"
+          "data": "gcOlmYmBgYGBgQAA"
         },
         {
           "charCode": 78,
           "char": "N",
-          "data": "gsLCoqKSkoqKhoaC"
+          "data": "gcGhoZGJhYWDgQAA"
         },
         {
           "charCode": 73,
           "char": "I",
-          "data": "OBAAAAAAEBAQABAA"
+          "data": "/xAQEBAICAgI/wAA"
+        },
+        {
+          "charCode": 84,
+          "char": "T",
+          "data": "/hAQEBAQEBAQEAAA"
+        },
+        {
+          "charCode": 104,
+          "char": "h",
+          "data": "gICcosKChoSEhgAA"
+        },
+        {
+          "charCode": 113,
+          "char": "q",
+          "data": "AAE+QoKCgoJMNQUC"
+        },
+        {
+          "charCode": 117,
+          "char": "u",
+          "data": "AACCgoKCgoJFOQAA"
+        },
+        {
+          "charCode": 105,
+          "char": "i",
+          "data": "EAAwUFAQEBASDAAA"
+        },
+        {
+          "charCode": 99,
+          "char": "c",
+          "data": "AAA+QYCAgIBBPgAA"
+        },
+        {
+          "charCode": 107,
+          "char": "k",
+          "data": "wEBDREhQYFBIxwAA"
+        },
+        {
+          "charCode": 98,
+          "char": "b",
+          "data": "gIC8woGBgYHCvAAA"
+        },
+        {
+          "charCode": 119,
+          "char": "w",
+          "data": "AACBgYGBiYlaJAAA"
+        },
+        {
+          "charCode": 102,
+          "char": "f",
+          "data": "Bwj/CAgIBARIMAAA"
+        },
+        {
+          "charCode": 120,
+          "char": "x",
+          "data": "AABBohQQGChFggAA"
+        },
+        {
+          "charCode": 110,
+          "char": "n",
+          "data": "AAC8woGBgYGBgQAA"
+        },
+        {
+          "charCode": 106,
+          "char": "j",
+          "data": "AAEAAQEBAYGCfAAA"
+        },
+        {
+          "charCode": 109,
+          "char": "m",
+          "data": "AACi1YmJiYmJiQAA"
+        },
+        {
+          "charCode": 112,
+          "char": "p",
+          "data": "AAC+YUFBQUFiXEDA"
+        },
+        {
+          "charCode": 115,
+          "char": "s",
+          "data": "AAB+gYB4BgGBfgAA"
+        },
+        {
+          "charCode": 118,
+          "char": "v",
+          "data": "AACBgUFCIiQUCAAA"
+        },
+        {
+          "charCode": 116,
+          "char": "t",
+          "data": "ICD8ICAgICEiHAAA"
+        },
+        {
+          "charCode": 97,
+          "char": "a",
+          "data": "AAB8hgoyQoKGewAA"
+        },
+        {
+          "charCode": 122,
+          "char": "z",
+          "data": "AAD/AgQIECBA/wAA"
+        },
+        {
+          "charCode": 121,
+          "char": "y",
+          "data": "AABBoSFBQUNFPYF+"
+        },
+        {
+          "charCode": 103,
+          "char": "g",
+          "data": "AAF9g4GBgcFnPYF+"
+        },
+        {
+          "charCode": 69,
+          "char": "E",
+          "data": "/4CAgP6AgICA/wAA"
+        },
+        {
+          "charCode": 76,
+          "char": "L",
+          "data": "gICAgICAgICA/wAA"
+        },
+        {
+          "charCode": 79,
+          "char": "O",
+          "data": "PEKBgYGBgYFCPAAA"
+        },
+        {
+          "charCode": 82,
+          "char": "R",
+          "data": "/IKBgYL8oJCIhwAA"
+        },
+        {
+          "charCode": 68,
+          "char": "D",
+          "data": "/IKBgYGBgYGC/AAA"
+        },
+        {
+          "charCode": 83,
+          "char": "S",
+          "data": "PEKBgEwyAYFCPAAA"
+        },
+        {
+          "charCode": 80,
+          "char": "P",
+          "data": "/IKBgYL8gICAgAAA"
+        },
+        {
+          "charCode": 65,
+          "char": "A",
+          "data": "GCRCgYH/gYGBgQAA"
+        },
+        {
+          "charCode": 70,
+          "char": "F",
+          "data": "/4CAgP6AgICAgAAA"
+        },
+        {
+          "charCode": 71,
+          "char": "G",
+          "data": "PEKBgICAh4NFOQAA"
+        },
+        {
+          "charCode": 89,
+          "char": "Y",
+          "data": "gYGBg0U9AQGC/AAA"
+        },
+        {
+          "charCode": 85,
+          "char": "U",
+          "data": "gYGBgYGBgUEjHQAA"
+        },
+        {
+          "charCode": 66,
+          "char": "B",
+          "data": "/IKBgZ6BgYGC/AAA"
+        },
+        {
+          "charCode": 86,
+          "char": "V",
+          "data": "gYGBgYGBQiIUCAAA"
+        },
+        {
+          "charCode": 39,
+          "char": "'",
+          "data": "CAgQAAAAAAAAAAAA"
+        },
+        {
+          "charCode": 44,
+          "char": ",",
+          "data": "AAAAAAAAAAAICBAA"
+        },
+        {
+          "charCode": 63,
+          "char": "?",
+          "data": "OESCggQIEAAQEAAA"
         }
       ]
     },

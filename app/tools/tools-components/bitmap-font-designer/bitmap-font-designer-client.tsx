@@ -1,22 +1,20 @@
 "use client"
 
 import bitmapFontFile from "@/components/bitmap-font/bitmap-font.json"
-import { useRef, useState, useEffect, useCallback, forwardRef, ReactNode, memo, useMemo, Fragment } from "react"
+import { useRef, useState, useEffect, useCallback, forwardRef, ReactNode, memo, useMemo, useTransition, FunctionComponent } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import AddGridSize from "./add-grid-size"
-import { useVirtualizer, VirtualItem } from '@tanstack/react-virtual'
-import BitmapFontEditor from "../bitmap-font-editor"
-import { base64ToBinary, binaryToBase64 } from "../bitmap-font-utils"
-import { Download, Info } from "lucide-react"
+import BitmapFontEditor from "./bitmap-font-editor"
+import { base64ToBinary, binaryToBase64 } from "./bitmap-font-utils"
+import { Download, Info, Upload } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { 
+import {
     Tooltip,
     TooltipContent,
     TooltipProvider,
     TooltipTrigger
 } from "@/components/ui/tooltip"
-import { Slider } from "@/components/ui/slider"
 
 const bitmapFont = bitmapFontFile.fonts;
 
@@ -78,19 +76,54 @@ interface Character {
     charCode: number;
 }
 
-const CharacterItem = memo(({ 
-    charCode, 
-    onCharacterClick, 
-    BinaryToSvgWrapper, 
-    selectedSize,
-    isSelected 
-}: { 
-    charCode: number; 
-    onCharacterClick: (e: React.MouseEvent<HTMLDivElement>) => void; 
-    BinaryToSvgWrapper: React.ComponentType<{ size: string; charCode: number }>;
-    selectedSize: string;
-    isSelected: boolean;
+
+// Combined CharacterItem component with BinaryToSvg functionality
+const CharacterItem = memo(({
+    charCode,
+    charData,
+    onCharacterClick,
+    selectedGridSize,
+    isSelected=false
+}: {
+    charCode: number;
+    charData: string;
+    onCharacterClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+    selectedGridSize: string;
+    isSelected?: boolean;
 }) => {
+    const [width, height] = selectedGridSize.split('x').map(Number);
+    
+    // Render SVG content inline instead of using a separate component
+    const renderSvgContent = () => {
+        if (!charData && charCode != 32) {
+            return <div className="size-5 border border-gray-200 dark:border-gray-600 border-dashed flex items-center justify-center">{String.fromCharCode(charCode)}</div>;
+        }
+        
+        try {
+            // Use binary string directly, ensure it's the right length
+            const binaryArray = charData.padEnd(width * height, '0').slice(0, width * height);
+            
+            // Create a single path element instead of multiple rects
+            const pathData = Array.from({ length: width * height }).map((_, i) => {
+                if (i >= binaryArray.length) return '';
+                const isBlack = binaryArray[i] === '1';
+                if (!isBlack) return '';
+                const x = i % width;
+                const y = Math.floor(i / width);
+                return `M ${x} ${y} h 1 v 1 h -1 z`;
+            }).join(' ');
+            
+            return (
+                <svg className="w-full h-full dark:invert border-[0.5px] border-gray-200 dark:border-gray-600" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+                    <path d={pathData} fill="black" />
+                </svg>
+            );
+        } catch (error) {
+            console.error("Error processing binary:", error);
+            return <div className="size-5 border border-gray-200 dark:border-gray-600 border-dashed flex items-center justify-center text-xs">?</div>;
+        }
+    };
+    
     return (
         <div
             className={cn(
@@ -104,55 +137,51 @@ const CharacterItem = memo(({
             }}
             onClick={onCharacterClick}
             data-char-code={charCode}
+            tabIndex={0}
+            aria-label={`Character ${String.fromCharCode(charCode)}`}
+            onKeyDown={(e) => e.key === 'Enter' && onCharacterClick(e as unknown as React.MouseEvent<HTMLDivElement>)}
         >
             <span className="text-sm mb-1 font-mono">{String.fromCharCode(charCode)}</span>
             <div className="flex-1 flex items-center justify-center">
-                <BinaryToSvgWrapper size={selectedSize} charCode={charCode} />
+                {renderSvgContent()}
             </div>
         </div>
     );
 }, (prevProps, nextProps) => {
-    return prevProps.charCode === nextProps.charCode && 
-           prevProps.selectedSize === nextProps.selectedSize &&
-           prevProps.isSelected === nextProps.isSelected;
+    return prevProps.selectedGridSize === nextProps.selectedGridSize &&
+        prevProps.isSelected === nextProps.isSelected &&
+        prevProps.charCode === nextProps.charCode &&
+        prevProps.charData === nextProps.charData;
 });
 
-const CharacterGrid = memo(({ 
-    selectedSize, 
+const CharacterGrid = ({
+    selectedGridSize,
     onCharacterSelect,
-    BinaryToSvgWrapper,
-    selectedCharacter 
+    selectedCharCode,
+    characterBitmaps,
+    currentCharacterBitmap,
+
 }: {
-    selectedSize: string;
+    selectedGridSize: string;
     onCharacterSelect: (charCode: string) => void;
-    BinaryToSvgWrapper: React.ComponentType<{ size: string; charCode: number }>;
-    selectedCharacter: string;
+    selectedCharCode: number;
+    characterBitmaps: Map<number, string>;
+    currentCharacterBitmap: string | null;
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
-    useEffect(() => {
-        const updateItemsPerRow = () => {
-            if (!containerRef.current) return;
-            const containerWidth = containerRef.current.offsetWidth;
-        };
-
-        updateItemsPerRow();
-        window.addEventListener('resize', updateItemsPerRow);
-        return () => window.removeEventListener('resize', updateItemsPerRow);
-    }, []);
-
     // Scroll to selected character when it changes
     useEffect(() => {
-        if (!containerRef.current || !selectedCharacter) return;
+        if (!containerRef.current || !selectedCharCode) return;
 
-        const selectedElement = containerRef.current.querySelector(`[data-char-code="${selectedCharacter}"]`);
+        const selectedElement = containerRef.current.querySelector(`[data-char-code="${selectedCharCode}"]`);
         if (selectedElement) {
             selectedElement.scrollIntoView({
                 behavior: 'smooth',
                 block: 'nearest'
             });
         }
-    }, [selectedCharacter]);
+    }, [selectedCharCode]);
 
     const handleCharacterClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
         const charCode = e.currentTarget.dataset.charCode;
@@ -161,85 +190,102 @@ const CharacterGrid = memo(({
     }, [onCharacterSelect]);
 
     return (
-        <div 
+        <div
             ref={containerRef}
-            className="w-full overflow-auto border border-gray-200 dark:border-gray-700 rounded-md p-2 h-[32vh]" 
+            className="w-full overflow-auto border border-gray-200 dark:border-gray-700 rounded-md p-2 h-[32vh]"
         >
             <div className="flex flex-wrap gap-1 p-1">
                 {allCharacters.map((char: Character) => (
+                    char.charCode === selectedCharCode? (
+                        <CharacterItem
+                            key={char.charCode}
+                            charCode={char.charCode}
+                            onCharacterClick={handleCharacterClick}
+                            charData={currentCharacterBitmap ?? ''}
+                            selectedGridSize={selectedGridSize}
+                            isSelected={true}
+                        />
+                    ) : (
                     <CharacterItem
                         key={char.charCode}
-                        charCode={char.charCode}
-                        onCharacterClick={handleCharacterClick}
-                        BinaryToSvgWrapper={BinaryToSvgWrapper}
-                        selectedSize={selectedSize}
-                        isSelected={char.charCode.toString() === selectedCharacter}
-                    />
+                            charCode={char.charCode}
+                            onCharacterClick={handleCharacterClick}
+                            charData={characterBitmaps.get(char.charCode) ?? ''}
+                            selectedGridSize={selectedGridSize}
+                        />
+                    )
                 ))}
             </div>
         </div>
     );
-});
+};
 
 // Preview sentence component memoized to avoid unnecessary re-renders - stateless version
-const SentencePreview = memo(({ 
-    fontData, 
-    selectedSize, 
-    selectedCharacter,
-    sentence = "Hello World! The quick brown fox jumps over the lazy dog.",
-    scale = 1,
-    gap = 1,
-    fontVersion
-}: { 
-    fontData: Map<string, Map<number, string>>; 
-    selectedSize: string;
-    selectedCharacter: string;
-    sentence?: string;
-    scale?: number;
-    gap?: number;
-    fontVersion: number;
+const SentencePreview = memo(({
+    characterBitmaps,
+    selectedGridSize,
+    previewText,
+    previewScale,
+    previewGap,
+    selectedCharCode,
+    currentCharacterBitmap
+}: {
+    characterBitmaps: Map<number, string>;
+    selectedGridSize: string;
+    previewText: string;
+    previewScale: number;
+    previewGap: number;
+    selectedCharCode: number;
+    currentCharacterBitmap: string | null;
 }) => {
-    const [width, height] = selectedSize.split('x').map(Number);
-    const charMap = fontData.get(selectedSize);
-    const selectedCharCode = parseInt(selectedCharacter);
-    const uniqueChars = new Set(Array.from(sentence)).size;
-    
+    const [width, height] = selectedGridSize.split('x').map(Number);
+    const charMap = characterBitmaps;
+    const uniqueChars = new Set(Array.from(previewText)).size;
+
     // Count how many characters have bitmap data defined
     const definedChars = useMemo(() => {
         if (!charMap) return 0;
-        return Array.from(sentence)
+        return Array.from(previewText)
             .filter(char => char !== ' ' && charMap.has(char.charCodeAt(0)))
             .length;
-    }, [sentence, charMap]);
+    }, [previewText, charMap]);
 
     // Calculate SVG dimensions
     const svgData = useMemo(() => {
-        const charWidth = width * scale;
-        const charHeight = height * scale;
-        const spaceWidth = width * scale * 0.5; // Space width is half a character
-        const gapWidth = gap;
-        
+        const charWidth = width * previewScale;
+        const charHeight = height * previewScale;
+        const spaceWidth = width * previewScale * 0.5; // Space width is half a character
+        const gapWidth = previewGap;
+
         // Calculate total width by summing all character widths + gaps
         let totalWidth = 0;
-        let paths: { path: string; x: number; charCode: number }[] = [];
-        
+        let paths: { path: string; x: number; charCode: number; isSelected: boolean }[] = [];
+
         // Process each character
-        Array.from(sentence).forEach((char) => {
+        Array.from(previewText).forEach((char) => {
             const charCode = char.charCodeAt(0);
-            
+
             // Handle spaces
             if (char === ' ') {
                 totalWidth += spaceWidth;
                 return;
             }
+
+            // Check if this is the selected character
+            const isSelected = charCode === selectedCharCode;
             
-            const binaryString = charMap?.get(charCode);
+            // Get the correct bitmap data
+            // Use currentCharacterBitmap for selected char, or from the main map for others
+            const binaryString = isSelected && currentCharacterBitmap 
+                ? currentCharacterBitmap 
+                : charMap?.get(charCode);
+                
             if (!binaryString) {
                 // If no data, just add the width
                 totalWidth += charWidth;
                 return;
             }
-            
+
             // Generate path for this character
             const binaryArray = binaryString.padEnd(width * height, '0').slice(0, width * height);
             const pathData = Array.from({ length: width * height }).map((_, i) => {
@@ -250,19 +296,20 @@ const SentencePreview = memo(({
                 const y = Math.floor(i / width);
                 return `M ${x} ${y} h 1 v 1 h -1 z`;
             }).join(' ');
-            
+
             // Add path with position
             paths.push({
                 path: pathData,
                 x: totalWidth,
-                charCode
+                charCode,
+                isSelected
             });
-            
+
             // Increase total width
             totalWidth += charWidth;
             totalWidth += gapWidth; // Add gap after each character
         });
-        
+
         return {
             width: totalWidth,
             height: charHeight,
@@ -270,7 +317,7 @@ const SentencePreview = memo(({
             charWidth,
             charHeight
         };
-    }, [sentence, charMap, width, height, scale, gap, fontVersion]);
+    }, [previewText, charMap, width, height, previewScale, previewGap, selectedCharCode, currentCharacterBitmap]);
 
     return (
         <div className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-md">
@@ -284,51 +331,56 @@ const SentencePreview = memo(({
                             </button>
                         </TooltipTrigger>
                         <TooltipContent>
-                            <p>Characters with defined bitmap data: {definedChars} / {sentence.length - sentence.split(' ').length + 1}</p>
+                            <p>Characters with defined bitmap data: {definedChars} / {previewText.length - previewText.split(' ').length + 1}</p>
                             <p>Preview of how the bitmap font renders text</p>
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
             </div>
             <div className="overflow-x-auto pb-2 border-b border-gray-100 dark:border-gray-800">
-                <svg 
-                    width={svgData.width} 
-                    height={svgData.height} 
-                    viewBox={`0 0 ${svgData.width} ${svgData.height}`} 
+                <svg
+                    width={svgData.width}
+                    height={svgData.height}
+                    viewBox={`0 0 ${svgData.width} ${svgData.height}`}
                     className="dark:invert"
                 >
                     {svgData.paths.map((item, index) => (
-                        <g key={index} transform={`translate(${item.x}, 0) scale(${scale})`}>
-                            <path d={item.path} fill="black" />
+                        <g 
+                            key={index} 
+                            transform={`translate(${item.x}, 0) scale(${previewScale})`}
+                        >
+                            <path 
+                                d={item.path} 
+                                fill={"black"} 
+                            />
                         </g>
                     ))}
                 </svg>
             </div>
             <div className="flex justify-between items-center mt-2">
-                <div className="text-xs text-gray-500">Font size: {selectedSize}</div>
-                <div className="text-xs text-gray-500">{sentence.length} characters ({uniqueChars} unique)</div>
+                <div className="text-xs text-gray-500">Font size: {selectedGridSize}</div>
+                <div className="text-xs text-gray-500">{previewText.length} characters ({uniqueChars} unique)</div>
             </div>
         </div>
     );
 }, (prevProps, nextProps) => {
     // Custom comparison to avoid unnecessary re-renders
     // Only re-render if these specific props change
-    // For fontData, we rely on fontVersion to detect changes since fontData is a ref
-    return prevProps.selectedSize === nextProps.selectedSize && 
-           prevProps.sentence === nextProps.sentence && 
-           prevProps.selectedCharacter === nextProps.selectedCharacter &&
-           prevProps.scale === nextProps.scale &&
-           prevProps.gap === nextProps.gap &&
-           prevProps.fontVersion === nextProps.fontVersion;
+    return prevProps.selectedGridSize === nextProps.selectedGridSize &&
+        prevProps.previewText === nextProps.previewText &&
+        prevProps.previewScale === nextProps.previewScale &&
+        prevProps.previewGap === nextProps.previewGap &&
+        prevProps.selectedCharCode === nextProps.selectedCharCode &&
+        prevProps.currentCharacterBitmap === nextProps.currentCharacterBitmap;
 });
 
 // Scale and gap controls for sentence preview
-const PreviewControls = memo(({ 
-    scale, 
-    gap, 
-    onScaleChange, 
-    onGapChange 
-}: { 
+const PreviewControls = memo(({
+    scale,
+    gap,
+    onScaleChange,
+    onGapChange
+}: {
     scale: number;
     gap: number;
     onScaleChange: (newScale: number) => void;
@@ -337,11 +389,11 @@ const PreviewControls = memo(({
     const handleScaleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         onScaleChange(parseFloat(e.target.value));
     };
-    
+
     const handleGapChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         onGapChange(parseFloat(e.target.value));
     };
-    
+
     return (
         <div className="flex gap-4 items-center justify-end mb-2 text-sm">
             <div className="flex items-center gap-2">
@@ -378,22 +430,22 @@ const PreviewControls = memo(({
     return prevProps.scale === nextProps.scale && prevProps.gap === nextProps.gap;
 });
 
-const SentenceInput = memo(({ 
-    sentence, 
-    onSentenceChange 
-}: { 
-    sentence: string, 
-    onSentenceChange: (newSentence: string) => void 
+const SentenceInput = memo(({
+    previewText,
+    onPreviewTextChange
+}: {
+    previewText: string,
+    onPreviewTextChange: (newPreviewText: string) => void
 }) => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        onSentenceChange(e.target.value);
+        onPreviewTextChange(e.target.value);
     };
-    
+
     return (
         <div className="w-full">
             <Input
                 type="text"
-                value={sentence}
+                value={previewText}
                 onChange={handleChange}
                 placeholder="Type a custom preview sentence..."
                 className="w-full"
@@ -402,139 +454,237 @@ const SentenceInput = memo(({
         </div>
     );
 }, (prevProps, nextProps) => {
-    return prevProps.sentence === nextProps.sentence;
+    return prevProps.previewText === nextProps.previewText;
 });
 
-export default function BitmapFontDesignerClient() {
-    // Create a map of size -> charCode -> binary data for fast access
-    const fontData = useRef(new Map(bitmapFont.map(font => {
-        const size = `${font.width}x${font.height}`;
-        const charMap = new Map<number, string>();
-        font.characters.forEach(char => {
-            // Convert base64 to binary string (1s and 0s) for storage
-            charMap.set(char.charCode, base64ToBinary(char.data));
-        });
-        return [size, charMap];
-    })));
-
-    const [gridSizes, setGridSizes] = useState(bitmapFont.map(font => `${font.width}x${font.height}`));
-    const [selectedSize, setSelectedSize] = useState<string>("8x8");
-    const [selectedCharacter, setSelectedCharacter] = useState<string>(`65`);
-    const [fontVersion, setFontVersion] = useState(0);
-    const [previewVersion, setPreviewVersion] = useState(0);
-    const [previewSentence, setPreviewSentence] = useState("Hello World! The quick brown fox jumps over the lazy dog.");
-    const [previewScale, setPreviewScale] = useState(2);
-    const [previewGap, setPreviewGap] = useState(0);
+// Component for loading font data from file
+const FontFileLoader = memo(({
+    onLoadFont
+}: {
+    onLoadFont: (fontData: any) => void
+}) => {
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
-    function binaryToSvg({charCode, size}: {charCode: number, size: string}): React.ReactNode {
-        const charMap = fontData.current.get(size);
-        const binaryString = charMap?.get(charCode);
-        if (!binaryString) return <div className="size-5 border border-gray-200 dark:border-gray-600 border-dashed flex items-center justify-center">{String.fromCharCode(charCode)}</div>
-
-        try {
-            const [width, height] = size.split('x').map(Number);
-            // Use binary string directly, ensure it's the right length
-            const binaryArray = binaryString.padEnd(width * height, '0').slice(0, width * height);
-
-            // Create a single path element instead of multiple rects
-            const pathData = Array.from({ length: width * height }).map((_, i) => {
-                if (i >= binaryArray.length) return '';
-                const isBlack = binaryArray[i] === '1';
-                if (!isBlack) return '';
-                const x = i % width;
-                const y = Math.floor(i / width);
-                return `M ${x} ${y} h 1 v 1 h -1 z`;
-            }).join(' ');
-
-            return (
-                <div className="size-5 dark:invert border-[0.5px] border-gray-200 dark:border-gray-600 flex items-center justify-center overflow-hidden">
-                    <svg className="w-full h-full" width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
-                        <path d={pathData} fill="black" />
-                    </svg>
-                </div>
-            )
-        } catch (error) {
-            console.error("Error processing binary:", error)
-            return <div className="size-5 border border-gray-200 dark:border-gray-600 border-dashed flex items-center justify-center text-xs">?</div>
+    const handleClick = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.click();
         }
-    }
+    };
+    
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const jsonData = JSON.parse(event.target?.result as string);
+                onLoadFont(jsonData);
+                
+                // Reset the input so the same file can be uploaded again
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+            } catch (error) {
+                console.error("Error parsing JSON font file:", error);
+                alert("Invalid font file format. Please upload a valid JSON file.");
+            }
+        };
+        reader.readAsText(file);
+    };
+    
+    return (
+        <div>
+            <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept=".json" 
+                onChange={handleFileChange} 
+                className="hidden"
+                aria-label="Load font file" 
+            />
+            <Button 
+                onClick={handleClick} 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1"
+            >
+                <Upload className="w-4 h-4" />
+                <span>Load Font</span>
+            </Button>
+        </div>
+    );
+}, () => true); // Always consider equal to prevent unnecessary re-renders
 
-    const MemoizedBinaryToSvg = memo(binaryToSvg, (prevProps, nextProps) => {
-        return prevProps.charCode === nextProps.charCode && 
-               prevProps.size === nextProps.size;
+
+
+
+export default function BitmapFontDesignerClient() {
+    // Process and organize font data into a structured map for efficient access
+    // Format: { "8x8": Map(65 => "10101010..."), "16x16": Map(65 => "10101010..."), ... }
+    const initialFontDataObj: { [fontSize: string]: Map<number, string> } = {};
+    bitmapFont.map(font => {
+        const fontSizeKey = `${font.width}x${font.height}`;
+        const characterBitmapMap = new Map<number, string>();
+        font.characters.forEach(char => {
+            // Convert base64 encoded data to binary string representation (1s and 0s)
+            characterBitmapMap.set(char.charCode, base64ToBinary(char.data));
+        });
+        initialFontDataObj[fontSizeKey] = characterBitmapMap;
     });
 
-    // Memoize the current character's data
-    const currentCharacterData = useMemo(() => {
-        const charMap = fontData.current.get(selectedSize);
-        if (!charMap) return null;
+    // Available grid sizes extracted from the font data (e.g., ["8x8", "16x16"])
+    const [availableGridSizes, setAvailableGridSizes] = useState(
+        bitmapFont.map(font => `${font.width}x${font.height}`)
+    );
+    
+    // Currently selected grid size (e.g., "8x8")
+    const [selectedGridSize, setSelectedGridSize] = useState<string>("8x8");
 
-        const charCode = parseInt(selectedCharacter);
-        const binaryString = charMap.get(charCode);
-        if (!binaryString) return null;
+    // Currently selected character (default: 'A' which has charCode 65)
+    const [selectedCharCode, setSelectedCharCode] = useState<number>(65);
+    
+    // Text used for previewing the font
+    const [previewText, setPreviewText] = useState(
+        "Hello World! The quick brown fox jumps over the lazy dog."
+    );
+    
+    // Preview display settings
+    const [previewScale, setPreviewScale] = useState(2); // Size multiplier
+    const [previewGap, setPreviewGap] = useState(0);     // Space between characters
+    
+    // Map of all character bitmap data for the current grid size
+    const [characterBitmaps, setCharacterBitmaps] = useState<Map<number, string>>(
+        initialFontDataObj[selectedGridSize] ?? new Map()
+    );
+    
+    // Bitmap data for the currently selected character
+    const [currentCharacterBitmap, setCurrentCharacterBitmap] = useState<string | null>(
+        characterBitmaps.get(selectedCharCode) ?? null
+    );
 
-        const [width, height] = selectedSize.split('x').map(Number);
-        
-        return {
-            binaryData: binaryString.padEnd(width * height, '0').slice(0, width * height),
-            width,
-            height
-        };
-    }, [selectedSize, selectedCharacter]);
+    const [isPending, startTransition] = useTransition();
 
-    const handleDataChange = useCallback((newData: string) => {
-        const charMap = fontData.current.get(selectedSize);
-        if (!charMap) return;
-
-        const charCode = parseInt(selectedCharacter);
-        // Store binary string directly
-        charMap.set(charCode, newData);
-        
-        // Don't create a new Map as it's expensive
-        // Instead just update the version to trigger re-renders
-        setPreviewVersion(v => v + 1);
-    }, [selectedSize, selectedCharacter]);
+    const handleDataChange = useCallback((newBinaryData: string, charCode: number) => {
+        // Update state for rerender, then update global data non-blockingly using useTransition
+        startTransition(() => {
+            // Update both the maps and current character data
+            characterBitmaps.set(charCode, newBinaryData);
+            initialFontDataObj[selectedGridSize].set(charCode, newBinaryData);
+            
+            // If this is the currently selected character, update its bitmap too
+            if (charCode === selectedCharCode) {
+                setCurrentCharacterBitmap(newBinaryData);
+            }
+        });
+    }, [selectedGridSize, selectedCharCode]);
 
     const handleSizeChange = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
         const size = e.currentTarget.dataset.size;
         if (!size) return;
-        setSelectedSize(size);
-    }, []);
+        
+        // Update grid size
+        setSelectedGridSize(size);
+        
+        // Get the character maps for this size
+        const newCharacterBitmaps = initialFontDataObj[size] ?? new Map();
+        setCharacterBitmaps(newCharacterBitmaps);
+        
+        // Update the current character bitmap for the selected character in the new size
+        setCurrentCharacterBitmap(newCharacterBitmaps.get(selectedCharCode) ?? null);
+    }, [selectedCharCode]);
 
     const handleCharacterSelect = useCallback((charCode: string) => {
-        setSelectedCharacter(charCode);
-    }, []);
+        const newCharCode = parseInt(charCode);
+        setSelectedCharCode(newCharCode);
+        // Update the current character bitmap when selecting a new character
+        setCurrentCharacterBitmap(characterBitmaps.get(newCharCode) ?? null);
+    }, [characterBitmaps]);
 
-    const handlePreviewSentenceChange = useCallback((newSentence: string) => {
-        setPreviewSentence(newSentence);
+    const handlePreviewTextChange = useCallback((newPreviewText: string) => {
+        setPreviewText(newPreviewText);
     }, []);
 
     const handlePreviewScaleChange = useCallback((newScale: number) => {
         setPreviewScale(newScale);
     }, []);
-    
+
     const handlePreviewGapChange = useCallback((newGap: number) => {
         setPreviewGap(newGap);
     }, []);
 
-    // Memoize the BinaryToSvgWrapper component
-    const BinaryToSvgWrapper = useMemo(() => 
-        memo(({ size, charCode }: { size: string, charCode: number }) => {
-            // Force refresh on previewVersion change
-            return <MemoizedBinaryToSvg key={`${size}-${charCode}-${previewVersion}`} charCode={charCode} size={size} />;
-        }, (prevProps, nextProps) => {
-            return prevProps.size === nextProps.size && 
-                   prevProps.charCode === nextProps.charCode;
-        }),
-        [previewVersion]
-    );
+    // Function to load font data from uploaded JSON file
+    const loadFontData = useCallback((fontData: any) => {
+        try {
+            // Validate that the file has the expected structure
+            if (!fontData.fonts || !Array.isArray(fontData.fonts)) {
+                throw new Error("Invalid font data format: missing 'fonts' array");
+            }
+            
+            // Clear existing font data
+            for (const key in initialFontDataObj) {
+                delete initialFontDataObj[key];
+            }
+            
+            // Create a new set of font sizes
+            const newGridSizes: string[] = [];
+            
+            // Process each font in the uploaded file
+            fontData.fonts.forEach((font: BitmapFont) => {
+                if (typeof font.width !== 'number' || typeof font.height !== 'number' || !Array.isArray(font.characters)) {
+                    throw new Error("Invalid font data structure");
+                }
+                
+                const fontSizeKey = `${font.width}x${font.height}`;
+                newGridSizes.push(fontSizeKey);
+                
+                // Create a new map for this font size
+                const characterBitmapMap = new Map<number, string>();
+                
+                // Process each character in the font
+                font.characters.forEach((char: BitmapFontCharacter) => {
+                    if (typeof char.charCode !== 'number' || typeof char.data !== 'string') {
+                        throw new Error("Invalid character data structure");
+                    }
+                    
+                    // Convert base64 to binary representation
+                    characterBitmapMap.set(char.charCode, base64ToBinary(char.data));
+                });
+                
+                // Add this font size to the font data object
+                initialFontDataObj[fontSizeKey] = characterBitmapMap;
+            });
+            
+            // Update application state
+            setAvailableGridSizes(newGridSizes);
+            
+            // Set the first font size as selected if available, otherwise keep current
+            if (newGridSizes.length > 0) {
+                const firstSize = newGridSizes[0];
+                setSelectedGridSize(firstSize);
+                
+                // Update character bitmaps for the new selected size
+                const newCharacterBitmaps = initialFontDataObj[firstSize] ?? new Map();
+                setCharacterBitmaps(newCharacterBitmaps);
+                
+                // Update current character bitmap
+                setCurrentCharacterBitmap(newCharacterBitmaps.get(selectedCharCode) ?? null);
+            }
+            
+            // Show success notification
+            alert("Font data loaded successfully!");
+        } catch (error) {
+            console.error("Error loading font data:", error);
+            alert(`Failed to load font data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+    }, [selectedCharCode]);
 
     // Function to save the font data to JSON
     const saveFontData = useCallback(() => {
         // Convert the internal binary string representation back to base64 for storage
-        const fontDataToSave = Array.from(fontData.current.entries()).map(([size, charMap]) => {
+        const fontDataToSave = Object.entries(initialFontDataObj).map(([size, charMap]) => {
             const [width, height] = size.split('x').map(Number);
-            
+
             return {
                 width,
                 height,
@@ -563,13 +713,13 @@ export default function BitmapFontDesignerClient() {
 
         // Create a JSON string with the font data
         const jsonData = JSON.stringify(exportData, null, 2);
-        
+
         // Create a meaningful filename with date
         const date = new Date();
         const dateStr = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
         const timeStr = `${date.getHours().toString().padStart(2, '0')}${date.getMinutes().toString().padStart(2, '0')}`;
         const filename = `bitmap-font-${dateStr}-${timeStr}.json`;
-        
+
         // Create a download link for the data
         const blob = new Blob([jsonData], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -578,7 +728,7 @@ export default function BitmapFontDesignerClient() {
         a.download = filename;
         document.body.appendChild(a);
         a.click();
-        
+
         // Clean up
         setTimeout(() => {
             document.body.removeChild(a);
@@ -586,72 +736,72 @@ export default function BitmapFontDesignerClient() {
         }, 0);
     }, []);
 
-    // Add effect to update view when selected character changes
-    useEffect(() => {
-        // Force an update to preview version when selected character changes
-        setPreviewVersion(v => v + 1);
-    }, [selectedCharacter, selectedSize]);
+
 
     return (
         <div className="w-full flex flex-col gap-4">
             <div className="flex flex-wrap gap-2 mb-4 justify-between">
                 <div className="flex flex-wrap gap-2">
-                    {gridSizes.map((size) => (
-                        <Button 
-                            key={size} 
-                            className={cn(selectedSize === size && "bg-blue-500 hover:bg-blue-600")} 
-                            onClick={handleSizeChange} 
+                    {availableGridSizes.map((size) => (
+                        <Button
+                            key={size}
+                            className={cn(selectedGridSize === size && "bg-blue-500 hover:bg-blue-600")}
+                            onClick={handleSizeChange}
                             data-size={size}
+                            size="sm"
                         >
                             {size}
                         </Button>
                     ))}
-                    <AddGridSize setGridSize={setGridSizes} gridSizes={gridSizes} />
+                    <AddGridSize setAvailableGridSizes={setAvailableGridSizes} availableGridSizes={availableGridSizes} />
                 </div>
-                <Button onClick={saveFontData} variant="outline" size="icon" title="Save font data">
-                    <Download className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-2">
+                    <FontFileLoader onLoadFont={loadFontData} />
+                    <Button onClick={saveFontData} variant="outline" size="sm" className="flex items-center gap-1" title="Save font data">
+                        <Download className="w-4 h-4" />
+                        <span>Save Font</span>
+                    </Button>
+                </div>
             </div>
 
-            <CharacterGrid 
-                selectedSize={selectedSize}
+            <CharacterGrid
+                selectedGridSize={selectedGridSize}
                 onCharacterSelect={handleCharacterSelect}
-                BinaryToSvgWrapper={BinaryToSvgWrapper}
-                selectedCharacter={selectedCharacter}
+                selectedCharCode={selectedCharCode}
+                characterBitmaps={characterBitmaps}
+                currentCharacterBitmap={currentCharacterBitmap}
             />
 
             <div className="space-y-2">
-                <SentenceInput 
-                    sentence={previewSentence} 
-                    onSentenceChange={handlePreviewSentenceChange} 
+                <SentenceInput
+                    previewText={previewText}
+                    onPreviewTextChange={handlePreviewTextChange}
                 />
-                
+
                 <PreviewControls
                     scale={previewScale}
                     gap={previewGap}
                     onScaleChange={handlePreviewScaleChange}
                     onGapChange={handlePreviewGapChange}
                 />
-                
-                <SentencePreview 
-                    fontData={fontData.current} 
-                    selectedSize={selectedSize} 
-                    sentence={previewSentence}
-                    selectedCharacter={selectedCharacter}
-                    scale={previewScale}
-                    gap={previewGap}
-                    fontVersion={previewVersion}
+
+                <SentencePreview
+                    characterBitmaps={characterBitmaps}
+                    selectedGridSize={selectedGridSize}
+                    previewText={previewText}
+                    previewScale={previewScale}
+                    previewGap={previewGap}
+                    selectedCharCode={selectedCharCode}
+                    currentCharacterBitmap={currentCharacterBitmap}
                 />
             </div>
-
+            
             <div className="w-full">
                 <BitmapFontEditor
-                    selectedSize={selectedSize}
-                    selectedCharacter={selectedCharacter}
-                    binaryData={currentCharacterData?.binaryData ?? (() => {
-                        const [w, h] = selectedSize.split('x').map(Number);
-                        return '0'.repeat(w * h);
-                    })()}
+                    selectedGridSize={selectedGridSize}
+                    selectedCharCode={selectedCharCode}
+                    currentCharacterBitmap={currentCharacterBitmap ?? ''}
+                    setCurrentCharacterBitmap={setCurrentCharacterBitmap}
                     onDataChange={handleDataChange}
                 />
             </div>
