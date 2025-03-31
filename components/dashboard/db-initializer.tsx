@@ -505,7 +505,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 					className={`${!isExpanded ? "absolute inset-0 mt-0 mb-0" : "relative mt-2 mb-2"} flex justify-center transition-all duration-300 ease-in-out`}
 				>
 					{!isExpanded && (
-						<div className="w-full h-full bg-gradient-to-t from-white dark:from-gray-900 to-transparent pointer-events-none absolute"/>
+						<div className="w-full h-full bg-gradient-to-t from-white dark:from-gray-900 to-transparent pointer-events-none absolute" />
 					)}
 					<button
 						type="button"

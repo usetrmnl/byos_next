@@ -21,7 +21,8 @@ export default async function Page() {
 					Maintenance
 				</h2>
 				<p className="text-muted-foreground">
-					This page is coming soon. Please check back later for maintenance tools.
+					This page is coming soon. Please check back later for maintenance
+					tools.
 				</p>
 			</div>
 

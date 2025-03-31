@@ -7,9 +7,7 @@ export default function NotFoundScreen({ slug }: { slug?: string }) {
 				<>
 					{transform(
 						<div className="w-[800px] h-[480px] bg-white flex flex-col items-center justify-center">
-							<div className="text-6xl text-center">
-								Screen Not Found
-							</div>
+							<div className="text-6xl text-center">Screen Not Found</div>
 							{slug && (
 								<div className="text-xl mt-4 text-center">
 									Could not find screen: {slug}

@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
@@ -7,16 +7,17 @@ import { useFormStatus } from "react-dom";
 // Refresh button component with loading state
 const RefreshButton = ({ slug }: { slug: string }) => {
 	const { pending } = useFormStatus();
-	
+
 	return (
-		<Button 
-			type="submit" 
-			size="sm" 
+		<Button
+			type="submit"
+			size="sm"
 			variant="outline"
 			aria-disabled={pending}
 			disabled={pending}
 		>
-			<RefreshCcw className={`size-4 ${pending ? 'animate-spin' : ''}`} /> Re-run {slug}/getData.ts
+			<RefreshCcw className={`size-4 ${pending ? "animate-spin" : ""}`} />{" "}
+			Re-run {slug}/getData.ts
 		</Button>
 	);
 };

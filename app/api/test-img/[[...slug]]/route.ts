@@ -1,14 +1,14 @@
 export const runtime = "nodejs";
 // export const revalidate = 15; // This controls the default revalidation time
-import { unstable_cacheLife as cacheLife } from 'next/cache'
+import { unstable_cacheLife as cacheLife } from "next/cache";
 
 import { ImageResponse } from "next/og";
 import { createElement } from "react";
 import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
+import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 // import BitmapText from "@/components/bitmap-font/bitmap-text";
-// import fontData from "@/components/bitmap-font/bitmap-font.json";
-import simpleText from "@/app/recipes/screens/simple-text/simple-text";
-
+import fontData from "@/components/bitmap-font/bitmap-font.json";
+// import simpleText from "@/app/recipes/screens/simple-text/simple-text";
 
 // Constants for cache configuration
 const CACHE_STALE_TIME = 20; // seconds
@@ -33,8 +33,11 @@ async function simulateDelay() {
 }
 
 // Function to generate fallback image for errors (only shown on first load with no cache)
-async function generateFallbackImage(errorMessage: string): Promise<{ data: Buffer; timestamp: string; }> {
-	if (IS_DEV) console.log("🔄 Generating fallback image for error:", errorMessage);
+async function generateFallbackImage(
+	errorMessage: string,
+): Promise<{ data: Buffer; timestamp: string }> {
+	if (IS_DEV)
+		console.log("🔄 Generating fallback image for error:", errorMessage);
 	const timestamp = new Date().toISOString();
 
 	// // Create a simple div with error text
@@ -65,31 +68,29 @@ async function generateFallbackImage(errorMessage: string): Promise<{ data: Buff
 	// 	]
 	// );
 
-		// Create a simple div with error text
-		const element = createElement(
-			"div",
-			{
-				style: {
-					display: "flex",
-					flexDirection: "column",
-					fontSize: 30,
-					color: "red",
-					background: "#f8f8f8",
-					width: "100%",
-					height: "100%",
-					padding: "50px",
-					alignItems: "center",
-					justifyContent: "center",
-					fontFamily: "system-ui",
-					textAlign: "center",
-					gap: "20px",
-					border: "5px solid red",
-				},
+	// Create a simple div with error text
+	const element = createElement(
+		"div",
+		{
+			style: {
+				display: "flex",
+				flexDirection: "column",
+				fontSize: 30,
+				color: "red",
+				background: "#f8f8f8",
+				width: "100%",
+				height: "100%",
+				padding: "50px",
+				alignItems: "center",
+				justifyContent: "center",
+				fontFamily: "system-ui",
+				textAlign: "center",
+				gap: "20px",
+				border: "5px solid red",
 			},
-			[
-				"hello"
-			]
-		);
+		},
+		["hello"],
+	);
 
 	// Generate the image response
 	const imageResponse = new ImageResponse(element, {
@@ -99,7 +100,7 @@ async function generateFallbackImage(errorMessage: string): Promise<{ data: Buff
 
 	// Convert to bitmap using render-bmp
 	const buffer = await renderBmp(imageResponse, {
-		ditheringMethod: DitheringMethod.ATKINSON
+		ditheringMethod: DitheringMethod.ATKINSON,
 	});
 
 	if (!buffer) {
@@ -150,9 +151,7 @@ async function generateImageData(slug: string): Promise<{
 					fontFamily: "system-ui",
 				},
 			},
-			[
-				createElement(BitmapText, { text, fontData, scale: 2 }),
-			]
+			[createElement(BitmapText, { text, fontData, scale: 2 })],
 		);
 
 		// Generate the image response
@@ -165,7 +164,7 @@ async function generateImageData(slug: string): Promise<{
 		// Convert to bitmap using render-bmp
 		console.log("🖼️ Converting to bitmap");
 		const buffer = await renderBmp(imageResponse, {
-			ditheringMethod: DitheringMethod.ATKINSON
+			ditheringMethod: DitheringMethod.ATKINSON,
 		});
 
 		if (!buffer) {
@@ -190,12 +189,12 @@ async function generateImageData(slug: string): Promise<{
 
 // PRODUCTION HANDLERS - using 'use cache' from Next.js
 const getCachedImageData = async (slug: string) => {
-	'use cache';
+	"use cache";
 	cacheLife({
 		stale: CACHE_STALE_TIME,
 		revalidate: CACHE_STALE_TIME,
 		expire: 86400, // 1 day
-	})
+	});
 	console.log("🔍 Production cache: Generating fresh data for:", slug);
 	const result = await generateImageData(slug);
 
@@ -207,8 +206,7 @@ const getCachedImageData = async (slug: string) => {
 
 	console.log("✅ Production cache: Cached successfully");
 	return { ...result, cached: true };
-}
-	;
+};
 
 // DEVELOPMENT HANDLERS - using in-memory Map cache
 // Background refresh for development - checks if refresh is needed
@@ -235,7 +233,7 @@ async function refreshDevCache(slug: string) {
 			devCache.set(slug, {
 				data: result.data,
 				timestamp: result.timestamp,
-				expiresAt: Date.now() + (CACHE_STALE_TIME * 1000),
+				expiresAt: Date.now() + CACHE_STALE_TIME * 1000,
 			});
 		} else {
 			console.log("❌ Dev cache refresh failed, keeping existing cache");
@@ -253,7 +251,10 @@ async function getFromDevCache(slug: string): Promise<{
 	cached?: boolean;
 }> {
 	if (!IS_DEV || !devCache) {
-		return { error: "Dev cache not available", timestamp: new Date().toISOString() };
+		return {
+			error: "Dev cache not available",
+			timestamp: new Date().toISOString(),
+		};
 	}
 
 	// Always trigger background refresh - it will decide if needed
@@ -266,7 +267,7 @@ async function getFromDevCache(slug: string): Promise<{
 		return {
 			data: cached.data,
 			timestamp: cached.timestamp,
-			cached: true
+			cached: true,
 		};
 	}
 
@@ -280,34 +281,47 @@ async function getFromDevCache(slug: string): Promise<{
 		devCache.set(slug, {
 			data: result.data,
 			timestamp: result.timestamp,
-			expiresAt: Date.now() + (CACHE_STALE_TIME * 1000),
+			expiresAt: Date.now() + CACHE_STALE_TIME * 1000,
 		});
 	}
 
 	return { ...result, cached: false };
 }
 
-export async function GET(request: Request, { params }: { params: Promise<{ slug?: string[] }> }) {
+export async function GET(request: Request, {
+	params,
+}: { params: Promise<{ slug?: string[] }> }) {
 	const resolvedParams = await params;
-	const slug = resolvedParams.slug ? resolvedParams.slug.join("/") : "default";
+	const slug = resolvedParams?.slug ? resolvedParams.slug.join("/") : "default";
 	if (IS_DEV) console.log("📥 Received request for slug:", slug);
+
+
+	const requestHeaders = new Headers(request.headers)
+	console.log("🔍 Request headers:", requestHeaders);
 
 	try {
 		// SIMPLIFIED LOGIC: Get data, using appropriate cache strategy based on environment
-		const result = IS_DEV && devCache
-			? await getFromDevCache(slug)
-			: await getCachedImageData(slug);
+		const result =
+			IS_DEV && devCache
+				? await getFromDevCache(slug)
+				: await getCachedImageData(slug);
 
 		// If we have image data, return it immediately
 		if (result.data) {
 			const source = IS_DEV
-				? (result.cached ? "dev-cache" : "dev-fresh")
-				: (result.cached ? "prod-cache" : "prod-fresh");
+				? result.cached
+					? "dev-cache"
+					: "dev-fresh"
+				: result.cached
+					? "prod-cache"
+					: "prod-fresh";
 
 			if (IS_DEV) console.log(`✅ Returning image from ${source}`);
 
 			// Make sure buffer length exists and is safe to convert
-			const contentLength = result.data?.length ? result.data.length.toString() : `${800 * 480}`;
+			const contentLength = result.data?.length
+				? result.data.length.toString()
+				: `${800 * 480}`;
 
 			return new Response(result.data, {
 				headers: {
@@ -322,7 +336,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 
 		// If generation failed and we have no cache - show error image
 		if (IS_DEV) console.log("❌ No image data available, showing error image");
-		const fallback = await generateFallbackImage(result.error || "Unknown error");
+		const fallback = await generateFallbackImage(
+			result.error || "Unknown error",
+		);
 
 		// Safety check for fallback data
 		if (!fallback || !fallback.data) {
@@ -344,19 +360,23 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 
 		// Show error image
 		try {
-			const errorMessage = error instanceof Error ? error.message : "Unknown error";
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error";
 			if (IS_DEV) console.log("🚨 Critical error, showing error image");
 			const fallback = await generateFallbackImage(errorMessage);
 
 			// Final safety check
 			if (!fallback || !fallback.data) {
-				return new Response(`Critical failure: Failed to generate error image`, {
-					status: 500,
-					headers: {
-						"Content-Type": "text/plain",
-						"Cache-Control": "no-store",
-					} as HeadersInit,
-				});
+				return new Response(
+					`Critical failure: Failed to generate error image`,
+					{
+						status: 500,
+						headers: {
+							"Content-Type": "text/plain",
+							"Cache-Control": "no-store",
+						} as HeadersInit,
+					},
+				);
 			}
 
 			return new Response(fallback.data, {
@@ -370,14 +390,20 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
 				} as HeadersInit,
 			});
 		} catch (fallbackError) {
-			console.error("💥 Fatal failure - could not generate error image:", fallbackError);
-			return new Response(`Critical failure: ${error instanceof Error ? error.message : "Unknown error"}`, {
-				status: 500,
-				headers: {
-					"Content-Type": "text/plain",
-					"Cache-Control": "no-store",
-				} as HeadersInit,
-			});
+			console.error(
+				"💥 Fatal failure - could not generate error image:",
+				fallbackError,
+			);
+			return new Response(
+				`Critical failure: ${error instanceof Error ? error.message : "Unknown error"}`,
+				{
+					status: 500,
+					headers: {
+						"Content-Type": "text/plain",
+						"Cache-Control": "no-store",
+					} as HeadersInit,
+				},
+			);
 		}
 	}
 }

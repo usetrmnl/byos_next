@@ -4,7 +4,7 @@ import screens from "@/app/recipes/screens.json";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 
-export const dynamic = 'force-static';
+export const dynamic = "force-static";
 
 // Get published components
 const getPublishedComponents = () => {

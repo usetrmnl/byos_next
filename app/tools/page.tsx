@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import tools from "@/app/tools/tools.json";
 import { Badge } from "@/components/ui/badge";
 
-export const dynamic = 'force-static';
+export const dynamic = "force-static";
 
 // Tool configuration type
 type ToolConfig = {
@@ -32,10 +32,7 @@ const getPublishedTools = () => {
 };
 
 // Component for a single card
-const ToolCard = ({
-	slug,
-	config,
-}: { slug: string; config: ToolConfig }) => {
+const ToolCard = ({ slug, config }: { slug: string; config: ToolConfig }) => {
 	return (
 		<Link
 			key={slug}
@@ -105,7 +102,7 @@ const ToolsGrid = () => {
 			acc[category].push([slug, config]);
 			return acc;
 		},
-		{} as Record<string, Array<[string, ToolConfig]>>
+		{} as Record<string, Array<[string, ToolConfig]>>,
 	);
 
 	// Sort categories alphabetically
@@ -138,4 +135,4 @@ export default function ToolsIndex() {
 			</Suspense>
 		</div>
 	);
-} 
+}

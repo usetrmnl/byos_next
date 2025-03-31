@@ -1,14 +1,13 @@
-export const runtime = "nodejs"
+export const runtime = "nodejs";
 export const revalidate = 60;
 
 import type { NextRequest } from "next/server";
 import { ImageResponse } from "next/og";
-import fs from "fs";
-import path from "path";
 import { createElement, cache } from "react";
 import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
+import loadFont from "@/utils/font-loader";
 
 // Generate static params for the bitmap route
 export async function generateStaticParams() {
@@ -23,7 +22,7 @@ export async function generateStaticParams() {
 // Logging utility to control log output based on environment
 const logger = {
 	info: (message: string) => {
-		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
 			console.log(message);
 		}
 	},
@@ -35,19 +34,19 @@ const logger = {
 		}
 	},
 	success: (message: string) => {
-		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
 			console.log(`✅ ${message}`);
 		}
 	},
 	warn: (message: string, error?: unknown) => {
-		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
 			if (error) {
 				console.warn(message, error);
 			} else {
 				console.warn(message);
 			}
 		}
-	}
+	},
 };
 
 // Define types for our cache
@@ -65,33 +64,22 @@ declare global {
 // Use the global bitmap cache only in development
 const getBitmapCache = (): Map<string, CacheItem> | null => {
 	// Check for forced cache usage via environment variable
-	const forceBitmapCache = process.env.FORCE_BITMAP_CACHE === 'true';
-	
+	const forceBitmapCache = process.env.FORCE_BITMAP_CACHE === "true";
+
 	// In production, return null unless forced
-	if (process.env.NODE_ENV === 'production' && !forceBitmapCache) {
+	if (process.env.NODE_ENV === "production" && !forceBitmapCache) {
 		return null;
 	}
-	
+
 	// Use global cache in development or when forced in production
 	if (!global.bitmapCache) {
 		global.bitmapCache = new Map<string, CacheItem>();
-		logger.info(`Initializing bitmap cache (${process.env.NODE_ENV} mode${forceBitmapCache ? ', forced' : ''})`);
+		logger.info(
+			`Initializing bitmap cache (${process.env.NODE_ENV} mode${forceBitmapCache ? ", forced" : ""})`,
+		);
 	}
 	return global.bitmapCache;
 };
-
-// Update the loadFont cache function
-const loadFont = cache(() => {
-	try {
-		return {
-			blockKie: fs.readFileSync(path.resolve("./public/fonts/BlockKie.ttf")),
-			geneva9: fs.readFileSync(path.resolve("./public/fonts/geneva-9.ttf"))
-		};
-	} catch (error) {
-		logger.error("Error loading fonts:", error);
-		return null;
-	}
-});
 
 // Cache the fonts at module initialization
 const fonts = loadFont();
@@ -100,19 +88,21 @@ const fonts = loadFont();
 const getImageOptions = (recipeId: string) => {
 	// Check if the recipe exists and has doubleSizeForSharperText setting
 	const config = screens[recipeId as keyof typeof screens];
-	
+
 	// Perform thorough type checking for nested properties
 	let useDoubling = false;
-	if (config && 
-		'renderSettings' in config && 
-		config.renderSettings && 
-		typeof config.renderSettings === 'object' &&
-		'doubleSizeForSharperText' in config.renderSettings) {
+	if (
+		config &&
+		"renderSettings" in config &&
+		config.renderSettings &&
+		typeof config.renderSettings === "object" &&
+		"doubleSizeForSharperText" in config.renderSettings
+	) {
 		useDoubling = Boolean(config.renderSettings.doubleSizeForSharperText);
 	}
-	
+
 	const scaleFactor = useDoubling ? 2 : 1;
-	
+
 	return {
 		width: 800 * scaleFactor,
 		height: 480 * scaleFactor,
@@ -153,29 +143,31 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 			);
 			logger.info(`Recipe component loaded: ${recipeId}`);
 			let props = screens[recipeId as keyof typeof screens].props || {};
-			
+
 			// Handle data fetching recipes
 			if (screens[recipeId as keyof typeof screens].hasDataFetch) {
 				try {
 					const { default: fetchDataFunction } = await import(
 						`@/app/recipes/screens/${recipeId}/getData.ts`
 					);
-					
+
 					// Set a timeout for data fetching to prevent hanging
 					const fetchPromise = fetchDataFunction();
 					const timeoutPromise = new Promise((_, reject) => {
 						setTimeout(() => reject(new Error("Data fetch timeout")), 10000);
 					});
-					
+
 					// Race between the fetch and the timeout
-					const fetchedData = await Promise.race([fetchPromise, timeoutPromise])
-						.catch(error => {
-							logger.warn(`Data fetch error for ${recipeId}:`, error);
-							return null;
-						});
-					
+					const fetchedData = await Promise.race([
+						fetchPromise,
+						timeoutPromise,
+					]).catch((error) => {
+						logger.warn(`Data fetch error for ${recipeId}:`, error);
+						return null;
+					});
+
 					// Check if the fetched data is valid
-					if (fetchedData && typeof fetchedData === 'object') {
+					if (fetchedData && typeof fetchedData === "object") {
 						props = fetchedData;
 					} else {
 						logger.warn(`Invalid or missing data for ${recipeId}`);
@@ -192,15 +184,19 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 		}
 
 		// Use recipe-specific image options
-		const pngResponse = await new ImageResponse(element, getImageOptions(recipeId));
-		return await renderBmp(pngResponse, { ditheringMethod: DitheringMethod.ATKINSON });
+		const pngResponse = await new ImageResponse(
+			element,
+			getImageOptions(recipeId),
+		);
+		return await renderBmp(pngResponse, {
+			ditheringMethod: DitheringMethod.ATKINSON,
+		});
 	} catch (error) {
 		logger.error(`Error loading recipe component ${recipeId}:`, error);
 		// Return an empty buffer instead of null to prevent undefined errors
 		return Buffer.from([]);
 	}
 });
-
 
 export async function GET(
 	req: NextRequest,
@@ -213,10 +209,10 @@ export async function GET(
 		const cacheKey = `api/bitmap/${bitmapPath}`;
 
 		logger.info(`Bitmap request for: ${bitmapPath}`);
-		
+
 		// Get the bitmap cache (will be null in production)
 		const bitmapCache = getBitmapCache();
-		
+
 		// Only check cache in development
 		if (bitmapCache?.has(cacheKey)) {
 			const item = bitmapCache.get(cacheKey);
@@ -336,7 +332,11 @@ const generateBitmap = cache(async (bitmapPath: string, cacheKey: string) => {
 	const recipeBuffer = await loadRecipeBuffer(recipeId);
 
 	// Safety check for buffer presence and non-empty
-	if (!recipeBuffer || !(recipeBuffer instanceof Buffer) || recipeBuffer.length === 0) {
+	if (
+		!recipeBuffer ||
+		!(recipeBuffer instanceof Buffer) ||
+		recipeBuffer.length === 0
+	) {
 		logger.error(`Failed to generate valid buffer for ${recipeId}`);
 		throw new Error("Failed to generate recipe buffer");
 	}

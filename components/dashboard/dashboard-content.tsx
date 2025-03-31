@@ -1,6 +1,5 @@
 "use client";
 
-import { use } from "react";
 import {
 	Table,
 	TableBody,
@@ -25,20 +24,16 @@ import { ArrowRightIcon } from "lucide-react";
 import Link from "next/link";
 
 interface DashboardContentProps {
-	devicesPromise: Promise<Device[]>;
-	systemLogsPromise: Promise<SystemLog[]>;
+	devices: Device[];
+	systemLogs: SystemLog[];
 	hostUrl: string;
 }
 
 export const DashboardContent = ({
-	devicesPromise,
-	systemLogsPromise,
+	devices,
+	systemLogs,
 	hostUrl,
 }: DashboardContentProps) => {
-	// Use the 'use' hook to handle the promises
-	const devices = use(devicesPromise);
-	const systemLogs = use(systemLogsPromise);
-
 	// Process devices data
 	const processedDevices = devices.map((device) => ({
 		...device,
@@ -52,10 +47,10 @@ export const DashboardContent = ({
 	const lastUpdatedDevice =
 		processedDevices.length > 0
 			? processedDevices.sort(
-				(a, b) =>
-					new Date(b.last_update_time || "").getTime() -
-					new Date(a.last_update_time || "").getTime(),
-			)[0]
+					(a, b) =>
+						new Date(b.last_update_time || "").getTime() -
+						new Date(a.last_update_time || "").getTime(),
+				)[0]
 			: null;
 
 	return (
@@ -139,13 +134,18 @@ export const DashboardContent = ({
 					<Card>
 						<CardHeader>
 							<CardTitle>System Status</CardTitle>
-							<CardDescription>Overview of all connected devices</CardDescription>
+							<CardDescription>
+								Overview of all connected devices
+							</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 								<div>
 									<h3 className="text-sm font-medium mb-2">Online Devices</h3>
-									<div className="space-y-2 max-h-[100px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+									<div
+										className="space-y-2 max-h-[100px] overflow-y-auto"
+										style={{ scrollbarWidth: "thin" }}
+									>
 										{onlineDevices.length > 0 ? (
 											onlineDevices.map((device) => (
 												<div
@@ -174,11 +174,14 @@ export const DashboardContent = ({
 												No devices are online
 											</div>
 										)}
-										</div>
+									</div>
 								</div>
 								<div>
 									<h3 className="text-sm font-medium mb-2">Offline Devices</h3>
-									<div className="space-y-2 max-h-[100px] overflow-y-auto" style={{ scrollbarWidth: "thin" }}>
+									<div
+										className="space-y-2 max-h-[100px] overflow-y-auto"
+										style={{ scrollbarWidth: "thin" }}
+									>
 										{offlineDevices.length > 0 ? (
 											offlineDevices.map((device) => (
 												<div
@@ -207,7 +210,6 @@ export const DashboardContent = ({
 												No devices are offline
 											</div>
 										)}
-									
 									</div>
 								</div>
 							</div>
@@ -215,7 +217,6 @@ export const DashboardContent = ({
 					</Card>
 				</div>
 			</div>
-
 
 			<Card className="mt-2 md:mt-4 gap-4">
 				<CardHeader>
@@ -252,10 +253,10 @@ export const DashboardContent = ({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
+													new Date(prevLog.created_at || "").getTime(),
 											) /
-											1000 >=
-											3);
+												1000 >=
+												3);
 									// Check if we should show level based on level difference with previous log or time difference
 									const shouldLevelBeShown =
 										index === 0 ||
@@ -263,10 +264,10 @@ export const DashboardContent = ({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
+													new Date(prevLog.created_at || "").getTime(),
 											) /
-											1000 >=
-											3);
+												1000 >=
+												3);
 
 									return (
 										<TableRow key={log.id}>

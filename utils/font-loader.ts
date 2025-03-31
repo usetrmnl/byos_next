@@ -2,14 +2,20 @@ import fs from "fs";
 import path from "path";
 import { cache } from "react";
 
-// Load fonts once at module initialization time
-export const fonts = cache(() => {
+const loadFont = cache(() => {
 	try {
-		return {
-			blockKie: fs.readFileSync(path.resolve("./public/fonts/BlockKie.ttf")),
-		};
+		const blockKieFont = Buffer.from(
+			fs.readFileSync(path.resolve("./public/fonts/BlockKie.ttf")),
+		);
+		const geneva9Font = Buffer.from(
+			fs.readFileSync(path.resolve("./public/fonts/geneva-9.ttf")),
+		);
+		console.log("Fonts loaded successfully");
+		return { blockKie: blockKieFont, geneva9: geneva9Font };
 	} catch (error) {
-		console.error("Error loading font:", error);
-		return { blockKie: null };
+		console.error("Error loading fonts:", error);
+		return null;
 	}
-})();
+});
+
+export default loadFont;

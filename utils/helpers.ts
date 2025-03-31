@@ -253,9 +253,9 @@ export function estimateBatteryLife(
 	batteryCapacity = 1800, // use 2500mAh if you have battery upgrade
 ): { batteryPercentage: number; remainingDays: number; isCharging: boolean } {
 	// Battery voltage range (adjust based on real battery discharge curve if needed)
-	const V_CHARGING = 4.60; // Charging voltage
+	const V_CHARGING = 4.6; // Charging voltage
 	const V_MAX = 4.2; // Fully charged
-	const V_MIN = 3.60; // Cutoff voltage
+	const V_MIN = 3.6; // Cutoff voltage
 
 	// Estimate battery percentage (linear approximation)
 	const batteryPercentage = Math.max(

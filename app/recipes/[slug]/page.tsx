@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import { createElement, Suspense, use, cache } from "react";
 import { ImageResponse } from "next/og";
 import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
@@ -12,11 +10,12 @@ import RecipeProps from "@/components/recipes/recipe-props";
 import { revalidateTag } from "next/cache";
 import Link from "next/link";
 import satori from "satori";
+import loadFont from "@/utils/font-loader";
 
 // Logging utility to control log output based on environment
 const logger = {
 	info: (message: string) => {
-		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
 			console.log(message);
 		}
 	},
@@ -28,24 +27,24 @@ const logger = {
 		}
 	},
 	success: (message: string) => {
-		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
 			console.log(`✅ ${message}`);
 		}
 	},
 	warn: (message: string, error?: unknown) => {
-		if (process.env.NODE_ENV !== 'production' || process.env.DEBUG === 'true') {
+		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
 			if (error) {
 				console.warn(message, error);
 			} else {
 				console.warn(message);
 			}
 		}
-	}
+	},
 };
 
 export async function generateMetadata() {
 	// This empty function enables streaming for this route
-	return {}
+	return {};
 }
 
 // Server action for revalidating data
@@ -54,23 +53,6 @@ async function refreshData(slug: string) {
 	await new Promise((resolve) => setTimeout(resolve, 500)); // Demo loading state
 	revalidateTag(slug);
 }
-
-// Load fonts as Buffer for Node.js as specified in Satori docs - using React's cache
-const loadFont = cache(() => {
-	try {
-		const blockKieFont = Buffer.from(
-			fs.readFileSync(path.resolve("./public/fonts/BlockKie.ttf")),
-		);
-		const geneva9Font = Buffer.from(
-			fs.readFileSync(path.resolve("./public/fonts/geneva-9.ttf")),
-		);
-		logger.success("Fonts loaded successfully");
-		return { blockKie: blockKieFont, geneva9: geneva9Font };
-	} catch (error) {
-		logger.error("Error loading fonts:", error);
-		return null;
-	}
-});
 
 // Cache the fonts at module initialization
 const fonts = loadFont();
@@ -126,11 +108,13 @@ const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 		});
 
 		// Race between the fetch and the timeout
-		const fetchedData = await Promise.race([fetchPromise, timeoutPromise])
-			.catch((error) => {
-				logger.error(`Data fetch error for ${slug}:`, error);
-				return null;
-			});
+		const fetchedData = await Promise.race([
+			fetchPromise,
+			timeoutPromise,
+		]).catch((error) => {
+			logger.error(`Data fetch error for ${slug}:`, error);
+			return null;
+		});
 
 		// Check if the fetched data is valid
 		if (fetchedData && typeof fetchedData === "object") {
@@ -157,25 +141,25 @@ const getImageOptions = (config: RecipeConfig) => {
 		fonts: [
 			...(fonts?.blockKie
 				? [
-					{
-						name: "BlockKie",
-						data: fonts.blockKie,
-						weight: 400 as const,
-						style: "normal" as const,
-						textRendering: 0,
-					},
-				]
+						{
+							name: "BlockKie",
+							data: fonts.blockKie,
+							weight: 400 as const,
+							style: "normal" as const,
+							textRendering: 0,
+						},
+					]
 				: []),
 			...(fonts?.geneva9
 				? [
-					{
-						name: "Geneva9",
-						data: fonts.geneva9,
-						weight: 400 as const,
-						style: "normal" as const,
-						textRendering: 0,
-					},
-				]
+						{
+							name: "Geneva9",
+							data: fonts.geneva9,
+							weight: 400 as const,
+							style: "normal" as const,
+							textRendering: 0,
+						},
+					]
 				: []),
 		],
 		shapeRendering: 1,
@@ -210,17 +194,19 @@ declare global {
 // Cache management function
 const getRenderCache = (): Map<string, CacheItem> | null => {
 	// Check for forced cache usage via environment variable
-	const forceBitmapCache = process.env.FORCE_BITMAP_CACHE === 'true';
-	
+	const forceBitmapCache = process.env.FORCE_BITMAP_CACHE === "true";
+
 	// In production, return null unless forced
-	if (process.env.NODE_ENV === 'production' && !forceBitmapCache) {
+	if (process.env.NODE_ENV === "production" && !forceBitmapCache) {
 		return null;
 	}
-	
+
 	// Use global cache in development or when forced in production
 	if (!global.renderCache) {
 		global.renderCache = new Map<string, CacheItem>();
-		logger.info(`Initializing render cache (${process.env.NODE_ENV} mode${forceBitmapCache ? ', forced' : ''})`);
+		logger.info(
+			`Initializing render cache (${process.env.NODE_ENV} mode${forceBitmapCache ? ", forced" : ""})`,
+		);
 	}
 	return global.renderCache;
 };
@@ -229,101 +215,105 @@ const getRenderCache = (): Map<string, CacheItem> | null => {
 const CACHE_DURATION = 60;
 
 // Combined render function for all formats
-const renderAllFormats = cache(async (
-	slug: string,
-	Component: React.ComponentType<ComponentProps>,
-	props: ComponentProps,
-	config: RecipeConfig
-): Promise<CacheItem> => {
-	const renderCache = getRenderCache();
-	const cacheKey = `${slug}-${JSON.stringify(props)}`;
-	
-	// Check cache first
-	if (renderCache?.has(cacheKey)) {
-		const cached = renderCache.get(cacheKey);
-		if (cached && cached.expiresAt > Date.now()) {
-			logger.info(`Cache hit for ${slug} renders`);
-			return cached;
+const renderAllFormats = cache(
+	async (
+		slug: string,
+		Component: React.ComponentType<ComponentProps>,
+		props: ComponentProps,
+		config: RecipeConfig,
+	): Promise<CacheItem> => {
+		const renderCache = getRenderCache();
+		const cacheKey = `${slug}-${JSON.stringify(props)}`;
+
+		// Check cache first
+		if (renderCache?.has(cacheKey)) {
+			const cached = renderCache.get(cacheKey);
+			if (cached && cached.expiresAt > Date.now()) {
+				logger.info(`Cache hit for ${slug} renders`);
+				return cached;
+			}
+			logger.info(`Cache expired for ${slug} renders`);
 		}
-		logger.info(`Cache expired for ${slug} renders`);
-	}
-	
-	try {
-		logger.info(`🔄 Generating all formats for: ${slug}`);
-		
-		// Generate all formats in parallel
-		const [bitmapResult, pngResult, svgResult] = await Promise.all([
-			(async () => {
-				try {
-					const pngResponse = await new ImageResponse(
-						createElement(Component, props),
-						getImageOptions(config),
-					);
-					return await renderBmp(pngResponse, { ditheringMethod: DitheringMethod.ATKINSON });
-				} catch (error) {
-					logger.error(`Error generating bitmap for ${slug}:`, error);
-					return null;
-				}
-			})(),
-			(async () => {
-				try {
-					const pngResponse = await new ImageResponse(
-						createElement(Component, props),
-						getImageOptions(config),
-					);
-					const pngBuffer = await pngResponse.arrayBuffer();
-					return Buffer.from(pngBuffer);
-				} catch (error) {
-					logger.error(`Error generating PNG for ${slug}:`, error);
-					return null;
-				}
-			})(),
-			(async () => {
-				try {
-					const element = createElement(Component, props);
-					return await satori(element, getImageOptions(config));
-				} catch (error) {
-					logger.error(`Error generating SVG for ${slug}:`, error);
-					return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
+
+		try {
+			logger.info(`🔄 Generating all formats for: ${slug}`);
+
+			// Generate all formats in parallel
+			const [bitmapResult, pngResult, svgResult] = await Promise.all([
+				(async () => {
+					try {
+						const pngResponse = await new ImageResponse(
+							createElement(Component, props),
+							getImageOptions(config),
+						);
+						return await renderBmp(pngResponse, {
+							ditheringMethod: DitheringMethod.ATKINSON,
+						});
+					} catch (error) {
+						logger.error(`Error generating bitmap for ${slug}:`, error);
+						return null;
+					}
+				})(),
+				(async () => {
+					try {
+						const pngResponse = await new ImageResponse(
+							createElement(Component, props),
+							getImageOptions(config),
+						);
+						const pngBuffer = await pngResponse.arrayBuffer();
+						return Buffer.from(pngBuffer);
+					} catch (error) {
+						logger.error(`Error generating PNG for ${slug}:`, error);
+						return null;
+					}
+				})(),
+				(async () => {
+					try {
+						const element = createElement(Component, props);
+						return await satori(element, getImageOptions(config));
+					} catch (error) {
+						logger.error(`Error generating SVG for ${slug}:`, error);
+						return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
 						<rect width="800" height="480" fill="#f0f0f0" />
 						<text x="400" y="240" font-family="Arial" font-size="24" text-anchor="middle">
 							Unable to generate SVG content
 						</text>
 					</svg>`;
-				}
-			})()
-		]);
-		
-		const result = {
-			bitmap: bitmapResult,
-			png: pngResult,
-			svg: svgResult,
-			expiresAt: Date.now() + (CACHE_DURATION * 1000)
-		};
-		
-		// Store in cache if enabled
-		if (renderCache) {
-			renderCache.set(cacheKey, result);
-			logger.success(`Cached all renders for: ${slug}`);
+					}
+				})(),
+			]);
+
+			const result = {
+				bitmap: bitmapResult,
+				png: pngResult,
+				svg: svgResult,
+				expiresAt: Date.now() + CACHE_DURATION * 1000,
+			};
+
+			// Store in cache if enabled
+			if (renderCache) {
+				renderCache.set(cacheKey, result);
+				logger.success(`Cached all renders for: ${slug}`);
+			}
+
+			return result;
+		} catch (error) {
+			logger.error(`Error generating formats for ${slug}:`, error);
+			return {
+				bitmap: null,
+				png: null,
+				svg: null,
+				expiresAt: Date.now(),
+			};
 		}
-		
-		return result;
-	} catch (error) {
-		logger.error(`Error generating formats for ${slug}:`, error);
-		return {
-			bitmap: null,
-			png: null,
-			svg: null,
-			expiresAt: Date.now()
-		};
-	}
-});
+	},
+);
 
 // Render component with appropriate format
 const RenderComponent = ({
 	slug,
 	format,
-	title
+	title,
 }: {
 	slug: string;
 	format: "bitmap" | "png" | "svg" | "react";
@@ -332,13 +322,21 @@ const RenderComponent = ({
 	// Fetch config and handle null case
 	const configResult = use(Promise.resolve(fetchConfig(slug)));
 	if (!configResult) {
-		return <div className="w-full h-full flex items-center justify-center">Configuration not found</div>;
+		return (
+			<div className="w-full h-full flex items-center justify-center">
+				Configuration not found
+			</div>
+		);
 	}
 
 	// Fetch component and handle null case
 	const componentResult = use(Promise.resolve(fetchComponent(slug)));
 	if (!componentResult) {
-		return <div className="w-full h-full flex items-center justify-center">Component not found</div>;
+		return (
+			<div className="w-full h-full flex items-center justify-center">
+				Component not found
+			</div>
+		);
 	}
 
 	// Now we have valid config and component
@@ -354,10 +352,10 @@ const RenderComponent = ({
 		return (
 			<div
 				style={{
-					transform: useDoubling ? 'scale(0.5)' : 'none',
-					transformOrigin: 'top left',
-					width: useDoubling ? '200%' : '100%',
-					height: useDoubling ? '200%' : '100%'
+					transform: useDoubling ? "scale(0.5)" : "none",
+					transformOrigin: "top left",
+					width: useDoubling ? "200%" : "100%",
+					height: useDoubling ? "200%" : "100%",
 				}}
 			>
 				<Component {...props} />
@@ -366,12 +364,18 @@ const RenderComponent = ({
 	}
 
 	// Get all rendered formats
-	const renders = use(Promise.resolve(renderAllFormats(slug, Component, props, config)));
+	const renders = use(
+		Promise.resolve(renderAllFormats(slug, Component, props, config)),
+	);
 
 	// For bitmap rendering
 	if (format === "bitmap") {
 		if (!renders.bitmap) {
-			return <div className="w-full h-full flex items-center justify-center">Failed to generate bitmap</div>;
+			return (
+				<div className="w-full h-full flex items-center justify-center">
+					Failed to generate bitmap
+				</div>
+			);
 		}
 
 		return (
@@ -389,7 +393,11 @@ const RenderComponent = ({
 	// For PNG rendering
 	if (format === "png") {
 		if (!renders.png) {
-			return <div className="w-full h-full flex items-center justify-center">Failed to generate PNG</div>;
+			return (
+				<div className="w-full h-full flex items-center justify-center">
+					Failed to generate PNG
+				</div>
+			);
 		}
 
 		return (
@@ -407,7 +415,11 @@ const RenderComponent = ({
 	// For SVG rendering
 	if (format === "svg") {
 		if (!renders.svg) {
-			return <div className="w-full h-full flex items-center justify-center">Failed to generate SVG</div>;
+			return (
+				<div className="w-full h-full flex items-center justify-center">
+					Failed to generate SVG
+				</div>
+			);
 		}
 
 		return (
@@ -417,8 +429,8 @@ const RenderComponent = ({
 				dangerouslySetInnerHTML={{ __html: renders.svg }}
 				style={{
 					imageRendering: "pixelated",
-					transform: useDoubling ? 'scale(0.5)' : 'none',
-					transformOrigin: 'top left'
+					transform: useDoubling ? "scale(0.5)" : "none",
+					transformOrigin: "top left",
 				}}
 				aria-label={`${title} SVG render`}
 			/>
@@ -429,7 +441,9 @@ const RenderComponent = ({
 };
 
 // Main recipe page component
-export default async function RecipePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function RecipePage({
+	params,
+}: { params: Promise<{ slug: string }> }) {
 	const { slug } = await params;
 	const config = await fetchConfig(slug);
 
@@ -446,9 +460,10 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 						<p className="mt-2 max-w-prose">{config.description}</p>
 						{config.renderSettings?.doubleSizeForSharperText && (
 							<p className="text-sm text-gray-500 max-w-prose">
-								This screen is rendering at double size for sharper text, but it might cause issues with the layout,
-								for example overflow hidden is known to have issues with double size.
-								change the setting in screens.json.
+								This screen is rendering at double size for sharper text, but it
+								might cause issues with the layout, for example overflow hidden
+								is known to have issues with double size. change the setting in
+								screens.json.
 							</p>
 						)}
 					</Suspense>
@@ -458,8 +473,18 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 					bmpComponent={
 						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
 							<AspectRatio ratio={5 / 3}>
-								<Suspense fallback={<div className="w-full h-full flex items-center justify-center">Rendering bitmap...</div>}>
-									<RenderComponent slug={slug} format="bitmap" title={config.title} />
+								<Suspense
+									fallback={
+										<div className="w-full h-full flex items-center justify-center">
+											Rendering bitmap...
+										</div>
+									}
+								>
+									<RenderComponent
+										slug={slug}
+										format="bitmap"
+										title={config.title}
+									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
@@ -467,8 +492,18 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 					pngComponent={
 						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
 							<AspectRatio ratio={5 / 3}>
-								<Suspense fallback={<div className="w-full h-full flex items-center justify-center">Rendering PNG...</div>}>
-									<RenderComponent slug={slug} format="png" title={config.title} />
+								<Suspense
+									fallback={
+										<div className="w-full h-full flex items-center justify-center">
+											Rendering PNG...
+										</div>
+									}
+								>
+									<RenderComponent
+										slug={slug}
+										format="png"
+										title={config.title}
+									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
@@ -476,8 +511,18 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 					svgComponent={
 						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
 							<AspectRatio ratio={5 / 3}>
-								<Suspense fallback={<div className="w-full h-full flex items-center justify-center">Rendering SVG...</div>}>
-									<RenderComponent slug={slug} format="svg" title={config.title} />
+								<Suspense
+									fallback={
+										<div className="w-full h-full flex items-center justify-center">
+											Rendering SVG...
+										</div>
+									}
+								>
+									<RenderComponent
+										slug={slug}
+										format="svg"
+										title={config.title}
+									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
@@ -485,32 +530,60 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 					reactComponent={
 						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
 							<AspectRatio ratio={5 / 3} className="w-[800px] h-[480px]">
-								<Suspense fallback={<div className="w-full h-full flex items-center justify-center">Rendering recipe...</div>}>
-									<RenderComponent slug={slug} format="react" title={config.title} />
+								<Suspense
+									fallback={
+										<div className="w-full h-full flex items-center justify-center">
+											Rendering recipe...
+										</div>
+									}
+								>
+									<RenderComponent
+										slug={slug}
+										format="react"
+										title={config.title}
+									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
 					}
 					bmpLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → Satori SVG → ImageResponse PNG → utils/render-bmp.ts →
-							<Link href={`/api/bitmap/${slug}.bmp`} className="hover:underline text-blue-600 dark:text-blue-400">
+							JSX → utils/pre-satori.tsx → Satori SVG → ImageResponse PNG →
+							utils/render-bmp.ts →
+							<Link
+								href={`/api/bitmap/${slug}.bmp`}
+								className="hover:underline text-blue-600 dark:text-blue-400"
+							>
 								/api/bitmap/{slug}.bmp
 							</Link>
 						</p>
 					}
 					pngLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → Satori SVG → <span className="text-blue-600 dark:text-blue-400">ImageResponse PNG</span> → utils/render-bmp.ts →
-							<Link href={`/api/bitmap/${slug}.bmp`} className="hover:underline">
+							JSX → utils/pre-satori.tsx → Satori SVG →{" "}
+							<span className="text-blue-600 dark:text-blue-400">
+								ImageResponse PNG
+							</span>{" "}
+							→ utils/render-bmp.ts →
+							<Link
+								href={`/api/bitmap/${slug}.bmp`}
+								className="hover:underline"
+							>
 								/api/bitmap/{slug}.bmp
 							</Link>
 						</p>
 					}
 					svgLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → <span className="text-blue-600 dark:text-blue-400">Satori SVG</span> → ImageResponse PNG → utils/render-bmp.ts →
-							<Link href={`/api/bitmap/${slug}.bmp`} className="hover:underline">
+							JSX → utils/pre-satori.tsx →{" "}
+							<span className="text-blue-600 dark:text-blue-400">
+								Satori SVG
+							</span>{" "}
+							→ ImageResponse PNG → utils/render-bmp.ts →
+							<Link
+								href={`/api/bitmap/${slug}.bmp`}
+								className="hover:underline"
+							>
 								/api/bitmap/{slug}.bmp
 							</Link>
 						</p>
@@ -523,7 +596,13 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 				/>
 
 				{config.hasDataFetch && (
-					<Suspense fallback={<div className="w-full h-full flex items-center justify-center">Loading props...</div>}>
+					<Suspense
+						fallback={
+							<div className="w-full h-full flex items-center justify-center">
+								Loading props...
+							</div>
+						}
+					>
 						<PropsDisplay slug={slug} config={config} />
 					</Suspense>
 				)}
@@ -533,7 +612,10 @@ export default async function RecipePage({ params }: { params: Promise<{ slug: s
 }
 
 // Component to display props with refresh action
-const PropsDisplay = ({ slug, config }: { slug: string; config: RecipeConfig }) => {
+const PropsDisplay = ({
+	slug,
+	config,
+}: { slug: string; config: RecipeConfig }) => {
 	const props = use(Promise.resolve(fetchProps(slug, config)));
 	return <RecipeProps props={props} slug={slug} refreshAction={refreshData} />;
 };

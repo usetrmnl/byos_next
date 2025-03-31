@@ -1,13 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono as FontMono, Geist as FontSans } from "next/font/google";
-import localFont from 'next/font/local'
+import localFont from "next/font/local";
 import "./globals.css";
-import { createClient } from "@/lib/supabase/server";
-import { Suspense, cache } from "react";
-import MainLayout from "@/components/main-layout";
+import { Suspense } from "react";
+import MainLayout from "@/components/main-layout-server";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { ThemeProvider } from "next-themes";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const fontSans = FontSans({
@@ -21,17 +20,17 @@ const fontMono = FontMono({
 });
 
 const blockKie = localFont({
-	src: '../public/fonts/BlockKie.ttf', // Adjust path as needed
-	variable: '--font-blockkie',
-	weight: '400',
-	style: 'normal',
-  });
+	src: "../public/fonts/BlockKie.ttf", // Adjust path as needed
+	variable: "--font-blockkie",
+	weight: "400",
+	style: "normal",
+});
 
 const geneva9 = localFont({
-	src: '../public/fonts/geneva-9.ttf',
-	variable: '--font-geneva9',
-	weight: '400',
-	style: 'normal',
+	src: "../public/fonts/geneva-9.ttf",
+	variable: "--font-geneva9",
+	weight: "400",
+	style: "normal",
 });
 
 const META_THEME_COLORS = {
@@ -51,24 +50,7 @@ export const viewport: Viewport = {
 	],
 };
 
-async function getDevicesPromise() {
-	const { supabase, dbStatus } = await createClient();
-
-	// Fetch devices only if DB ready
-	if (dbStatus.ready && supabase) {
-		const devicesPromise = cache(async () => {
-			const { data, error } = await supabase.from("devices").select("*");
-			if (error) throw error; // Rejects the promise if there's an error
-			return data; // Resolves only with the data
-		})(); // Call the cached function immediately
-		return devicesPromise;
-	}
-
-	console.warn("Missing Supabase environment variables, entering no db mode");
-	// return a promise that resolves to an empty array
-	return Promise.resolve([]);
-}
-
+// Server Component MainContentFallback for loading states
 const MainContentFallback = () => (
 	<div className="p-6 space-y-6">
 		{/* Header section */}
@@ -116,28 +98,45 @@ const MainContentFallback = () => (
 	</div>
 );
 
+// Layout skeleton to use while the main layout is loading
+const LayoutSkeleton = () => (
+	<div className="min-h-screen flex flex-col">
+		<div className="border-b bg-background">
+			<div className="flex h-14 items-center px-4">
+				<Skeleton className="h-5 w-5 mr-2 rounded-md md:hidden" />
+				<div className="flex items-center gap-2">
+					<Skeleton className="h-7 w-48 rounded-md" />
+				</div>
+				<div className="ml-auto flex items-center space-x-2">
+					<Skeleton className="h-9 w-9 rounded-md" />
+					<Skeleton className="h-9 w-9 rounded-md" />
+				</div>
+			</div>
+		</div>
+		<div className="flex flex-1">
+			<div className="w-56 border-r bg-background hidden md:block">
+				<div className="p-2 space-y-2">
+					{[1, 2, 3, 4, 5].map((i) => (
+						<Skeleton key={i} className="h-9 w-full rounded-md" />
+					))}
+				</div>
+			</div>
+			<div className="flex-1 p-6 space-y-6">
+				<Skeleton className="h-8 w-64 rounded-md" />
+				<Skeleton className="h-32 w-full rounded-md" />
+				<Skeleton className="h-32 w-full rounded-md" />
+			</div>
+		</div>
+	</div>
+);
+
 export default async function RootLayout({
 	children,
 }: Readonly<{
 	children: React.ReactNode;
 }>) {
-	const devicesPromise = getDevicesPromise();
-
 	return (
 		<html lang="en" suppressHydrationWarning>
-			{/* <head>
-				<script
-					dangerouslySetInnerHTML={{
-						__html: `
-              try {
-                if (localStorage.theme === 'dark' || ((!('theme' in localStorage) || localStorage.theme === 'system') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                  document.querySelector('meta[name="theme-color"]').setAttribute('content', '${META_THEME_COLORS.dark}')
-                }
-              } catch (_) {}
-            `,
-					}}
-				/>
-			</head> */}
 			<body
 				className={cn(
 					"bg-background overscroll-none font-sans antialiased",
@@ -147,50 +146,15 @@ export default async function RootLayout({
 					geneva9.variable,
 				)}
 			>
-				<Suspense
-					fallback={
-						<div className="min-h-screen flex flex-col">
-							<div className="border-b bg-background">
-								<div className="flex h-14 items-center px-4">
-									<Skeleton className="h-5 w-5 mr-2 rounded-md md:hidden" />
-									<div className="flex items-center gap-2">
-										<Skeleton className="h-7 w-48 rounded-md" />
-									</div>
-									<div className="ml-auto flex items-center space-x-2">
-										<Skeleton className="h-9 w-9 rounded-md" />
-										<Skeleton className="h-9 w-9 rounded-md" />
-									</div>
-								</div>
-							</div>
-							<div className="flex flex-1">
-								<div className="w-56 border-r bg-background hidden md:block">
-									<div className="p-2 space-y-2">
-										{[1, 2, 3, 4, 5].map((i) => (
-											<Skeleton key={i} className="h-9 w-full rounded-md" />
-										))}
-									</div>
-								</div>
-								<div className="flex-1 p-6 space-y-6">
-									<Skeleton className="h-8 w-64 rounded-md" />
-									<Skeleton className="h-32 w-full rounded-md" />
-									<Skeleton className="h-32 w-full rounded-md" />
-								</div>
-							</div>
-						</div>
-					}
-				>
-					<ThemeProvider
-						attribute="class"
-						defaultTheme="system"
-						enableSystem
-						disableTransitionOnChange
-					>
-						<MainLayout devicesPromise={devicesPromise}>
+				{/* ThemeProvider is a Client Component wrapper */}
+				<ThemeProvider>
+					<Suspense fallback={<LayoutSkeleton />}>
+						<MainLayout>
 							<Suspense fallback={<MainContentFallback />}>{children}</Suspense>
 						</MainLayout>
 						<Toaster />
-					</ThemeProvider>
-				</Suspense>
+					</Suspense>
+				</ThemeProvider>
 			</body>
 		</html>
 	);

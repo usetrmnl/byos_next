@@ -182,19 +182,19 @@ export default function DeviceLogsViewer({
 
 	const getGridColsClass = (count: number) => {
 		const gridColsMap: Record<number, string> = {
-			1: 'grid-cols-1',
-			2: 'grid-cols-2',
-			3: 'grid-cols-3',
-			4: 'grid-cols-4',
-			5: 'grid-cols-5',
-			6: 'grid-cols-6',
-			7: 'grid-cols-7',
-			8: 'grid-cols-8',
-			9: 'grid-cols-9',
-			10: 'grid-cols-10'
-		}
-		return gridColsMap[count] || 'grid-cols-3'
-	}
+			1: "grid-cols-1",
+			2: "grid-cols-2",
+			3: "grid-cols-3",
+			4: "grid-cols-4",
+			5: "grid-cols-5",
+			6: "grid-cols-6",
+			7: "grid-cols-7",
+			8: "grid-cols-8",
+			9: "grid-cols-9",
+			10: "grid-cols-10",
+		};
+		return gridColsMap[count] || "grid-cols-3";
+	};
 
 	return (
 		<div ref={scrollRef} className="space-y-4">
@@ -250,7 +250,9 @@ export default function DeviceLogsViewer({
 				value={activeTab}
 				onValueChange={(value) => handleTypeChange(value)}
 			>
-				<TabsList className={`grid ${getGridColsClass(1 + (logTypes?.length || 3))}`}>
+				<TabsList
+					className={`grid ${getGridColsClass(1 + (logTypes?.length || 3))}`}
+				>
 					<TabsTrigger value="all">All</TabsTrigger>
 					{logTypes?.includes("error") && (
 						<TabsTrigger value="error" className="text-red-500">
@@ -629,7 +631,7 @@ export default function DeviceLogsViewer({
 																	/>
 																),
 															);
-														} 
+														}
 														if ("log_message" in logData) {
 															// Handle case where logData is a single log entry but not in an array
 															return (

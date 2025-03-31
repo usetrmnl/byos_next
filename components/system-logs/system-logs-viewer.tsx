@@ -428,9 +428,7 @@ export default function SystemLogsViewer({
 											<td className="px-4 py-3 text-sm">
 												{log.metadata ? (
 													<div className="flex items-start gap-1 justify-between">
-														<div
-															className="font-mono text-xs w-full max-w-[120px] md:max-w-[200px] lg:max-w-[400px]"
-														>
+														<div className="font-mono text-xs w-full max-w-[120px] md:max-w-[200px] lg:max-w-[400px]">
 															{expandedLogs[log.id] ? (
 																<div className="pt-2 h-[200px] w-full overflow-auto">
 																	<pre className="whitespace-pre-wrap break-words">

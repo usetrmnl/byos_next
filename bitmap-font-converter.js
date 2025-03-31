@@ -52,7 +52,7 @@ async function main() {
     
     // Default options
     let inputFile = 'components/bitmap-font/bitmap-font.json';
-    let outputFile = 'components/bitmap-font/bitmap-font-8x7.json';
+    let outputFile = 'components/bitmap-font/bitmap-font-7x8.json';
     let replaceOriginal = false;
     
     // Parse arguments
@@ -88,10 +88,10 @@ async function main() {
     
     const font8x8 = fontData.fonts[font8x8Index];
     
-    // Create a new font with 8x7 dimensions (keeping width as 8 for alignment)
-    const font8x7 = {
-      width: 8,
-      height: 7,
+    // Create a new font with 7x8 dimensions (changing the width to 7)
+    const font7x8 = {
+      width: 7,
+      height: 8,
       characters: []
     };
     
@@ -107,7 +107,7 @@ async function main() {
       const newBase64Data = binaryToBase64(modifiedBinary);
       
       // Add to new font
-      font8x7.characters.push({
+      font7x8.characters.push({
         charCode: char.charCode,
         char: char.char,
         data: newBase64Data
@@ -118,24 +118,24 @@ async function main() {
     let outputData;
     
     if (replaceOriginal) {
-      // Replace the 8x8 font with the 8x7 font
+      // Replace the 8x8 font with the 7x8 font
       const newFonts = [...fontData.fonts];
-      newFonts[font8x8Index] = font8x7;
+      newFonts[font8x8Index] = font7x8;
       
       outputData = {
         ...fontData,
         fonts: newFonts
       };
       
-      console.log('Replaced 8x8 font with 8x7 font');
+      console.log('Replaced 8x8 font with 7x8 font');
     } else {
-      // Add the 8x7 font as a new font
+      // Add the 7x8 font as a new font
       outputData = {
         ...fontData,
-        fonts: [...fontData.fonts, font8x7]
+        fonts: [...fontData.fonts, font7x8]
       };
       
-      console.log('Added 8x7 font as a new font');
+      console.log('Added 7x8 font as a new font');
     }
     
     // Write to the output file
@@ -145,9 +145,9 @@ async function main() {
     
     // Print usage information
     if (replaceOriginal) {
-      console.log('\nThe 8x8 font has been replaced with an 8x7 font that has the rightmost column removed.');
+      console.log('\nThe 8x8 font has been replaced with a 7x8 font that has the rightmost column removed.');
     } else {
-      console.log('\nA new 8x7 font has been added to the file with the rightmost column removed from the 8x8 font.');
+      console.log('\nA new 7x8 font has been added to the file with the rightmost column removed from the 8x8 font.');
     }
     
   } catch (error) {
@@ -158,22 +158,22 @@ async function main() {
 // Print help information if requested
 if (process.argv.includes('--help') || process.argv.includes('-h')) {
   console.log(`
-Bitmap Font Converter - Convert 8x8 bitmaps to 8x7 by removing the rightmost column
+Bitmap Font Converter - Convert 8x8 bitmaps to 7x8 by removing the rightmost column
 
 Usage:
   node bitmap-font-converter.js [options]
 
 Options:
   --input <file>    Input JSON file (default: components/bitmap-font/bitmap-font.json)
-  --output <file>   Output JSON file (default: components/bitmap-font/bitmap-font-8x7.json)
-  --replace         Replace the original 8x8 font with the 8x7 font (default: false)
+  --output <file>   Output JSON file (default: components/bitmap-font/bitmap-font-7x8.json)
+  --replace         Replace the original 8x8 font with the 7x8 font (default: false)
   --help, -h        Show this help message
   
 Examples:
-  # Add a new 8x7 font to the output file
+  # Add a new 7x8 font to the output file
   node bitmap-font-converter.js
   
-  # Replace the 8x8 font with an 8x7 font
+  # Replace the 8x8 font with a 7x8 font
   node bitmap-font-converter.js --replace
   
   # Specify custom input and output files
