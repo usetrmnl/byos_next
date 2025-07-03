@@ -48,20 +48,20 @@ export default function BitcoinPrice({
 									<div className="w-[120px] h-[120px]">
 										<picture>
 											<source
-												srcSet="https://cryptologos.cc/logos/bitcoin-btc-logo.png"
+												srcSet="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
 												type="image/png"
 											/>
 											<img
-												src="https://cryptologos.cc/logos/bitcoin-btc-logo.png"
+												src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
 												alt="Bitcoin Logo"
-												width={120}
-												height={120}
+												width={64}
+												height={64}
 												style={{
 													objectFit: "contain",
-													width: "120px",
-													height: "120px",
+													width: "128px",
+													height: "128px",
 													filter:
-														"grayscale(100%) brightness(50%) contrast(200%)",
+														"grayscale(100%) brightness(100%) contrast(200%)",
 												}}
 											/>
 										</picture>
