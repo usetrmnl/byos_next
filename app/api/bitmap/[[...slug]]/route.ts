@@ -143,6 +143,7 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 			);
 			logger.info(`Recipe component loaded: ${recipeId}`);
 			let props = screens[recipeId as keyof typeof screens].props || {};
+			let hasValidData = true; // Track if we have valid data for data-fetching recipes
 
 			// Handle data fetching recipes
 			if (screens[recipeId as keyof typeof screens].hasDataFetch) {
@@ -166,18 +167,48 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 						return null;
 					});
 
-					// Check if the fetched data is valid
+					// Check if the fetched data is valid and has required fields
 					if (fetchedData && typeof fetchedData === "object") {
-						props = fetchedData;
+						// For Wikipedia specifically, ensure we have valid data
+						if (recipeId === "wikipedia") {
+							const hasValidTitle = fetchedData.title && 
+								typeof fetchedData.title === "string" && 
+								fetchedData.title !== "no data received" &&
+								fetchedData.title.trim().length > 0;
+							
+							const hasValidExtract = fetchedData.extract && 
+								typeof fetchedData.extract === "string" && 
+								fetchedData.extract !== "Article content is unavailable." &&
+								fetchedData.extract.trim().length > 0;
+
+							if (hasValidTitle && hasValidExtract) {
+								props = fetchedData;
+								logger.success(`Valid Wikipedia data loaded for ${recipeId}`);
+							} else {
+								logger.warn(`Invalid Wikipedia data for ${recipeId} - missing required fields`);
+								hasValidData = false; // Mark as invalid to use NotFoundScreen
+							}
+						} else {
+							// For other recipes, use the data as-is
+							props = fetchedData;
+						}
 					} else {
 						logger.warn(`Invalid or missing data for ${recipeId}`);
+						hasValidData = false; // Mark as invalid to use NotFoundScreen
 					}
 				} catch (error) {
 					logger.warn(`Error in data fetching for ${recipeId}:`, error);
-					// Continue with default props
+					hasValidData = false; // Mark as invalid to use NotFoundScreen
 				}
 			}
-			element = createElement(Component, { ...props });
+
+			// Only render the component if we have valid data, otherwise use NotFoundScreen
+			if (hasValidData) {
+				element = createElement(Component, { ...props });
+			} else {
+				logger.info(`Using NotFoundScreen for ${recipeId} due to invalid data`);
+				element = createElement(NotFoundScreen, { slug: `${recipeId} - Data Unavailable` });
+			}
 		} else {
 			// If recipe component not found, use the NotFoundScreen
 			element = createElement(NotFoundScreen, { slug: recipeId });
