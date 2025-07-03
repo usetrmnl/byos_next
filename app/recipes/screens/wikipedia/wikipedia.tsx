@@ -9,7 +9,6 @@ export default function Wikipedia({
 	description,
 	fullurl,
 	displaytitle,
-	touched,
 }: WikipediaData) {
 	// Sanitize the data to ensure we only work with valid inputs
 	const safeTitle =
@@ -54,22 +53,15 @@ export default function Wikipedia({
 
 	const truncatedExtract = calculateExtractLength();
 
-	// Safely format the date - using touched from API if available, or current date as fallback
-	let formattedDate = "";
-	try {
-		const dateToUse = touched ? new Date(touched) : new Date();
-		formattedDate = dateToUse.toLocaleDateString("en-GB", {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-			hour: "2-digit",
-			minute: "2-digit",
-			hour12: true,
-		});
-	} catch (error) {
-		console.error("Error formatting date:", error);
-		formattedDate = new Date().toString();
-	}
+	// Format current server time at render
+	const formattedDate = new Date().toLocaleDateString("en-GB", {
+		year: "numeric",
+		month: "short",
+		day: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+		hour12: true,
+	});
 
 	// Safe image dimensions calculation
 	const getImageDimensions = () => {
