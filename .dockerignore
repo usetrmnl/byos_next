@@ -1,0 +1,98 @@
+# Docker files
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# Next.js build output and cache
+.next/
+out/
+.swc/
+
+# Development and build artifacts
+dist/
+build/
+*.tsbuildinfo
+
+# Environment files (keep .env.example if you have one)
+.env
+.env*.local
+.env.development
+.env.production
+.env.test
+
+# Logs
+*.log
+npm-debug.log*
+logs/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and testing
+coverage/
+.coverage
+.nyc_output
+test-results/
+playwright-report/
+
+# Cache directories
+.cache/
+.parcel-cache/
+.eslintcache
+.turbo/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation (but keep essential ones in the image)
+README.md
+CONTRIBUTING.md
+LICENSE
+*.md
+!app/recipes/README.md
+
+# Vercel and deployment
+.vercel/
+vercel.json
+
+# Temporary files
+tmp/
+temp/
+
+# Development tools
+eslint.config.mjs
+biome.json
+
+# Database (migrations should be included, but local db files excluded)
+*.sqlite
+*.db
+
+# Backup files
+*.bak
+*.backup 
