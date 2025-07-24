@@ -338,6 +338,27 @@ SUPABASE_URL`}
 											{`-- Enable UUID generation extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Playlists Table
+CREATE TABLE public.playlists (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Playlist Items Table
+CREATE TABLE public.playlist_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  playlist_id UUID REFERENCES public.playlists(id) ON DELETE CASCADE,
+  screen_id TEXT NOT NULL,
+  duration INT NOT NULL DEFAULT 30,
+  start_time TIME,
+  end_time TIME,
+  days_of_week JSONB,
+  order_index INT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Devices Table
 CREATE TABLE public.devices (
   id BIGSERIAL PRIMARY KEY,
@@ -354,6 +375,9 @@ CREATE TABLE public.devices (
   battery_voltage NUMERIC NULL,
   firmware_version TEXT NULL,
   rssi INTEGER NULL,
+  playlist_id UUID REFERENCES public.playlists(id),
+  use_playlist BOOLEAN DEFAULT FALSE,
+  current_playlist_index INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -364,7 +388,6 @@ CREATE INDEX idx_devices_refresh_schedule ON public.devices USING GIN (refresh_s
 -- Logs Table
 CREATE TABLE public.logs (
   id BIGSERIAL PRIMARY KEY,
-  device_id BIGINT NOT NULL,
   friendly_id TEXT NULL,
   log_data TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
