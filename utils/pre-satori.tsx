@@ -341,6 +341,8 @@ const extractFontFamily = (className?: string): string | undefined => {
 				return "BlockKie"; // Return the actual font name
 			case "font-geneva9":
 				return "Geneva9"; // Return the actual font name
+			case "font-inter":
+				return "Inter"; // Return the actual font name
 			case "font-sans":
 				return "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif";
 			case "font-serif":

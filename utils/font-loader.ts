@@ -10,8 +10,11 @@ const loadFont = cache(() => {
 		const geneva9Font = Buffer.from(
 			fs.readFileSync(path.resolve("./public/fonts/geneva-9.ttf")),
 		);
+		const interFont = Buffer.from(
+			fs.readFileSync(path.resolve("./public/fonts/Inter_18pt-Regular.ttf")),
+		);
 		console.log("Fonts loaded successfully");
-		return { blockKie: blockKieFont, geneva9: geneva9Font };
+		return { blockKie: blockKieFont, geneva9: geneva9Font, inter: interFont };
 	} catch (error) {
 		console.error("Error loading fonts:", error);
 		return null;
