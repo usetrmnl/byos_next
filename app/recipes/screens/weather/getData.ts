@@ -14,6 +14,8 @@ interface WeatherData {
     highTemp: string;
     lowTemp: string;
     pressure: string;
+    sunset: string;
+    sunrise: string;
     latitude: number;
     longitude: number;
 }
@@ -41,6 +43,8 @@ interface OpenMeteoResponse {
         time: string[];
         temperature_2m_max: number[];
         temperature_2m_min: number[];
+        sunset: string[];
+        sunrise: string[];
     };
 }
 
@@ -138,7 +142,7 @@ async function getWeatherData(latitude?: number, longitude?: number, locationNam
 
         // Fetch weather data from Open-Meteo API
         const response = await fetch(
-            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=auto`,
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code&daily=temperature_2m_max,temperature_2m_min,sunset,sunrise&timezone=auto`,
             {
                 headers: {
                     Accept: "application/json",
@@ -172,6 +176,14 @@ async function getWeatherData(latitude?: number, longitude?: number, locationNam
             return Math.round(pressure).toString();
         };
 
+        const formatTime = (timeString: string): string => {
+            const date = new Date(timeString);
+            return date.toLocaleString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+            });
+        };
+
         // Format the date
         const formatDate = (dateString: string): string => {
             const date = new Date(dateString);
@@ -202,6 +214,8 @@ async function getWeatherData(latitude?: number, longitude?: number, locationNam
             highTemp: formatTemperature(daily.temperature_2m_max[0]),
             lowTemp: formatTemperature(daily.temperature_2m_min[0]),
             pressure: formatPressure(current.surface_pressure),
+            sunset: formatTime(daily.sunset[0]),
+            sunrise: formatTime(daily.sunrise[0]),
             latitude: latitude || 0,
             longitude: longitude || 0,
         };
