@@ -79,7 +79,13 @@ export async function isDatabaseReady(client: SupabaseClient): Promise<{
 }> {
 	// Step 1: Perform a schema check to see if the expected tables exist
 	try {
-		const doesTablePassTest = { devices: true, logs: true, system_logs: true };
+		const doesTablePassTest = {
+			devices: true,
+			logs: true,
+			system_logs: true,
+			playlists: true,
+			playlist_items: true
+		};
 
 		for (const table of Object.keys(doesTablePassTest)) {
 			try {
@@ -95,7 +101,9 @@ export async function isDatabaseReady(client: SupabaseClient): Promise<{
 		const schemaReady =
 			doesTablePassTest.devices &&
 			doesTablePassTest.logs &&
-			doesTablePassTest.system_logs;
+			doesTablePassTest.system_logs &&
+			doesTablePassTest.playlists &&
+			doesTablePassTest.playlist_items;
 
 		if (schemaReady) {
 			// The schema is correct; the app is ready to run
