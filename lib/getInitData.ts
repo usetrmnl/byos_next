@@ -108,18 +108,7 @@ export const getDevices = cache(async (): Promise<Device[]> => {
  * before it's actually needed, improving perceived performance.
  */
 export function preloadDashboard() {
-	// Use dynamic import to avoid the request context issue
-	// This ensures the data fetch happens within a request context
-	if (typeof window === "undefined") {
-		// Only run on server-side
-		void import("./getInitData")
-			.then((module) => {
-				void module.getInitData();
-			})
-			.catch((err) => {
-				console.error("Failed to preload dashboard data:", err);
-			});
-	}
+	void getInitData();
 }
 
 /**
@@ -128,17 +117,7 @@ export function preloadDashboard() {
  * before it's actually needed, improving perceived performance.
  */
 export function preloadSystemLogs() {
-	// Use dynamic import to avoid the request context issue
-	if (typeof window === "undefined") {
-		// Only run on server-side
-		void import("./getInitData")
-			.then((module) => {
-				void module.getInitData();
-			})
-			.catch((err) => {
-				console.error("Failed to preload system logs data:", err);
-			});
-	}
+	void getInitData();
 }
 
 /**
@@ -147,15 +126,5 @@ export function preloadSystemLogs() {
  * before it's actually needed, improving perceived performance.
  */
 export function preloadDevices() {
-	// Use dynamic import to avoid the request context issue
-	if (typeof window === "undefined") {
-		// Only run on server-side
-		void import("./getInitData")
-			.then((module) => {
-				void module.getDevices();
-			})
-			.catch((err) => {
-				console.error("Failed to preload devices data:", err);
-			});
-	}
+	void getDevices();
 }

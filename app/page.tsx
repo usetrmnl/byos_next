@@ -4,10 +4,8 @@ import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
 import { Badge } from "@/components/ui/badge";
 import WifiConnectModal from "@/components/dashboard/wifi-connect-modal";
-import { getInitData, preloadDashboard } from "@/lib/getInitData";
+import { getInitData } from "@/lib/getInitData";
 
-// preload
-preloadDashboard();
 
 // Dashboard data component that uses the cached data
 const DashboardData = async () => {
