@@ -102,7 +102,7 @@ const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 		);
 
 		// Set a timeout for data fetching to prevent hanging
-		const fetchPromise = fetchDataFunction();
+		const fetchPromise = fetchDataFunction(config.props);
 		const timeoutPromise = new Promise((_, reject) => {
 			setTimeout(() => reject(new Error("Data fetch timeout")), 10000);
 		});
