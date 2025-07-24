@@ -28,7 +28,26 @@ const screenOptions = [
     { id: "album", name: "Album" },
 ];
 
+const daysOfWeek = [
+    { value: "monday", label: "Mon" },
+    { value: "tuesday", label: "Tue" },
+    { value: "wednesday", label: "Wed" },
+    { value: "thursday", label: "Thu" },
+    { value: "friday", label: "Fri" },
+    { value: "saturday", label: "Sat" },
+    { value: "sunday", label: "Sun" },
+];
+
 export function PlaylistItem({ item, onUpdate, onDelete }: PlaylistItemProps) {
+    const handleDayToggle = (day: string) => {
+        const currentDays = item.days_of_week || [];
+        const isSelected = currentDays.includes(day);
+        const updatedDays = isSelected
+            ? currentDays.filter(d => d !== day)
+            : [...currentDays, day];
+        onUpdate(item.id, { days_of_week: updatedDays });
+    };
+
     return (
         <Card className="mb-4">
             <CardHeader className="pb-3">
@@ -100,6 +119,34 @@ export function PlaylistItem({ item, onUpdate, onDelete }: PlaylistItemProps) {
                             onChange={(e) => onUpdate(item.id, { end_time: e.target.value || undefined })}
                         />
                     </div>
+                </div>
+
+                <div className="space-y-3">
+                    <Label>Days of Week (optional)</Label>
+                    <div className="flex flex-wrap gap-2">
+                        {daysOfWeek.map((day) => {
+                            const isSelected = (item.days_of_week || []).includes(day.value);
+                            return (
+                                <Button
+                                    key={day.value}
+                                    variant={isSelected ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => handleDayToggle(day.value)}
+                                    className={`min-w-[3rem] ${isSelected
+                                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                                            : "hover:bg-muted"
+                                        }`}
+                                >
+                                    {day.label}
+                                </Button>
+                            );
+                        })}
+                    </div>
+                    {(!item.days_of_week || item.days_of_week.length === 0) && (
+                        <p className="text-sm text-muted-foreground">
+                            If no days are selected, this item will play every day
+                        </p>
+                    )}
                 </div>
             </CardContent>
         </Card>
