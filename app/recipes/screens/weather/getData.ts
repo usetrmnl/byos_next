@@ -105,7 +105,6 @@ async function geocodeLocation(locationName: string): Promise<{ latitude: number
         }
 
         const data: GeocodingResponse = await response.json();
-        console.log("Geocoding data: ", data);
 
         if (data.results && data.results.length > 0) {
             const result = data.results[0];
@@ -244,6 +243,8 @@ async function fetchWeatherDataNoCache(latitude?: number, longitude?: number, lo
             highTemp: "N/A",
             lowTemp: "N/A",
             pressure: "N/A",
+            sunset: "N/A",
+            sunrise: "N/A",
             latitude: latitude || 0,
             longitude: longitude || 0,
         };
@@ -277,14 +278,13 @@ const getCachedWeatherData = unstable_cache(
 /**
  * Main export function that tries to use cached data but falls back to non-cached data if needed
  */
-export default async function getData(props?: any): Promise<WeatherData> {
-    // Extract location parameters from props
-    const locationName = props?.locationName;
-    const latitude = props?.latitude;
-    const longitude = props?.longitude;
+export default async function getData(): Promise<WeatherData> {
+    const locationName = "San Francisco";
+    const latitude = undefined;
+    const longitude = undefined;
 
-    let finalLatitude = latitude;
-    let finalLongitude = longitude;
+    let finalLatitude: number | undefined = latitude;
+    let finalLongitude: number | undefined = longitude;
     let finalLocationName = locationName;
 
     try {

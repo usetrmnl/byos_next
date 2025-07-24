@@ -102,7 +102,7 @@ const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 		);
 
 		// Set a timeout for data fetching to prevent hanging
-		const fetchPromise = fetchDataFunction(config.props);
+		const fetchPromise = fetchDataFunction();
 		const timeoutPromise = new Promise((_, reject) => {
 			setTimeout(() => reject(new Error("Data fetch timeout")), 10000);
 		});
@@ -141,25 +141,25 @@ const getImageOptions = (config: RecipeConfig) => {
 		fonts: [
 			...(fonts?.blockKie
 				? [
-						{
-							name: "BlockKie",
-							data: fonts.blockKie,
-							weight: 400 as const,
-							style: "normal" as const,
-							textRendering: 0,
-						},
-					]
+					{
+						name: "BlockKie",
+						data: fonts.blockKie,
+						weight: 400 as const,
+						style: "normal" as const,
+						textRendering: 0,
+					},
+				]
 				: []),
 			...(fonts?.geneva9
 				? [
-						{
-							name: "Geneva9",
-							data: fonts.geneva9,
-							weight: 400 as const,
-							style: "normal" as const,
-							textRendering: 0,
-						},
-					]
+					{
+						name: "Geneva9",
+						data: fonts.geneva9,
+						weight: 400 as const,
+						style: "normal" as const,
+						textRendering: 0,
+					},
+				]
 				: []),
 			...(fonts?.inter
 				? [

@@ -129,8 +129,7 @@
 		"props": {
 			"temperature": "Loading...",
 			"description": "Loading...",
-			"location": "Loading...",
-			"locationName": "San Francisco"
+			"location": "Loading..."
 		},
 		"tags": [
 			"tailwind",
