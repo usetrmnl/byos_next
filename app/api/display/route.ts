@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { logError, logInfo } from "@/lib/logger";
-import type { RefreshSchedule, TimeRange, Device } from "@/lib/supabase/types";
+import type { RefreshSchedule, TimeRange, Device, PlaylistItem } from "@/lib/supabase/types";
 import type { CustomError } from "@/lib/api/types";
 import { timezones } from "@/utils/helpers";
 import { getHostUrl } from "@/utils/helpers";
@@ -87,6 +87,51 @@ const isTimeInRange = (
 
 	// Normal case where start time is before end time
 	return timeToCheck >= startTime && timeToCheck < endTime;
+};
+
+const getActivePlaylistItem = async (
+	playlistId: string,
+	currentIndex: number,
+): Promise<PlaylistItem | null> => {
+	const { supabase } = await createClient();
+	if (!supabase) return null;
+
+	const { data: items, error } = await supabase
+		.from("playlist_items")
+		.select("*")
+		.eq("playlist_id", playlistId)
+		.order("order_index", { ascending: true });
+
+	if (error || !items || items.length === 0) {
+		logError(error || new Error("No items in playlist"), {
+			source: "api/display/getActivePlaylistItem",
+			metadata: { playlistId },
+		});
+		return null;
+	}
+
+	const now = new Date();
+	const currentTime = now.toTimeString().slice(0, 5);
+	const currentDay = now.toLocaleString("en-US", { weekday: "short" }).toLowerCase();
+
+	for (let i = 0; i < items.length; i++) {
+		const itemIndex = (currentIndex + i) % items.length;
+		const item = items[itemIndex] as PlaylistItem;
+
+		const { start_time, end_time, days_of_week } = item;
+
+		const isTimeValid =
+			!start_time || !end_time || isTimeInRange(currentTime, start_time, end_time);
+		const isDayValid =
+			!days_of_week ||
+			(Array.isArray(days_of_week) && days_of_week.includes(currentDay));
+
+		if (isTimeValid && isDayValid) {
+			return item;
+		}
+	}
+
+	return null;
 };
 
 // Helper function to update device status information
@@ -738,23 +783,55 @@ export async function GET(request: Request) {
 				firmware_version: device.firmware_version,
 				rssi: device.rssi,
 				screen: device.screen,
+				playlist_id: device.playlist_id,
+				use_playlist: device.use_playlist,
+				current_playlist_index: device.current_playlist_index,
 			},
 		});
-		const imageUrl = `${baseUrl}/${device.screen || "not-found"}.bmp`;
+
+		let screenToDisplay = device.screen;
+		let dynamicRefreshRate = 180; // Default refresh rate
+
+		if (device.use_playlist && device.playlist_id) {
+			const activeItem = await getActivePlaylistItem(
+				device.playlist_id,
+				device.current_playlist_index || 0,
+			);
+
+			if (activeItem) {
+				screenToDisplay = activeItem.screen_id;
+				dynamicRefreshRate = activeItem.duration;
+
+				// Update the playlist index for the next cycle
+				const { data: items, error } = await supabase
+					.from("playlist_items")
+					.select("id")
+					.eq("playlist_id", device.playlist_id);
+
+				if (!error && items) {
+					const newIndex =
+						((device.current_playlist_index || 0) + 1) % items.length;
+					await supabase
+						.from("devices")
+						.update({ current_playlist_index: newIndex })
+						.eq("id", device.id);
+				}
+			}
+		} else {
+			const deviceTimezone = device.timezone || "UTC";
+			dynamicRefreshRate = calculateRefreshRate(
+				device.refresh_schedule,
+				180,
+				deviceTimezone,
+			);
+		}
+
+		const imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
 
 		// Start pre-caching the current image in the background
 		// This ensures the image is cached by the time the device requests it
 		precacheImageInBackground(imageUrl, device.friendly_id);
 
-		// Calculate the appropriate refresh rate based on time of day and device settings
-		// Default refresh rate is 60 seconds (180 units)
-		const defaultRefreshRate = 180; // 3 units = 1s
-		const deviceTimezone = device.timezone || "UTC"; // Default to UTC if no timezone is set
-		const dynamicRefreshRate = calculateRefreshRate(
-			device.refresh_schedule,
-			defaultRefreshRate,
-			deviceTimezone,
-		);
 
 		// Update device refresh status information in the background
 		// We don't await this to avoid delaying the response
@@ -764,7 +841,7 @@ export async function GET(request: Request) {
 			batteryVoltage: Number.parseFloat(batteryVoltage || "0"),
 			fwVersion: fwVersion || "",
 			rssi: Number.parseInt(rssi || "0"),
-			timezone: deviceTimezone,
+			timezone: device.timezone || "UTC",
 		});
 
 		// Calculate human-readable next update time for logging
@@ -773,14 +850,12 @@ export async function GET(request: Request) {
 		logInfo("Display request successful", {
 			source: "api/display",
 			metadata: {
-				image_url: imageUrl,
-				friendly_id: device.friendly_id,
+				device_id: device.friendly_id,
+				screen: screenToDisplay,
 				refresh_rate: dynamicRefreshRate,
-				refresh_duration_seconds: dynamicRefreshRate,
-				calculated_from_schedule: !!device.refresh_schedule,
-				next_update_expected: nextUpdateTime.toISOString(),
-				filename: `${device.screen}_${uniqueId}.bmp`, // Add a timestamp to the image filename to stop device from caching the image
-				special_function: "restart_playlist",
+				next_update: nextUpdateTime.toISOString(),
+				playlist_mode: device.use_playlist,
+				playlist_id: device.playlist_id,
 			},
 		});
 
@@ -788,7 +863,7 @@ export async function GET(request: Request) {
 			{
 				status: 0,
 				image_url: imageUrl,
-				filename: `${device.screen}_${uniqueId}.bmp`, // Add a timestamp to the image filename to stop device from caching the image
+				filename: `${screenToDisplay || "not-found"}_${uniqueId}.bmp`,
 				refresh_rate: dynamicRefreshRate,
 				reset_firmware: false,
 				update_firmware: false,
@@ -798,19 +873,25 @@ export async function GET(request: Request) {
 			{ status: 200 },
 		);
 	} catch (error) {
-		// The error object already contains the stack trace
 		logError(error as Error, {
 			source: "api/display",
+			metadata: {
+				apiKey,
+				macAddress,
+				refreshRate,
+				batteryVoltage,
+				fwVersion,
+				rssi,
+			},
 		});
 
-		// Prefetch the not-found image even when returning an error
+		// Return error response with not-found image
 		const notFoundImageUrl = `${baseUrl}/not-found.bmp`;
-
 		return NextResponse.json(
 			{
 				status: 500,
 				reset_firmware: true,
-				message: "Device not found",
+				message: "Internal server error",
 				image_url: notFoundImageUrl,
 				filename: `not-found_${uniqueId}.bmp`,
 			},
