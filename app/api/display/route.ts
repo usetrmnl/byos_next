@@ -92,6 +92,7 @@ const isTimeInRange = (
 const getActivePlaylistItem = async (
 	playlistId: string,
 	currentIndex: number,
+	timezone: string = "UTC",
 ): Promise<PlaylistItem | null> => {
 	const { supabase } = await createClient();
 	if (!supabase) return null;
@@ -110,9 +111,40 @@ const getActivePlaylistItem = async (
 		return null;
 	}
 
+	// Get current time in device's timezone
 	const now = new Date();
-	const currentTime = now.toTimeString().slice(0, 5);
-	const currentDay = now.toLocaleString("en-US", { weekday: "short" }).toLowerCase();
+	const options = {
+		timeZone: timezone,
+		hour12: false,
+	} as Intl.DateTimeFormatOptions;
+
+	// Format time as "HH:MM" in 24-hour format
+	const timeFormatter = new Intl.DateTimeFormat("en-US", {
+		...options,
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+	const [{ value: hour }, , { value: minute }] = timeFormatter.formatToParts(now);
+	const currentTime = `${hour}:${minute}`;
+
+	// Format day as lowercase full day name to match the playlist item format
+	const dayFormatter = new Intl.DateTimeFormat("en-US", {
+		...options,
+		weekday: "long",
+	});
+	const currentDay = dayFormatter.format(now).toLowerCase();
+
+	logInfo("Checking playlist items for time/day match", {
+		source: "api/display/getActivePlaylistItem",
+		metadata: {
+			playlistId,
+			currentIndex,
+			timezone,
+			currentTime,
+			currentDay,
+			totalItems: items.length,
+		},
+	});
 
 	for (let i = 0; i < items.length; i++) {
 		const itemIndex = (currentIndex + i) % items.length;
@@ -796,6 +828,7 @@ export async function GET(request: Request) {
 			const activeItem = await getActivePlaylistItem(
 				device.playlist_id,
 				device.current_playlist_index || 0,
+				device.timezone || "UTC",
 			);
 
 			if (activeItem) {
@@ -816,6 +849,22 @@ export async function GET(request: Request) {
 						.update({ current_playlist_index: newIndex })
 						.eq("id", device.id);
 				}
+			} else {
+				// No active item found - this could happen if all items have time/day restrictions
+				// that don't match the current time. In this case, we should keep the current index
+				// and use a fallback screen with a reasonable refresh rate.
+				logInfo("No active playlist item found, using fallback", {
+					source: "api/display",
+					metadata: {
+						device_id: device.friendly_id,
+						current_index: device.current_playlist_index,
+						timezone: device.timezone,
+					},
+				});
+
+				// Use the device's default screen or a fallback
+				screenToDisplay = device.screen || "not-found";
+				dynamicRefreshRate = 60; // Shorter refresh rate to check again soon
 			}
 		} else {
 			const deviceTimezone = device.timezone || "UTC";
