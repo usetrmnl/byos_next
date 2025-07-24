@@ -109,23 +109,33 @@ const getImageOptions = (recipeId: string) => {
 		fonts: [
 			...(fonts?.blockKie
 				? [
-						{
-							name: "BlockKie",
-							data: fonts.blockKie,
-							weight: 400 as const,
-							style: "normal" as const,
-						},
-					]
+					{
+						name: "BlockKie",
+						data: fonts.blockKie,
+						weight: 400 as const,
+						style: "normal" as const,
+					},
+				]
 				: []),
 			...(fonts?.geneva9
 				? [
-						{
-							name: "Geneva9",
-							data: fonts.geneva9,
-							weight: 400 as const,
-							style: "normal" as const,
-						},
-					]
+					{
+						name: "Geneva9",
+						data: fonts.geneva9,
+						weight: 400 as const,
+						style: "normal" as const,
+					},
+				]
+				: []),
+			...(fonts?.inter
+				? [
+					{
+						name: "Inter",
+						data: fonts.inter,
+						weight: 400 as const,
+						style: "normal" as const,
+					},
+				]
 				: []),
 		],
 		debug: false,
@@ -171,13 +181,13 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 					if (fetchedData && typeof fetchedData === "object") {
 						// For Wikipedia specifically, ensure we have valid data
 						if (recipeId === "wikipedia") {
-							const hasValidTitle = fetchedData.title && 
-								typeof fetchedData.title === "string" && 
+							const hasValidTitle = fetchedData.title &&
+								typeof fetchedData.title === "string" &&
 								fetchedData.title !== "no data received" &&
 								fetchedData.title.trim().length > 0;
-							
-							const hasValidExtract = fetchedData.extract && 
-								typeof fetchedData.extract === "string" && 
+
+							const hasValidExtract = fetchedData.extract &&
+								typeof fetchedData.extract === "string" &&
 								fetchedData.extract !== "Article content is unavailable." &&
 								fetchedData.extract.trim().length > 0;
 
@@ -300,23 +310,33 @@ export async function GET(
 				fonts: [
 					...(fonts?.blockKie
 						? [
-								{
-									name: "BlockKie",
-									data: fonts.blockKie,
-									weight: 400 as const,
-									style: "normal" as const,
-								},
-							]
+							{
+								name: "BlockKie",
+								data: fonts.blockKie,
+								weight: 400 as const,
+								style: "normal" as const,
+							},
+						]
 						: []),
 					...(fonts?.geneva9
 						? [
-								{
-									name: "Geneva9",
-									data: fonts.geneva9,
-									weight: 400 as const,
-									style: "normal" as const,
-								},
-							]
+							{
+								name: "Geneva9",
+								data: fonts.geneva9,
+								weight: 400 as const,
+								style: "normal" as const,
+							},
+						]
+						: []),
+					...(fonts?.inter
+						? [
+							{
+								name: "Inter",
+								data: fonts.inter,
+								weight: 400 as const,
+								style: "normal" as const,
+							},
+						]
 						: []),
 				],
 				debug: false,
