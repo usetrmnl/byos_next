@@ -10,6 +10,7 @@ import {
 	Wrench,
 	Palette,
 	PencilRuler,
+	ListRestart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -495,6 +496,13 @@ export function ClientSidebar({
 				components={recipesComponents}
 				currentPath={currentPath}
 				initialOpen={currentPath.startsWith("/recipes/")}
+			/>
+
+			<NavLink
+				href="/playlists"
+				currentPath={currentPath}
+				icon={<ListRestart className="mr-2 size-4" />}
+				label="Playlists"
 			/>
 
 			<ToolsSection

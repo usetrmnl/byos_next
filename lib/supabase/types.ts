@@ -25,6 +25,28 @@ export type Device = {
 	rssi: number | null; // WiFi signal strength in dBm
 	created_at: string | null; // ISO timestamp (TIMESTAMPTZ, nullable with default)
 	updated_at: string | null; // ISO timestamp (TIMESTAMPTZ, nullable with default)
+	playlist_id: string | null;
+	use_playlist: boolean | null;
+	current_playlist_index: number | null;
+};
+
+export type Playlist = {
+	id: string;
+	name: string;
+	created_at: string;
+	updated_at: string;
+};
+
+export type PlaylistItem = {
+	id: string;
+	playlist_id: string;
+	screen_id: string;
+	duration: number;
+	start_time?: string;
+	end_time?: string;
+	days_of_week?: string[];
+	order_index: number;
+	created_at: string;
 };
 
 export type TimeRange = {
@@ -96,7 +118,15 @@ export type Database = {
 					| "last_refresh_duration"
 				>;
 				Update: Partial<Omit<Device, "id">>;
-				Relationships: [];
+				Relationships: [
+					{
+						foreignKeyName: "devices_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlists";
+						referencedColumns: ["id"];
+					},
+				];
 			};
 			logs: {
 				Row: Log;
@@ -117,6 +147,26 @@ export type Database = {
 				Insert: Omit<SystemLog, "id" | "created_at">;
 				Update: Partial<Omit<SystemLog, "id">>;
 				Relationships: [];
+			};
+			playlists: {
+				Row: Playlist;
+				Insert: Omit<Playlist, "id" | "created_at" | "updated_at">;
+				Update: Partial<Omit<Playlist, "id">>;
+				Relationships: [];
+			};
+			playlist_items: {
+				Row: PlaylistItem;
+				Insert: Omit<PlaylistItem, "id" | "created_at">;
+				Update: Partial<Omit<PlaylistItem, "id">>;
+				Relationships: [
+					{
+						foreignKeyName: "playlist_items_playlist_id_fkey";
+						columns: ["playlist_id"];
+						isOneToOne: false;
+						referencedRelation: "playlists";
+						referencedColumns: ["id"];
+					},
+				];
 			};
 		};
 		Views: {

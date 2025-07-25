@@ -36,7 +36,7 @@ const DevicePageSkeleton = () => (
 
 // Device data component that uses centralized cached data
 const DeviceData = async ({ friendlyId }: { friendlyId: string }) => {
-	const { devices } = await getInitData();
+	const { devices, playlists, playlistItems } = await getInitData();
 
 	// Find the specific device by friendly_id
 	const device = devices.find((d) => d.friendly_id === friendlyId);
@@ -61,6 +61,8 @@ const DeviceData = async ({ friendlyId }: { friendlyId: string }) => {
 		<DevicePageClient
 			initialDevice={enhancedDevice}
 			availableScreens={availableScreens}
+			availablePlaylists={playlists}
+			playlistItems={playlistItems}
 		/>
 	);
 };
