@@ -58,7 +58,9 @@ const addToReservoir = (article: WikipediaData) => {
 	reservoir.lastApiSuccess = true;
 	reservoir.consecutiveFailures = 0; // Reset failure counter on success
 
-	console.log(`Added article to reservoir: "${article.title}" (${reservoir.articles.length}/${RESERVOIR_SIZE})`);
+	console.log(
+		`Added article to reservoir: "${article.title}" (${reservoir.articles.length}/${RESERVOIR_SIZE})`,
+	);
 };
 
 const getFromReservoir = (): WikipediaData | null => {
@@ -75,8 +77,10 @@ const getFromReservoir = (): WikipediaData | null => {
 	}
 
 	// Check if we're in cooldown period after consecutive failures
-	if (reservoir.consecutiveFailures > 2 && 
-		now - reservoir.lastUpdated < COOLDOWN_PERIOD) {
+	if (
+		reservoir.consecutiveFailures > 2 &&
+		now - reservoir.lastUpdated < COOLDOWN_PERIOD
+	) {
 		console.log("In cooldown period, using reservoir");
 	}
 
@@ -93,7 +97,9 @@ const markApiFailure = () => {
 
 	reservoir.lastApiSuccess = false;
 	reservoir.consecutiveFailures++;
-	console.log(`API failure marked. Consecutive failures: ${reservoir.consecutiveFailures}`);
+	console.log(
+		`API failure marked. Consecutive failures: ${reservoir.consecutiveFailures}`,
+	);
 };
 
 const shouldUseReservoir = (): boolean => {
@@ -592,7 +598,7 @@ function sanitizeRtlText(text: string): string {
 async function getWikipediaArticle(): Promise<WikipediaData | null> {
 	try {
 		console.log("Fetching fresh articles from Wikipedia API");
-		
+
 		// Fetch 10 random articles with their content in a single request
 		const randomArticles = await fetchRandomArticles(10);
 
@@ -612,16 +618,16 @@ async function getWikipediaArticle(): Promise<WikipediaData | null> {
 		// If we have suitable articles, pick one randomly and process it
 		if (suitableArticles.length > 0) {
 			const selectedArticle = await processSelectedArticle(suitableArticles);
-			
+
 			// Add successful articles to reservoir for future use
 			addToReservoir(selectedArticle);
-			
+
 			// Also add a few more articles to the reservoir if we have them
 			const additionalArticles = suitableArticles
-				.filter(article => article.title !== selectedArticle.title)
+				.filter((article) => article.title !== selectedArticle.title)
 				.slice(0, 3); // Add up to 3 more articles
-			
-			additionalArticles.forEach(article => {
+
+			additionalArticles.forEach((article) => {
 				addToReservoir(article);
 			});
 
@@ -640,31 +646,31 @@ async function getWikipediaArticle(): Promise<WikipediaData | null> {
 				`Found ${secondBatchSuitable.length} suitable articles in second batch`,
 			);
 			const selectedArticle = await processSelectedArticle(secondBatchSuitable);
-			
+
 			// Add to reservoir
 			addToReservoir(selectedArticle);
-			
+
 			return selectedArticle;
 		}
 
 		// If still no suitable articles found, use fallback mechanisms
 		const fallbackArticle = await getFallbackArticle();
-		
+
 		// Add fallback article to reservoir as well
 		addToReservoir(fallbackArticle);
-		
+
 		return fallbackArticle;
 	} catch (error) {
 		console.error("Error in getWikipediaArticle:", error);
 		markApiFailure();
-		
+
 		// Try to get from reservoir as fallback
 		const reservoirArticle = getFromReservoir();
 		if (reservoirArticle) {
 			console.log("API failed, using reservoir as fallback");
 			return reservoirArticle;
 		}
-		
+
 		return DEFAULT_FALLBACK_DATA;
 	}
 }
@@ -925,13 +931,17 @@ export default async function getData(): Promise<WikipediaData> {
 	if (shouldUseReservoir()) {
 		immediateArticle = getFromReservoir();
 		if (immediateArticle) {
-			console.log("Got immediate article from reservoir, but will still attempt API refuel");
+			console.log(
+				"Got immediate article from reservoir, but will still attempt API refuel",
+			);
 		}
 	}
 
 	// Always attempt to refuel the reservoir unless we're in a timeout situation
 	try {
-		console.log("Attempting to fetch cached Wikipedia data (refueling reservoir)");
+		console.log(
+			"Attempting to fetch cached Wikipedia data (refueling reservoir)",
+		);
 		const freshArticle = await Promise.race([
 			getCachedWikipediaData(),
 			// If the cache operation takes too long (4 seconds), proceed to fallback
@@ -953,7 +963,9 @@ export default async function getData(): Promise<WikipediaData> {
 				error.message.includes("timeout"));
 
 		if (isTimeout) {
-			console.warn("Wikipedia data fetch timed out, using reservoir if available");
+			console.warn(
+				"Wikipedia data fetch timed out, using reservoir if available",
+			);
 		} else {
 			console.error("Error fetching Wikipedia data:", {
 				errorType:
@@ -991,14 +1003,14 @@ export default async function getData(): Promise<WikipediaData> {
 				message:
 					fetchError instanceof Error ? fetchError.message : String(fetchError),
 			});
-			
+
 			// Final reservoir check
 			const finalReservoirArticle = getFromReservoir();
 			if (finalReservoirArticle) {
 				console.log("All API attempts failed, using reservoir as last resort");
 				return finalReservoirArticle;
 			}
-			
+
 			// When all attempts fail, return default fallback data
 			console.log(
 				"Returning DEFAULT_FALLBACK_DATA after all fetch attempts failed",

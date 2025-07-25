@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 import WifiConnectModal from "@/components/dashboard/wifi-connect-modal";
 import { getInitData } from "@/lib/getInitData";
 
-
 // Dashboard data component that uses the cached data
 const DashboardData = async () => {
 	// Get data from the centralized getInitData

@@ -141,35 +141,35 @@ const getImageOptions = (config: RecipeConfig) => {
 		fonts: [
 			...(fonts?.blockKie
 				? [
-					{
-						name: "BlockKie",
-						data: fonts.blockKie,
-						weight: 400 as const,
-						style: "normal" as const,
-						textRendering: 0,
-					},
-				]
+						{
+							name: "BlockKie",
+							data: fonts.blockKie,
+							weight: 400 as const,
+							style: "normal" as const,
+							textRendering: 0,
+						},
+					]
 				: []),
 			...(fonts?.geneva9
 				? [
-					{
-						name: "Geneva9",
-						data: fonts.geneva9,
-						weight: 400 as const,
-						style: "normal" as const,
-						textRendering: 0,
-					},
-				]
+						{
+							name: "Geneva9",
+							data: fonts.geneva9,
+							weight: 400 as const,
+							style: "normal" as const,
+							textRendering: 0,
+						},
+					]
 				: []),
 			...(fonts?.inter
 				? [
-					{
-						name: "Inter",
-						data: fonts.inter,
-						weight: 400 as const,
-						style: "normal" as const,
-					},
-				]
+						{
+							name: "Inter",
+							data: fonts.inter,
+							weight: 400 as const,
+							style: "normal" as const,
+						},
+					]
 				: []),
 		],
 		shapeRendering: 1,

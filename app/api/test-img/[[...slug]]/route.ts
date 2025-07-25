@@ -288,15 +288,15 @@ async function getFromDevCache(slug: string): Promise<{
 	return { ...result, cached: false };
 }
 
-export async function GET(request: Request, {
-	params,
-}: { params: Promise<{ slug?: string[] }> }) {
+export async function GET(
+	request: Request,
+	{ params }: { params: Promise<{ slug?: string[] }> },
+) {
 	const resolvedParams = await params;
 	const slug = resolvedParams?.slug ? resolvedParams.slug.join("/") : "default";
 	if (IS_DEV) console.log("📥 Received request for slug:", slug);
 
-
-	const requestHeaders = new Headers(request.headers)
+	const requestHeaders = new Headers(request.headers);
 	console.log("🔍 Request headers:", requestHeaders);
 
 	try {

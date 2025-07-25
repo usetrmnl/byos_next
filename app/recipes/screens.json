@@ -8,10 +8,7 @@
 		"componentPath": "./screens/simple-text",
 		"hasDataFetch": false,
 		"props": {},
-		"tags": [
-			"bitmap",
-			"text"
-		],
+		"tags": ["bitmap", "text"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
@@ -31,10 +28,7 @@
 		"componentPath": "./screens/album",
 		"hasDataFetch": false,
 		"props": {},
-		"tags": [
-			"bitmap",
-			"text"
-		],
+		"tags": ["bitmap", "text"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
@@ -52,10 +46,7 @@
 		"componentPath": "./screens/bitmap-patterns",
 		"hasDataFetch": false,
 		"props": {},
-		"tags": [
-			"bitmap",
-			"patterns"
-		],
+		"tags": ["bitmap", "patterns"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
@@ -76,13 +67,7 @@
 			"title": "Wikipedia (Default)",
 			"extract": "Loading article..."
 		},
-		"tags": [
-			"tailwind",
-			"text",
-			"api",
-			"live-data",
-			"advanced"
-		],
+		"tags": ["tailwind", "text", "api", "live-data", "advanced"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
@@ -105,11 +90,7 @@
 			"price": "Loading...",
 			"change24h": "0"
 		},
-		"tags": [
-			"tailwind",
-			"cryptocurrency",
-			"api"
-		],
+		"tags": ["tailwind", "cryptocurrency", "api"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
@@ -131,13 +112,7 @@
 			"description": "Loading...",
 			"location": "Loading..."
 		},
-		"tags": [
-			"tailwind",
-			"weather",
-			"api",
-			"live-data",
-			"configurable"
-		],
+		"tags": ["tailwind", "weather", "api", "live-data", "configurable"],
 		"author": {
 			"name": "Assistant",
 			"github": ""
@@ -157,11 +132,7 @@
 		"props": {
 			"slug": ""
 		},
-		"tags": [
-			"system",
-			"fallback",
-			"error"
-		],
+		"tags": ["system", "fallback", "error"],
 		"author": {
 			"name": "System",
 			"github": ""
