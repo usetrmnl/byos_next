@@ -1,5 +1,13 @@
 import { Geist_Mono as FontMono, Geist as FontSans } from "next/font/google";
 import localFont from "next/font/local";
+import fs from "fs";
+import { cache } from "react";
+
+const fontPaths = {
+    blockKie: "./public/fonts/BlockKie.ttf",
+    geneva9: "./public/fonts/geneva-9.ttf",
+    inter: "./public/fonts/Inter_18pt-Regular.ttf",
+}
 
 // System fonts configuration
 export const fontSans = FontSans({
@@ -49,24 +57,46 @@ export const inter = localFont({
 
 // Font variables organized by purpose
 export const fonts = {
-    system: {
-        sans: fontSans.variable,
-        mono: fontMono.variable,
-    },
-    display: {
-        blockKie: blockKie.variable,
-    },
-    ui: {
-        geneva9: geneva9.variable,
-        inter: inter.variable,
-    },
+    sans: fontSans,
+    mono: fontMono,
+    blockKie: blockKie,
+    geneva9: geneva9,
+    inter: inter
 } as const;
 
 // Helper to get all font variables
-export const getAllFontVariables = () => [
-    fonts.system.sans,
-    fonts.system.mono,
-    fonts.display.blockKie,
-    fonts.ui.geneva9,
-    fonts.ui.inter,
-].join(" "); 
+export const getAllFontVariables = () => Object.values(fonts).map(font => font.variable).join(" ");
+
+export const loadFont = cache(() => {
+    try {
+        return Object.entries(fontPaths).reduce((acc, [fontName, fontPath]) => {
+            acc[fontName] = Buffer.from(fs.readFileSync(fontPath));
+            console.log("Font loaded successfully:", fontName);
+            return acc;
+        }, {} as Record<string, Buffer>);
+    } catch (error) {
+        console.error("Error loading fonts:", error);
+        return null;
+    }
+});
+
+/**
+ * Returns an array of Satori-compatible font objects
+ * @param fonts Object containing font buffers from loadFont()
+ * @returns Array of font configurations for Satori
+ */
+export const getSatoriFonts = () => {
+    const fonts = loadFont();
+    if (!fonts) return [];
+    const weight = 400;
+    const style = "normal";
+
+    const satoriFonts = Object.entries(fonts).map(([fontName, fontBuffer]) => ({
+        name: fontName,
+        data: fontBuffer,
+        weight: weight,
+        style: style,
+    }));
+
+    return satoriFonts;
+};
