@@ -33,6 +33,13 @@ const geneva9 = localFont({
 	style: "normal",
 });
 
+const inter = localFont({
+	src: "../public/fonts/Inter_18pt-Regular.ttf",
+	variable: "--font-inter",
+	weight: "400",
+	style: "normal",
+});
+
 const META_THEME_COLORS = {
 	light: "#ffffff",
 	dark: "#09090b",
@@ -144,6 +151,7 @@ export default async function RootLayout({
 					fontMono.variable,
 					blockKie.variable,
 					geneva9.variable,
+					inter.variable,
 				)}
 			>
 				{/* ThemeProvider is a Client Component wrapper */}

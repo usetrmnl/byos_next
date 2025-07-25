@@ -161,6 +161,16 @@ const getImageOptions = (config: RecipeConfig) => {
 						},
 					]
 				: []),
+			...(fonts?.inter
+				? [
+						{
+							name: "Inter",
+							data: fonts.inter,
+							weight: 400 as const,
+							style: "normal" as const,
+						},
+					]
+				: []),
 		],
 		shapeRendering: 1,
 		textRendering: 0,

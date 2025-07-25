@@ -99,6 +99,28 @@
 		"version": "0.1.0",
 		"category": "display-components"
 	},
+	"weather": {
+		"title": "Weather Forecast",
+		"published": true,
+		"createdAt": "2025-03-01T00:00:00Z",
+		"updatedAt": "2025-03-01T00:00:00Z",
+		"description": "A component that displays current weather data from Open-Meteo API. Supports configurable locations via latitude/longitude or location name.",
+		"componentPath": "./screens/weather",
+		"hasDataFetch": true,
+		"props": {
+			"temperature": "Loading...",
+			"description": "Loading...",
+			"location": "Loading..."
+		},
+		"tags": ["tailwind", "weather", "api", "live-data", "configurable"],
+		"author": {
+			"name": "Assistant",
+			"github": ""
+		},
+		"renderSettings": {},
+		"version": "0.1.0",
+		"category": "display-components"
+	},
 	"not-found": {
 		"title": "Not Found Recipe",
 		"published": true,

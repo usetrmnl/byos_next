@@ -171,13 +171,15 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 					if (fetchedData && typeof fetchedData === "object") {
 						// For Wikipedia specifically, ensure we have valid data
 						if (recipeId === "wikipedia") {
-							const hasValidTitle = fetchedData.title && 
-								typeof fetchedData.title === "string" && 
+							const hasValidTitle =
+								fetchedData.title &&
+								typeof fetchedData.title === "string" &&
 								fetchedData.title !== "no data received" &&
 								fetchedData.title.trim().length > 0;
-							
-							const hasValidExtract = fetchedData.extract && 
-								typeof fetchedData.extract === "string" && 
+
+							const hasValidExtract =
+								fetchedData.extract &&
+								typeof fetchedData.extract === "string" &&
 								fetchedData.extract !== "Article content is unavailable." &&
 								fetchedData.extract.trim().length > 0;
 
@@ -185,7 +187,9 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 								props = fetchedData;
 								logger.success(`Valid Wikipedia data loaded for ${recipeId}`);
 							} else {
-								logger.warn(`Invalid Wikipedia data for ${recipeId} - missing required fields`);
+								logger.warn(
+									`Invalid Wikipedia data for ${recipeId} - missing required fields`,
+								);
 								hasValidData = false; // Mark as invalid to use NotFoundScreen
 							}
 						} else {
@@ -207,7 +211,9 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 				element = createElement(Component, { ...props });
 			} else {
 				logger.info(`Using NotFoundScreen for ${recipeId} due to invalid data`);
-				element = createElement(NotFoundScreen, { slug: `${recipeId} - Data Unavailable` });
+				element = createElement(NotFoundScreen, {
+					slug: `${recipeId} - Data Unavailable`,
+				});
 			}
 		} else {
 			// If recipe component not found, use the NotFoundScreen
