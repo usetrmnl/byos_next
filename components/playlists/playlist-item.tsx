@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GripVertical, Trash2 } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 
 interface PlaylistItemProps {
     item: {
@@ -17,16 +18,8 @@ interface PlaylistItemProps {
     };
     onUpdate: (id: string, data: Partial<PlaylistItemProps['item']>) => void;
     onDelete: (id: string) => void;
+    screenOptions: { id: string; name: string }[];
 }
-
-// Mock screen options - will be replaced with real data
-const screenOptions = [
-    { id: "simple-text", name: "Simple Text" },
-    { id: "weather", name: "Weather" },
-    { id: "bitcoin-price", name: "Bitcoin Price" },
-    { id: "wikipedia", name: "Wikipedia" },
-    { id: "album", name: "Album" },
-];
 
 const daysOfWeek = [
     { value: "monday", label: "Mon" },
@@ -38,7 +31,7 @@ const daysOfWeek = [
     { value: "sunday", label: "Sun" },
 ];
 
-export function PlaylistItem({ item, onUpdate, onDelete }: PlaylistItemProps) {
+export function PlaylistItem({ item, onUpdate, onDelete, screenOptions }: PlaylistItemProps) {
     const handleDayToggle = (day: string) => {
         const currentDays = item.days_of_week || [];
         const isSelected = currentDays.includes(day);
@@ -50,7 +43,7 @@ export function PlaylistItem({ item, onUpdate, onDelete }: PlaylistItemProps) {
 
     return (
         <Card className="mb-4">
-            <CardHeader className="pb-3">
+            <CardHeader className="-mb-2">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         <GripVertical className="h-4 w-4 text-muted-foreground cursor-move" />
@@ -99,8 +92,24 @@ export function PlaylistItem({ item, onUpdate, onDelete }: PlaylistItemProps) {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-3">
+                        <Label>Days of Week (optional)</Label>
+                        <div className="flex flex-wrap gap-2">
+                            <ToggleGroup type="multiple" variant="outline" value={item.days_of_week || []} onValueChange={(value) => onUpdate(item.id, { days_of_week: value })}>
+                                {daysOfWeek.map((day) => {
+                                    const isSelected = (item.days_of_week || []).includes(day.value);
+                                    console.log(day.value, isSelected);
+                                    return (
+                                        <ToggleGroupItem key={day.value} value={day.value} aria-label={day.label} >
+                                            {day.label}
+                                        </ToggleGroupItem>
+                                    );
+                                })}
+                            </ToggleGroup>
+                        </div>
+                    </div>
+                    <div className="space-y-2 w-48">
                         <Label htmlFor={`start-${item.id}`}>Start Time (optional)</Label>
                         <Input
                             id={`start-${item.id}`}
@@ -110,7 +119,7 @@ export function PlaylistItem({ item, onUpdate, onDelete }: PlaylistItemProps) {
                         />
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 w-48">
                         <Label htmlFor={`end-${item.id}`}>End Time (optional)</Label>
                         <Input
                             id={`end-${item.id}`}
@@ -119,34 +128,6 @@ export function PlaylistItem({ item, onUpdate, onDelete }: PlaylistItemProps) {
                             onChange={(e) => onUpdate(item.id, { end_time: e.target.value || undefined })}
                         />
                     </div>
-                </div>
-
-                <div className="space-y-3">
-                    <Label>Days of Week (optional)</Label>
-                    <div className="flex flex-wrap gap-2">
-                        {daysOfWeek.map((day) => {
-                            const isSelected = (item.days_of_week || []).includes(day.value);
-                            return (
-                                <Button
-                                    key={day.value}
-                                    variant={isSelected ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => handleDayToggle(day.value)}
-                                    className={`min-w-[3rem] ${isSelected
-                                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                                            : "hover:bg-muted"
-                                        }`}
-                                >
-                                    {day.label}
-                                </Button>
-                            );
-                        })}
-                    </div>
-                    {(!item.days_of_week || item.days_of_week.length === 0) && (
-                        <p className="text-sm text-muted-foreground">
-                            If no days are selected, this item will play every day
-                        </p>
-                    )}
                 </div>
             </CardContent>
         </Card>

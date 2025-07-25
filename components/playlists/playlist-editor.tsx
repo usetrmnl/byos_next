@@ -5,6 +5,7 @@ import { PlaylistForm } from "./playlist-form";
 import { PlaylistItem } from "./playlist-item";
 import { Plus } from "lucide-react";
 import { fetchPlaylistWithItems } from "@/app/actions/playlist";
+import screens from "@/app/recipes/screens.json";
 
 interface PlaylistEditorProps {
     playlist?: {
@@ -27,7 +28,9 @@ interface PlaylistEditorProps {
 export function PlaylistEditor({ playlist, onSave, onCancel }: PlaylistEditorProps) {
     const [name, setName] = useState(playlist?.name || "");
     const [items, setItems] = useState(playlist?.items || []);
+    const [screenOptions, setScreenOptions] = useState<{ id: string; name: string }[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+
 
     // Fetch playlist items if editing an existing playlist
     useEffect(() => {
@@ -46,6 +49,7 @@ export function PlaylistEditor({ playlist, onSave, onCancel }: PlaylistEditorPro
                 .finally(() => {
                     setIsLoading(false);
                 });
+            setScreenOptions(Object.entries(screens).map(([id, config]) => ({ id, name: config.title })));
         }
     }, [playlist?.id]);
 
@@ -121,6 +125,7 @@ export function PlaylistEditor({ playlist, onSave, onCancel }: PlaylistEditorPro
                                     item={item}
                                     onUpdate={handleUpdateItem}
                                     onDelete={handleDeleteItem}
+                                    screenOptions={screenOptions}
                                 />
                             ))}
                         </div>
