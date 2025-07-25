@@ -146,7 +146,7 @@ const getActivePlaylistItem = async (
 		},
 	});
 
-	for (let i = 0; i < items.length; i++) {
+	for (let i = 1; i < items.length + 1; i++) {
 		const itemIndex = (currentIndex + i) % items.length;
 		const item = items[itemIndex] as PlaylistItem;
 
@@ -834,21 +834,10 @@ export async function GET(request: Request) {
 			if (activeItem) {
 				screenToDisplay = activeItem.screen_id;
 				dynamicRefreshRate = activeItem.duration;
-
-				// Update the playlist index for the next cycle
-				const { data: items, error } = await supabase
-					.from("playlist_items")
-					.select("id")
-					.eq("playlist_id", device.playlist_id);
-
-				if (!error && items) {
-					const newIndex =
-						((device.current_playlist_index || 0) + 1) % items.length;
-					await supabase
-						.from("devices")
-						.update({ current_playlist_index: newIndex })
-						.eq("id", device.id);
-				}
+				await supabase
+					.from("devices")
+					.update({ current_playlist_index: activeItem.order_index })
+					.eq("id", device.id);
 			} else {
 				// No active item found - this could happen if all items have time/day restrictions
 				// that don't match the current time. In this case, we should keep the current index
