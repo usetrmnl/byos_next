@@ -278,11 +278,10 @@ export async function GET(request: Request) {
 			.from("devices")
 			.select("*")
 			.eq("api_key", apiKey)
-			.eq("mac_address", macAddress)
+			// .eq("mac_address", macAddress)
 			.single();
 
 		let device = data;
-
 		if (error || !device) {
 			// Device not found with both API key and MAC address
 			// Try more forgiving approach similar to log route
@@ -429,9 +428,9 @@ export async function GET(request: Request) {
 							last_update_time: new Date().toISOString(),
 							next_expected_update: new Date(
 								Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
-										: 3600 * 1000),
+								(refreshRate
+									? Number.parseInt(refreshRate) * 1000
+									: 3600 * 1000),
 							).toISOString(),
 							timezone: "UTC",
 							battery_voltage: batteryVoltage
@@ -512,9 +511,9 @@ export async function GET(request: Request) {
 					const new_api_key = macAddress
 						? apiKey
 						: generateApiKey(
-								mockMacAddress,
-								new Date().toISOString().replace(/[-:Z]/g, ""),
-							);
+							mockMacAddress,
+							new Date().toISOString().replace(/[-:Z]/g, ""),
+						);
 
 					// Create a new device
 					const { data: newDevice, error: createError } = await supabase
@@ -533,9 +532,9 @@ export async function GET(request: Request) {
 							last_update_time: new Date().toISOString(),
 							next_expected_update: new Date(
 								Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
-										: 3600 * 1000),
+								(refreshRate
+									? Number.parseInt(refreshRate) * 1000
+									: 3600 * 1000),
 							).toISOString(),
 							timezone: "UTC",
 							battery_voltage: batteryVoltage
