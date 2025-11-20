@@ -51,6 +51,9 @@ export function PlaylistEditor({ playlist, onSave, onCancel }: PlaylistEditorPro
                 });
             setScreenOptions(Object.entries(screens).map(([id, config]) => ({ id, name: config.title })));
         }
+        else {
+            setScreenOptions(Object.entries(screens).map(([id, config]) => ({ id, name: config.title })));
+        }
     }, [playlist?.id]);
 
     const handleSavePlaylist = (data: { name: string }) => {
