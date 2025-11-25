@@ -19,7 +19,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
-import type { SystemLog } from "@/lib/supabase/types";
+import type { SystemLog } from "@/lib/types";
 import { formatDate } from "@/utils/helpers";
 
 const ITEMS_PER_PAGE = 100;

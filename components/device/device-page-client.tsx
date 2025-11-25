@@ -42,7 +42,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { Device, Playlist, PlaylistItem } from "@/lib/supabase/types";
+import type { Device, Playlist, PlaylistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
 	estimateBatteryLife,

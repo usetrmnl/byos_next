@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusIndicator } from "@/components/ui/status-indicator";
-import type { Device } from "@/lib/supabase/types";
+import type { Device } from "@/lib/types";
 import { getDeviceStatus } from "@/utils/helpers";
 
 // Define interfaces for screens and tools JSON

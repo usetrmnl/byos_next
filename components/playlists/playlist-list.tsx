@@ -8,7 +8,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { FormattedDate } from "@/components/ui/formatted-date";
-import { Playlist } from "@/lib/supabase/types";
+import { Playlist } from "@/lib/types";
 
 interface PlaylistListProps {
 	playlists: Playlist[];
@@ -42,7 +42,11 @@ export function PlaylistList({
 							<div>
 								<CardTitle className="text-lg">{playlist.name}</CardTitle>
 								<CardDescription>
-									<FormattedDate dateString={playlist.updated_at} />
+									{playlist.updated_at ? (
+										<FormattedDate dateString={playlist.updated_at} />
+									) : (
+										<span className="text-muted-foreground">No date</span>
+									)}
 								</CardDescription>
 							</div>
 						</div>

@@ -20,7 +20,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { Device, SystemLog } from "@/lib/supabase/types";
+import type { Device, SystemLog } from "@/lib/types";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
 
 interface DashboardContentProps {

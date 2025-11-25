@@ -52,7 +52,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import type { Device } from "@/lib/supabase/types";
+import type { Device } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
 	formatTimezone,

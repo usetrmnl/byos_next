@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
-import type { Log } from "@/lib/supabase/types";
+import type { Log } from "@/lib/types";
 import { formatDate, getLogType } from "@/utils/helpers";
 
 const ITEMS_PER_PAGE = 100;

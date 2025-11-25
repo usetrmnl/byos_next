@@ -1,8 +1,9 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import type { CustomError } from "@/lib/api/types";
+import { db } from "@/lib/database/db";
+import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
-import { createClient } from "@/lib/supabase/server";
 import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
 
 interface LogEntry {
@@ -84,23 +85,23 @@ export async function POST(request: Request) {
 		const batteryVoltage = request.headers.get("Battery-Voltage");
 		const fwVersion = request.headers.get("FW-Version");
 		const rssi = request.headers.get("RSSI");
-		const { supabase } = await createClient();
+		const { ready } = await checkDbConnection();
 
-		if (!supabase) {
+		if (!ready) {
 			console.warn(
-				"Supabase client not initialized, using noDB mode, skipping log processing",
+				"Database client not initialized, using noDB mode, skipping log processing",
 			);
 			logInfo(
-				"Supabase client not initialized, using noDB mode, skipping log processing",
+				"Database client not initialized, using noDB mode, skipping log processing",
 				{
 					source: "api/log",
 					metadata: {
-						macAddress,
-						apiKey,
-						refreshRate,
-						batteryVoltage,
-						fwVersion,
-						rssi,
+						macAddress: macAddress || null,
+						apiKey: apiKey || null,
+						refreshRate: refreshRate || null,
+						batteryVoltage: batteryVoltage || null,
+						fwVersion: fwVersion || null,
+						rssi: rssi || null,
 					},
 				},
 			);
@@ -120,13 +121,13 @@ export async function POST(request: Request) {
 
 		// First, try to find the device by MAC address if provided
 		if (macAddress) {
-			const { data: deviceByMac, error: macError } = await supabase
-				.from("devices")
-				.select("*")
-				.eq("mac_address", macAddress)
-				.single();
+			const deviceByMac = await db
+				.selectFrom("devices")
+				.selectAll()
+				.where("mac_address", "=", macAddress)
+				.executeTakeFirst();
 
-			if (!macError && deviceByMac) {
+			if (deviceByMac) {
 				// Device found by MAC address
 				deviceId = deviceByMac.friendly_id;
 				deviceFound = true;
@@ -134,15 +135,23 @@ export async function POST(request: Request) {
 
 				// If API key is provided and different from the stored one, update it
 				if (apiKey && apiKey !== deviceByMac.api_key) {
-					const { error: updateError } = await supabase
-						.from("devices")
-						.update({
-							api_key: apiKey,
-							updated_at: new Date().toISOString(),
-						})
-						.eq("friendly_id", deviceId);
+					try {
+						await db
+							.updateTable("devices")
+							.set({
+								api_key: apiKey,
+								updated_at: new Date().toISOString(),
+							})
+							.where("friendly_id", "=", deviceId)
+							.execute();
 
-					if (updateError) {
+						logInfo("Updated API key for device", {
+							source: "api/log",
+							metadata: {
+								device_id: deviceId,
+							},
+						});
+					} catch (updateError) {
 						logError(new Error("Error updating API key for device"), {
 							source: "api/log",
 							metadata: {
@@ -150,37 +159,31 @@ export async function POST(request: Request) {
 								error: updateError,
 							},
 						});
-					} else {
-						logInfo("Updated API key for device", {
-							source: "api/log",
-							metadata: {
-								device_id: deviceId,
-							},
-						});
 					}
 				}
 
 				// Update device metrics
-				const { error: updateError } = await supabase
-					.from("devices")
-					.update({
-						last_update_time: new Date().toISOString(),
-						next_expected_update: new Date(
-							Date.now() +
-								(refreshRate
-									? Number.parseInt(refreshRate, 10) * 1000
-									: 3600 * 1000),
-						).toISOString(),
-						battery_voltage: batteryVoltage
-							? Number.parseFloat(batteryVoltage)
-							: deviceByMac.battery_voltage,
-						firmware_version: fwVersion || deviceByMac.firmware_version,
-						rssi: rssi ? Number.parseInt(rssi, 10) : deviceByMac.rssi,
-						updated_at: new Date().toISOString(),
-					})
-					.eq("friendly_id", deviceId);
-
-				if (updateError) {
+				try {
+					await db
+						.updateTable("devices")
+						.set({
+							last_update_time: new Date().toISOString(),
+							next_expected_update: new Date(
+								Date.now() +
+									(refreshRate
+										? Number.parseInt(refreshRate, 10) * 1000
+										: 3600 * 1000),
+							).toISOString(),
+							battery_voltage: batteryVoltage
+								? Number.parseFloat(batteryVoltage)
+								: deviceByMac.battery_voltage,
+							firmware_version: fwVersion || deviceByMac.firmware_version,
+							rssi: rssi ? Number.parseInt(rssi, 10) : deviceByMac.rssi,
+							updated_at: new Date().toISOString(),
+						})
+						.where("friendly_id", "=", deviceId)
+						.execute();
+				} catch (updateError) {
 					logError(new Error("Error updating device metrics"), {
 						source: "api/log",
 						metadata: {
@@ -206,23 +209,33 @@ export async function POST(request: Request) {
 			} else if (apiKey) {
 				// MAC address not found but API key provided
 				// First check if the API key exists in the database
-				const { data: deviceByApiKey, error: apiKeyError } = await supabase
-					.from("devices")
-					.select("*")
-					.eq("api_key", apiKey)
-					.single();
+				const deviceByApiKey = await db
+					.selectFrom("devices")
+					.selectAll()
+					.where("api_key", "=", apiKey)
+					.executeTakeFirst();
 
-				if (!apiKeyError && deviceByApiKey) {
+				if (deviceByApiKey) {
 					// Device found by API key, update its MAC address
-					const { error: updateError } = await supabase
-						.from("devices")
-						.update({
-							mac_address: macAddress,
-							updated_at: new Date().toISOString(),
-						})
-						.eq("friendly_id", deviceByApiKey.friendly_id);
+					try {
+						await db
+							.updateTable("devices")
+							.set({
+								mac_address: macAddress,
+								updated_at: new Date().toISOString(),
+							})
+							.where("friendly_id", "=", deviceByApiKey.friendly_id)
+							.execute();
 
-					if (updateError) {
+						logInfo("Updated device with real MAC address", {
+							source: "api/log",
+							metadata: {
+								device_id: deviceByApiKey.friendly_id,
+								mac_address: macAddress,
+								api_key: apiKey,
+							},
+						});
+					} catch (updateError) {
 						logError(new Error("Error updating MAC address for device"), {
 							source: "api/log",
 							metadata: {
@@ -230,15 +243,6 @@ export async function POST(request: Request) {
 								mac_address: macAddress,
 								api_key: apiKey,
 								error: updateError,
-							},
-						});
-					} else {
-						logInfo("Updated device with real MAC address", {
-							source: "api/log",
-							metadata: {
-								device_id: deviceByApiKey.friendly_id,
-								mac_address: macAddress,
-								api_key: apiKey,
 							},
 						});
 					}
@@ -249,26 +253,27 @@ export async function POST(request: Request) {
 					deviceStatus = "known";
 
 					// Update device metrics
-					const { error: metricsUpdateError } = await supabase
-						.from("devices")
-						.update({
-							last_update_time: new Date().toISOString(),
-							next_expected_update: new Date(
-								Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate, 10) * 1000
-										: 3600 * 1000),
-							).toISOString(),
-							battery_voltage: batteryVoltage
-								? Number.parseFloat(batteryVoltage)
-								: deviceByApiKey.battery_voltage,
-							firmware_version: fwVersion || deviceByApiKey.firmware_version,
-							rssi: rssi ? Number.parseInt(rssi, 10) : deviceByApiKey.rssi,
-							updated_at: new Date().toISOString(),
-						})
-						.eq("friendly_id", deviceId);
-
-					if (metricsUpdateError) {
+					try {
+						await db
+							.updateTable("devices")
+							.set({
+								last_update_time: new Date().toISOString(),
+								next_expected_update: new Date(
+									Date.now() +
+										(refreshRate
+											? Number.parseInt(refreshRate, 10) * 1000
+											: 3600 * 1000),
+								).toISOString(),
+								battery_voltage: batteryVoltage
+									? Number.parseFloat(batteryVoltage)
+									: deviceByApiKey.battery_voltage,
+								firmware_version: fwVersion || deviceByApiKey.firmware_version,
+								rssi: rssi ? Number.parseInt(rssi, 10) : deviceByApiKey.rssi,
+								updated_at: new Date().toISOString(),
+							})
+							.where("friendly_id", "=", deviceId)
+							.execute();
+					} catch (metricsUpdateError) {
 						logError(new Error("Error updating device metrics"), {
 							source: "api/log",
 							metadata: {
@@ -302,54 +307,41 @@ export async function POST(request: Request) {
 						new Date().toISOString().replace(/[-:Z]/g, ""),
 					);
 
-					const { data: newDevice, error: createError } = await supabase
-						.from("devices")
-						.insert({
-							mac_address: macAddress,
-							name: `TRMNL Device ${friendly_id}`,
-							friendly_id: friendly_id,
-							api_key: apiKey,
-							refresh_schedule: {
-								default_refresh_rate: refreshRate
-									? Number.parseInt(refreshRate, 10)
-									: 60,
-								time_ranges: [],
-							},
-							last_update_time: new Date().toISOString(),
-							next_expected_update: new Date(
-								Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate, 10) * 1000
-										: 3600 * 1000),
-							).toISOString(),
-							timezone: "UTC",
-							battery_voltage: batteryVoltage
-								? Number.parseFloat(batteryVoltage)
-								: null,
-							firmware_version: fwVersion || null,
-							rssi: rssi ? Number.parseInt(rssi, 10) : null,
-						})
-						.select()
-						.single();
-
-					if (createError || !newDevice) {
-						const deviceError: CustomError = new Error(
-							"Error creating device with provided MAC address",
-						);
-						deviceError.originalError = createError;
-
-						logError(deviceError, {
-							source: "api/log",
-							metadata: {
+					try {
+						const newDevice = await db
+							.insertInto("devices")
+							.values({
 								mac_address: macAddress,
+								name: `TRMNL Device ${friendly_id}`,
+								friendly_id: friendly_id,
 								api_key: apiKey,
-								friendly_id,
-							},
-						});
+								refresh_schedule: JSON.stringify({
+									default_refresh_rate: refreshRate
+										? Number.parseInt(refreshRate, 10)
+										: 60,
+									time_ranges: [],
+								}),
+								last_update_time: new Date().toISOString(),
+								next_expected_update: new Date(
+									Date.now() +
+										(refreshRate
+											? Number.parseInt(refreshRate, 10) * 1000
+											: 3600 * 1000),
+								).toISOString(),
+								timezone: "UTC",
+								battery_voltage: batteryVoltage
+									? Number.parseFloat(batteryVoltage)
+									: null,
+								firmware_version: fwVersion || null,
+								rssi: rssi ? Number.parseInt(rssi, 10) : null,
+							})
+							.returningAll()
+							.executeTakeFirst();
 
-						// Fall back to API key lookup
-						deviceFound = false;
-					} else {
+						if (!newDevice) {
+							throw new Error("Failed to create new device record");
+						}
+
 						deviceId = newDevice.friendly_id;
 						deviceFound = true;
 						deviceStatus = "known";
@@ -368,6 +360,23 @@ export async function POST(request: Request) {
 								device_status: deviceStatus,
 							},
 						});
+					} catch (createError) {
+						const deviceError: CustomError = new Error(
+							"Error creating device with provided MAC address",
+						);
+						deviceError.originalError = createError;
+
+						logError(deviceError, {
+							source: "api/log",
+							metadata: {
+								mac_address: macAddress,
+								api_key: apiKey,
+								friendly_id,
+							},
+						});
+
+						// Fall back to API key lookup
+						deviceFound = false;
 					}
 				}
 			}
@@ -375,23 +384,102 @@ export async function POST(request: Request) {
 
 		// If device not found by MAC address, try API key
 		if (!deviceFound && apiKey) {
-			const { data: device, error } = await supabase
-				.from("devices")
-				.select("*")
-				.eq("api_key", apiKey)
-				.single();
+			const device = await db
+				.selectFrom("devices")
+				.selectAll()
+				.where("api_key", "=", apiKey)
+				.executeTakeFirst();
 
-			if (error || !device) {
+			if (device) {
+				// Use the found device
+				deviceId = device.friendly_id;
+				deviceFound = true;
+				deviceStatus = "known";
+
+				// If MAC address is provided, update the device with the real MAC address
+				if (macAddress && macAddress !== device.mac_address) {
+					try {
+						await db
+							.updateTable("devices")
+							.set({
+								mac_address: macAddress,
+								updated_at: new Date().toISOString(),
+							})
+							.where("friendly_id", "=", deviceId)
+							.execute();
+
+						logInfo("Updated device with MAC address", {
+							source: "api/log",
+							metadata: {
+								device_id: deviceId,
+								mac_address: macAddress,
+							},
+						});
+					} catch (updateMacError) {
+						logError(new Error("Error updating MAC address for device"), {
+							source: "api/log",
+							metadata: {
+								device_id: deviceId,
+								error: updateMacError,
+							},
+						});
+					}
+				}
+
+				// Update device metrics
+				try {
+					await db
+						.updateTable("devices")
+						.set({
+							last_update_time: new Date().toISOString(),
+							next_expected_update: new Date(
+								Date.now() +
+									(refreshRate
+										? Number.parseInt(refreshRate, 10) * 1000
+										: 3600 * 1000),
+							).toISOString(),
+							battery_voltage: batteryVoltage
+								? Number.parseFloat(batteryVoltage)
+								: device.battery_voltage,
+							firmware_version: fwVersion || device.firmware_version,
+							rssi: rssi ? Number.parseInt(rssi, 10) : device.rssi,
+							updated_at: new Date().toISOString(),
+						})
+						.where("friendly_id", "=", deviceId)
+						.execute();
+				} catch (updateError) {
+					logError(new Error("Error updating device metrics"), {
+						source: "api/log",
+						metadata: {
+							device_id: deviceId,
+							error: updateError,
+						},
+					});
+				}
+
+				logInfo("Device authenticated by API key", {
+					source: "api/log",
+					metadata: {
+						api_key: apiKey,
+						device_id: deviceId,
+						refresh_rate: refreshRate,
+						battery_voltage: batteryVoltage,
+						fw_version: fwVersion,
+						rssi: rssi,
+						device_found: deviceFound,
+						device_status: deviceStatus,
+					},
+				});
+			} else {
 				// Device not found by API key, first check if this API key exists elsewhere
 				// This could happen if the device was registered with a different MAC address
-				const { data: existingDeviceWithApiKey, error: apiKeyLookupError } =
-					await supabase
-						.from("devices")
-						.select("*")
-						.eq("api_key", apiKey)
-						.single();
+				const existingDeviceWithApiKey = await db
+					.selectFrom("devices")
+					.selectAll()
+					.where("api_key", "=", apiKey)
+					.executeTakeFirst();
 
-				if (!apiKeyLookupError && existingDeviceWithApiKey) {
+				if (existingDeviceWithApiKey) {
 					// Device found with this API key but different MAC address
 					deviceId = existingDeviceWithApiKey.friendly_id;
 					deviceFound = true;
@@ -402,15 +490,24 @@ export async function POST(request: Request) {
 						macAddress &&
 						macAddress !== existingDeviceWithApiKey.mac_address
 					) {
-						const { error: updateMacError } = await supabase
-							.from("devices")
-							.update({
-								mac_address: macAddress,
-								updated_at: new Date().toISOString(),
-							})
-							.eq("friendly_id", deviceId);
+						try {
+							await db
+								.updateTable("devices")
+								.set({
+									mac_address: macAddress,
+									updated_at: new Date().toISOString(),
+								})
+								.where("friendly_id", "=", deviceId)
+								.execute();
 
-						if (updateMacError) {
+							logInfo("Updated device with MAC address", {
+								source: "api/log",
+								metadata: {
+									device_id: deviceId,
+									mac_address: macAddress,
+								},
+							});
+						} catch (updateMacError) {
 							logError(new Error("Error updating MAC address for device"), {
 								source: "api/log",
 								metadata: {
@@ -419,41 +516,34 @@ export async function POST(request: Request) {
 									error: updateMacError,
 								},
 							});
-						} else {
-							logInfo("Updated device with MAC address", {
-								source: "api/log",
-								metadata: {
-									device_id: deviceId,
-									mac_address: macAddress,
-								},
-							});
 						}
 					}
 
 					// Update device metrics
-					const { error: updateError } = await supabase
-						.from("devices")
-						.update({
-							last_update_time: new Date().toISOString(),
-							next_expected_update: new Date(
-								Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate, 10) * 1000
-										: 3600 * 1000),
-							).toISOString(),
-							battery_voltage: batteryVoltage
-								? Number.parseFloat(batteryVoltage)
-								: existingDeviceWithApiKey.battery_voltage,
-							firmware_version:
-								fwVersion || existingDeviceWithApiKey.firmware_version,
-							rssi: rssi
-								? Number.parseInt(rssi, 10)
-								: existingDeviceWithApiKey.rssi,
-							updated_at: new Date().toISOString(),
-						})
-						.eq("friendly_id", deviceId);
-
-					if (updateError) {
+					try {
+						await db
+							.updateTable("devices")
+							.set({
+								last_update_time: new Date().toISOString(),
+								next_expected_update: new Date(
+									Date.now() +
+										(refreshRate
+											? Number.parseInt(refreshRate, 10) * 1000
+											: 3600 * 1000),
+								).toISOString(),
+								battery_voltage: batteryVoltage
+									? Number.parseFloat(batteryVoltage)
+									: existingDeviceWithApiKey.battery_voltage,
+								firmware_version:
+									fwVersion || existingDeviceWithApiKey.firmware_version,
+								rssi: rssi
+									? Number.parseInt(rssi, 10)
+									: existingDeviceWithApiKey.rssi,
+								updated_at: new Date().toISOString(),
+							})
+							.where("friendly_id", "=", deviceId)
+							.execute();
+					} catch (updateError) {
 						logError(new Error("Error updating device metrics"), {
 							source: "api/log",
 							metadata: {
@@ -482,112 +572,13 @@ export async function POST(request: Request) {
 					const mockMacAddress = generateMockMacAddress(apiKey);
 
 					// Check if we already have a device with this mock MAC address
-					const { data: existingMockDevice, error: mockLookupError } =
-						await supabase
-							.from("devices")
-							.select("*")
-							.eq("mac_address", mockMacAddress)
-							.single();
+					const existingMockDevice = await db
+						.selectFrom("devices")
+						.selectAll()
+						.where("mac_address", "=", mockMacAddress)
+						.executeTakeFirst();
 
-					if (mockLookupError || !existingMockDevice) {
-						// No existing mock device, create a new one
-						deviceStatus = "new_mock";
-
-						// Create a masked API key from the provided one
-						let maskedApiKey = apiKey;
-						if (apiKey.length > 8) {
-							maskedApiKey = `xxxx${apiKey.substring(apiKey.length - 4)}`;
-						}
-
-						// Generate unique IDs for the new device
-						const friendly_id = generateFriendlyId(
-							mockMacAddress,
-							new Date().toISOString().replace(/[-:Z]/g, ""),
-						);
-						const new_api_key = macAddress
-							? apiKey
-							: generateApiKey(
-									mockMacAddress,
-									new Date().toISOString().replace(/[-:Z]/g, ""),
-								);
-
-						// Create a new device
-						const { data: newDevice, error: createError } = await supabase
-							.from("devices")
-							.insert({
-								mac_address: macAddress || mockMacAddress,
-								name: `Unknown device with API ${maskedApiKey}`,
-								friendly_id: friendly_id,
-								api_key: new_api_key,
-								refresh_schedule: {
-									default_refresh_rate: refreshRate
-										? Number.parseInt(refreshRate, 10)
-										: 60,
-									time_ranges: [],
-								},
-								last_update_time: new Date().toISOString(),
-								next_expected_update: new Date(
-									Date.now() +
-										(refreshRate
-											? Number.parseInt(refreshRate, 10) * 1000
-											: 3600 * 1000),
-								).toISOString(),
-								timezone: "UTC",
-								battery_voltage: batteryVoltage
-									? Number.parseFloat(batteryVoltage)
-									: null,
-								firmware_version: fwVersion || null,
-								rssi: rssi ? Number.parseInt(rssi, 10) : null,
-							})
-							.select()
-							.single();
-
-						if (createError || !newDevice) {
-							// Create an error object with the Supabase error details
-							const deviceError: CustomError = new Error(
-								"Error creating device for unknown logger",
-							);
-							deviceError.originalError = createError;
-
-							logError(deviceError, {
-								source: "api/log",
-								metadata: {
-									apiKey: maskedApiKey,
-									mockMacAddress,
-									friendly_id,
-									new_api_key,
-									device_status: deviceStatus,
-								},
-							});
-
-							return NextResponse.json(
-								{
-									status: 500,
-									message: "Failed to process logs from unknown device",
-								},
-								{ status: 200 },
-							); // 200 for device compatibility
-						}
-
-						// Use the newly created device
-						deviceId = newDevice.friendly_id;
-						deviceFound = true;
-
-						logInfo("Created new device for unknown logger", {
-							source: "api/log",
-							metadata: {
-								original_api_key: maskedApiKey,
-								new_device_id: deviceId,
-								mock_mac_address: mockMacAddress,
-								refresh_rate: refreshRate,
-								battery_voltage: batteryVoltage,
-								fw_version: fwVersion,
-								rssi: rssi,
-								device_found: deviceFound,
-								device_status: deviceStatus,
-							},
-						});
-					} else {
+					if (existingMockDevice) {
 						// Use the existing mock device
 						deviceId = existingMockDevice.friendly_id;
 						deviceFound = true;
@@ -595,15 +586,24 @@ export async function POST(request: Request) {
 
 						// If real MAC address is provided, update the mock device with the real MAC address
 						if (macAddress) {
-							const { error: updateMacError } = await supabase
-								.from("devices")
-								.update({
-									mac_address: macAddress,
-									updated_at: new Date().toISOString(),
-								})
-								.eq("friendly_id", deviceId);
+							try {
+								await db
+									.updateTable("devices")
+									.set({
+										mac_address: macAddress,
+										updated_at: new Date().toISOString(),
+									})
+									.where("friendly_id", "=", deviceId)
+									.execute();
 
-							if (updateMacError) {
+								logInfo("Updated mock device with real MAC address", {
+									source: "api/log",
+									metadata: {
+										device_id: deviceId,
+										mac_address: macAddress,
+									},
+								});
+							} catch (updateMacError) {
 								logError(
 									new Error("Error updating MAC address for mock device"),
 									{
@@ -614,41 +614,34 @@ export async function POST(request: Request) {
 										},
 									},
 								);
-							} else {
-								logInfo("Updated mock device with real MAC address", {
-									source: "api/log",
-									metadata: {
-										device_id: deviceId,
-										mac_address: macAddress,
-									},
-								});
 							}
 						}
 
 						// Update the device with the latest metrics
-						const { error: updateError } = await supabase
-							.from("devices")
-							.update({
-								last_update_time: new Date().toISOString(),
-								next_expected_update: new Date(
-									Date.now() +
-										(refreshRate
-											? Number.parseInt(refreshRate, 10) * 1000
-											: 3600 * 1000),
-								).toISOString(),
-								battery_voltage: batteryVoltage
-									? Number.parseFloat(batteryVoltage)
-									: existingMockDevice.battery_voltage,
-								firmware_version:
-									fwVersion || existingMockDevice.firmware_version,
-								rssi: rssi
-									? Number.parseInt(rssi, 10)
-									: existingMockDevice.rssi,
-								updated_at: new Date().toISOString(),
-							})
-							.eq("friendly_id", deviceId);
-
-						if (updateError) {
+						try {
+							await db
+								.updateTable("devices")
+								.set({
+									last_update_time: new Date().toISOString(),
+									next_expected_update: new Date(
+										Date.now() +
+											(refreshRate
+												? Number.parseInt(refreshRate, 10) * 1000
+												: 3600 * 1000),
+									).toISOString(),
+									battery_voltage: batteryVoltage
+										? Number.parseFloat(batteryVoltage)
+										: existingMockDevice.battery_voltage,
+									firmware_version:
+										fwVersion || existingMockDevice.firmware_version,
+									rssi: rssi
+										? Number.parseInt(rssi, 10)
+										: existingMockDevice.rssi,
+									updated_at: new Date().toISOString(),
+								})
+								.where("friendly_id", "=", deviceId)
+								.execute();
+						} catch (updateError) {
 							logError(new Error("Error updating existing mock device"), {
 								source: "api/log",
 								metadata: {
@@ -673,86 +666,109 @@ export async function POST(request: Request) {
 								device_status: deviceStatus,
 							},
 						});
-					}
-				}
-			} else {
-				// Use the found device
-				deviceId = device.friendly_id;
-				deviceFound = true;
-				deviceStatus = "known";
-
-				// If MAC address is provided, update the device with the real MAC address
-				if (macAddress && macAddress !== device.mac_address) {
-					const { error: updateMacError } = await supabase
-						.from("devices")
-						.update({
-							mac_address: macAddress,
-							updated_at: new Date().toISOString(),
-						})
-						.eq("friendly_id", deviceId);
-
-					if (updateMacError) {
-						logError(new Error("Error updating MAC address for device"), {
-							source: "api/log",
-							metadata: {
-								device_id: deviceId,
-								error: updateMacError,
-							},
-						});
 					} else {
-						logInfo("Updated device with MAC address", {
-							source: "api/log",
-							metadata: {
-								device_id: deviceId,
-								mac_address: macAddress,
-							},
-						});
+						// No existing mock device, create a new one
+						deviceStatus = "new_mock";
+
+						// Create a masked API key from the provided one
+						let maskedApiKey = apiKey;
+						if (apiKey.length > 8) {
+							maskedApiKey = `xxxx${apiKey.substring(apiKey.length - 4)}`;
+						}
+
+						// Generate unique IDs for the new device
+						const friendly_id = generateFriendlyId(
+							mockMacAddress,
+							new Date().toISOString().replace(/[-:Z]/g, ""),
+						);
+						const new_api_key = macAddress
+							? apiKey
+							: generateApiKey(
+									mockMacAddress,
+									new Date().toISOString().replace(/[-:Z]/g, ""),
+								);
+
+						try {
+							const newDevice = await db
+								.insertInto("devices")
+								.values({
+									mac_address: macAddress || mockMacAddress,
+									name: `Unknown device with API ${maskedApiKey}`,
+									friendly_id: friendly_id,
+									api_key: new_api_key,
+									refresh_schedule: JSON.stringify({
+										default_refresh_rate: refreshRate
+											? Number.parseInt(refreshRate, 10)
+											: 60,
+										time_ranges: [],
+									}),
+									last_update_time: new Date().toISOString(),
+									next_expected_update: new Date(
+										Date.now() +
+											(refreshRate
+												? Number.parseInt(refreshRate, 10) * 1000
+												: 3600 * 1000),
+									).toISOString(),
+									timezone: "UTC",
+									battery_voltage: batteryVoltage
+										? Number.parseFloat(batteryVoltage)
+										: null,
+									firmware_version: fwVersion || null,
+									rssi: rssi ? Number.parseInt(rssi, 10) : null,
+								})
+								.returningAll()
+								.executeTakeFirst();
+
+							if (!newDevice) {
+								throw new Error("Failed to create device record");
+							}
+
+							// Use the newly created device
+							deviceId = newDevice.friendly_id;
+							deviceFound = true;
+
+							logInfo("Created new device for unknown logger", {
+								source: "api/log",
+								metadata: {
+									original_api_key: maskedApiKey,
+									new_device_id: deviceId,
+									mock_mac_address: mockMacAddress,
+									refresh_rate: refreshRate,
+									battery_voltage: batteryVoltage,
+									fw_version: fwVersion,
+									rssi: rssi,
+									device_found: deviceFound,
+									device_status: deviceStatus,
+								},
+							});
+						} catch (createError) {
+							// Create an error object with the error details
+							const deviceError: CustomError = new Error(
+								"Error creating device for unknown logger",
+							);
+							deviceError.originalError = createError;
+
+							logError(deviceError, {
+								source: "api/log",
+								metadata: {
+									apiKey: maskedApiKey,
+									mockMacAddress,
+									friendly_id,
+									new_api_key,
+									device_status: deviceStatus,
+								},
+							});
+
+							return NextResponse.json(
+								{
+									status: 500,
+									message: "Failed to process logs from unknown device",
+								},
+								{ status: 200 },
+							); // 200 for device compatibility
+						}
 					}
 				}
-
-				// Update device metrics
-				const { error: updateError } = await supabase
-					.from("devices")
-					.update({
-						last_update_time: new Date().toISOString(),
-						next_expected_update: new Date(
-							Date.now() +
-								(refreshRate
-									? Number.parseInt(refreshRate, 10) * 1000
-									: 3600 * 1000),
-						).toISOString(),
-						battery_voltage: batteryVoltage
-							? Number.parseFloat(batteryVoltage)
-							: device.battery_voltage,
-						firmware_version: fwVersion || device.firmware_version,
-						rssi: rssi ? Number.parseInt(rssi, 10) : device.rssi,
-						updated_at: new Date().toISOString(),
-					})
-					.eq("friendly_id", deviceId);
-
-				if (updateError) {
-					logError(new Error("Error updating device metrics"), {
-						source: "api/log",
-						metadata: {
-							device_id: deviceId,
-							error: updateError,
-						},
-					});
-				}
-
-				logInfo("Device authenticated by API key", {
-					source: "api/log",
-					metadata: {
-						api_key: apiKey,
-						device_id: deviceId,
-						refresh_rate: refreshRate,
-						battery_voltage: batteryVoltage,
-						fw_version: fwVersion,
-						rssi: rssi,
-						device_found: deviceFound,
-						device_status: deviceStatus,
-					},
-				});
 			}
 		}
 
@@ -803,12 +819,15 @@ export async function POST(request: Request) {
 		console.log("📦 Processed log data:", JSON.stringify(logData, null, 2));
 
 		// Insert log with the device ID
-		const { error: insertError } = await supabase.from("logs").insert({
-			friendly_id: deviceId,
-			log_data: logData,
-		});
-
-		if (insertError) {
+		try {
+			await db
+				.insertInto("logs")
+				.values({
+					friendly_id: deviceId,
+					log_data: JSON.stringify(logData),
+				})
+				.execute();
+		} catch (insertError) {
 			// Create an error object with the insert error details
 			const dbError: CustomError = new Error(
 				"Error inserting log with device ID",

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { deletePlaylist, savePlaylistWithItems } from "@/app/actions/playlist";
 import { Button } from "@/components/ui/button";
-import { Playlist, PlaylistItem } from "@/lib/supabase/types";
+import { Playlist, PlaylistItem } from "@/lib/types";
 import { PlaylistEditor } from "./playlist-editor";
 import { PlaylistList } from "./playlist-list";
 

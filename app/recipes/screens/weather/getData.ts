@@ -121,6 +121,19 @@ async function geocodeLocation(
 
 		return null;
 	} catch (error) {
+		// Silently handle prerendering errors - fetch() rejects during prerendering
+		// which is expected behavior in Next.js
+		const errorMessage =
+			error instanceof Error ? error.message : String(error);
+		if (
+			errorMessage.includes("prerender") ||
+			errorMessage.includes("HANGING_PROMISE_REJECTION") ||
+			errorMessage.includes("prerender is complete")
+		) {
+			// Silently return null for prerendering errors
+			return null;
+		}
+		// Only log actual errors, not prerendering rejections
 		console.error("Error geocoding location:", error);
 		return null;
 	}
@@ -227,6 +240,19 @@ async function getWeatherData(
 			longitude: longitude || 0,
 		};
 	} catch (error) {
+		// Silently handle prerendering errors - fetch() rejects during prerendering
+		// which is expected behavior in Next.js
+		const errorMessage =
+			error instanceof Error ? error.message : String(error);
+		if (
+			errorMessage.includes("prerender") ||
+			errorMessage.includes("HANGING_PROMISE_REJECTION") ||
+			errorMessage.includes("prerender is complete")
+		) {
+			// Silently return null for prerendering errors
+			return null;
+		}
+		// Only log actual errors, not prerendering rejections
 		console.error("Error fetching weather data:", error);
 		return null;
 	}
