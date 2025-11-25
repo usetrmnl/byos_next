@@ -93,6 +93,11 @@ const fetchComponent = cache(async (slug: string) => {
 const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 	let props = config.props || {};
 
+	const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+	if (isBuildPhase) {
+		return props;
+	}
+
 	if (!config.hasDataFetch) {
 		return props;
 	}
@@ -201,6 +206,19 @@ const renderAllFormats = cache(
 	): Promise<CacheItem> => {
 		const renderCache = getRenderCache();
 		const cacheKey = `${slug}-${JSON.stringify(props)}`;
+		const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+		// During production build prerendering, avoid rendering outputs so we don't
+		// trigger remote asset fetches or use Date.now() in a request-less context.
+		if (isBuildPhase) {
+			logger.info(`Skipping render for ${slug} during build prerender`);
+			return {
+				bitmap: null,
+				png: null,
+				svg: null,
+				expiresAt: 0,
+			};
+		}
 
 		// Check cache first
 		if (renderCache?.has(cacheKey)) {

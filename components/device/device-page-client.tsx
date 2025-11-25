@@ -677,10 +677,10 @@ export default function DevicePageClient({
 
 								{(!editedDevice?.refresh_schedule?.time_ranges ||
 									editedDevice.refresh_schedule.time_ranges.length === 0) && (
-									<p className="text-sm text-muted-foreground">
-										No custom time ranges configured.
-									</p>
-								)}
+										<p className="text-sm text-muted-foreground">
+											No custom time ranges configured.
+										</p>
+									)}
 
 								<Button
 									type="button"
@@ -916,7 +916,7 @@ export default function DevicePageClient({
 																: `${batteryEstimate.batteryPercentage}%`}
 														</span>
 														<span className="text-sm font-medium">
-															{device.battery_voltage.toFixed(2)}V
+															{device.battery_voltage}V
 														</span>
 														<span className="text-sm text-muted-foreground">
 															{batteryEstimate.isCharging
