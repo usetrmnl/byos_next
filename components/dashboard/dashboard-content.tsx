@@ -1,13 +1,8 @@
 "use client";
 
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+import { ArrowRightIcon } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -16,12 +11,17 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { StatusIndicator } from "@/components/ui/status-indicator";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import type { Device, SystemLog } from "@/lib/supabase/types";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
-import { ArrowRightIcon } from "lucide-react";
-import Link from "next/link";
 
 interface DashboardContentProps {
 	devices: Device[];

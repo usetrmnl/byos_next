@@ -1,28 +1,16 @@
 "use client";
 
-import type React from "react";
-import { useState } from "react";
+import { RefreshCw, Save, Search, X } from "lucide-react";
 import Image from "next/image";
-import { RefreshCw, Save, X, Search } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
-import type { Device } from "@/lib/supabase/types";
-import { updateDevice, fetchDeviceByFriendlyId } from "@/app/actions/device";
-import {
-	formatDate,
-	estimateBatteryLife,
-	isValidApiKey,
-	isValidFriendlyId,
-	generateApiKey,
-	generateFriendlyId,
-	timezones,
-	formatTimezone,
-	getDeviceStatus,
-} from "@/utils/helpers";
-import { cn } from "@/lib/utils";
+import { fetchDeviceByFriendlyId, updateDevice } from "@/app/actions/device";
+import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Badge } from "@/components/ui/badge";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -31,9 +19,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Command,
 	CommandEmpty,
@@ -42,11 +27,14 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -54,8 +42,19 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
+import type { Device, Playlist, PlaylistItem } from "@/lib/supabase/types";
+import { cn } from "@/lib/utils";
+import {
+	estimateBatteryLife,
+	formatDate,
+	formatTimezone,
+	generateApiKey,
+	generateFriendlyId,
+	getDeviceStatus,
+	isValidApiKey,
+	isValidFriendlyId,
+	timezones,
+} from "@/utils/helpers";
 
 // Helper function to convert RSSI to signal quality description
 const getSignalQuality = (rssi: number): string => {
@@ -69,11 +68,15 @@ const getSignalQuality = (rssi: number): string => {
 interface DevicePageClientProps {
 	initialDevice: Device & { status?: string; type?: string };
 	availableScreens: { id: string; title: string }[];
+	availablePlaylists: Playlist[];
+	playlistItems: PlaylistItem[];
 }
 
 export default function DevicePageClient({
 	initialDevice,
 	availableScreens,
+	availablePlaylists,
+	playlistItems,
 }: DevicePageClientProps) {
 	const [device, setDevice] = useState<
 		Device & { status?: string; type?: string }
@@ -82,6 +85,9 @@ export default function DevicePageClient({
 	const [editedDevice, setEditedDevice] = useState<
 		Device & { status?: string; type?: string }
 	>(JSON.parse(JSON.stringify(initialDevice)));
+	const [playlistScreens, setPlaylistScreens] = useState<
+		{ screen: string; duration: number }[]
+	>([]);
 	const [isSaving, setIsSaving] = useState(false);
 
 	// State for validation error messages
@@ -142,7 +148,7 @@ export default function DevicePageClient({
 		const parent = pathParts[0];
 
 		if (parent === "refresh_schedule" && pathParts[1] === "time_ranges") {
-			const index = Number.parseInt(pathParts[2]);
+			const index = Number.parseInt(pathParts[2], 10);
 			const field = pathParts[3];
 
 			if (!editedDevice.refresh_schedule) return;
@@ -161,7 +167,7 @@ export default function DevicePageClient({
 
 			updatedTimeRanges[index] = {
 				...updatedTimeRanges[index],
-				[field]: field === "refresh_rate" ? Number.parseInt(value) : value,
+				[field]: field === "refresh_rate" ? Number.parseInt(value, 10) : value,
 			};
 
 			setEditedDevice({
@@ -236,6 +242,8 @@ export default function DevicePageClient({
 				timezone: editedDevice.timezone,
 				refresh_schedule: editedDevice.refresh_schedule,
 				screen: editedDevice.screen,
+				playlist_id: editedDevice.playlist_id,
+				use_playlist: editedDevice.use_playlist,
 			});
 
 			if (result.success) {
@@ -374,6 +382,18 @@ export default function DevicePageClient({
 		return Math.max(0, refreshesPerDay);
 	};
 
+	useEffect(() => {
+		if (editedDevice.playlist_id) {
+			const playlistScreens = playlistItems
+				.filter((item) => item.playlist_id === editedDevice.playlist_id)
+				.map((item) => ({
+					screen: item.screen_id,
+					duration: item.duration,
+				}));
+			setPlaylistScreens(playlistScreens);
+		}
+	}, [editedDevice.playlist_id, playlistItems]);
+
 	return (
 		<>
 			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -414,15 +434,13 @@ export default function DevicePageClient({
 							</Button>
 						</>
 					) : (
-						<>
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={() => setIsEditing(true)}
-							>
-								Edit Device
-							</Button>
-						</>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={() => setIsEditing(true)}
+						>
+							Edit Device
+						</Button>
 					)}
 				</div>
 			</div>
@@ -676,42 +694,105 @@ export default function DevicePageClient({
 							</div>
 
 							<div className="space-y-2">
-								<Label htmlFor="screen">Screen Component</Label>
-								<Select
-									value={editedDevice?.screen || ""}
-									onValueChange={(value) =>
-										handleScreenChange(value === "none" ? null : value)
-									}
-									disabled={!isEditing}
-								>
-									<SelectTrigger className="w-full">
-										<SelectValue placeholder="Select screen..." />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="none">None (Use default)</SelectItem>
-										{availableScreens.map((screen) => (
-											<SelectItem key={screen.id} value={screen.id}>
-												{screen.title}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<p className="text-sm text-muted-foreground">
-									The screen component to display on this device. If not set,
-									the default screen will be used.
-								</p>
+								<Label>Display Mode</Label>
+								<div className="flex items-center gap-4">
+									<Button
+										variant={!editedDevice.use_playlist ? "default" : "outline"}
+										onClick={() => {
+											setEditedDevice({
+												...editedDevice,
+												use_playlist: false,
+											});
+										}}
+									>
+										Single Screen
+									</Button>
+									<Button
+										variant={editedDevice.use_playlist ? "default" : "outline"}
+										onClick={() => {
+											setEditedDevice({
+												...editedDevice,
+												use_playlist: true,
+											});
+										}}
+									>
+										Playlist
+									</Button>
+								</div>
 							</div>
+
+							{editedDevice.use_playlist ? (
+								<div className="space-y-2">
+									<Label htmlFor="playlist">Playlist</Label>
+									<Select
+										value={editedDevice?.playlist_id || ""}
+										onValueChange={(value) =>
+											handleSelectChange(
+												"playlist_id",
+												value === "none" ? "" : value,
+											)
+										}
+										disabled={!isEditing}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select playlist..." />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="none">None</SelectItem>
+											{availablePlaylists.map((playlist) => (
+												<SelectItem key={playlist.id} value={playlist.id}>
+													{playlist.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+								</div>
+							) : (
+								<div className="space-y-2">
+									<Label htmlFor="screen">Screen Component</Label>
+									<Select
+										value={editedDevice?.screen || ""}
+										onValueChange={(value) =>
+											handleScreenChange(value === "none" ? null : value)
+										}
+										disabled={!isEditing}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select screen..." />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="none">None (Use default)</SelectItem>
+											{availableScreens.map((screen) => (
+												<SelectItem key={screen.id} value={screen.id}>
+													{screen.title}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<p className="text-sm text-muted-foreground">
+										The screen component to display on this device. If not set,
+										the default screen will be used.
+									</p>
+								</div>
+							)}
 							<div className="w-full max-w-3xl">
-								<AspectRatio ratio={5 / 3}>
-									<Image
-										src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp`}
-										alt="Device Screen"
-										fill
-										className="object-cover rounded-xs ring-2 ring-gray-200"
-										style={{ imageRendering: "pixelated" }}
-										unoptimized
-									/>
-								</AspectRatio>
+								{editedDevice.use_playlist && editedDevice.playlist_id ? (
+									<p className="text-sm text-muted-foreground mt-2">
+										Playlist mode: Shows rotating screens based on playlist
+										configuration
+									</p>
+								) : (
+									<AspectRatio ratio={5 / 3}>
+										<Image
+											src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp`}
+											alt="Device Screen"
+											fill
+											className="object-cover rounded-xs ring-2 ring-gray-200"
+											style={{ imageRendering: "pixelated" }}
+											unoptimized
+										/>
+									</AspectRatio>
+								)}
 							</div>
 						</CardContent>
 						<CardFooter className="flex justify-end space-x-2">
@@ -890,16 +971,39 @@ export default function DevicePageClient({
 							</div>
 
 							<div className="col-span-1 md:col-span-2 lg:col-span-3">
-								<AspectRatio ratio={5 / 3}>
-									<Image
-										src={`/api/bitmap/${device?.screen || "simple-text"}.bmp`}
-										alt="Device Screen"
-										fill
-										className="object-cover rounded-xs ring-2 ring-gray-200"
-										style={{ imageRendering: "pixelated" }}
-										unoptimized
-									/>
-								</AspectRatio>
+								{editedDevice.use_playlist && editedDevice.playlist_id ? (
+									<>
+										<p className="text-sm text-muted-foreground mt-2">
+											Playlist mode: Shows rotating screens based on playlist
+											configuration
+										</p>
+										<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+											{playlistScreens.map((screen) => (
+												<AspectRatio key={screen.screen} ratio={5 / 3}>
+													<Image
+														src={`/api/bitmap/${screen.screen || "simple-text"}.bmp`}
+														alt="Device Screen"
+														fill
+														className="object-cover rounded-xs ring-2 ring-gray-200"
+														style={{ imageRendering: "pixelated" }}
+														unoptimized
+													/>
+												</AspectRatio>
+											))}
+										</div>
+									</>
+								) : (
+									<AspectRatio ratio={5 / 3}>
+										<Image
+											src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp`}
+											alt="Device Screen"
+											fill
+											className="object-cover rounded-xs ring-2 ring-gray-200"
+											style={{ imageRendering: "pixelated" }}
+											unoptimized
+										/>
+									</AspectRatio>
+								)}
 							</div>
 						</dl>
 					</CardContent>

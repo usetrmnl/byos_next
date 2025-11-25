@@ -1,34 +1,34 @@
 "use client";
 
-import type React from "react";
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
-	Filter,
-	Search,
-	Wifi,
+	AlertTriangle,
 	BatteryCharging,
-	X,
 	Clock,
-	RefreshCw,
+	Coffee,
 	Cpu,
 	FileCode,
-	Timer,
-	AlertTriangle,
+	Filter,
 	HardDrive,
-	Coffee,
+	RefreshCw,
+	Search,
+	Timer,
+	Wifi,
 	WifiOff,
+	X,
 } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { fetchDeviceLogsWithFilters } from "@/app/actions/device";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchDeviceLogsWithFilters } from "@/app/actions/device";
+import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
 import type { Log } from "@/lib/supabase/types";
 import { formatDate, getLogType } from "@/utils/helpers";
-import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
 
 const ITEMS_PER_PAGE = 100;
 

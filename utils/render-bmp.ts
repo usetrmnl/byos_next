@@ -160,8 +160,8 @@ const applyBayer = (
  */
 const applyRandom = (
 	grayscale: Uint8Array,
-	width: number,
-	height: number,
+	_width: number,
+	_height: number,
 	inverted: boolean = false,
 ): Uint8Array => {
 	const result = new Uint8Array(grayscale.length);

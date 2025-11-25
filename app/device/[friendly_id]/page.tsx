@@ -1,10 +1,10 @@
-import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { getInitData } from "@/lib/getInitData";
+import { Suspense } from "react";
 import screens from "@/app/recipes/screens.json";
 import DevicePageClient from "@/components/device/device-page-client";
-import { getDeviceStatus } from "@/utils/helpers";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getInitData } from "@/lib/getInitData";
+import { getDeviceStatus } from "@/utils/helpers";
 
 // Loading fallback for the device page
 const DevicePageSkeleton = () => (
@@ -36,7 +36,7 @@ const DevicePageSkeleton = () => (
 
 // Device data component that uses centralized cached data
 const DeviceData = async ({ friendlyId }: { friendlyId: string }) => {
-	const { devices } = await getInitData();
+	const { devices, playlists, playlistItems } = await getInitData();
 
 	// Find the specific device by friendly_id
 	const device = devices.find((d) => d.friendly_id === friendlyId);
@@ -61,13 +61,17 @@ const DeviceData = async ({ friendlyId }: { friendlyId: string }) => {
 		<DevicePageClient
 			initialDevice={enhancedDevice}
 			availableScreens={availableScreens}
+			availablePlaylists={playlists}
+			playlistItems={playlistItems}
 		/>
 	);
 };
 
 export default async function DevicePage({
 	params,
-}: { params: Promise<{ friendly_id: string }> }) {
+}: {
+	params: Promise<{ friendly_id: string }>;
+}) {
 	const resolvedParams = await params;
 	const friendlyId = resolvedParams.friendly_id as string;
 

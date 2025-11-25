@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import type { Device, RefreshSchedule } from "@/lib/supabase/types";
-import { isValidFriendlyId, isValidApiKey, timezones } from "@/utils/helpers";
+import { isValidApiKey, isValidFriendlyId, timezones } from "@/utils/helpers";
 
 /**
  * Initialize the database with the required schema and optionally a test device

@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { deflate, crc32 } from "node:zlib";
+import { crc32, deflate } from "node:zlib";
 
 const PNG_SIGNATURE = Buffer.from([
 	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
@@ -47,7 +47,7 @@ function chunkSize(datasize: number) {
 // creates and returns a buffer, input is raw bmp 1 bit
 export async function renderPng(bmp: Buffer) {
 	const bitsPerPixel = bmp.readUInt16LE(28);
-	if (bitsPerPixel != 1) {
+	if (bitsPerPixel !== 1) {
 		console.warn(`input BMP has ${bitsPerPixel} vs expected 1`);
 		return;
 	}
@@ -60,12 +60,12 @@ export async function renderPng(bmp: Buffer) {
 	const offsetData = bmp.readUInt32LE(10);
 	const infoHeaderSize = bmp.readUInt32LE(14);
 
-	if (infoHeaderSize != 40) {
+	if (infoHeaderSize !== 40) {
 		return;
 	}
 	const paletteOffset = 14 + infoHeaderSize;
 	// white first
-	const invert = bmp[paletteOffset] == 0xff;
+	const invert = bmp[paletteOffset] === 0xff;
 
 	// compress first to get final size
 	// Create a buffer that is sufficient to hold the compressed png data

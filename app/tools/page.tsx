@@ -3,8 +3,6 @@ import { Suspense } from "react";
 import tools from "@/app/tools/tools.json";
 import { Badge } from "@/components/ui/badge";
 
-export const dynamic = "force-static";
-
 // Tool configuration type
 type ToolConfig = {
 	title: string;

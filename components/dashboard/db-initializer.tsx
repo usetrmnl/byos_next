@@ -1,25 +1,25 @@
 "use client";
 
-import { useState, useTransition } from "react";
 import {
-	Check,
-	Copy,
-	Play,
 	AlertCircle,
-	Loader2,
+	Check,
 	ChevronDown,
 	Code,
+	Copy,
+	Loader2,
+	Play,
 	RefreshCw,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 import {
 	executeSqlStatements,
 	type SqlExecutionState,
 	type SqlExecutionStatus,
 } from "@/app/actions/execute-sql";
 import { SQL_STATEMENTS } from "@/lib/database/sql-statements";
-import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { useRouter } from "next/navigation";
+import { Input } from "../ui/input";
 
 export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 	const [isPending, startTransition] = useTransition();

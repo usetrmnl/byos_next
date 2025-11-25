@@ -38,7 +38,7 @@ live demo: [https://byos-nextjs.vercel.app/](https://byos-nextjs.vercel.app/)
 - 🚀 Easy deployment to Vercel
 - 📊 Comprehensive logging system
 - 🔒 Secure API key management
-- 💻 Modern tech stack (Next.js 15, React 19, Tailwind CSS v4)
+- 💻 Modern tech stack (Next.js 16, React 19, Tailwind CSS v4)
 - 🧹 Clean, standardized codebase with Biome for formatting
 - ⚠️ Using a canary version of Shadcn for Tailwind v4 support; be cautious with AI-generated code.
 
@@ -50,14 +50,15 @@ This project is in the **Alpha** stage. Here's our development roadmap:
 - ✅ Core functionality for device management
 - ✅ Dynamic screen generation
 - ✅ Supabase integration
-- ✅ Examples framework
+- ✅ Recipes framework
 - ✅ Codebase refactoring and standardization
 - ✅ Improved initialization flow (2025-03-11)
 - ✅ "No database" mode for simpler deployments (2025-03-11)
+- ✅ Playlist support for device scheduling
 
 ### Coming Soon
 - 🔄 More pixelated fonts
-- 🔄 More template examples
+- 🔄 More template recipes
 - 🔄 MySQL/local file support
 - 🔄 Demo mode for testing without affecting production devices
 
@@ -132,6 +133,27 @@ Manually initialize the database tables in your Supabase SQL editor:
 -- Enable UUID generation extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Playlists Table
+CREATE TABLE public.playlists (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Playlist Items Table
+CREATE TABLE public.playlist_items (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    playlist_id UUID REFERENCES public.playlists(id) ON DELETE CASCADE,
+    screen_id TEXT NOT NULL,
+    duration INT NOT NULL DEFAULT 30,
+    start_time TIME,
+    end_time TIME,
+    days_of_week JSONB,
+    order_index INT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Devices Table
 CREATE TABLE public.devices (
     id BIGSERIAL PRIMARY KEY,
@@ -148,6 +170,9 @@ CREATE TABLE public.devices (
     battery_voltage NUMERIC NULL,
     firmware_version TEXT NULL,
     rssi INTEGER NULL,
+    playlist_id UUID REFERENCES public.playlists(id),
+    use_playlist BOOLEAN DEFAULT FALSE,
+    current_playlist_index INT DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -158,7 +183,6 @@ CREATE INDEX idx_devices_refresh_schedule ON public.devices USING GIN (refresh_s
 -- Logs Table
 CREATE TABLE public.logs (
     id BIGSERIAL PRIMARY KEY,
-    device_id BIGINT NOT NULL,
     friendly_id TEXT NULL,
     log_data TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -298,23 +322,25 @@ JSX component -> pre-satori wrapper -> satori (svg) -> vercel image response (pn
   - Update the database schema to include user management if needed
   - Consider rate limiting and other security measures
 
-## 🧪 Examples
+## 🧪 Recipes
 
-The project includes an examples section to visualize and test components in both direct rendering and bitmap (BMP) rendering forms. This helps develop and test components for the TRMNL device.
+The project includes a recipes section to visualize and test components in both direct rendering and bitmap (BMP) rendering forms. This helps develop and test components for the TRMNL device.
 
-### How Examples Work
+### How Recipes Work
 
-Visit `[base url]/examples` to view the examples page.
+Visit `[base url]/recipes` to view the recipes page.
 
-To set up your own screen example, use the following structure:
+To set up your own screen recipe, use the following structure:
 
-1. Create your component folder in the `app/examples/screens` directory following any existing examples.
-2. Add your component and data fetching logic
-3. Add an entry to `app/examples/screens.json`
+1. Create your component folder in the `app/recipes/screens` directory following any existing recipes.
+2. Add your component and data fetching logic (if needed)
+3. Add an entry to `app/recipes/screens.json`
 
-Each screen is defined in `app/examples/screens.json` and can be accessed via its slug.
+Each recipe is defined in `app/recipes/screens.json` and can be accessed via its slug.
 
 This allows you to code and preview before pointing your device to any of the screens.
+
+For more details, see the [Recipes README](app/recipes/README.md).
 
 ## 🤝 Contributing
 

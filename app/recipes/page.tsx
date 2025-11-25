@@ -4,8 +4,6 @@ import screens from "@/app/recipes/screens.json";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 
-export const dynamic = "force-static";
-
 // Get published components
 const getPublishedComponents = () => {
 	const componentEntries = Object.entries(screens);
@@ -20,7 +18,10 @@ const getPublishedComponents = () => {
 const ComponentPreview = ({
 	slug,
 	config,
-}: { slug: string; config: (typeof screens)[keyof typeof screens] }) => {
+}: {
+	slug: string;
+	config: (typeof screens)[keyof typeof screens];
+}) => {
 	return (
 		<AspectRatio
 			ratio={5 / 3}
@@ -47,7 +48,10 @@ const ComponentPreview = ({
 const RecipeCard = ({
 	slug,
 	config,
-}: { slug: string; config: (typeof screens)[keyof typeof screens] }) => {
+}: {
+	slug: string;
+	config: (typeof screens)[keyof typeof screens];
+}) => {
 	return (
 		<Link
 			key={slug}
