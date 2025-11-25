@@ -494,9 +494,9 @@ export async function GET(request: Request) {
 								last_update_time: new Date().toISOString(),
 								next_expected_update: new Date(
 									Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate, 10) * 1000
-										: 3600 * 1000),
+										(refreshRate
+											? Number.parseInt(refreshRate, 10) * 1000
+											: 3600 * 1000),
 								).toISOString(),
 								timezone: "UTC",
 								battery_voltage: batteryVoltage
@@ -579,9 +579,9 @@ export async function GET(request: Request) {
 					const new_api_key = macAddress
 						? apiKey
 						: generateApiKey(
-							mockMacAddress,
-							new Date().toISOString().replace(/[-:Z]/g, ""),
-						);
+								mockMacAddress,
+								new Date().toISOString().replace(/[-:Z]/g, ""),
+							);
 
 					try {
 						const newDevice = await db
@@ -600,9 +600,9 @@ export async function GET(request: Request) {
 								last_update_time: new Date().toISOString(),
 								next_expected_update: new Date(
 									Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate, 10) * 1000
-										: 3600 * 1000),
+										(refreshRate
+											? Number.parseInt(refreshRate, 10) * 1000
+											: 3600 * 1000),
 								).toISOString(),
 								timezone: "UTC",
 								battery_voltage: batteryVoltage

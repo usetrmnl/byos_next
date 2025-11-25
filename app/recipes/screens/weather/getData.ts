@@ -123,8 +123,7 @@ async function geocodeLocation(
 	} catch (error) {
 		// Silently handle prerendering errors - fetch() rejects during prerendering
 		// which is expected behavior in Next.js
-		const errorMessage =
-			error instanceof Error ? error.message : String(error);
+		const errorMessage = error instanceof Error ? error.message : String(error);
 		if (
 			errorMessage.includes("prerender") ||
 			errorMessage.includes("HANGING_PROMISE_REJECTION") ||
@@ -242,8 +241,7 @@ async function getWeatherData(
 	} catch (error) {
 		// Silently handle prerendering errors - fetch() rejects during prerendering
 		// which is expected behavior in Next.js
-		const errorMessage =
-			error instanceof Error ? error.message : String(error);
+		const errorMessage = error instanceof Error ? error.message : String(error);
 		if (
 			errorMessage.includes("prerender") ||
 			errorMessage.includes("HANGING_PROMISE_REJECTION") ||
