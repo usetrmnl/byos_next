@@ -1,44 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Geist_Mono as FontMono, Geist as FontSans } from "next/font/google";
-import localFont from "next/font/local";
 import "./globals.css";
 import { Suspense } from "react";
 import MainLayout from "@/components/main-layout-server";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/sonner";
+import { getAllFontVariables } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
-
-const fontSans = FontSans({
-	subsets: ["latin"],
-	variable: "--font-sans",
-});
-
-const fontMono = FontMono({
-	subsets: ["latin"],
-	variable: "--font-mono",
-});
-
-const blockKie = localFont({
-	src: "../public/fonts/BlockKie.ttf", // Adjust path as needed
-	variable: "--font-blockkie",
-	weight: "400",
-	style: "normal",
-});
-
-const geneva9 = localFont({
-	src: "../public/fonts/geneva-9.ttf",
-	variable: "--font-geneva9",
-	weight: "400",
-	style: "normal",
-});
-
-const inter = localFont({
-	src: "../public/fonts/Inter_18pt-Regular.ttf",
-	variable: "--font-inter",
-	weight: "400",
-	style: "normal",
-});
 
 const META_THEME_COLORS = {
 	light: "#ffffff",
@@ -147,11 +115,7 @@ export default async function RootLayout({
 			<body
 				className={cn(
 					"bg-background overscroll-none font-sans antialiased",
-					fontSans.variable,
-					fontMono.variable,
-					blockKie.variable,
-					geneva9.variable,
-					inter.variable,
+					getAllFontVariables(),
 				)}
 			>
 				{/* ThemeProvider is a Client Component wrapper */}

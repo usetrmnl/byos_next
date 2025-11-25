@@ -366,11 +366,10 @@ export async function GET(request: Request) {
 			.from("devices")
 			.select("*")
 			.eq("api_key", apiKey)
-			.eq("mac_address", macAddress)
+			// .eq("mac_address", macAddress)
 			.single();
 
 		let device = data;
-
 		if (error || !device) {
 			// Device not found with both API key and MAC address
 			// Try more forgiving approach similar to log route

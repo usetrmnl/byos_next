@@ -1,5 +1,6 @@
 import React from "react";
 import { cn } from "@/lib/utils";
+import { fonts } from "../lib/fonts";
 
 interface PreSatoriProps {
 	useDoubling?: boolean;
@@ -166,7 +167,7 @@ const satoriResetStyles: Record<string, string> = {
 };
 
 /*
-	This function helps Satori figure out the font size of the text.
+    This function helps Satori figure out the font size of the text.
 */
 const calculateFontSize = (
 	parentFontSize: number,
@@ -336,18 +337,25 @@ const extractFontFamily = (className?: string): string | undefined => {
 	const fontClass = className.split(" ").find((cls) => cls.startsWith("font-"));
 
 	if (fontClass) {
-		switch (fontClass) {
-			case "font-blockkie":
-				return "BlockKie"; // Return the actual font name
-			case "font-geneva9":
-				return "Geneva9"; // Return the actual font name
-			case "font-inter":
-				return "Inter"; // Return the actual font name
-			case "font-sans":
+		// Remove 'font-' prefix to match font keys
+		const fontKey = fontClass.replace("font-", "");
+
+		// Check if it's one of our configured fonts
+		const configuredFontKeys: Record<string, true> = {};
+		for (const key of Object.keys(fonts)) {
+			configuredFontKeys[key.toLowerCase()] = true;
+		}
+		if (configuredFontKeys[fontKey.toLowerCase()]) {
+			return fontKey;
+		}
+
+		// Handle system font stacks
+		switch (fontKey) {
+			case "sans":
 				return "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif";
-			case "font-serif":
+			case "serif":
 				return "ui-serif, Georgia, Cambria, Times New Roman, Times, serif";
-			case "font-mono":
+			case "mono":
 				return "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace";
 			default: {
 				// Handle any custom font-[...] classes

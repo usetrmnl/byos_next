@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { cache, createElement } from "react";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
-import loadFont from "@/utils/font-loader";
+import { getSatoriFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 // Logging utility to control log output based on environment
@@ -68,7 +68,7 @@ const getBitmapCache = (): Map<string, CacheItem> | null => {
 };
 
 // Cache the fonts at module initialization
-const fonts = loadFont();
+const fonts = getSatoriFonts();
 
 // Get image options based on recipe configuration
 const getImageOptions = (recipeId: string) => {
@@ -92,28 +92,7 @@ const getImageOptions = (recipeId: string) => {
 	return {
 		width: 800 * scaleFactor,
 		height: 480 * scaleFactor,
-		fonts: [
-			...(fonts?.blockKie
-				? [
-						{
-							name: "BlockKie",
-							data: fonts.blockKie,
-							weight: 400 as const,
-							style: "normal" as const,
-						},
-					]
-				: []),
-			...(fonts?.geneva9
-				? [
-						{
-							name: "Geneva9",
-							data: fonts.geneva9,
-							weight: 400 as const,
-							style: "normal" as const,
-						},
-					]
-				: []),
-		],
+		fonts: fonts,
 		debug: false,
 	};
 };
@@ -289,28 +268,7 @@ export async function GET(
 			const defaultOptions = {
 				width: 800,
 				height: 480,
-				fonts: [
-					...(fonts?.blockKie
-						? [
-								{
-									name: "BlockKie",
-									data: fonts.blockKie,
-									weight: 400 as const,
-									style: "normal" as const,
-								},
-							]
-						: []),
-					...(fonts?.geneva9
-						? [
-								{
-									name: "Geneva9",
-									data: fonts.geneva9,
-									weight: 400 as const,
-									style: "normal" as const,
-								},
-							]
-						: []),
-				],
+				fonts: fonts,
 				debug: false,
 			};
 			const pngResponse = await new ImageResponse(element, defaultOptions);

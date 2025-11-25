@@ -9,7 +9,7 @@ import screens from "@/app/recipes/screens.json";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import loadFont from "@/utils/font-loader";
+import { getSatoriFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 // Logging utility to control log output based on environment
@@ -55,7 +55,7 @@ async function refreshData(slug: string) {
 }
 
 // Cache the fonts at module initialization
-const fonts = loadFont();
+const fonts = getSatoriFonts();
 
 // Define a type for the recipe configuration
 type RecipeConfig = (typeof screens)[keyof typeof screens] & {
@@ -138,40 +138,7 @@ const getImageOptions = (config: RecipeConfig) => {
 	return {
 		width: 800 * scaleFactor,
 		height: 480 * scaleFactor,
-		fonts: [
-			...(fonts?.blockKie
-				? [
-						{
-							name: "BlockKie",
-							data: fonts.blockKie,
-							weight: 400 as const,
-							style: "normal" as const,
-							textRendering: 0,
-						},
-					]
-				: []),
-			...(fonts?.geneva9
-				? [
-						{
-							name: "Geneva9",
-							data: fonts.geneva9,
-							weight: 400 as const,
-							style: "normal" as const,
-							textRendering: 0,
-						},
-					]
-				: []),
-			...(fonts?.inter
-				? [
-						{
-							name: "Inter",
-							data: fonts.inter,
-							weight: 400 as const,
-							style: "normal" as const,
-						},
-					]
-				: []),
-		],
+		fonts: fonts,
 		shapeRendering: 1,
 		textRendering: 0,
 		imageRendering: 1,
