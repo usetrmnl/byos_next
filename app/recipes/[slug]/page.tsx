@@ -1,4 +1,5 @@
 import { revalidateTag } from "next/cache";
+import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -423,6 +424,8 @@ export default async function RecipePage({
 }: {
 	params: Promise<{ slug: string }>;
 }) {
+	// Access headers to mark route as dynamic and allow time-based operations
+	headers();
 	const { slug } = await params;
 	const config = await fetchConfig(slug);
 
