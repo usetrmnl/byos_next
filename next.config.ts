@@ -4,9 +4,7 @@ const nextConfig: NextConfig = {
 	/* config options here */
 	trailingSlash: false,
 	skipTrailingSlashRedirect: true,
-	experimental: {
-		useCache: true,
-	},
+	cacheComponents: true,
 	output: "standalone",
 };
 

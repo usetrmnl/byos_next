@@ -7,6 +7,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { FormattedDate } from "@/components/ui/formatted-date";
 import { Playlist } from "@/lib/supabase/types";
 
 interface PlaylistListProps {
@@ -41,7 +42,7 @@ export function PlaylistList({
 							<div>
 								<CardTitle className="text-lg">{playlist.name}</CardTitle>
 								<CardDescription>
-									{new Date(playlist.updated_at).toLocaleDateString()}
+									<FormattedDate dateString={playlist.updated_at} />
 								</CardDescription>
 							</div>
 						</div>

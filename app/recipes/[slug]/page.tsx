@@ -51,7 +51,7 @@ export async function generateMetadata() {
 async function refreshData(slug: string) {
 	"use server";
 	await new Promise((resolve) => setTimeout(resolve, 500)); // Demo loading state
-	revalidateTag(slug);
+	revalidateTag(slug, "max");
 }
 
 // Cache the fonts at module initialization

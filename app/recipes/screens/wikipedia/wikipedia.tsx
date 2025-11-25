@@ -1,7 +1,7 @@
 import { PreSatori } from "@/utils/pre-satori";
 import { WikipediaData } from "./getData";
 
-export default function Wikipedia({
+export default async function Wikipedia({
 	title = "no data received",
 	extract = "Article content is unavailable.",
 	thumbnail,
@@ -10,6 +10,7 @@ export default function Wikipedia({
 	fullurl,
 	displaytitle,
 }: WikipediaData) {
+	"use cache";
 	// Sanitize the data to ensure we only work with valid inputs
 	const safeTitle =
 		title ||
