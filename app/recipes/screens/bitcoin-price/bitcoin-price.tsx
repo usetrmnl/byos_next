@@ -1,16 +1,5 @@
+import { Graph } from "@/components/ui/graph";
 import { PreSatori } from "@/utils/pre-satori";
-import { Graph } from '@/components/ui/graph';
-
-// Format price labels
-const formatPrice = (price: number) => {
-	return `$${Math.round(price).toLocaleString()}`;
-};
-
-// Format time labels
-const formatTime = (timestamp: number) => {
-	const date = new Date(timestamp);
-	return `${date.getHours()}:${date.getMinutes().toString().padStart(2, '0')}`;
-};
 
 interface BitcoinPriceProps {
 	price?: string;
@@ -45,9 +34,9 @@ export default function BitcoinPrice({
 		{ label: "24h Low", value: low24h },
 	];
 
-	const graphData = historicalPrices.map(d => ({
+	const graphData = historicalPrices.map((d) => ({
 		x: new Date(d.timestamp),
-		y: d.price
+		y: d.price,
 	}));
 
 	return (
@@ -88,14 +77,8 @@ export default function BitcoinPrice({
 								</div>
 							</div>
 							<div className="w-full flex flex-row items-center justify-between px-4">
-								<Graph
-									data={graphData}
-									isTimeData={true}
-								/>
-								<div
-									className="flex flex-col w-1/3"
-									style={{ gap: "16px" }}
-								>
+								<Graph data={graphData} isTimeData={true} />
+								<div className="flex flex-col w-1/3" style={{ gap: "16px" }}>
 									{priceStats.map((stat, index) => (
 										<div
 											key={index}
@@ -116,7 +99,9 @@ export default function BitcoinPrice({
 								style={{ WebkitTextStroke: "4px white" }}
 							>
 								<div>Bitcoin Price Tracker</div>
-								<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
+								<div>
+									{lastUpdated && <span>Last updated: {lastUpdated}</span>}
+								</div>
 							</div>
 						</div>,
 					)}

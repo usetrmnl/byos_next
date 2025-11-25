@@ -17,9 +17,11 @@ interface BitcoinData {
 /**
  * Internal function to fetch historical Bitcoin price data
  */
-async function getBitcoinHistoricalData(): Promise<Array<{ timestamp: number; price: number }> | null> {
+async function getBitcoinHistoricalData(): Promise<Array<{
+	timestamp: number;
+	price: number;
+}> | null> {
 	try {
-
 		// Fetch historical Bitcoin data from CoinGecko API
 		const response = await fetch(
 			`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1`,
