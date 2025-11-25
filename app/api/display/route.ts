@@ -510,7 +510,7 @@ export async function GET(request: Request) {
 							api_key: apiKey,
 							refresh_schedule: {
 								default_refresh_rate: refreshRate
-									? Number.parseInt(refreshRate)
+									? Number.parseInt(refreshRate, 10)
 									: 60,
 								time_ranges: [],
 							},
@@ -518,7 +518,7 @@ export async function GET(request: Request) {
 							next_expected_update: new Date(
 								Date.now() +
 									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
+										? Number.parseInt(refreshRate, 10) * 1000
 										: 3600 * 1000),
 							).toISOString(),
 							timezone: "UTC",
@@ -526,7 +526,7 @@ export async function GET(request: Request) {
 								? Number.parseFloat(batteryVoltage)
 								: null,
 							firmware_version: fwVersion || null,
-							rssi: rssi ? Number.parseInt(rssi) : null,
+							rssi: rssi ? Number.parseInt(rssi, 10) : null,
 							screen: DEFAULT_SCREEN,
 						})
 						.select()
@@ -614,7 +614,7 @@ export async function GET(request: Request) {
 							api_key: new_api_key,
 							refresh_schedule: {
 								default_refresh_rate: refreshRate
-									? Number.parseInt(refreshRate)
+									? Number.parseInt(refreshRate, 10)
 									: 60,
 								time_ranges: [],
 							},
@@ -622,7 +622,7 @@ export async function GET(request: Request) {
 							next_expected_update: new Date(
 								Date.now() +
 									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
+										? Number.parseInt(refreshRate, 10) * 1000
 										: 3600 * 1000),
 							).toISOString(),
 							timezone: "UTC",
@@ -630,7 +630,7 @@ export async function GET(request: Request) {
 								? Number.parseFloat(batteryVoltage)
 								: null,
 							firmware_version: fwVersion || null,
-							rssi: rssi ? Number.parseInt(rssi) : null,
+							rssi: rssi ? Number.parseInt(rssi, 10) : null,
 							screen: DEFAULT_SCREEN,
 						})
 						.select()
@@ -888,7 +888,7 @@ export async function GET(request: Request) {
 			refreshDurationSeconds: dynamicRefreshRate,
 			batteryVoltage: Number.parseFloat(batteryVoltage || "0"),
 			fwVersion: fwVersion || "",
-			rssi: Number.parseInt(rssi || "0"),
+			rssi: Number.parseInt(rssi || "0", 10),
 			timezone: device.timezone || "UTC",
 		});
 

@@ -747,7 +747,7 @@ export default function BitmapFontDesignerClient() {
 	// Format: { "8x8": Map(65 => "10101010..."), "16x16": Map(65 => "10101010..."), ... }
 	const initialFontDataObj = useMemo(() => {
 		const fontDataObj: { [fontSize: string]: Map<number, string> } = {};
-		bitmapFont.map((font) => {
+		bitmapFont.forEach((font) => {
 			const fontSizeKey = `${font.width}x${font.height}`;
 			const characterBitmapMap = new Map<number, string>();
 			font.characters.forEach((char) => {
@@ -806,7 +806,7 @@ export default function BitmapFontDesignerClient() {
 		// Update the availableGridSizes list
 		setAvailableGridSizes((prev) => {
 			const newSizes = [...prev, newSize].sort(
-				(a, b) => parseInt(a.split("x")[0]) - parseInt(b.split("x")[0]),
+				(a, b) => parseInt(a.split("x")[0], 10) - parseInt(b.split("x")[0], 10),
 			);
 			return newSizes;
 		});
@@ -871,7 +871,7 @@ export default function BitmapFontDesignerClient() {
 
 	const handleCharacterSelect = useCallback(
 		(charCode: string) => {
-			const newCharCode = parseInt(charCode);
+			const newCharCode = parseInt(charCode, 10);
 			setSelectedCharCode(newCharCode);
 			// Update the current character bitmap when selecting a new character
 			setCurrentCharacterBitmap(characterBitmaps.get(newCharCode) ?? null);

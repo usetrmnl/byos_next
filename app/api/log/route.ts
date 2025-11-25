@@ -168,14 +168,14 @@ export async function POST(request: Request) {
 						next_expected_update: new Date(
 							Date.now() +
 								(refreshRate
-									? Number.parseInt(refreshRate) * 1000
+									? Number.parseInt(refreshRate, 10) * 1000
 									: 3600 * 1000),
 						).toISOString(),
 						battery_voltage: batteryVoltage
 							? Number.parseFloat(batteryVoltage)
 							: deviceByMac.battery_voltage,
 						firmware_version: fwVersion || deviceByMac.firmware_version,
-						rssi: rssi ? Number.parseInt(rssi) : deviceByMac.rssi,
+						rssi: rssi ? Number.parseInt(rssi, 10) : deviceByMac.rssi,
 						updated_at: new Date().toISOString(),
 					})
 					.eq("friendly_id", deviceId);
@@ -256,14 +256,14 @@ export async function POST(request: Request) {
 							next_expected_update: new Date(
 								Date.now() +
 									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
+										? Number.parseInt(refreshRate, 10) * 1000
 										: 3600 * 1000),
 							).toISOString(),
 							battery_voltage: batteryVoltage
 								? Number.parseFloat(batteryVoltage)
 								: deviceByApiKey.battery_voltage,
 							firmware_version: fwVersion || deviceByApiKey.firmware_version,
-							rssi: rssi ? Number.parseInt(rssi) : deviceByApiKey.rssi,
+							rssi: rssi ? Number.parseInt(rssi, 10) : deviceByApiKey.rssi,
 							updated_at: new Date().toISOString(),
 						})
 						.eq("friendly_id", deviceId);
@@ -311,7 +311,7 @@ export async function POST(request: Request) {
 							api_key: apiKey,
 							refresh_schedule: {
 								default_refresh_rate: refreshRate
-									? Number.parseInt(refreshRate)
+									? Number.parseInt(refreshRate, 10)
 									: 60,
 								time_ranges: [],
 							},
@@ -319,7 +319,7 @@ export async function POST(request: Request) {
 							next_expected_update: new Date(
 								Date.now() +
 									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
+										? Number.parseInt(refreshRate, 10) * 1000
 										: 3600 * 1000),
 							).toISOString(),
 							timezone: "UTC",
@@ -327,7 +327,7 @@ export async function POST(request: Request) {
 								? Number.parseFloat(batteryVoltage)
 								: null,
 							firmware_version: fwVersion || null,
-							rssi: rssi ? Number.parseInt(rssi) : null,
+							rssi: rssi ? Number.parseInt(rssi, 10) : null,
 						})
 						.select()
 						.single();
@@ -438,7 +438,7 @@ export async function POST(request: Request) {
 							next_expected_update: new Date(
 								Date.now() +
 									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
+										? Number.parseInt(refreshRate, 10) * 1000
 										: 3600 * 1000),
 							).toISOString(),
 							battery_voltage: batteryVoltage
@@ -447,7 +447,7 @@ export async function POST(request: Request) {
 							firmware_version:
 								fwVersion || existingDeviceWithApiKey.firmware_version,
 							rssi: rssi
-								? Number.parseInt(rssi)
+								? Number.parseInt(rssi, 10)
 								: existingDeviceWithApiKey.rssi,
 							updated_at: new Date().toISOString(),
 						})
@@ -521,7 +521,7 @@ export async function POST(request: Request) {
 								api_key: new_api_key,
 								refresh_schedule: {
 									default_refresh_rate: refreshRate
-										? Number.parseInt(refreshRate)
+										? Number.parseInt(refreshRate, 10)
 										: 60,
 									time_ranges: [],
 								},
@@ -529,7 +529,7 @@ export async function POST(request: Request) {
 								next_expected_update: new Date(
 									Date.now() +
 										(refreshRate
-											? Number.parseInt(refreshRate) * 1000
+											? Number.parseInt(refreshRate, 10) * 1000
 											: 3600 * 1000),
 								).toISOString(),
 								timezone: "UTC",
@@ -537,7 +537,7 @@ export async function POST(request: Request) {
 									? Number.parseFloat(batteryVoltage)
 									: null,
 								firmware_version: fwVersion || null,
-								rssi: rssi ? Number.parseInt(rssi) : null,
+								rssi: rssi ? Number.parseInt(rssi, 10) : null,
 							})
 							.select()
 							.single();
@@ -633,7 +633,7 @@ export async function POST(request: Request) {
 								next_expected_update: new Date(
 									Date.now() +
 										(refreshRate
-											? Number.parseInt(refreshRate) * 1000
+											? Number.parseInt(refreshRate, 10) * 1000
 											: 3600 * 1000),
 								).toISOString(),
 								battery_voltage: batteryVoltage
@@ -641,7 +641,9 @@ export async function POST(request: Request) {
 									: existingMockDevice.battery_voltage,
 								firmware_version:
 									fwVersion || existingMockDevice.firmware_version,
-								rssi: rssi ? Number.parseInt(rssi) : existingMockDevice.rssi,
+								rssi: rssi
+									? Number.parseInt(rssi, 10)
+									: existingMockDevice.rssi,
 								updated_at: new Date().toISOString(),
 							})
 							.eq("friendly_id", deviceId);
@@ -716,14 +718,14 @@ export async function POST(request: Request) {
 						next_expected_update: new Date(
 							Date.now() +
 								(refreshRate
-									? Number.parseInt(refreshRate) * 1000
+									? Number.parseInt(refreshRate, 10) * 1000
 									: 3600 * 1000),
 						).toISOString(),
 						battery_voltage: batteryVoltage
 							? Number.parseFloat(batteryVoltage)
 							: device.battery_voltage,
 						firmware_version: fwVersion || device.firmware_version,
-						rssi: rssi ? Number.parseInt(rssi) : device.rssi,
+						rssi: rssi ? Number.parseInt(rssi, 10) : device.rssi,
 						updated_at: new Date().toISOString(),
 					})
 					.eq("friendly_id", deviceId);

@@ -92,7 +92,9 @@ export function PlaylistItem({
 							min="1"
 							value={item.duration}
 							onChange={(e) =>
-								onUpdate(item.id, { duration: parseInt(e.target.value) || 30 })
+								onUpdate(item.id, {
+									duration: parseInt(e.target.value, 10) || 30,
+								})
 							}
 						/>
 					</div>

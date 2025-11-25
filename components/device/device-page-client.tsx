@@ -148,7 +148,7 @@ export default function DevicePageClient({
 		const parent = pathParts[0];
 
 		if (parent === "refresh_schedule" && pathParts[1] === "time_ranges") {
-			const index = Number.parseInt(pathParts[2]);
+			const index = Number.parseInt(pathParts[2], 10);
 			const field = pathParts[3];
 
 			if (!editedDevice.refresh_schedule) return;
@@ -167,7 +167,7 @@ export default function DevicePageClient({
 
 			updatedTimeRanges[index] = {
 				...updatedTimeRanges[index],
-				[field]: field === "refresh_rate" ? Number.parseInt(value) : value,
+				[field]: field === "refresh_rate" ? Number.parseInt(value, 10) : value,
 			};
 
 			setEditedDevice({
