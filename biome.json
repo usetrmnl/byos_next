@@ -9,8 +9,8 @@
         "ignoreUnknown": false,
         "includes": [
             "**",
-            "!!**/.next/**",
-            "!!**/node_modules/**"
+            "!!**/.next",
+            "!!**/node_modules"
         ]
     },
     "formatter": {
