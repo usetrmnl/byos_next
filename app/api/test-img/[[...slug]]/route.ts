@@ -1,13 +1,15 @@
 export const runtime = "nodejs";
+
 // export const revalidate = 15; // This controls the default revalidation time
 import { unstable_cacheLife as cacheLife } from "next/cache";
 
 import { ImageResponse } from "next/og";
 import { createElement } from "react";
-import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
-import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 // import BitmapText from "@/components/bitmap-font/bitmap-text";
 import fontData from "@/components/bitmap-font/bitmap-font.json";
+import { BitmapText } from "@/components/bitmap-font/bitmap-text";
+import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+
 // import simpleText from "@/app/recipes/screens/simple-text/simple-text";
 
 // Constants for cache configuration
@@ -151,7 +153,12 @@ async function generateImageData(slug: string): Promise<{
 					fontFamily: "system-ui",
 				},
 			},
-			[createElement(BitmapText, { text, fontData, scale: 2 })],
+			createElement(BitmapText, {
+				text,
+				fontData,
+				scale: 2,
+				key: "bitmap-text",
+			}),
 		);
 
 		// Generate the image response

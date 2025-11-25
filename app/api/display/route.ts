@@ -1,12 +1,20 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { logError, logInfo } from "@/lib/logger";
-import type { RefreshSchedule, TimeRange, Device, PlaylistItem } from "@/lib/supabase/types";
-import type { CustomError } from "@/lib/api/types";
-import { timezones } from "@/utils/helpers";
-import { getHostUrl } from "@/utils/helpers";
-import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
 import crypto from "crypto";
+import { NextResponse } from "next/server";
+import type { CustomError } from "@/lib/api/types";
+import { logError, logInfo } from "@/lib/logger";
+import { createClient } from "@/lib/supabase/server";
+import type {
+	Device,
+	PlaylistItem,
+	RefreshSchedule,
+	TimeRange,
+} from "@/lib/supabase/types";
+import {
+	generateApiKey,
+	generateFriendlyId,
+	getHostUrl,
+	timezones,
+} from "@/utils/helpers";
 
 const DEFAULT_SCREEN = "album";
 const DEFAULT_REFRESH_RATE = 180;
@@ -124,7 +132,8 @@ const getActivePlaylistItem = async (
 		hour: "2-digit",
 		minute: "2-digit",
 	});
-	const [{ value: hour }, , { value: minute }] = timeFormatter.formatToParts(now);
+	const [{ value: hour }, , { value: minute }] =
+		timeFormatter.formatToParts(now);
 	const currentTime = `${hour}:${minute}`;
 
 	// Format day as lowercase full day name to match the playlist item format
@@ -153,7 +162,9 @@ const getActivePlaylistItem = async (
 		const { start_time, end_time, days_of_week } = item;
 
 		const isTimeValid =
-			!start_time || !end_time || isTimeInRange(currentTime, start_time, end_time);
+			!start_time ||
+			!end_time ||
+			isTimeInRange(currentTime, start_time, end_time);
 		const isDayValid =
 			!days_of_week ||
 			(Array.isArray(days_of_week) && days_of_week.includes(currentDay));
@@ -333,22 +344,22 @@ export async function GET(request: Request) {
 		},
 	});
 
-	if (!apiKey || !macAddress) {
-		// Create an error object to capture the stack trace automatically
-		const error = new Error("Missing required headers");
-		logError(error, {
-			source: "api/display",
-			metadata: { apiKey, macAddress },
-		});
-		return NextResponse.json(
-			{
-				status: 500,
-				reset_firmware: true,
-				message: "Device not found",
-			},
-			{ status: 200 },
-		); // Status 200 for device compatibility
-	}
+	// if (!apiKey || !macAddress) {
+	// 	// Create an error object to capture the stack trace automatically
+	// 	const error = new Error("Missing required headers");
+	// 	logError(error, {
+	// 		source: "api/display",
+	// 		metadata: { apiKey, macAddress },
+	// 	});
+	// 	return NextResponse.json(
+	// 		{
+	// 			status: 500,
+	// 			reset_firmware: true,
+	// 			message: "Device not found",
+	// 		},
+	// 		{ status: 200 },
+	// 	); // Status 200 for device compatibility
+	// }
 
 	try {
 		const { data, error } = await supabase
@@ -869,7 +880,6 @@ export async function GET(request: Request) {
 		// Start pre-caching the current image in the background
 		// This ensures the image is cached by the time the device requests it
 		precacheImageInBackground(imageUrl, device.friendly_id);
-
 
 		// Update device refresh status information in the background
 		// We don't await this to avoid delaying the response

@@ -1,9 +1,9 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { logError, logInfo } from "@/lib/logger";
-import type { CustomError } from "@/lib/api/types";
-import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
 import crypto from "crypto";
+import { NextResponse } from "next/server";
+import type { CustomError } from "@/lib/api/types";
+import { logError, logInfo } from "@/lib/logger";
+import { createClient } from "@/lib/supabase/server";
+import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
 
 interface LogEntry {
 	creation_timestamp: number;

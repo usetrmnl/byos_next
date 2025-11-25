@@ -1,9 +1,14 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { toast } from "sonner";
 import { RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { useState } from "react";
+import { toast } from "sonner";
+import {
+	deleteAllDeviceLogs,
+	deleteAllSystemLogs,
+	fixDatabaseIssues,
+} from "@/app/actions/maintenance";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -12,11 +17,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import {
-	deleteAllSystemLogs,
-	deleteAllDeviceLogs,
-	fixDatabaseIssues,
-} from "@/app/actions/maintenance";
 
 export function DatabaseMaintenance() {
 	const [isLoading, setIsLoading] = useState<boolean>(false);

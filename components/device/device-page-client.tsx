@@ -1,28 +1,16 @@
 "use client";
 
-import type React from "react";
-import { useState, useEffect } from "react";
+import { RefreshCw, Save, Search, X } from "lucide-react";
 import Image from "next/image";
-import { RefreshCw, Save, X, Search } from "lucide-react";
+import type React from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-
-import type { Device, Playlist, PlaylistItem } from "@/lib/supabase/types";
-import { updateDevice, fetchDeviceByFriendlyId } from "@/app/actions/device";
-import {
-	formatDate,
-	estimateBatteryLife,
-	isValidApiKey,
-	isValidFriendlyId,
-	generateApiKey,
-	generateFriendlyId,
-	timezones,
-	formatTimezone,
-	getDeviceStatus,
-} from "@/utils/helpers";
-import { cn } from "@/lib/utils";
+import { fetchDeviceByFriendlyId, updateDevice } from "@/app/actions/device";
+import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Badge } from "@/components/ui/badge";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
 	Card,
 	CardContent,
@@ -31,9 +19,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Command,
 	CommandEmpty,
@@ -42,11 +27,14 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -54,8 +42,19 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
-import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
+import type { Device, Playlist, PlaylistItem } from "@/lib/supabase/types";
+import { cn } from "@/lib/utils";
+import {
+	estimateBatteryLife,
+	formatDate,
+	formatTimezone,
+	generateApiKey,
+	generateFriendlyId,
+	getDeviceStatus,
+	isValidApiKey,
+	isValidFriendlyId,
+	timezones,
+} from "@/utils/helpers";
 
 // Helper function to convert RSSI to signal quality description
 const getSignalQuality = (rssi: number): string => {
@@ -86,7 +85,9 @@ export default function DevicePageClient({
 	const [editedDevice, setEditedDevice] = useState<
 		Device & { status?: string; type?: string }
 	>(JSON.parse(JSON.stringify(initialDevice)));
-	const [playlistScreens, setPlaylistScreens] = useState<{ screen: string; duration: number }[]>([]);
+	const [playlistScreens, setPlaylistScreens] = useState<
+		{ screen: string; duration: number }[]
+	>([]);
 	const [isSaving, setIsSaving] = useState(false);
 
 	// State for validation error messages
@@ -387,7 +388,7 @@ export default function DevicePageClient({
 				.filter((item) => item.playlist_id === editedDevice.playlist_id)
 				.map((item) => ({
 					screen: item.screen_id,
-					duration: item.duration
+					duration: item.duration,
 				}));
 			setPlaylistScreens(playlistScreens);
 		}
@@ -433,15 +434,13 @@ export default function DevicePageClient({
 							</Button>
 						</>
 					) : (
-						<>
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={() => setIsEditing(true)}
-							>
-								Edit Device
-							</Button>
-						</>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={() => setIsEditing(true)}
+						>
+							Edit Device
+						</Button>
 					)}
 				</div>
 			</div>
@@ -678,10 +677,10 @@ export default function DevicePageClient({
 
 								{(!editedDevice?.refresh_schedule?.time_ranges ||
 									editedDevice.refresh_schedule.time_ranges.length === 0) && (
-										<p className="text-sm text-muted-foreground">
-											No custom time ranges configured.
-										</p>
-									)}
+									<p className="text-sm text-muted-foreground">
+										No custom time ranges configured.
+									</p>
+								)}
 
 								<Button
 									type="button"
@@ -779,7 +778,8 @@ export default function DevicePageClient({
 							<div className="w-full max-w-3xl">
 								{editedDevice.use_playlist && editedDevice.playlist_id ? (
 									<p className="text-sm text-muted-foreground mt-2">
-										Playlist mode: Shows rotating screens based on playlist configuration
+										Playlist mode: Shows rotating screens based on playlist
+										configuration
 									</p>
 								) : (
 									<AspectRatio ratio={5 / 3}>
@@ -974,7 +974,8 @@ export default function DevicePageClient({
 								{editedDevice.use_playlist && editedDevice.playlist_id ? (
 									<>
 										<p className="text-sm text-muted-foreground mt-2">
-											Playlist mode: Shows rotating screens based on playlist configuration
+											Playlist mode: Shows rotating screens based on playlist
+											configuration
 										</p>
 										<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 											{playlistScreens.map((screen) => (

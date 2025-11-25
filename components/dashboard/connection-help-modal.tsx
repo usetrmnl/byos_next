@@ -1,5 +1,7 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import {
 	Dialog,
@@ -8,8 +10,6 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink } from "lucide-react";
-import Image from "next/image";
 
 interface ConnectionHelpModalProps {
 	isOpen: boolean;

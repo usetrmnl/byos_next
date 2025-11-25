@@ -1,5 +1,7 @@
 "use client";
 
+import { EyeIcon, LockIcon, WifiIcon } from "lucide-react";
+import Image from "next/image";
 import {
 	Dialog,
 	DialogContent,
@@ -9,8 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { LockIcon, WifiIcon, EyeIcon } from "lucide-react";
-import Image from "next/image";
+
 interface WifiConnectModalProps {
 	customServerUrl?: string;
 	helpText?: string;
@@ -23,14 +24,13 @@ export default function WifiConnectModal({
 	return (
 		<Dialog>
 			<DialogTrigger asChild>
-				<a
-					className="underline"
-					href="#"
-					tabIndex={0}
+				<button
+					type="button"
+					className="underline bg-transparent border-0 p-0 cursor-pointer"
 					aria-label="Open WiFi setup help"
 				>
 					{helpText}
-				</a>
+				</button>
 			</DialogTrigger>
 			<DialogContent className="block w-full max-w-full md:max-w-5xl p-0 overflow-hidden">
 				<ScrollArea className="h-[90vh] w-full overflow-y-auto px-2 md:px-4 lg:px-6">
@@ -157,13 +157,13 @@ export default function WifiConnectModal({
 														<Label htmlFor="ssid" className="text-sm mb-1">
 															SSID
 														</Label>
-														<div
-															className="w-full px-2 py-1 border border-gray-300 rounded-md bg-white text-sm focus:border-[#F86527] focus:border-2"
-															role="textbox"
+														<input
+															type="text"
+															readOnly
+															value="MyNetwork"
+															className="w-full px-2 py-1 border border-gray-300 rounded-md bg-white text-sm"
 															aria-readonly="true"
-														>
-															MyNetwork
-														</div>
+														/>
 													</div>
 												</div>
 
@@ -178,13 +178,13 @@ export default function WifiConnectModal({
 															Password
 														</Label>
 														<div className="relative w-full">
-															<div
-																className="w-full px-2 py-1 border border-gray-300 rounded-md bg-white text-sm pr-10 focus:border-[#F86527] focus:border-2"
-																role="textbox"
+															<input
+																type="text"
+																readOnly
+																value="••••••••"
+																className="w-full px-2 py-1 border border-gray-300 rounded-md bg-white text-sm pr-10"
 																aria-readonly="true"
-															>
-																••••••••
-															</div>
+															/>
 															<EyeIcon
 																className="absolute top-1/2 right-2 -translate-y-1/2 w-4 h-4 text-gray-500"
 																aria-hidden="true"
@@ -240,13 +240,13 @@ export default function WifiConnectModal({
 														<Label htmlFor="server" className="text-sm mb-1">
 															API Server
 														</Label>
-														<div
-															className="w-full px-2 py-1 border border-[#F86527] rounded-md bg-white text-sm focus:border-[#F86527] focus:border-2"
-															role="textbox"
+														<input
+															type="text"
+															readOnly
+															value={customServerUrl}
+															className="w-full px-2 py-1 border border-[#F86527] rounded-md bg-white text-sm"
 															aria-readonly="true"
-														>
-															{customServerUrl}
-														</div>
+														/>
 													</div>
 												</div>
 

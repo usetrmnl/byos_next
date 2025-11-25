@@ -1,7 +1,12 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import type {
+	Device,
+	Playlist,
+	PlaylistItem,
+	SystemLog,
+} from "@/lib/supabase/types";
 import { getHostUrl } from "@/utils/helpers";
-import type { Device, SystemLog, Playlist, PlaylistItem } from "@/lib/supabase/types";
 import "server-only";
 
 export type InitialData = {
@@ -58,11 +63,17 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 				logsCountResult,
 			] = await Promise.all([
 				// Fetch devices
-				supabase.from("devices").select("*"),
+				supabase
+					.from("devices")
+					.select("*"),
 				// Fetch playlists
-				supabase.from("playlists").select("*"),
+				supabase
+					.from("playlists")
+					.select("*"),
 				// Fetch playlist items
-				supabase.from("playlist_items").select("*"),
+				supabase
+					.from("playlist_items")
+					.select("*"),
 				// Fetch recent logs
 				supabase
 					.from("system_logs")

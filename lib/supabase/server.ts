@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { cookies } from "next/headers";
 /**
  * Creates a Supabase client and checks if the database is properly configured
  * @returns Object containing the Supabase client and database readiness information
@@ -84,7 +84,7 @@ export async function isDatabaseReady(client: SupabaseClient): Promise<{
 			logs: true,
 			system_logs: true,
 			playlists: true,
-			playlist_items: true
+			playlist_items: true,
 		};
 
 		for (const table of Object.keys(doesTablePassTest)) {

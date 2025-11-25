@@ -7,13 +7,20 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**"]
+		"includes": ["**"],
+		"experimentalScannerIgnores": [".next/**", "node_modules/**"]
 	},
 	"formatter": {
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -22,7 +29,8 @@
 				"noArrayIndexKey": "off"
 			},
 			"style": {
-				"useNodejsImportProtocol": "off"
+				"useNodejsImportProtocol": "off",
+				"useImportType": "off"
 			}
 		}
 	},

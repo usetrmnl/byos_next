@@ -136,7 +136,7 @@ export default function Wikipedia({
 									<span>{safeContentUrl}</span>
 									<span>
 										{safeDescription && safeDescription.length > 100
-											? safeDescription.substring(0, 100) + "..."
+											? `${safeDescription.substring(0, 100)}...`
 											: safeDescription}
 									</span>
 								</div>

@@ -189,6 +189,8 @@ function BitmapText({
 			viewBox={`0 0 ${svgData.width} ${svgData.height}`}
 			className={className}
 			style={{ maxWidth: "100%" }}
+			role="img"
+			aria-label={`Bitmap text: ${text}`}
 		>
 			{svgData.paths.map((item: { path: string; x: number }, index: number) => (
 				<g key={index} transform={`translate(${item.x}, 0) scale(${scale})`}>

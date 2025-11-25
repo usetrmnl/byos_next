@@ -20,7 +20,10 @@ const getPublishedComponents = () => {
 const ComponentPreview = ({
 	slug,
 	config,
-}: { slug: string; config: (typeof screens)[keyof typeof screens] }) => {
+}: {
+	slug: string;
+	config: (typeof screens)[keyof typeof screens];
+}) => {
 	return (
 		<AspectRatio
 			ratio={5 / 3}
@@ -47,7 +50,10 @@ const ComponentPreview = ({
 const RecipeCard = ({
 	slug,
 	config,
-}: { slug: string; config: (typeof screens)[keyof typeof screens] }) => {
+}: {
+	slug: string;
+	config: (typeof screens)[keyof typeof screens];
+}) => {
 	return (
 		<Link
 			key={slug}
