@@ -170,6 +170,8 @@ export async function updateDevice(
 		timezone: device.timezone,
 		refresh_schedule: device.refresh_schedule as RefreshSchedule,
 		screen: device.screen,
+		playlist_id: device.playlist_id,
+		use_playlist: device.use_playlist,
 		battery_voltage: device.battery_voltage,
 		firmware_version: device.firmware_version,
 		rssi: device.rssi,

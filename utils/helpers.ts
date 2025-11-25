@@ -1,7 +1,6 @@
-import type { Device, Log } from "@/lib/supabase/types";
 import crypto from "crypto";
-
 import { networkInterfaces } from "os";
+import type { Device, Log } from "@/lib/supabase/types";
 
 export function getLocalIPAddresses() {
 	const nets = networkInterfaces();

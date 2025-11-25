@@ -1,21 +1,18 @@
 "use client";
 
-import bitmapFontFile from "@/components/bitmap-font/bitmap-font.json";
+import { Download, Info, Upload } from "lucide-react";
 import {
+	memo,
+	useCallback,
+	useEffect,
+	useMemo,
 	useRef,
 	useState,
-	useEffect,
-	useCallback,
-	memo,
-	useMemo,
 	useTransition,
 } from "react";
+import { toast } from "sonner";
+import bitmapFontFile from "@/components/bitmap-font/bitmap-font.json";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import AddGridSize from "./add-grid-size";
-import BitmapFontEditor from "./bitmap-font-editor";
-import { base64ToBinary, binaryToBase64 } from "./bitmap-font-utils";
-import { Download, Info, Upload } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
 	Tooltip,
@@ -23,7 +20,10 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import AddGridSize from "./add-grid-size";
+import BitmapFontEditor from "./bitmap-font-editor";
+import { base64ToBinary, binaryToBase64 } from "./bitmap-font-utils";
 
 // Custom debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -236,7 +236,7 @@ const CharacterItem = memo(
 	}: {
 		charCode: number;
 		charData: string;
-		onCharacterClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+		onCharacterClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
 		selectedGridSize: string;
 		isSelected?: boolean;
 	}) => {
@@ -244,7 +244,7 @@ const CharacterItem = memo(
 
 		// Render SVG content inline instead of using a separate component
 		const renderSvgContent = () => {
-			if (!charData && charCode != 32) {
+			if (!charData && charCode !== 32) {
 				return (
 					<div className="size-5 border border-gray-200 dark:border-gray-600 border-dashed flex items-center justify-center">
 						{String.fromCharCode(charCode)}
@@ -276,6 +276,8 @@ const CharacterItem = memo(
 						width={width}
 						height={height}
 						viewBox={`0 0 ${width} ${height}`}
+						role="img"
+						aria-label={`Character ${String.fromCharCode(charCode)} bitmap`}
 					>
 						<path d={pathData} fill="black" />
 					</svg>
@@ -291,7 +293,8 @@ const CharacterItem = memo(
 		};
 
 		return (
-			<div
+			<button
+				type="button"
 				className={cn(
 					"flex flex-col items-center justify-between border p-1 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer",
 					isSelected && "bg-blue-100 dark:bg-blue-900 border-blue-500",
@@ -303,12 +306,7 @@ const CharacterItem = memo(
 				}}
 				onClick={onCharacterClick}
 				data-char-code={charCode}
-				tabIndex={0}
 				aria-label={`Character ${String.fromCharCode(charCode)}`}
-				onKeyDown={(e) =>
-					e.key === "Enter" &&
-					onCharacterClick(e as unknown as React.MouseEvent<HTMLDivElement>)
-				}
 			>
 				<span className="text-sm mb-1 font-mono">
 					{String.fromCharCode(charCode)}
@@ -316,7 +314,7 @@ const CharacterItem = memo(
 				<div className="flex-1 flex items-center justify-center">
 					{renderSvgContent()}
 				</div>
-			</div>
+			</button>
 		);
 	},
 	(prevProps, nextProps) => {
@@ -362,7 +360,7 @@ const CharacterGrid = ({
 	}, [selectedCharCode]);
 
 	const handleCharacterClick = useCallback(
-		(e: React.MouseEvent<HTMLDivElement>) => {
+		(e: React.MouseEvent<HTMLButtonElement>) => {
 			const charCode = e.currentTarget.dataset.charCode;
 			if (!charCode) return;
 			onCharacterSelect(charCode);
@@ -565,7 +563,10 @@ const SentencePreview = memo(
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
-								<button className="inline-flex items-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+								<button
+									type="button"
+									className="inline-flex items-center text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+								>
 									<Info className="w-4 h-4" />
 								</button>
 							</TooltipTrigger>
@@ -637,6 +638,8 @@ const SentencePreview = memo(
 						height={svgData.height}
 						viewBox={`0 0 ${svgData.width} ${svgData.height}`}
 						className="dark:invert"
+						role="img"
+						aria-label="Font preview"
 					>
 						{svgData.paths.map((item, index) => (
 							<g
@@ -744,7 +747,7 @@ export default function BitmapFontDesignerClient() {
 	// Format: { "8x8": Map(65 => "10101010..."), "16x16": Map(65 => "10101010..."), ... }
 	const initialFontDataObj = useMemo(() => {
 		const fontDataObj: { [fontSize: string]: Map<number, string> } = {};
-		bitmapFont.map((font) => {
+		bitmapFont.forEach((font) => {
 			const fontSizeKey = `${font.width}x${font.height}`;
 			const characterBitmapMap = new Map<number, string>();
 			font.characters.forEach((char) => {
@@ -803,7 +806,7 @@ export default function BitmapFontDesignerClient() {
 		// Update the availableGridSizes list
 		setAvailableGridSizes((prev) => {
 			const newSizes = [...prev, newSize].sort(
-				(a, b) => parseInt(a.split("x")[0]) - parseInt(b.split("x")[0]),
+				(a, b) => parseInt(a.split("x")[0], 10) - parseInt(b.split("x")[0], 10),
 			);
 			return newSizes;
 		});
@@ -868,7 +871,7 @@ export default function BitmapFontDesignerClient() {
 
 	const handleCharacterSelect = useCallback(
 		(charCode: string) => {
-			const newCharCode = parseInt(charCode);
+			const newCharCode = parseInt(charCode, 10);
 			setSelectedCharCode(newCharCode);
 			// Update the current character bitmap when selecting a new character
 			setCurrentCharacterBitmap(characterBitmaps.get(newCharCode) ?? null);
@@ -1002,9 +1005,7 @@ export default function BitmapFontDesignerClient() {
 					width,
 					height,
 					characters: Array.from(currentMap.entries())
-						.filter(
-							([, binaryString]) => binaryString && binaryString.includes("1"),
-						) // Only include non-empty characters
+						.filter(([, binaryString]) => binaryString?.includes("1")) // Only include non-empty characters
 						.map(([charCode, binaryString]) => ({
 							charCode,
 							char: String.fromCharCode(charCode),

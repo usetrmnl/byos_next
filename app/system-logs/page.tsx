@@ -1,9 +1,9 @@
-import { Suspense } from "react";
+import { AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { Suspense } from "react";
 import SystemLogsViewer from "@/components/system-logs/system-logs-viewer";
 import SystemLogsViewerSkeleton from "@/components/system-logs/system-logs-viewer-skeleton";
 import { Button } from "@/components/ui/button";
-import { AlertCircle } from "lucide-react";
 import { getInitData } from "@/lib/getInitData";
 
 export const metadata = {

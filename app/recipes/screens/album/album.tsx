@@ -1,6 +1,7 @@
 import { PreSatori } from "@/utils/pre-satori";
 
-export default function Album() {
+export default async function Album() {
+	"use cache";
 	return (
 		<PreSatori>
 			{(transform) => (

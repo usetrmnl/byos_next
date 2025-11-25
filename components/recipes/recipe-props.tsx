@@ -1,8 +1,8 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { RefreshCcw } from "lucide-react";
 import { useFormStatus } from "react-dom";
+import { Button } from "@/components/ui/button";
 
 // Refresh button component with loading state
 const RefreshButton = ({ slug }: { slug: string }) => {

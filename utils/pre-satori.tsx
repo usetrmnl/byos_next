@@ -1,5 +1,5 @@
-import { cn } from "@/lib/utils";
 import React from "react";
+import { cn } from "@/lib/utils";
 
 interface PreSatoriProps {
 	useDoubling?: boolean;
@@ -349,13 +349,14 @@ const extractFontFamily = (className?: string): string | undefined => {
 				return "ui-serif, Georgia, Cambria, Times New Roman, Times, serif";
 			case "font-mono":
 				return "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace";
-			default:
+			default: {
 				// Handle any custom font-[...] classes
 				const customFontMatch = fontClass.match(/font-\[(.*?)\]/);
-				if (customFontMatch && customFontMatch[1]) {
+				if (customFontMatch?.[1]) {
 					return customFontMatch[1].replace(/['"]/g, ""); // Remove quotes if present
 				}
 				return undefined;
+			}
 		}
 	}
 	return undefined;

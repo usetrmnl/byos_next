@@ -1,16 +1,16 @@
 "use client";
 
-import type React from "react";
-import { useState, useRef, Suspense } from "react";
-import { usePathname } from "next/navigation";
 import { Github, Menu, Moon, Sun, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import type { Device } from "@/lib/supabase/types";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Skeleton } from "@/components/ui/skeleton";
-import { ClientSidebar } from "@/components/client-sidebar";
+import type React from "react";
+import { Suspense, useRef, useState } from "react";
 import type { ComponentConfig } from "@/components/client-sidebar";
+import { ClientSidebar } from "@/components/client-sidebar";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Device } from "@/lib/supabase/types";
 
 // Main navigation skeleton for the entire sidebar
 const SidebarSkeletonFallback = () => (

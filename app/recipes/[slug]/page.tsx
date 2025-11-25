@@ -1,16 +1,16 @@
-import { createElement, Suspense, use, cache } from "react";
-import { ImageResponse } from "next/og";
-import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
-import screens from "@/app/recipes/screens.json";
-import { notFound } from "next/navigation";
+import { revalidateTag } from "next/cache";
 import Image from "next/image";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { ImageResponse } from "next/og";
+import { cache, createElement, Suspense, use } from "react";
+import satori from "satori";
+import screens from "@/app/recipes/screens.json";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
-import { revalidateTag } from "next/cache";
-import Link from "next/link";
-import satori from "satori";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import loadFont from "@/utils/font-loader";
+import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 // Logging utility to control log output based on environment
 const logger = {
@@ -51,7 +51,7 @@ export async function generateMetadata() {
 async function refreshData(slug: string) {
 	"use server";
 	await new Promise((resolve) => setTimeout(resolve, 500)); // Demo loading state
-	revalidateTag(slug);
+	revalidateTag(slug, "max");
 }
 
 // Cache the fonts at module initialization
@@ -197,7 +197,6 @@ interface CacheItem {
 
 // Extend NodeJS namespace for global variables
 declare global {
-	// eslint-disable-next-line no-var
 	var renderCache: Map<string, CacheItem> | undefined;
 }
 
@@ -435,13 +434,14 @@ const RenderComponent = ({
 		return (
 			<div
 				className="w-full h-full"
-				// biome-ignore lint/security/noDangerouslySetInnerHtml: <explanation>
+				// biome-ignore lint/security/noDangerouslySetInnerHtml: SVG content is sanitized and trusted
 				dangerouslySetInnerHTML={{ __html: renders.svg }}
 				style={{
 					imageRendering: "pixelated",
 					transform: useDoubling ? "scale(0.5)" : "none",
 					transformOrigin: "top left",
 				}}
+				role="img"
 				aria-label={`${title} SVG render`}
 			/>
 		);
@@ -453,7 +453,9 @@ const RenderComponent = ({
 // Main recipe page component
 export default async function RecipePage({
 	params,
-}: { params: Promise<{ slug: string }> }) {
+}: {
+	params: Promise<{ slug: string }>;
+}) {
 	const { slug } = await params;
 	const config = await fetchConfig(slug);
 
@@ -625,7 +627,10 @@ export default async function RecipePage({
 const PropsDisplay = ({
 	slug,
 	config,
-}: { slug: string; config: RecipeConfig }) => {
+}: {
+	slug: string;
+	config: RecipeConfig;
+}) => {
 	const props = use(Promise.resolve(fetchProps(slug, config)));
 	return <RecipeProps props={props} slug={slug} refreshAction={refreshData} />;
 };

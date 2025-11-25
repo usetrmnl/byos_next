@@ -13,7 +13,6 @@ interface ReservoirCache {
 
 // Global reservoir cache (only in development or when forced)
 declare global {
-	// eslint-disable-next-line no-var
 	var wikipediaReservoir: ReservoirCache | undefined;
 }
 

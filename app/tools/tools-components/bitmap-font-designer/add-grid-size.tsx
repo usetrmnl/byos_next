@@ -1,5 +1,8 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -7,9 +10,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { Button } from "@/components/ui/button";
 
 const maxGridSize = 17;
 
@@ -74,14 +74,14 @@ export default function AddGridSize({
 
 			return () => clearTimeout(timer);
 		}
-	}, [open, availableGridSizes, renderCanvas]);
+	}, [open, renderCanvas]);
 
 	// Re-render on hover changes
 	useEffect(() => {
 		if (open) {
 			renderCanvas();
 		}
-	}, [hoveredSize, open, renderCanvas]);
+	}, [open, renderCanvas]);
 
 	// Handle canvas interactions
 	const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -145,10 +145,7 @@ export default function AddGridSize({
 					{hoveredSize ? hoveredSize : "Select Grid Size"}
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator />
-				<div
-					className="relative cursor-pointer"
-					onMouseLeave={() => setHoveredSize(null)}
-				>
+				<div className="relative">
 					<canvas
 						ref={canvasRef}
 						width={canvasSize}
@@ -156,6 +153,7 @@ export default function AddGridSize({
 						onMouseMove={handleCanvasMouseMove}
 						onClick={handleCanvasClick}
 						onKeyDown={handleCanvasKeyDown}
+						onMouseLeave={() => setHoveredSize(null)}
 						tabIndex={0}
 						aria-label="Grid size selector"
 						className="focus:outline-none focus:ring-2 focus:ring-blue-500"

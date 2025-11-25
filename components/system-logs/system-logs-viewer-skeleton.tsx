@@ -1,9 +1,11 @@
-import { Skeleton } from "@/components/ui/skeleton";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 export default function SystemLogsViewerSkeleton({
 	className,
-}: { className?: string }) {
+}: {
+	className?: string;
+}) {
 	return (
 		<div className={cn("space-y-4", className)}>
 			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

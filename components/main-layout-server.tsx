@@ -4,8 +4,8 @@ import { ClientMainLayout } from "@/components/client-main-layout";
 import {
 	getInitData,
 	preloadDashboard,
-	preloadSystemLogs,
 	preloadDevices,
+	preloadSystemLogs,
 } from "@/lib/getInitData";
 
 /**

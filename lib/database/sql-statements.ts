@@ -6,6 +6,33 @@ export const SQL_STATEMENTS = {
 			"Enables the UUID generation extension for creating unique identifiers",
 		sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`,
 	},
+	createPlaylistsTable: {
+		title: "Create Playlists Table",
+		description:
+			"Creates the playlists table for managing device content schedules",
+		sql: `CREATE TABLE public.playlists (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);`,
+	},
+	createPlaylistItemsTable: {
+		title: "Create Playlist Items Table",
+		description:
+			"Creates the playlist_items table for individual items within playlists",
+		sql: `CREATE TABLE public.playlist_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  playlist_id UUID REFERENCES public.playlists(id) ON DELETE CASCADE,
+  screen_id TEXT NOT NULL,
+  duration INT NOT NULL DEFAULT 30,
+  start_time TIME,
+  end_time TIME,
+  days_of_week JSONB,
+  order_index INT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);`,
+	},
 	createDevicesTable: {
 		title: "Create Devices Table",
 		description:
@@ -25,6 +52,9 @@ export const SQL_STATEMENTS = {
   battery_voltage NUMERIC NULL,
   firmware_version TEXT NULL,
   rssi INTEGER NULL,
+  playlist_id UUID REFERENCES public.playlists(id),
+  use_playlist BOOLEAN DEFAULT FALSE,
+  current_playlist_index INT DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
