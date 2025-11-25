@@ -11,22 +11,26 @@ interface BitcoinData {
 	lastUpdated: string;
 	high24h: string;
 	low24h: string;
+	historicalPrices: Array<{ timestamp: number; price: number }>;
 }
 
 /**
- * Internal function to fetch and process Bitcoin price data
+ * Internal function to fetch historical Bitcoin price data
  */
-async function getBitcoinData(): Promise<BitcoinData | null> {
+async function getBitcoinHistoricalData(): Promise<Array<{
+	timestamp: number;
+	price: number;
+}> | null> {
 	try {
-		// Fetch Bitcoin data from CoinGecko API
+		// Fetch historical Bitcoin data from CoinGecko API
 		const response = await fetch(
-			"https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false",
+			`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1`,
 			{
 				headers: {
 					Accept: "application/json",
 					"Accept-Language": "en-US",
 				},
-				next: { revalidate: 0 }, // Updated from cache: "no-store"
+				next: { revalidate: 0 },
 			},
 		);
 
@@ -37,6 +41,45 @@ async function getBitcoinData(): Promise<BitcoinData | null> {
 		}
 
 		const data = await response.json();
+
+		// Return the prices array which contains [timestamp, price] pairs
+		return data.prices.map(([timestamp, price]: [number, number]) => ({
+			timestamp,
+			price,
+		}));
+	} catch (error) {
+		console.error("Error fetching Bitcoin historical data:", error);
+		return null;
+	}
+}
+
+/**
+ * Internal function to fetch and process Bitcoin price data
+ */
+async function getBitcoinData(): Promise<BitcoinData | null> {
+	try {
+		// Fetch both current and historical data in parallel
+		const [currentDataResponse, historicalPrices] = await Promise.all([
+			fetch(
+				"https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false",
+				{
+					headers: {
+						Accept: "application/json",
+						"Accept-Language": "en-US",
+					},
+					next: { revalidate: 0 },
+				},
+			),
+			getBitcoinHistoricalData(),
+		]);
+
+		if (!currentDataResponse.ok) {
+			throw new Error(
+				`CoinGecko API responded with status: ${currentDataResponse.status}`,
+			);
+		}
+
+		const data = await currentDataResponse.json();
 
 		// Format the data
 		const formatCurrency = (value: number): string => {
@@ -86,6 +129,7 @@ async function getBitcoinData(): Promise<BitcoinData | null> {
 			lastUpdated: formatDate(data.last_updated),
 			high24h: formatCurrency(data.market_data.high_24h.usd),
 			low24h: formatCurrency(data.market_data.low_24h.usd),
+			historicalPrices: historicalPrices || [],
 		};
 	} catch (error) {
 		console.error("Error fetching Bitcoin data:", error);
@@ -109,6 +153,7 @@ async function fetchBitcoinDataNoCache(): Promise<BitcoinData> {
 			lastUpdated: "N/A",
 			high24h: "N/A",
 			low24h: "N/A",
+			historicalPrices: [],
 		};
 	}
 
