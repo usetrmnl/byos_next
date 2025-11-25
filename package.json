@@ -3,7 +3,9 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"dev": "next dev --turbopack",
+		"generate:sql": "node scripts/generate-sql-statements.js",
+		"prebuild": "pnpm generate:sql",
+		"dev": "pnpm generate:sql && next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
 		"lint": "biome check ./app ./components ./lib ./utils ./hooks",

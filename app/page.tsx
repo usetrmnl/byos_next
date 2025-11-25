@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import { DashboardContent } from "@/components/dashboard/dashboard-content";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
@@ -11,12 +12,11 @@ const DashboardData = async () => {
 	// Get data from the centralized getInitData
 	// Since this is cached, it won't cause duplicate requests
 	const { devices, systemLogs, dbStatus, hostUrl } = await getInitData();
-
 	if (!dbStatus.ready) {
 		return (
 			<>
 				<div className="mt-4 rounded-lg p-4 border border-muted shadow">
-					{dbStatus.error === "SUPABASE_API_ENV_VARS_MISSING" && (
+					{dbStatus.error === "ERROR_ENV_VAR_DATABASE_URL_NOT_SET" && (
 						<div className="p-4">
 							<h3 className="font-bold text-2xl mb-2">
 								🤔
@@ -28,11 +28,7 @@ const DashboardData = async () => {
 							<p className="mb-3">
 								We&apos;re missing the{" "}
 								<span className="font-mono bg-muted px-1 rounded">
-									NEXT_PUBLIC_SUPABASE_URL
-								</span>{" "}
-								and{" "}
-								<span className="font-mono bg-muted px-1 rounded">
-									NEXT_PUBLIC_SUPABASE_ANON_KEY
+									DATABASE_URL
 								</span>{" "}
 								in your environment variables (/.env file).
 							</p>
@@ -114,19 +110,29 @@ const DashboardData = async () => {
 };
 
 export default async function Dashboard() {
+	// Access headers first to allow time-based operations in Server Component
+	// We need to actually read from headers to access uncached request data
+	const headersList = await headers();
+	// Read a header to ensure we've accessed uncached request data
+	const _userAgent = headersList.get("user-agent");
+
 	// Get minimal data for the header only
 	const { dbStatus, hostUrl } = await getInitData();
+
+	// Now we can safely use new Date() after accessing headers
+	const currentHour = new Date().getHours();
+	const greeting =
+		currentHour < 12
+			? "morning ☀️"
+			: currentHour < 18
+				? "afternoon ☕️"
+				: "evening 🌙";
 
 	return (
 		<>
 			<div className="mb-6">
 				<h2 className="mt-10 scroll-m-20 pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0 flex items-center">
-					Good{" "}
-					{new Date().getHours() < 12
-						? "morning ☀️"
-						: new Date().getHours() < 18
-							? "afternoon ☕️"
-							: "evening 🌙"}
+					Good {greeting}
 					{!dbStatus.ready && (
 						<Badge className="ml-2 bg-blue-100 text-blue-700 border-blue-200">
 							noDB mode

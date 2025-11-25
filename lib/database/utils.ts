@@ -21,6 +21,12 @@ export async function checkDbConnection(): Promise<{
 }
 
 export async function getDbStatus() {
+	if (!process.env.DATABASE_URL) {
+		return {
+			ready: false,
+			error: "ERROR_ENV_VAR_DATABASE_URL_NOT_SET",
+		};
+	}
 	const status = await checkDbConnection();
 	return status;
 }

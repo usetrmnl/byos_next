@@ -1,3 +1,5 @@
+-- Title: Add Device Status Fields
+-- Description: Add battery_voltage, firmware_version, and rssi columns to the devices table
 -- Add battery_voltage, firmware_version, and rssi columns to the devices table
 ALTER TABLE devices 
 ADD COLUMN IF NOT EXISTS battery_voltage NUMERIC,
