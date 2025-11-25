@@ -1,6 +1,6 @@
-import { PreSatori } from "@/utils/pre-satori";
-import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 import fontData from "@/components/bitmap-font/bitmap-font.json";
+import { BitmapText } from "@/components/bitmap-font/bitmap-text";
+import { PreSatori } from "@/utils/pre-satori";
 
 export default function SimpleText() {
 	return (

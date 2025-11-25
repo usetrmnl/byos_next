@@ -4,10 +4,10 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Suspense } from "react";
 import MainLayout from "@/components/main-layout-server";
-import { Toaster } from "@/components/ui/sonner";
-import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 const fontSans = FontSans({
 	subsets: ["latin"],

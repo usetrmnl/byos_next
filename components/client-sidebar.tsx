@@ -1,28 +1,28 @@
 "use client";
 
-import { useState, useEffect, memo, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import {
 	ChevronDown,
 	ChevronRight,
+	ListRestart,
 	Monitor,
-	Server,
-	Wrench,
 	Palette,
 	PencilRuler,
+	Server,
+	Wrench,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { memo, Suspense, useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Skeleton } from "@/components/ui/skeleton";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import type { Device } from "@/lib/supabase/types";
 import { getDeviceStatus } from "@/utils/helpers";
-import Link from "next/link";
-import { Suspense } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
 
 // Define interfaces for screens and tools JSON
 interface Author {
@@ -129,13 +129,7 @@ NavLink.displayName = "NavLink";
 
 // Single device item component
 const DeviceItem = memo(
-	({
-		device,
-		currentPath,
-	}: {
-		device: Device;
-		currentPath: string;
-	}) => {
+	({ device, currentPath }: { device: Device; currentPath: string }) => {
 		const [status, setStatus] = useState(getDeviceStatus(device));
 		const isActive = currentPath === `/device/${device.friendly_id}`;
 		const router = useRouter();
@@ -222,13 +216,7 @@ RecipeItem.displayName = "RecipeItem";
 
 // Device list component
 const DeviceList = memo(
-	({
-		devices,
-		currentPath,
-	}: {
-		devices: Device[];
-		currentPath: string;
-	}) => {
+	({ devices, currentPath }: { devices: Device[]; currentPath: string }) => {
 		return (
 			<>
 				{Array.isArray(devices) && devices.length > 0 ? (
@@ -495,6 +483,13 @@ export function ClientSidebar({
 				components={recipesComponents}
 				currentPath={currentPath}
 				initialOpen={currentPath.startsWith("/recipes/")}
+			/>
+
+			<NavLink
+				href="/playlists"
+				currentPath={currentPath}
+				icon={<ListRestart className="mr-2 size-4" />}
+				label="Playlists"
 			/>
 
 			<ToolsSection

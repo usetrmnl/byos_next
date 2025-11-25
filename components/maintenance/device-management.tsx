@@ -1,11 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Plus, RefreshCw, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { RefreshCw, Trash2, Plus, Search } from "lucide-react";
+import {
+	addDevice,
+	deleteDevice,
+	fetchAllDevices,
+} from "@/app/actions/maintenance";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "@/components/ui/command";
 import {
 	Dialog,
 	DialogContent,
@@ -15,16 +29,14 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
 	Select,
 	SelectContent,
@@ -33,34 +45,22 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-} from "@/components/ui/command";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import type { Device } from "@/lib/supabase/types";
-import {
-	formatTimezone,
-	timezones,
-	generateFriendlyId,
-	generateApiKey,
-	getDeviceStatus,
-} from "@/utils/helpers";
 import { cn } from "@/lib/utils";
 import {
-	fetchAllDevices,
-	addDevice,
-	deleteDevice,
-} from "@/app/actions/maintenance";
+	formatTimezone,
+	generateApiKey,
+	generateFriendlyId,
+	getDeviceStatus,
+	timezones,
+} from "@/utils/helpers";
 
 export function DeviceManagement() {
 	const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -83,13 +83,8 @@ export function DeviceManagement() {
 		timezone: "Europe/London",
 	});
 
-	// Load devices on component mount
-	useEffect(() => {
-		loadDevices();
-	}, []);
-
 	// Function to load devices from the database
-	const loadDevices = async () => {
+	const loadDevices = useCallback(async () => {
 		try {
 			setIsLoading(true);
 			const devicesData = await fetchAllDevices();
@@ -100,7 +95,12 @@ export function DeviceManagement() {
 		} finally {
 			setIsLoading(false);
 		}
-	};
+	}, []);
+
+	// Load devices on component mount
+	useEffect(() => {
+		loadDevices();
+	}, [loadDevices]);
 
 	// Handle MAC address input change with formatting
 	const handleMacAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {

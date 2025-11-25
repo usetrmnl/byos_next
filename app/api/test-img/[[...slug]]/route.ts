@@ -1,13 +1,13 @@
-export const runtime = "nodejs";
 // export const revalidate = 15; // This controls the default revalidation time
-import { unstable_cacheLife as cacheLife } from "next/cache";
+import { cacheLife } from "next/cache";
 
 import { ImageResponse } from "next/og";
 import { createElement } from "react";
-import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
-import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 // import BitmapText from "@/components/bitmap-font/bitmap-text";
 import fontData from "@/components/bitmap-font/bitmap-font.json";
+import { BitmapText } from "@/components/bitmap-font/bitmap-text";
+import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+
 // import simpleText from "@/app/recipes/screens/simple-text/simple-text";
 
 // Constants for cache configuration
@@ -151,7 +151,12 @@ async function generateImageData(slug: string): Promise<{
 					fontFamily: "system-ui",
 				},
 			},
-			[createElement(BitmapText, { text, fontData, scale: 2 })],
+			createElement(BitmapText, {
+				text,
+				fontData,
+				scale: 2,
+				key: "bitmap-text",
+			}),
 		);
 
 		// Generate the image response
@@ -323,7 +328,7 @@ export async function GET(
 				? result.data.length.toString()
 				: `${800 * 480}`;
 
-			return new Response(result.data, {
+			return new Response(new Uint8Array(result.data), {
 				headers: {
 					"Content-Type": "image/bmp",
 					"Content-Length": contentLength,
@@ -345,7 +350,7 @@ export async function GET(
 			throw new Error("Failed to generate fallback image");
 		}
 
-		return new Response(fallback.data, {
+		return new Response(new Uint8Array(fallback.data), {
 			headers: {
 				"Content-Type": "image/bmp",
 				"Content-Length": fallback.data.length.toString(),
@@ -379,7 +384,7 @@ export async function GET(
 				);
 			}
 
-			return new Response(fallback.data, {
+			return new Response(new Uint8Array(fallback.data), {
 				headers: {
 					"Content-Type": "image/bmp",
 					"Content-Length": fallback.data.length.toString(),

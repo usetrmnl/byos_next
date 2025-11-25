@@ -1,25 +1,25 @@
 "use client";
 
-import { useCallback, useState, useRef, useEffect } from "react";
 import {
 	ArrowDown,
 	ArrowLeft,
 	ArrowRight,
 	ArrowUp,
+	Check,
+	ClipboardCopy,
 	FlipHorizontal,
 	FlipVertical,
 	ClipboardPasteIcon as Paste,
+	Redo,
 	RotateCcw,
 	RotateCw,
-	Undo,
-	Redo,
 	Trash,
-	ClipboardCopy,
-	Check,
+	Undo,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 import { binaryToGrid, gridToBinary } from "./bitmap-font-utils";
 
 interface BitmapFontEditorProps {
@@ -254,7 +254,7 @@ export default function BitmapFontEditor({
 
 		// Update the preview
 		updatePreview();
-	}, [cellSize, xHeight, baseline, updatePreview]);
+	}, [xHeight, baseline, updatePreview]);
 
 	// Reset grid when selectedCharacter changes
 	useEffect(() => {
@@ -403,16 +403,13 @@ export default function BitmapFontEditor({
 	]);
 
 	// Convert canvas coordinates to grid coordinates
-	const canvasToGrid = useCallback(
-		(x: number, y: number): [number, number] => {
-			const borderWidth = 1;
-			const cellSizeWithBorder = cellSize + borderWidth;
-			const gridX = Math.floor(x / cellSizeWithBorder);
-			const gridY = Math.floor(y / cellSizeWithBorder);
-			return [gridX, gridY];
-		},
-		[cellSize],
-	);
+	const canvasToGrid = useCallback((x: number, y: number): [number, number] => {
+		const borderWidth = 1;
+		const cellSizeWithBorder = cellSize + borderWidth;
+		const gridX = Math.floor(x / cellSizeWithBorder);
+		const gridY = Math.floor(y / cellSizeWithBorder);
+		return [gridX, gridY];
+	}, []);
 
 	// Handle mouse down
 	const handleMouseDown = useCallback(

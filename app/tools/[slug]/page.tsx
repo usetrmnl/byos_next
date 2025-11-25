@@ -1,10 +1,12 @@
-import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
+import { cache, Suspense } from "react";
 import tools from "@/app/tools/tools.json";
 
 export async function generateMetadata({
 	params,
-}: { params: Promise<{ slug: string }> }) {
+}: {
+	params: Promise<{ slug: string }>;
+}) {
 	const { slug } = await params;
 	const config = tools[slug as keyof typeof tools];
 
@@ -59,7 +61,9 @@ async function ToolComponent({ slug }: { slug: string }) {
 
 export default async function ToolPage({
 	params,
-}: { params: Promise<{ slug: string }> }) {
+}: {
+	params: Promise<{ slug: string }>;
+}) {
 	const { slug } = await params;
 	const config = tools[slug as keyof typeof tools];
 

@@ -1,23 +1,10 @@
-export const runtime = "nodejs";
-export const revalidate = 60;
-
-import type { NextRequest } from "next/server";
 import { ImageResponse } from "next/og";
-import { createElement, cache } from "react";
-import { renderBmp, DitheringMethod } from "@/utils/render-bmp";
+import type { NextRequest } from "next/server";
+import { cache, createElement } from "react";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
 import loadFont from "@/utils/font-loader";
-
-// Generate static params for the bitmap route
-export async function generateStaticParams() {
-	const staticParams = [
-		...Object.keys(screens).map((screen) => ({
-			slug: [`${screen}.bmp`],
-		})),
-	];
-	return staticParams;
-}
+import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 // Logging utility to control log output based on environment
 const logger = {
@@ -57,7 +44,6 @@ interface CacheItem {
 
 // Extend NodeJS namespace for global variables
 declare global {
-	// eslint-disable-next-line no-var
 	var bitmapCache: Map<string, CacheItem> | undefined;
 }
 
@@ -236,7 +222,7 @@ const loadRecipeBuffer = cache(async (recipeId: string) => {
 });
 
 export async function GET(
-	req: NextRequest,
+	_req: NextRequest,
 	{ params }: { params: Promise<{ slug?: string[] }> },
 ) {
 	try {
@@ -264,7 +250,7 @@ export async function GET(
 			// Check if the item is still valid
 			if (item.expiresAt > now) {
 				logger.info(`🔵 Global cache HIT for ${cacheKey}`);
-				return new Response(item.data, {
+				return new Response(new Uint8Array(item.data), {
 					headers: {
 						"Content-Type": "image/bmp",
 						"Content-Length": item.data.length.toString(),
@@ -274,7 +260,7 @@ export async function GET(
 
 			logger.info(`🟡 Global cache STALE for ${cacheKey}`);
 			// Return stale data but trigger background revalidation
-			const staleResponse = new Response(item.data, {
+			const staleResponse = new Response(new Uint8Array(item.data), {
 				headers: {
 					"Content-Type": "image/bmp",
 					"Content-Length": item.data.length.toString(),
@@ -330,7 +316,7 @@ export async function GET(
 			const pngResponse = await new ImageResponse(element, defaultOptions);
 			const buffer = await renderBmp(pngResponse);
 
-			return new Response(buffer, {
+			return new Response(new Uint8Array(buffer), {
 				headers: {
 					"Content-Type": "image/bmp",
 					"Content-Length": buffer.length.toString(),
@@ -393,7 +379,7 @@ const generateBitmap = cache(async (bitmapPath: string, cacheKey: string) => {
 
 	logger.success(`Successfully generated bitmap for: ${bitmapPath}`);
 
-	return new Response(recipeBuffer, {
+	return new Response(new Uint8Array(recipeBuffer), {
 		headers: {
 			"Content-Type": "image/bmp",
 			"Content-Length": recipeBuffer.length.toString(),

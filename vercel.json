@@ -1,9 +1,9 @@
 {
-    "$schema": "https://openapi.vercel.sh/vercel.json",
-    "crons": [
-      {
-        "path": "/api/bitmap/wikipedia.bmp",
-        "schedule": "*/5 * * * *"
-      }
-    ]
-  }
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"crons": [
+		{
+			"path": "/api/bitmap/wikipedia.bmp",
+			"schedule": "*/5 * * * *"
+		}
+	]
+}

@@ -6,14 +6,16 @@ global.bitmapCache = global.bitmapCache || new Map();
 module.exports = class CustomCacheHandler {
 	constructor(options) {
 		this.options = options;
-		this.isProduction = process.env.NODE_ENV === 'production';
-		
+		this.isProduction = process.env.NODE_ENV === "production";
+
 		// Only log initialization once per server instance
 		if (!global.cacheInitialized) {
 			if (this.isProduction) {
 				console.log("🔧 Production mode: Using Next.js built-in cache");
 			} else {
-				console.log("🔧 Development mode: Using lightweight memory-only cache handler");
+				console.log(
+					"🔧 Development mode: Using lightweight memory-only cache handler",
+				);
 			}
 			global.cacheInitialized = true;
 		}
@@ -24,9 +26,9 @@ module.exports = class CustomCacheHandler {
 		if (this.isProduction) {
 			return null;
 		}
-		
+
 		// Only handle api/bitmap routes
-		if (!key.includes('api/bitmap')) {
+		if (!key.includes("api/bitmap")) {
 			return null;
 		}
 
@@ -57,9 +59,9 @@ module.exports = class CustomCacheHandler {
 		if (this.isProduction) {
 			return false;
 		}
-		
+
 		// Only handle api/bitmap routes
-		if (!key.includes('api/bitmap')) {
+		if (!key.includes("api/bitmap")) {
 			return false;
 		}
 
@@ -76,7 +78,9 @@ module.exports = class CustomCacheHandler {
 			expiresAt,
 		});
 
-		console.log(`💾 Memory cache SET for ${key} with revalidate: ${revalidate}s`);
+		console.log(
+			`💾 Memory cache SET for ${key} with revalidate: ${revalidate}s`,
+		);
 		return true;
 	}
 };

@@ -1,7 +1,8 @@
 "use client";
 
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { fetchDeviceSystemLogs } from "@/app/actions/system";
+import SystemLogsViewer from "@/components/system-logs/system-logs-viewer";
 import {
 	Card,
 	CardContent,
@@ -9,10 +10,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import DeviceLogsViewer from "./device-logs-viewer";
-import SystemLogsViewer from "@/components/system-logs/system-logs-viewer";
-import { fetchDeviceSystemLogs } from "@/app/actions/system";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Device } from "@/lib/supabase/types";
+import DeviceLogsViewer from "./device-logs-viewer";
 
 interface DeviceLogsContainerProps {
 	device: Device;

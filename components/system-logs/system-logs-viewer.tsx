@@ -1,10 +1,10 @@
 "use client";
 
-import type React from "react";
-
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { ChevronDown, ChevronUp, Filter, Search, X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type React from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { fetchSystemLogs } from "@/app/actions/system";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -18,10 +18,9 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchSystemLogs } from "@/app/actions/system";
+import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
 import type { SystemLog } from "@/lib/supabase/types";
 import { formatDate } from "@/utils/helpers";
-import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
 
 const ITEMS_PER_PAGE = 100;
 

@@ -1,12 +1,20 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
-import { logError, logInfo } from "@/lib/logger";
-import type { RefreshSchedule, TimeRange, Device } from "@/lib/supabase/types";
-import type { CustomError } from "@/lib/api/types";
-import { timezones } from "@/utils/helpers";
-import { getHostUrl } from "@/utils/helpers";
-import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
 import crypto from "crypto";
+import { NextResponse } from "next/server";
+import type { CustomError } from "@/lib/api/types";
+import { logError, logInfo } from "@/lib/logger";
+import { createClient } from "@/lib/supabase/server";
+import type {
+	Device,
+	PlaylistItem,
+	RefreshSchedule,
+	TimeRange,
+} from "@/lib/supabase/types";
+import {
+	generateApiKey,
+	generateFriendlyId,
+	getHostUrl,
+	timezones,
+} from "@/utils/helpers";
 
 const DEFAULT_SCREEN = "album";
 const DEFAULT_REFRESH_RATE = 180;
@@ -87,6 +95,86 @@ const isTimeInRange = (
 
 	// Normal case where start time is before end time
 	return timeToCheck >= startTime && timeToCheck < endTime;
+};
+
+const getActivePlaylistItem = async (
+	playlistId: string,
+	currentIndex: number,
+	timezone: string = "UTC",
+): Promise<PlaylistItem | null> => {
+	const { supabase } = await createClient();
+	if (!supabase) return null;
+
+	const { data: items, error } = await supabase
+		.from("playlist_items")
+		.select("*")
+		.eq("playlist_id", playlistId)
+		.order("order_index", { ascending: true });
+
+	if (error || !items || items.length === 0) {
+		logError(error || new Error("No items in playlist"), {
+			source: "api/display/getActivePlaylistItem",
+			metadata: { playlistId },
+		});
+		return null;
+	}
+
+	// Get current time in device's timezone
+	const now = new Date();
+	const options = {
+		timeZone: timezone,
+		hour12: false,
+	} as Intl.DateTimeFormatOptions;
+
+	// Format time as "HH:MM" in 24-hour format
+	const timeFormatter = new Intl.DateTimeFormat("en-US", {
+		...options,
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+	const [{ value: hour }, , { value: minute }] =
+		timeFormatter.formatToParts(now);
+	const currentTime = `${hour}:${minute}`;
+
+	// Format day as lowercase full day name to match the playlist item format
+	const dayFormatter = new Intl.DateTimeFormat("en-US", {
+		...options,
+		weekday: "long",
+	});
+	const currentDay = dayFormatter.format(now).toLowerCase();
+
+	logInfo("Checking playlist items for time/day match", {
+		source: "api/display/getActivePlaylistItem",
+		metadata: {
+			playlistId,
+			currentIndex,
+			timezone,
+			currentTime,
+			currentDay,
+			totalItems: items.length,
+		},
+	});
+
+	for (let i = 1; i < items.length + 1; i++) {
+		const itemIndex = (currentIndex + i) % items.length;
+		const item = items[itemIndex] as PlaylistItem;
+
+		const { start_time, end_time, days_of_week } = item;
+
+		const isTimeValid =
+			!start_time ||
+			!end_time ||
+			isTimeInRange(currentTime, start_time, end_time);
+		const isDayValid =
+			!days_of_week ||
+			(Array.isArray(days_of_week) && days_of_week.includes(currentDay));
+
+		if (isTimeValid && isDayValid) {
+			return item;
+		}
+	}
+
+	return null;
 };
 
 // Helper function to update device status information
@@ -256,22 +344,22 @@ export async function GET(request: Request) {
 		},
 	});
 
-	if (!apiKey || !macAddress) {
-		// Create an error object to capture the stack trace automatically
-		const error = new Error("Missing required headers");
-		logError(error, {
-			source: "api/display",
-			metadata: { apiKey, macAddress },
-		});
-		return NextResponse.json(
-			{
-				status: 500,
-				reset_firmware: true,
-				message: "Device not found",
-			},
-			{ status: 200 },
-		); // Status 200 for device compatibility
-	}
+	// if (!apiKey || !macAddress) {
+	// 	// Create an error object to capture the stack trace automatically
+	// 	const error = new Error("Missing required headers");
+	// 	logError(error, {
+	// 		source: "api/display",
+	// 		metadata: { apiKey, macAddress },
+	// 	});
+	// 	return NextResponse.json(
+	// 		{
+	// 			status: 500,
+	// 			reset_firmware: true,
+	// 			message: "Device not found",
+	// 		},
+	// 		{ status: 200 },
+	// 	); // Status 200 for device compatibility
+	// }
 
 	try {
 		const { data, error } = await supabase
@@ -422,7 +510,7 @@ export async function GET(request: Request) {
 							api_key: apiKey,
 							refresh_schedule: {
 								default_refresh_rate: refreshRate
-									? Number.parseInt(refreshRate)
+									? Number.parseInt(refreshRate, 10)
 									: 60,
 								time_ranges: [],
 							},
@@ -430,7 +518,7 @@ export async function GET(request: Request) {
 							next_expected_update: new Date(
 								Date.now() +
 									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
+										? Number.parseInt(refreshRate, 10) * 1000
 										: 3600 * 1000),
 							).toISOString(),
 							timezone: "UTC",
@@ -438,7 +526,7 @@ export async function GET(request: Request) {
 								? Number.parseFloat(batteryVoltage)
 								: null,
 							firmware_version: fwVersion || null,
-							rssi: rssi ? Number.parseInt(rssi) : null,
+							rssi: rssi ? Number.parseInt(rssi, 10) : null,
 							screen: DEFAULT_SCREEN,
 						})
 						.select()
@@ -526,7 +614,7 @@ export async function GET(request: Request) {
 							api_key: new_api_key,
 							refresh_schedule: {
 								default_refresh_rate: refreshRate
-									? Number.parseInt(refreshRate)
+									? Number.parseInt(refreshRate, 10)
 									: 60,
 								time_ranges: [],
 							},
@@ -534,7 +622,7 @@ export async function GET(request: Request) {
 							next_expected_update: new Date(
 								Date.now() +
 									(refreshRate
-										? Number.parseInt(refreshRate) * 1000
+										? Number.parseInt(refreshRate, 10) * 1000
 										: 3600 * 1000),
 							).toISOString(),
 							timezone: "UTC",
@@ -542,7 +630,7 @@ export async function GET(request: Request) {
 								? Number.parseFloat(batteryVoltage)
 								: null,
 							firmware_version: fwVersion || null,
-							rssi: rssi ? Number.parseInt(rssi) : null,
+							rssi: rssi ? Number.parseInt(rssi, 10) : null,
 							screen: DEFAULT_SCREEN,
 						})
 						.select()
@@ -738,23 +826,60 @@ export async function GET(request: Request) {
 				firmware_version: device.firmware_version,
 				rssi: device.rssi,
 				screen: device.screen,
+				playlist_id: device.playlist_id,
+				use_playlist: device.use_playlist,
+				current_playlist_index: device.current_playlist_index,
 			},
 		});
-		const imageUrl = `${baseUrl}/${device.screen || "not-found"}.bmp`;
+
+		let screenToDisplay = device.screen;
+		let dynamicRefreshRate = 180; // Default refresh rate
+
+		if (device.use_playlist && device.playlist_id) {
+			const activeItem = await getActivePlaylistItem(
+				device.playlist_id,
+				device.current_playlist_index || 0,
+				device.timezone || "UTC",
+			);
+
+			if (activeItem) {
+				screenToDisplay = activeItem.screen_id;
+				dynamicRefreshRate = activeItem.duration;
+				await supabase
+					.from("devices")
+					.update({ current_playlist_index: activeItem.order_index })
+					.eq("id", device.id);
+			} else {
+				// No active item found - this could happen if all items have time/day restrictions
+				// that don't match the current time. In this case, we should keep the current index
+				// and use a fallback screen with a reasonable refresh rate.
+				logInfo("No active playlist item found, using fallback", {
+					source: "api/display",
+					metadata: {
+						device_id: device.friendly_id,
+						current_index: device.current_playlist_index,
+						timezone: device.timezone,
+					},
+				});
+
+				// Use the device's default screen or a fallback
+				screenToDisplay = device.screen || "not-found";
+				dynamicRefreshRate = 60; // Shorter refresh rate to check again soon
+			}
+		} else {
+			const deviceTimezone = device.timezone || "UTC";
+			dynamicRefreshRate = calculateRefreshRate(
+				device.refresh_schedule,
+				180,
+				deviceTimezone,
+			);
+		}
+
+		const imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
 
 		// Start pre-caching the current image in the background
 		// This ensures the image is cached by the time the device requests it
 		precacheImageInBackground(imageUrl, device.friendly_id);
-
-		// Calculate the appropriate refresh rate based on time of day and device settings
-		// Default refresh rate is 60 seconds (180 units)
-		const defaultRefreshRate = 180; // 3 units = 1s
-		const deviceTimezone = device.timezone || "UTC"; // Default to UTC if no timezone is set
-		const dynamicRefreshRate = calculateRefreshRate(
-			device.refresh_schedule,
-			defaultRefreshRate,
-			deviceTimezone,
-		);
 
 		// Update device refresh status information in the background
 		// We don't await this to avoid delaying the response
@@ -763,8 +888,8 @@ export async function GET(request: Request) {
 			refreshDurationSeconds: dynamicRefreshRate,
 			batteryVoltage: Number.parseFloat(batteryVoltage || "0"),
 			fwVersion: fwVersion || "",
-			rssi: Number.parseInt(rssi || "0"),
-			timezone: deviceTimezone,
+			rssi: Number.parseInt(rssi || "0", 10),
+			timezone: device.timezone || "UTC",
 		});
 
 		// Calculate human-readable next update time for logging
@@ -773,14 +898,12 @@ export async function GET(request: Request) {
 		logInfo("Display request successful", {
 			source: "api/display",
 			metadata: {
-				image_url: imageUrl,
-				friendly_id: device.friendly_id,
+				device_id: device.friendly_id,
+				screen: screenToDisplay,
 				refresh_rate: dynamicRefreshRate,
-				refresh_duration_seconds: dynamicRefreshRate,
-				calculated_from_schedule: !!device.refresh_schedule,
-				next_update_expected: nextUpdateTime.toISOString(),
-				filename: `${device.screen}_${uniqueId}.bmp`, // Add a timestamp to the image filename to stop device from caching the image
-				special_function: "restart_playlist",
+				next_update: nextUpdateTime.toISOString(),
+				playlist_mode: device.use_playlist,
+				playlist_id: device.playlist_id,
 			},
 		});
 
@@ -788,7 +911,7 @@ export async function GET(request: Request) {
 			{
 				status: 0,
 				image_url: imageUrl,
-				filename: `${device.screen}_${uniqueId}.bmp`, // Add a timestamp to the image filename to stop device from caching the image
+				filename: `${screenToDisplay || "not-found"}_${uniqueId}.bmp`,
 				refresh_rate: dynamicRefreshRate,
 				reset_firmware: false,
 				update_firmware: false,
@@ -798,19 +921,25 @@ export async function GET(request: Request) {
 			{ status: 200 },
 		);
 	} catch (error) {
-		// The error object already contains the stack trace
 		logError(error as Error, {
 			source: "api/display",
+			metadata: {
+				apiKey,
+				macAddress,
+				refreshRate,
+				batteryVoltage,
+				fwVersion,
+				rssi,
+			},
 		});
 
-		// Prefetch the not-found image even when returning an error
+		// Return error response with not-found image
 		const notFoundImageUrl = `${baseUrl}/not-found.bmp`;
-
 		return NextResponse.json(
 			{
 				status: 500,
 				reset_firmware: true,
-				message: "Device not found",
+				message: "Internal server error",
 				image_url: notFoundImageUrl,
 				filename: `not-found_${uniqueId}.bmp`,
 			},

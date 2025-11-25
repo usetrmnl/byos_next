@@ -1,12 +1,12 @@
 "use client";
 
-import * as React from "react";
-import { cn } from "@/lib/utils";
 import { Columns2, Rows2, ZoomIn, ZoomOut } from "lucide-react";
+import * as React from "react";
 import {
 	SlideToggle,
 	type SlideToggleOption,
 } from "@/components/ui/slide-toggle";
+import { cn } from "@/lib/utils";
 
 type RecipePreviewLayoutProps = {
 	children?: React.ReactNode;

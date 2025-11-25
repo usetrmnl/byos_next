@@ -1,8 +1,16 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import {
+	Copy,
+	Download,
+	ImageIcon,
+	Sliders,
+	Upload,
+	ZoomIn,
+	ZoomOut,
+} from "lucide-react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
 import {
 	Select,
 	SelectContent,
@@ -10,15 +18,164 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Upload,
-	Download,
-	ImageIcon,
-	ZoomIn,
-	ZoomOut,
-	Sliders,
-	Copy,
-} from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+
+// Dithering functions - pure functions that don't depend on component state
+const applyThreshold = (
+	imageData: ImageData,
+	threshold: number,
+	inverted: boolean,
+) => {
+	const data = imageData.data;
+	for (let i = 0; i < data.length; i += 4) {
+		const gray = data[i];
+		const newValue = gray < threshold ? 0 : 255;
+		const finalValue = inverted ? 255 - newValue : newValue;
+		data[i] = data[i + 1] = data[i + 2] = finalValue;
+	}
+};
+
+const applyFloydSteinberg = (imageData: ImageData, inverted: boolean) => {
+	const width = imageData.width;
+	const height = imageData.height;
+	const data = imageData.data;
+	const grayscale = new Array(width * height);
+
+	// Extract grayscale values
+	for (let i = 0; i < data.length; i += 4) {
+		grayscale[i / 4] = data[i];
+	}
+
+	// Apply Floyd-Steinberg dithering
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const index = y * width + x;
+			const oldPixel = grayscale[index];
+			const newPixel = oldPixel < 128 ? 0 : 255;
+			grayscale[index] = newPixel;
+			const error = oldPixel - newPixel;
+
+			if (x + 1 < width) grayscale[index + 1] += (error * 7) / 16;
+			if (y + 1 < height && x > 0)
+				grayscale[index + width - 1] += (error * 3) / 16;
+			if (y + 1 < height) grayscale[index + width] += (error * 5) / 16;
+			if (y + 1 < height && x + 1 < width)
+				grayscale[index + width + 1] += (error * 1) / 16;
+		}
+	}
+
+	// Update image data
+	for (let i = 0; i < data.length; i += 4) {
+		const value = inverted ? 255 - grayscale[i / 4] : grayscale[i / 4];
+		data[i] = data[i + 1] = data[i + 2] = value;
+	}
+};
+
+const applyAtkinson = (imageData: ImageData, inverted: boolean) => {
+	const width = imageData.width;
+	const height = imageData.height;
+	const data = imageData.data;
+	const grayscale = new Array(width * height);
+
+	// Extract grayscale values
+	for (let i = 0; i < data.length; i += 4) {
+		grayscale[i / 4] = data[i];
+	}
+
+	// Apply Atkinson dithering
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const index = y * width + x;
+			const oldPixel = grayscale[index];
+			const newPixel = oldPixel < 128 ? 0 : 255;
+			grayscale[index] = newPixel;
+			const error = Math.floor((oldPixel - newPixel) / 8);
+
+			if (x + 1 < width) grayscale[index + 1] += error;
+			if (x + 2 < width) grayscale[index + 2] += error;
+			if (y + 1 < height && x - 1 >= 0) grayscale[index + width - 1] += error;
+			if (y + 1 < height) grayscale[index + width] += error;
+			if (y + 1 < height && x + 1 < width)
+				grayscale[index + width + 1] += error;
+			if (y + 2 < height) grayscale[index + width * 2] += error;
+		}
+	}
+
+	// Update image data
+	for (let i = 0; i < data.length; i += 4) {
+		const value = inverted ? 255 - grayscale[i / 4] : grayscale[i / 4];
+		data[i] = data[i + 1] = data[i + 2] = value;
+	}
+};
+
+const applyBayer = (
+	imageData: ImageData,
+	patternSize: number,
+	inverted: boolean,
+) => {
+	const width = imageData.width;
+	const height = imageData.height;
+	const data = imageData.data;
+
+	// Bayer matrices for different sizes
+	const bayerMatrix: Record<number, number[][]> = {
+		2: [
+			[0, 2],
+			[3, 1],
+		],
+		4: [
+			[0, 8, 2, 10],
+			[12, 4, 14, 6],
+			[3, 11, 1, 9],
+			[15, 7, 13, 5],
+		],
+		8: [
+			[0, 32, 8, 40, 2, 34, 10, 42],
+			[48, 16, 56, 24, 50, 18, 58, 26],
+			[12, 44, 4, 36, 14, 46, 6, 38],
+			[60, 28, 52, 20, 62, 30, 54, 22],
+			[3, 35, 11, 43, 1, 33, 9, 41],
+			[51, 19, 59, 27, 49, 17, 57, 25],
+			[15, 47, 7, 39, 13, 45, 5, 37],
+			[63, 31, 55, 23, 61, 29, 53, 21],
+		],
+	};
+
+	// Use the closest available matrix size
+	const matrixSize = patternSize <= 2 ? 2 : patternSize <= 4 ? 4 : 8;
+	const matrix = bayerMatrix[matrixSize];
+	const matrixLength = matrix.length;
+
+	// Normalize the matrix values to 0-255 range
+	const normalizedMatrix = matrix.map((row) =>
+		row.map((val) => Math.floor((val * 255) / (matrixLength * matrixLength))),
+	);
+
+	// Apply Bayer dithering
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const index = (y * width + x) * 4;
+			const gray = data[index];
+			const matrixX = x % matrixLength;
+			const matrixY = y % matrixLength;
+			const threshold = normalizedMatrix[matrixY][matrixX];
+			const newValue = gray < threshold ? 0 : 255;
+			const finalValue = inverted ? 255 - newValue : newValue;
+			data[index] = data[index + 1] = data[index + 2] = finalValue;
+		}
+	}
+};
+
+const applyRandom = (imageData: ImageData, inverted: boolean) => {
+	const data = imageData.data;
+	for (let i = 0; i < data.length; i += 4) {
+		const gray = data[i];
+		const randomThreshold = Math.random() * 255;
+		const newValue = gray < randomThreshold ? 0 : 255;
+		const finalValue = inverted ? 255 - newValue : newValue;
+		data[i] = data[i + 1] = data[i + 2] = finalValue;
+	}
+};
 
 export default function ImageDitherer() {
 	const [originalImage, setOriginalImage] = useState<HTMLImageElement | null>(
@@ -153,162 +310,6 @@ export default function ImageDitherer() {
 		inverted,
 	]);
 
-	const applyThreshold = (
-		imageData: ImageData,
-		threshold: number,
-		inverted: boolean,
-	) => {
-		const data = imageData.data;
-		for (let i = 0; i < data.length; i += 4) {
-			const gray = data[i];
-			const newValue = gray < threshold ? 0 : 255;
-			const finalValue = inverted ? 255 - newValue : newValue;
-			data[i] = data[i + 1] = data[i + 2] = finalValue;
-		}
-	};
-
-	const applyFloydSteinberg = (imageData: ImageData, inverted: boolean) => {
-		const width = imageData.width;
-		const height = imageData.height;
-		const data = imageData.data;
-		const grayscale = new Array(width * height);
-
-		// Extract grayscale values
-		for (let i = 0; i < data.length; i += 4) {
-			grayscale[i / 4] = data[i];
-		}
-
-		// Apply Floyd-Steinberg dithering
-		for (let y = 0; y < height; y++) {
-			for (let x = 0; x < width; x++) {
-				const index = y * width + x;
-				const oldPixel = grayscale[index];
-				const newPixel = oldPixel < 128 ? 0 : 255;
-				grayscale[index] = newPixel;
-				const error = oldPixel - newPixel;
-
-				if (x + 1 < width) grayscale[index + 1] += (error * 7) / 16;
-				if (y + 1 < height && x > 0)
-					grayscale[index + width - 1] += (error * 3) / 16;
-				if (y + 1 < height) grayscale[index + width] += (error * 5) / 16;
-				if (y + 1 < height && x + 1 < width)
-					grayscale[index + width + 1] += (error * 1) / 16;
-			}
-		}
-
-		// Update image data
-		for (let i = 0; i < data.length; i += 4) {
-			const value = inverted ? 255 - grayscale[i / 4] : grayscale[i / 4];
-			data[i] = data[i + 1] = data[i + 2] = value;
-		}
-	};
-
-	const applyAtkinson = (imageData: ImageData, inverted: boolean) => {
-		const width = imageData.width;
-		const height = imageData.height;
-		const data = imageData.data;
-		const grayscale = new Array(width * height);
-
-		// Extract grayscale values
-		for (let i = 0; i < data.length; i += 4) {
-			grayscale[i / 4] = data[i];
-		}
-
-		// Apply Atkinson dithering
-		for (let y = 0; y < height; y++) {
-			for (let x = 0; x < width; x++) {
-				const index = y * width + x;
-				const oldPixel = grayscale[index];
-				const newPixel = oldPixel < 128 ? 0 : 255;
-				grayscale[index] = newPixel;
-				const error = Math.floor((oldPixel - newPixel) / 8);
-
-				if (x + 1 < width) grayscale[index + 1] += error;
-				if (x + 2 < width) grayscale[index + 2] += error;
-				if (y + 1 < height && x - 1 >= 0) grayscale[index + width - 1] += error;
-				if (y + 1 < height) grayscale[index + width] += error;
-				if (y + 1 < height && x + 1 < width)
-					grayscale[index + width + 1] += error;
-				if (y + 2 < height) grayscale[index + width * 2] += error;
-			}
-		}
-
-		// Update image data
-		for (let i = 0; i < data.length; i += 4) {
-			const value = inverted ? 255 - grayscale[i / 4] : grayscale[i / 4];
-			data[i] = data[i + 1] = data[i + 2] = value;
-		}
-	};
-
-	const applyBayer = (
-		imageData: ImageData,
-		patternSize: number,
-		inverted: boolean,
-	) => {
-		const width = imageData.width;
-		const height = imageData.height;
-		const data = imageData.data;
-
-		// Bayer matrices for different sizes
-		const bayerMatrix: Record<number, number[][]> = {
-			2: [
-				[0, 2],
-				[3, 1],
-			],
-			4: [
-				[0, 8, 2, 10],
-				[12, 4, 14, 6],
-				[3, 11, 1, 9],
-				[15, 7, 13, 5],
-			],
-			8: [
-				[0, 32, 8, 40, 2, 34, 10, 42],
-				[48, 16, 56, 24, 50, 18, 58, 26],
-				[12, 44, 4, 36, 14, 46, 6, 38],
-				[60, 28, 52, 20, 62, 30, 54, 22],
-				[3, 35, 11, 43, 1, 33, 9, 41],
-				[51, 19, 59, 27, 49, 17, 57, 25],
-				[15, 47, 7, 39, 13, 45, 5, 37],
-				[63, 31, 55, 23, 61, 29, 53, 21],
-			],
-		};
-
-		// Use the closest available matrix size
-		const matrixSize = patternSize <= 2 ? 2 : patternSize <= 4 ? 4 : 8;
-		const matrix = bayerMatrix[matrixSize];
-		const matrixLength = matrix.length;
-
-		// Normalize the matrix values to 0-255 range
-		const normalizedMatrix = matrix.map((row) =>
-			row.map((val) => Math.floor((val * 255) / (matrixLength * matrixLength))),
-		);
-
-		// Apply Bayer dithering
-		for (let y = 0; y < height; y++) {
-			for (let x = 0; x < width; x++) {
-				const index = (y * width + x) * 4;
-				const gray = data[index];
-				const matrixX = x % matrixLength;
-				const matrixY = y % matrixLength;
-				const threshold = normalizedMatrix[matrixY][matrixX];
-				const newValue = gray < threshold ? 0 : 255;
-				const finalValue = inverted ? 255 - newValue : newValue;
-				data[index] = data[index + 1] = data[index + 2] = finalValue;
-			}
-		}
-	};
-
-	const applyRandom = (imageData: ImageData, inverted: boolean) => {
-		const data = imageData.data;
-		for (let i = 0; i < data.length; i += 4) {
-			const gray = data[i];
-			const randomThreshold = Math.random() * 255;
-			const newValue = gray < randomThreshold ? 0 : 255;
-			const finalValue = inverted ? 255 - newValue : newValue;
-			data[i] = data[i + 1] = data[i + 2] = finalValue;
-		}
-	};
-
 	// Function to convert canvas to BMP and download
 	const downloadAsBMP = () => {
 		if (!canvasRef.current) return;
@@ -429,16 +430,7 @@ export default function ImageDitherer() {
 		if (originalImage) {
 			applyDithering();
 		}
-	}, [
-		originalImage,
-		ditheringMethod,
-		brightness,
-		contrast,
-		threshold,
-		patternSize,
-		inverted,
-		applyDithering,
-	]);
+	}, [originalImage, applyDithering]);
 
 	// Debug the file input element
 	useEffect(() => {
@@ -480,8 +472,9 @@ export default function ImageDitherer() {
 				</div>
 			) : (
 				<div className="w-full flex flex-col md:flex-row">
-					<div
-						className="relative overflow-auto w-full md:w-3/4 h-[400px] md:h-[600px] flex items-center justify-center"
+					<button
+						type="button"
+						className="relative overflow-auto w-full md:w-3/4 h-[400px] md:h-[600px] flex items-center justify-center border-0 bg-transparent p-0 cursor-pointer"
 						onClick={() => setShowControls(!showControls)}
 					>
 						<canvas
@@ -493,7 +486,7 @@ export default function ImageDitherer() {
 							}}
 							className="max-w-none ring-1 ring-green-500"
 						/>
-					</div>
+					</button>
 
 					{/* Controls panel */}
 					<div className="w-full md:w-1/4 border-t md:border-t-0 md:border-l p-4">
@@ -514,12 +507,17 @@ export default function ImageDitherer() {
 							</div>
 
 							<div className="space-y-2">
-								<label className="text-xs font-medium">Dithering Method</label>
+								<label
+									htmlFor="dithering-method"
+									className="text-xs font-medium"
+								>
+									Dithering Method
+								</label>
 								<Select
 									value={ditheringMethod}
 									onValueChange={setDitheringMethod}
 								>
-									<SelectTrigger className="h-8 text-sm">
+									<SelectTrigger id="dithering-method" className="h-8 text-sm">
 										<SelectValue placeholder="Select dithering method" />
 									</SelectTrigger>
 									<SelectContent>
@@ -536,10 +534,14 @@ export default function ImageDitherer() {
 
 							{ditheringMethod === "threshold" && (
 								<div className="space-y-1">
-									<label className="text-xs font-medium">
+									<label
+										htmlFor="threshold-slider"
+										className="text-xs font-medium"
+									>
 										Threshold ({threshold[0]})
 									</label>
 									<Slider
+										id="threshold-slider"
 										value={threshold}
 										min={0}
 										max={255}
@@ -552,10 +554,14 @@ export default function ImageDitherer() {
 
 							{ditheringMethod === "bayer" && (
 								<div className="space-y-1">
-									<label className="text-xs font-medium">
+									<label
+										htmlFor="pattern-size-slider"
+										className="text-xs font-medium"
+									>
 										Pattern Size ({patternSize[0]}x{patternSize[0]})
 									</label>
 									<Slider
+										id="pattern-size-slider"
 										value={patternSize}
 										min={2}
 										max={8}
@@ -567,10 +573,14 @@ export default function ImageDitherer() {
 							)}
 
 							<div className="space-y-1">
-								<label className="text-xs font-medium">
+								<label
+									htmlFor="brightness-slider"
+									className="text-xs font-medium"
+								>
 									Brightness ({brightness[0]})
 								</label>
 								<Slider
+									id="brightness-slider"
 									value={brightness}
 									min={-200}
 									max={200}
@@ -581,10 +591,14 @@ export default function ImageDitherer() {
 							</div>
 
 							<div className="space-y-1">
-								<label className="text-xs font-medium">
+								<label
+									htmlFor="contrast-slider"
+									className="text-xs font-medium"
+								>
 									Contrast ({contrast[0]})
 								</label>
 								<Slider
+									id="contrast-slider"
 									value={contrast}
 									min={-100}
 									max={100}
