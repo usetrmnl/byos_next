@@ -7,7 +7,7 @@ services:
       - "5432:5432"
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_DB=byos_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -24,9 +24,9 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3002:3000"
+      - "3000:3000"
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/byos_db?sslmode=disable
+      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/byos_db?sslmode=disable
     depends_on:
       postgres:
         condition: service_healthy
