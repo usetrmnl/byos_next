@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server";
+import { db } from "@/lib/database/db";
+import { checkDbConnection } from "@/lib/database/utils";
 
 export type LogLevel = "info" | "warn" | "error" | "debug";
 
@@ -16,10 +17,10 @@ export const log = async (
 	// Convert Error objects to strings if necessary
 	const messageText = message instanceof Error ? message.message : message;
 	const trace = message instanceof Error ? message.stack : options.trace;
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		//Supabase client not initialized, cannot log, will output to console instead
+	if (!ready) {
+		// Database client not initialized, cannot log, will output to console instead
 		// but use better formatting for errors, and use coloring for stdout
 		// and try to have proper spacing and be complete
 		const color =
@@ -55,17 +56,16 @@ export const log = async (
 	// Then log to database without awaiting
 	(async () => {
 		try {
-			const { error } = await supabase.from("system_logs").insert({
-				level,
-				message: messageText,
-				source: options.source,
-				metadata: options.metadata,
-				trace,
-			});
-
-			if (error) {
-				console.error("Failed to write to system_logs:", error);
-			}
+			await db
+				.insertInto("system_logs")
+				.values({
+					level,
+					message: messageText,
+					source: options.source || null,
+					metadata: options.metadata ? JSON.stringify(options.metadata) : null,
+					trace: trace || null,
+				})
+				.execute();
 		} catch (err) {
 			console.error("Error writing to system_logs:", err);
 		}
@@ -161,44 +161,70 @@ export const readLogs = async (
 		search,
 		groupSimilar = true,
 	} = options;
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.error("Supabase client not initialized, cannot read logs");
+	if (!ready) {
+		console.error("Database client not initialized, cannot read logs");
 		return { logs: [], total: 0 };
 	}
 
 	// Start building the query
-	let query = supabase.from("system_logs").select("*", { count: "exact" });
+	let query = db.selectFrom("system_logs").selectAll();
 
 	// Apply filters
 	if (levels && levels.length > 0) {
-		query = query.in("level", levels);
+		query = query.where("level", "in", levels);
 	}
 
 	if (sources && sources.length > 0) {
-		query = query.in("source", sources);
+		query = query.where("source", "in", sources);
 	}
 
 	if (search) {
-		query = query.or(`message.ilike.%${search}%,source.ilike.%${search}%`);
+		query = query.where((eb) =>
+			eb.or([
+				eb("message", "ilike", `%${search}%`),
+				eb("source", "ilike", `%${search}%`),
+			]),
+		);
 	}
 
 	// Apply pagination
-	const from = (page - 1) * limit;
-	const to = from + limit - 1;
+	const offset = (page - 1) * limit;
 
-	// Execute the query
-	const { data, error, count } = await query
-		.order("created_at", { ascending: false })
-		.range(from, to);
+	// Execute the query for data
+	const logsResult = await query
+		.orderBy("created_at", "desc")
+		.limit(limit)
+		.offset(offset)
+		.execute();
 
-	if (error) {
-		console.error("Failed to read system_logs:", error);
-		return { logs: [], total: 0 };
+	// Get total count
+	// For complex queries with filters, we need to re-apply filters for count
+	// A cleaner way in Kysely is to use a CTE or just construct the count query separately
+	// Here I'll just reconstruct the base query with filters for simplicity
+	let countQuery = db
+		.selectFrom("system_logs")
+		.select((eb) => eb.fn.countAll().as("count"));
+
+	if (levels && levels.length > 0) {
+		countQuery = countQuery.where("level", "in", levels);
+	}
+	if (sources && sources.length > 0) {
+		countQuery = countQuery.where("source", "in", sources);
+	}
+	if (search) {
+		countQuery = countQuery.where((eb) =>
+			eb.or([
+				eb("message", "ilike", `%${search}%`),
+				eb("source", "ilike", `%${search}%`),
+			]),
+		);
 	}
 
-	let logs = data as Log[];
+	const countResult = await countQuery.executeTakeFirst();
+
+	let logs = logsResult as unknown as Log[];
 
 	// Apply grouping if requested
 	if (groupSimilar && logs.length > 0) {
@@ -207,6 +233,6 @@ export const readLogs = async (
 
 	return {
 		logs,
-		total: count || logs.length,
+		total: Number(countResult?.count || 0),
 	};
 };

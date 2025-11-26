@@ -1,7 +1,8 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import type { Device, Log, RefreshSchedule } from "@/lib/supabase/types";
+import { db } from "@/lib/database/db";
+import { checkDbConnection } from "@/lib/database/utils";
+import type { Device, Log } from "@/lib/types";
 
 /**
  * Fetch a single device by friendly_id
@@ -9,51 +10,46 @@ import type { Device, Log, RefreshSchedule } from "@/lib/supabase/types";
 export async function fetchDeviceByFriendlyId(
 	friendlyId: string,
 ): Promise<Device | null> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
+	if (!ready) {
+		console.warn("Database client not initialized");
 		return null;
 	}
 
-	const { data, error } = await supabase
-		.from("devices")
-		.select("*")
-		.eq("friendly_id", friendlyId)
-		.single();
+	const device = await db
+		.selectFrom("devices")
+		.selectAll()
+		.where("friendly_id", "=", friendlyId)
+		.executeTakeFirst();
 
-	if (error) {
-		console.error("Error fetching device:", error);
+	if (!device) {
 		return null;
 	}
 
-	return data;
+	return device as unknown as Device;
 }
 
 /**
  * Fetch logs for a specific device
  */
 export async function fetchDeviceLogs(friendlyId: string): Promise<Log[]> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
+	if (!ready) {
+		console.warn("Database client not initialized");
 		return [];
 	}
 
-	const { data, error } = await supabase
-		.from("logs")
-		.select("*")
-		.eq("friendly_id", friendlyId)
-		.order("created_at", { ascending: false })
-		.limit(50);
+	const logs = await db
+		.selectFrom("logs")
+		.selectAll()
+		.where("friendly_id", "=", friendlyId)
+		.orderBy("created_at", "desc")
+		.limit(50)
+		.execute();
 
-	if (error) {
-		console.error("Error fetching device logs:", error);
-		return [];
-	}
-
-	return data || [];
+	return logs as unknown as Log[];
 }
 
 /**
@@ -78,55 +74,60 @@ export async function fetchDeviceLogsWithFilters({
 	search,
 	friendlyId,
 }: FetchDeviceLogsParams): Promise<FetchDeviceLogsResult> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
+	if (!ready) {
+		console.warn("Database client not initialized");
 		return { logs: [], total: 0, uniqueTypes: [] };
 	}
 
 	// Calculate pagination
-	const from = (page - 1) * perPage;
-	const to = from + perPage - 1;
+	const offset = (page - 1) * perPage;
 
 	// Start building the query
-	let query = supabase.from("logs").select("*", { count: "exact" });
+	let query = db.selectFrom("logs").selectAll();
 
 	if (friendlyId) {
-		query = query.eq("friendly_id", friendlyId);
+		query = query.where("friendly_id", "=", friendlyId);
 	}
 
 	if (search) {
-		query = query.ilike("log_data", `%${search}%`);
+		query = query.where("log_data", "ilike", `%${search}%`);
 	}
 
 	// Get paginated results
-	const {
-		data: logs,
-		count,
-		error,
-	} = await query.order("created_at", { ascending: false }).range(from, to);
+	const logs = await query
+		.orderBy("created_at", "desc")
+		.limit(perPage)
+		.offset(offset)
+		.execute();
 
-	if (error) {
-		console.error("Error fetching device logs:", error);
+	// Get total count
+	let countQuery = db
+		.selectFrom("logs")
+		.select((eb) => eb.fn.countAll().as("count"));
 
-		// Check if it's a range error (page out of bounds)
-		if (error.message.includes("range") || error.code === "22003") {
-			// Return empty results with the correct count
-			return {
-				logs: [],
-				total: count || 0,
-				uniqueTypes: [],
-			};
-		}
-
-		throw new Error("Failed to fetch device logs");
+	if (friendlyId) {
+		countQuery = countQuery.where("friendly_id", "=", friendlyId);
 	}
 
+	if (search) {
+		countQuery = countQuery.where("log_data", "ilike", `%${search}%`);
+	}
+
+	const countResult = await countQuery.executeTakeFirst();
+
 	// Get unique types for the filter dropdown
+	// We need to fetch all relevant logs or perform a distinct query on the log_data content which might be hard with SQL only if it requires parsing
+	// The original code fetched all logs (with pagination) and then computed uniqueTypes from the returned page.
+	// Wait, the original code: `const { data: logs } = await query...` then `(logs || []).map...`
+	// It only computed unique types from the *current page* of logs. That seems correct to replicate.
+
+	const logsData = logs as unknown as Log[];
+
 	const uniqueTypes = Array.from(
 		new Set(
-			(logs || []).map((log) => {
+			logsData.map((log) => {
 				const logData = log.log_data.toLowerCase();
 
 				if (logData.includes("error") || logData.includes("fail")) {
@@ -142,8 +143,8 @@ export async function fetchDeviceLogsWithFilters({
 	);
 
 	return {
-		logs: logs || [],
-		total: count || 0,
+		logs: logsData,
+		total: Number(countResult?.count || 0),
 		uniqueTypes,
 	};
 }
@@ -154,46 +155,54 @@ export async function fetchDeviceLogsWithFilters({
 export async function updateDevice(
 	device: Partial<Device> & { id: number },
 ): Promise<{ success: boolean; error?: string }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
-		return { success: false, error: "Supabase client not initialized" };
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return { success: false, error: "Database client not initialized" };
 	}
 
 	// Prepare the update data
-	const updateData: Partial<Device> = {
-		name: device.name,
-		mac_address: device.mac_address,
-		api_key: device.api_key,
-		friendly_id: device.friendly_id,
-		timezone: device.timezone,
-		refresh_schedule: device.refresh_schedule as RefreshSchedule,
-		screen: device.screen,
-		playlist_id: device.playlist_id,
-		use_playlist: device.use_playlist,
-		battery_voltage: device.battery_voltage,
-		firmware_version: device.firmware_version,
-		rssi: device.rssi,
-		updated_at: new Date().toISOString(),
-	};
+	// We construct object with optional properties explicitly
+	const updateData: Record<string, unknown> = {};
 
-	// Remove undefined values
-	for (const key of Object.keys(updateData)) {
-		if (updateData[key as keyof typeof updateData] === undefined) {
-			delete updateData[key as keyof typeof updateData];
-		}
-	}
+	if (device.name !== undefined) updateData.name = device.name;
+	if (device.mac_address !== undefined)
+		updateData.mac_address = device.mac_address;
+	if (device.api_key !== undefined) updateData.api_key = device.api_key;
+	if (device.friendly_id !== undefined)
+		updateData.friendly_id = device.friendly_id;
+	if (device.timezone !== undefined) updateData.timezone = device.timezone;
+	if (device.refresh_schedule !== undefined)
+		updateData.refresh_schedule = device.refresh_schedule
+			? JSON.stringify(device.refresh_schedule)
+			: null;
+	if (device.screen !== undefined) updateData.screen = device.screen;
+	if (device.playlist_id !== undefined)
+		updateData.playlist_id = device.playlist_id;
+	if (device.use_playlist !== undefined)
+		updateData.use_playlist = device.use_playlist;
+	if (device.battery_voltage !== undefined)
+		updateData.battery_voltage = device.battery_voltage;
+	if (device.firmware_version !== undefined)
+		updateData.firmware_version = device.firmware_version;
+	if (device.rssi !== undefined) updateData.rssi = device.rssi;
 
-	const { error } = await supabase
-		.from("devices")
-		.update(updateData)
-		.eq("id", device.id);
+	updateData.updated_at = new Date().toISOString();
 
-	if (error) {
+	try {
+		await db
+			.updateTable("devices")
+			.set(updateData)
+			.where("id", "=", String(device.id))
+			.execute();
+
+		return { success: true };
+	} catch (error) {
 		console.error("Error updating device:", error);
-		return { success: false, error: error.message };
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
-
-	return { success: true };
 }

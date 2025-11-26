@@ -1,7 +1,8 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import type { SystemLog } from "@/lib/supabase/types";
+import { db } from "@/lib/database/db";
+import { checkDbConnection } from "@/lib/database/utils";
+import type { SystemLog } from "@/lib/types";
 
 type FetchSystemLogsParams = {
 	page: number;
@@ -24,77 +25,83 @@ export async function fetchSystemLogs({
 	level,
 	source,
 }: FetchSystemLogsParams): Promise<FetchSystemLogsResult> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
+	if (!ready) {
+		console.warn("Database client not initialized");
 		return { logs: [], total: 0, uniqueSources: [] };
 	}
 
 	// Calculate pagination
-	const from = (page - 1) * perPage;
-	const to = from + perPage - 1;
+	const offset = (page - 1) * perPage;
 
 	// Start building the query
-	let query = supabase.from("system_logs").select("*", { count: "exact" });
+	let query = db.selectFrom("system_logs").selectAll();
 
 	// Apply filters
 	if (level) {
-		query = query.eq("level", level);
+		query = query.where("level", "=", level);
 	}
 
 	if (source) {
-		query = query.eq("source", source);
+		query = query.where("source", "=", source);
 	}
 
 	if (search) {
-		query = query.or(`message.ilike.%${search}%,metadata.ilike.%${search}%`);
+		query = query.where((eb) =>
+			eb.or([
+				eb("message", "ilike", `%${search}%`),
+				eb("metadata", "ilike", `%${search}%`),
+			]),
+		);
 	}
 
 	// Get paginated results
-	const {
-		data: logs,
-		count,
-		error,
-	} = await query.order("created_at", { ascending: false }).range(from, to);
+	const logs = await query
+		.orderBy("created_at", "desc")
+		.limit(perPage)
+		.offset(offset)
+		.execute();
 
-	if (error) {
-		console.error("Error fetching system logs:", error);
+	// Get total count
+	let countQuery = db
+		.selectFrom("system_logs")
+		.select((eb) => eb.fn.countAll().as("count"));
 
-		// Check if it's a range error (page out of bounds)
-		if (error.message.includes("range") || error.code === "22003") {
-			// Return empty results with the correct count
-			const { data: sourcesData } = await supabase
-				.from("system_logs")
-				.select("source")
-				.order("source");
-			const uniqueSources = Array.from(
-				new Set(sourcesData?.map((item) => item.source) || []),
-			);
-
-			return {
-				logs: [],
-				total: count || 0,
-				uniqueSources,
-			};
-		}
-
-		throw new Error("Failed to fetch system logs");
+	if (level) {
+		countQuery = countQuery.where("level", "=", level);
 	}
 
-	// Get unique sources for the filter dropdown
-	const { data: sourcesData } = await supabase
-		.from("system_logs")
-		.select("source")
-		.order("source");
+	if (source) {
+		countQuery = countQuery.where("source", "=", source);
+	}
 
-	const uniqueSources = Array.from(
-		new Set(sourcesData?.map((item) => item.source) || []),
-	);
+	if (search) {
+		countQuery = countQuery.where((eb) =>
+			eb.or([
+				eb("message", "ilike", `%${search}%`),
+				eb("metadata", "ilike", `%${search}%`),
+			]),
+		);
+	}
+
+	const countResult = await countQuery.executeTakeFirst();
+
+	// Get unique sources for the filter dropdown
+	const uniqueSourcesResult = await db
+		.selectFrom("system_logs")
+		.select("source")
+		.distinct()
+		.orderBy("source", "asc")
+		.execute();
+
+	const uniqueSources = uniqueSourcesResult
+		.map((item) => item.source)
+		.filter(Boolean) as string[];
 
 	return {
-		logs: logs || [],
-		total: count || 0,
+		logs: logs as unknown as SystemLog[],
+		total: Number(countResult?.count || 0),
 		uniqueSources,
 	};
 }
@@ -125,104 +132,129 @@ export async function fetchDeviceSystemLogs({
 	macAddress,
 	apiKey,
 }: FetchDeviceSystemLogsParams): Promise<FetchSystemLogsResult> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
+	if (!ready) {
+		console.warn("Database client not initialized");
 		return { logs: [], total: 0, uniqueSources: [] };
 	}
 
 	// Calculate pagination
-	const from = (page - 1) * perPage;
-	const to = from + perPage - 1;
+	const offset = (page - 1) * perPage;
 
 	// Start building the query
-	let query = supabase.from("system_logs").select("*", { count: "exact" });
+	let query = db.selectFrom("system_logs").selectAll();
 
 	// Apply filters
 	if (level) {
-		query = query.eq("level", level);
+		query = query.where("level", "=", level);
 	}
 
 	if (source) {
-		query = query.eq("source", source);
+		query = query.where("source", "=", source);
 	}
 
-	// Build search conditions for device-related metadata
-	const searchConditions = [];
+	query = query.where((eb) => {
+		// We need to handle expression builder correctly
+		const ors = [];
 
-	if (search) {
-		searchConditions.push(`message.ilike.%${search}%`);
-		searchConditions.push(`metadata.ilike.%${search}%`);
-	}
-
-	// Add device-specific search conditions
-	if (deviceId) {
-		searchConditions.push(`metadata.ilike.%"device_id":${deviceId}%`);
-		searchConditions.push(`metadata.ilike.%"id":${deviceId}%`);
-	}
-
-	if (friendlyId) {
-		searchConditions.push(`metadata.ilike.%"friendly_id":"${friendlyId}"%`);
-	}
-
-	if (macAddress) {
-		searchConditions.push(`metadata.ilike.%"mac_address":"${macAddress}"%`);
-	}
-
-	if (apiKey) {
-		searchConditions.push(`metadata.ilike.%"api_key":"${apiKey}"%`);
-	}
-
-	// Apply search conditions if any
-	if (searchConditions.length > 0) {
-		query = query.or(searchConditions.join(","));
-	}
-
-	// Get paginated results
-	const {
-		data: logs,
-		count,
-		error,
-	} = await query.order("created_at", { ascending: false }).range(from, to);
-
-	if (error) {
-		console.error("Error fetching device system logs:", error);
-
-		// Check if it's a range error (page out of bounds)
-		if (error.message.includes("range") || error.code === "22003") {
-			// Return empty results with the correct count
-			const { data: sourcesData } = await supabase
-				.from("system_logs")
-				.select("source")
-				.order("source");
-			const uniqueSources = Array.from(
-				new Set(sourcesData?.map((item) => item.source) || []),
-			);
-
-			return {
-				logs: [],
-				total: count || 0,
-				uniqueSources,
-			};
+		if (search) {
+			ors.push(eb("message", "ilike", `%${search}%`));
+			ors.push(eb("metadata", "ilike", `%${search}%`));
 		}
 
-		throw new Error("Failed to fetch device system logs");
+		if (deviceId) {
+			ors.push(eb("metadata", "ilike", `%"device_id":${deviceId}%`));
+			ors.push(eb("metadata", "ilike", `%"id":${deviceId}%`));
+		}
+
+		if (friendlyId) {
+			ors.push(eb("metadata", "ilike", `%"friendly_id":"${friendlyId}"%`));
+		}
+
+		if (macAddress) {
+			ors.push(eb("metadata", "ilike", `%"mac_address":"${macAddress}"%`));
+		}
+
+		if (apiKey) {
+			ors.push(eb("metadata", "ilike", `%"api_key":"${apiKey}"%`));
+		}
+
+		if (ors.length > 0) {
+			return eb.or(ors);
+		}
+
+		return eb.and([]); // No conditions added to this group if nothing matched
+	});
+
+	// Get paginated results
+	const logs = await query
+		.orderBy("created_at", "desc")
+		.limit(perPage)
+		.offset(offset)
+		.execute();
+
+	// Get total count
+	let countQuery = db
+		.selectFrom("system_logs")
+		.select((eb) => eb.fn.countAll().as("count"));
+
+	if (level) {
+		countQuery = countQuery.where("level", "=", level);
 	}
 
-	// Get unique sources for the filter dropdown
-	const { data: sourcesData } = await supabase
-		.from("system_logs")
-		.select("source")
-		.order("source");
+	if (source) {
+		countQuery = countQuery.where("source", "=", source);
+	}
 
-	const uniqueSources = Array.from(
-		new Set(sourcesData?.map((item) => item.source) || []),
-	);
+	countQuery = countQuery.where((eb) => {
+		const ors = [];
+
+		if (search) {
+			ors.push(eb("message", "ilike", `%${search}%`));
+			ors.push(eb("metadata", "ilike", `%${search}%`));
+		}
+
+		if (deviceId) {
+			ors.push(eb("metadata", "ilike", `%"device_id":${deviceId}%`));
+			ors.push(eb("metadata", "ilike", `%"id":${deviceId}%`));
+		}
+
+		if (friendlyId) {
+			ors.push(eb("metadata", "ilike", `%"friendly_id":"${friendlyId}"%`));
+		}
+
+		if (macAddress) {
+			ors.push(eb("metadata", "ilike", `%"mac_address":"${macAddress}"%`));
+		}
+
+		if (apiKey) {
+			ors.push(eb("metadata", "ilike", `%"api_key":"${apiKey}"%`));
+		}
+
+		if (ors.length > 0) {
+			return eb.or(ors);
+		}
+		return eb.and([]);
+	});
+
+	const countResult = await countQuery.executeTakeFirst();
+
+	// Get unique sources for the filter dropdown
+	const uniqueSourcesResult = await db
+		.selectFrom("system_logs")
+		.select("source")
+		.distinct()
+		.orderBy("source", "asc")
+		.execute();
+
+	const uniqueSources = uniqueSourcesResult
+		.map((item) => item.source)
+		.filter(Boolean) as string[];
 
 	return {
-		logs: logs || [],
-		total: count || 0,
+		logs: logs as unknown as SystemLog[],
+		total: Number(countResult?.count || 0),
 		uniqueSources,
 	};
 }

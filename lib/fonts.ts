@@ -94,8 +94,8 @@ export const loadFont = cache(() => {
 export const getSatoriFonts = () => {
 	const fonts = loadFont();
 	if (!fonts) return [];
-	const weight = 400;
-	const style = "normal";
+	const weight = 400 as const;
+	const style = "normal" as const;
 
 	const satoriFonts = Object.entries(fonts).map(([fontName, fontBuffer]) => ({
 		name: fontName,

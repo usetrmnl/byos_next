@@ -58,7 +58,18 @@ export function PlaylistEditor({
 					if (result.playlist) {
 						setName(result.playlist.name);
 					}
-					setItems(result.items);
+					// Convert null to undefined for optional fields
+					setItems(
+						result.items.map((item) => ({
+							id: item.id,
+							screen_id: item.screen_id,
+							duration: item.duration,
+							order_index: item.order_index,
+							start_time: item.start_time ?? undefined,
+							end_time: item.end_time ?? undefined,
+							days_of_week: item.days_of_week ?? undefined,
+						})),
+					);
 				})
 				.catch((error) => {
 					console.error("Error fetching playlist items:", error);

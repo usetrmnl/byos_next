@@ -10,7 +10,7 @@ import type { ComponentConfig } from "@/components/client-sidebar";
 import { ClientSidebar } from "@/components/client-sidebar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Device } from "@/lib/supabase/types";
+import type { Device } from "@/lib/types";
 
 // Main navigation skeleton for the entire sidebar
 const SidebarSkeletonFallback = () => (

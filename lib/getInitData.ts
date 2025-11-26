@@ -1,11 +1,7 @@
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
-import type {
-	Device,
-	Playlist,
-	PlaylistItem,
-	SystemLog,
-} from "@/lib/supabase/types";
+import { db } from "@/lib/database/db";
+import { getDbStatus } from "@/lib/database/utils";
+import type { Device, Playlist, PlaylistItem, SystemLog } from "@/lib/types";
 import { getHostUrl } from "@/utils/helpers";
 import "server-only";
 
@@ -40,7 +36,7 @@ export type InitialData = {
  * @returns Promise<InitialData> All the application's data
  */
 export const getInitData = cache(async (): Promise<InitialData> => {
-	const { supabase, dbStatus } = await createClient();
+	const dbStatus = await getDbStatus();
 	const hostUrl = getHostUrl();
 
 	// Default empty values if DB is not ready
@@ -52,7 +48,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 	let playlistItems: PlaylistItem[] = [];
 
 	// Fetch data only if DB is ready
-	if (dbStatus.ready && supabase) {
+	if (dbStatus.ready) {
 		try {
 			const [
 				devicesResult,
@@ -63,43 +59,51 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 				logsCountResult,
 			] = await Promise.all([
 				// Fetch devices
-				supabase
-					.from("devices")
-					.select("*"),
+				db
+					.selectFrom("devices")
+					.selectAll()
+					.execute(),
 				// Fetch playlists
-				supabase
-					.from("playlists")
-					.select("*"),
+				db
+					.selectFrom("playlists")
+					.selectAll()
+					.execute(),
 				// Fetch playlist items
-				supabase
-					.from("playlist_items")
-					.select("*"),
+				db
+					.selectFrom("playlist_items")
+					.selectAll()
+					.execute(),
 				// Fetch recent logs
-				supabase
-					.from("system_logs")
-					.select("*")
-					.order("created_at", { ascending: false })
-					.limit(50),
+				db
+					.selectFrom("system_logs")
+					.selectAll()
+					.orderBy("created_at", "desc")
+					.limit(50)
+					.execute(),
 				// Fetch unique sources for filters
-				supabase
-					.from("system_logs")
+				db
+					.selectFrom("system_logs")
 					.select("source")
-					.order("source"),
+					.distinct()
+					.orderBy("source")
+					.execute(),
 				// Get total logs count
-				supabase
-					.from("system_logs")
-					.select("*", { count: "exact" })
-					.limit(1),
+				db
+					.selectFrom("system_logs")
+					.select((eb) => eb.fn.countAll().as("count"))
+					.executeTakeFirst(),
 			]);
 
-			devices = devicesResult.data || [];
-			playlists = playlistsResult.data || [];
-			playlistItems = playlistItemsResult.data || [];
-			systemLogs = logsResult.data || [];
+			devices = devicesResult as unknown as Device[];
+			playlists = playlistsResult as unknown as Playlist[];
+			playlistItems = playlistItemsResult as unknown as PlaylistItem[];
+			systemLogs = logsResult as unknown as SystemLog[];
 			uniqueSources = Array.from(
-				new Set(sourcesResult.data?.map((item) => item.source) || []),
+				new Set(
+					sourcesResult.map((item) => item.source).filter(Boolean) as string[],
+				),
 			);
-			totalLogs = logsCountResult.count || 0;
+			totalLogs = Number(logsCountResult?.count || 0);
 		} catch (error) {
 			console.error("Error fetching initial data:", error);
 		}

@@ -11,7 +11,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Device } from "@/lib/supabase/types";
+import type { Device } from "@/lib/types";
 import DeviceLogsViewer from "./device-logs-viewer";
 
 interface DeviceLogsContainerProps {

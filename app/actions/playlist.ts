@@ -1,30 +1,27 @@
 "use server";
 
-import { createClient } from "@/lib/supabase/server";
-import type { Playlist, PlaylistItem } from "@/lib/supabase/types";
+import { db } from "@/lib/database/db";
+import { checkDbConnection } from "@/lib/database/utils";
+import type { Playlist, PlaylistItem } from "@/lib/types";
 
 /**
  * Fetch all playlists with their items
  */
 export async function fetchPlaylists(): Promise<Playlist[]> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
+	if (!ready) {
+		console.warn("Database client not initialized");
 		return [];
 	}
 
-	const { data, error } = await supabase
-		.from("playlists")
-		.select("*")
-		.order("created_at", { ascending: false });
+	const playlists = await db
+		.selectFrom("playlists")
+		.selectAll()
+		.orderBy("created_at", "desc")
+		.execute();
 
-	if (error) {
-		console.error("Error fetching playlists:", error);
-		return [];
-	}
-
-	return data || [];
+	return playlists as unknown as Playlist[];
 }
 
 /**
@@ -34,35 +31,34 @@ export async function fetchPlaylistWithItems(playlistId: string): Promise<{
 	playlist: Playlist | null;
 	items: PlaylistItem[];
 }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
+	if (!ready) {
+		console.warn("Database client not initialized");
 		return { playlist: null, items: [] };
 	}
 
-	const [playlistResult, itemsResult] = await Promise.all([
-		supabase.from("playlists").select("*").eq("id", playlistId).single(),
-		supabase
-			.from("playlist_items")
-			.select("*")
-			.eq("playlist_id", playlistId)
-			.order("order_index", { ascending: true }),
+	const [playlist, items] = await Promise.all([
+		db
+			.selectFrom("playlists")
+			.selectAll()
+			.where("id", "=", playlistId)
+			.executeTakeFirst(),
+		db
+			.selectFrom("playlist_items")
+			.selectAll()
+			.where("playlist_id", "=", playlistId)
+			.orderBy("order_index", "asc")
+			.execute(),
 	]);
 
-	if (playlistResult.error) {
-		console.error("Error fetching playlist:", playlistResult.error);
+	if (!playlist) {
 		return { playlist: null, items: [] };
-	}
-
-	if (itemsResult.error) {
-		console.error("Error fetching playlist items:", itemsResult.error);
-		return { playlist: playlistResult.data, items: [] };
 	}
 
 	return {
-		playlist: playlistResult.data,
-		items: itemsResult.data || [],
+		playlist: playlist as unknown as Playlist,
+		items: items as unknown as PlaylistItem[],
 	};
 }
 
@@ -74,25 +70,28 @@ export async function createPlaylist(name: string): Promise<{
 	playlist?: Playlist;
 	error?: string;
 }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
-		return { success: false, error: "Supabase client not initialized" };
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return { success: false, error: "Database client not initialized" };
 	}
 
-	const { data, error } = await supabase
-		.from("playlists")
-		.insert({ name })
-		.select()
-		.single();
+	try {
+		const playlist = await db
+			.insertInto("playlists")
+			.values({ name })
+			.returningAll()
+			.executeTakeFirst();
 
-	if (error) {
+		return { success: true, playlist: playlist as unknown as Playlist };
+	} catch (error) {
 		console.error("Error creating playlist:", error);
-		return { success: false, error: error.message };
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
-
-	return { success: true, playlist: data };
 }
 
 /**
@@ -102,24 +101,28 @@ export async function updatePlaylist(
 	playlistId: string,
 	name: string,
 ): Promise<{ success: boolean; error?: string }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
-		return { success: false, error: "Supabase client not initialized" };
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return { success: false, error: "Database client not initialized" };
 	}
 
-	const { error } = await supabase
-		.from("playlists")
-		.update({ name, updated_at: new Date().toISOString() })
-		.eq("id", playlistId);
+	try {
+		await db
+			.updateTable("playlists")
+			.set({ name, updated_at: new Date().toISOString() })
+			.where("id", "=", playlistId)
+			.execute();
 
-	if (error) {
+		return { success: true };
+	} catch (error) {
 		console.error("Error updating playlist:", error);
-		return { success: false, error: error.message };
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
-
-	return { success: true };
 }
 
 /**
@@ -129,25 +132,24 @@ export async function deletePlaylist(playlistId: string): Promise<{
 	success: boolean;
 	error?: string;
 }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
-		return { success: false, error: "Supabase client not initialized" };
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return { success: false, error: "Database client not initialized" };
 	}
 
-	// Delete playlist (items will be deleted automatically due to CASCADE)
-	const { error } = await supabase
-		.from("playlists")
-		.delete()
-		.eq("id", playlistId);
+	try {
+		await db.deleteFrom("playlists").where("id", "=", playlistId).execute();
 
-	if (error) {
+		return { success: true };
+	} catch (error) {
 		console.error("Error deleting playlist:", error);
-		return { success: false, error: error.message };
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
-
-	return { success: true };
 }
 
 /**
@@ -157,33 +159,38 @@ export async function createPlaylistItem(
 	playlistId: string,
 	item: Omit<PlaylistItem, "id" | "playlist_id" | "created_at">,
 ): Promise<{ success: boolean; item?: PlaylistItem; error?: string }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
-		return { success: false, error: "Supabase client not initialized" };
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return { success: false, error: "Database client not initialized" };
 	}
 
-	const { data, error } = await supabase
-		.from("playlist_items")
-		.insert({
-			playlist_id: playlistId,
-			screen_id: item.screen_id,
-			duration: item.duration,
-			start_time: item.start_time,
-			end_time: item.end_time,
-			days_of_week: item.days_of_week,
-			order_index: item.order_index,
-		})
-		.select()
-		.single();
+	try {
+		const newItem = await db
+			.insertInto("playlist_items")
+			.values({
+				playlist_id: playlistId,
+				screen_id: item.screen_id,
+				duration: item.duration,
+				start_time: item.start_time,
+				end_time: item.end_time,
+				days_of_week: item.days_of_week
+					? JSON.stringify(item.days_of_week)
+					: null,
+				order_index: item.order_index,
+			})
+			.returningAll()
+			.executeTakeFirst();
 
-	if (error) {
+		return { success: true, item: newItem as unknown as PlaylistItem };
+	} catch (error) {
 		console.error("Error creating playlist item:", error);
-		return { success: false, error: error.message };
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
-
-	return { success: true, item: data };
 }
 
 /**
@@ -193,24 +200,33 @@ export async function updatePlaylistItem(
 	itemId: string,
 	updates: Partial<Omit<PlaylistItem, "id" | "playlist_id" | "created_at">>,
 ): Promise<{ success: boolean; error?: string }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
-		return { success: false, error: "Supabase client not initialized" };
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return { success: false, error: "Database client not initialized" };
 	}
 
-	const { error } = await supabase
-		.from("playlist_items")
-		.update(updates)
-		.eq("id", itemId);
+	try {
+		const updateData: Record<string, unknown> = { ...updates };
+		if (updates.days_of_week) {
+			updateData.days_of_week = JSON.stringify(updates.days_of_week);
+		}
 
-	if (error) {
+		await db
+			.updateTable("playlist_items")
+			.set(updateData)
+			.where("id", "=", itemId)
+			.execute();
+
+		return { success: true };
+	} catch (error) {
 		console.error("Error updating playlist item:", error);
-		return { success: false, error: error.message };
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
-
-	return { success: true };
 }
 
 /**
@@ -220,24 +236,24 @@ export async function deletePlaylistItem(itemId: string): Promise<{
 	success: boolean;
 	error?: string;
 }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
-		return { success: false, error: "Supabase client not initialized" };
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return { success: false, error: "Database client not initialized" };
 	}
 
-	const { error } = await supabase
-		.from("playlist_items")
-		.delete()
-		.eq("id", itemId);
+	try {
+		await db.deleteFrom("playlist_items").where("id", "=", itemId).execute();
 
-	if (error) {
+		return { success: true };
+	} catch (error) {
 		console.error("Error deleting playlist item:", error);
-		return { success: false, error: error.message };
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
 	}
-
-	return { success: true };
 }
 
 /**
@@ -256,86 +272,71 @@ export async function savePlaylistWithItems(playlistData: {
 		days_of_week?: string[];
 	}>;
 }): Promise<{ success: boolean; playlistId?: string; error?: string }> {
-	const { supabase } = await createClient();
+	const { ready } = await checkDbConnection();
 
-	if (!supabase) {
-		console.warn("Supabase client not initialized");
-		return { success: false, error: "Supabase client not initialized" };
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return { success: false, error: "Database client not initialized" };
 	}
 
 	try {
-		let playlistId: string;
+		return await db.transaction().execute(async (trx) => {
+			let playlistId: string;
 
-		// Create or update playlist
-		if (playlistData.id) {
-			// Update existing playlist
-			const { error: playlistError } = await supabase
-				.from("playlists")
-				.update({
-					name: playlistData.name,
-					updated_at: new Date().toISOString(),
-				})
-				.eq("id", playlistData.id);
+			// Create or update playlist
+			if (playlistData.id) {
+				// Update existing playlist
+				await trx
+					.updateTable("playlists")
+					.set({
+						name: playlistData.name,
+						updated_at: new Date().toISOString(),
+					})
+					.where("id", "=", playlistData.id)
+					.execute();
 
-			if (playlistError) {
-				throw new Error(`Failed to update playlist: ${playlistError.message}`);
+				playlistId = playlistData.id;
+
+				// Delete existing items
+				await trx
+					.deleteFrom("playlist_items")
+					.where("playlist_id", "=", playlistId)
+					.execute();
+			} else {
+				// Create new playlist
+				const newPlaylist = await trx
+					.insertInto("playlists")
+					.values({ name: playlistData.name })
+					.returning("id")
+					.executeTakeFirstOrThrow();
+
+				playlistId = newPlaylist.id;
 			}
 
-			playlistId = playlistData.id;
+			// Insert new items
+			if (playlistData.items.length > 0) {
+				const itemsToInsert = playlistData.items.map((item) => ({
+					playlist_id: playlistId,
+					screen_id: item.screen_id,
+					duration: item.duration,
+					start_time: item.start_time || null,
+					end_time: item.end_time || null,
+					days_of_week: item.days_of_week
+						? JSON.stringify(item.days_of_week)
+						: null,
+					order_index: item.order_index,
+				}));
 
-			// Delete existing items
-			const { error: deleteError } = await supabase
-				.from("playlist_items")
-				.delete()
-				.eq("playlist_id", playlistId);
-
-			if (deleteError) {
-				throw new Error(
-					`Failed to delete existing items: ${deleteError.message}`,
-				);
-			}
-		} else {
-			// Create new playlist
-			const { data: newPlaylist, error: playlistError } = await supabase
-				.from("playlists")
-				.insert({ name: playlistData.name })
-				.select()
-				.single();
-
-			if (playlistError) {
-				throw new Error(`Failed to create playlist: ${playlistError.message}`);
+				await trx.insertInto("playlist_items").values(itemsToInsert).execute();
 			}
 
-			playlistId = newPlaylist.id;
-		}
-
-		// Insert new items
-		if (playlistData.items.length > 0) {
-			const itemsToInsert = playlistData.items.map((item) => ({
-				playlist_id: playlistId,
-				screen_id: item.screen_id,
-				duration: item.duration,
-				start_time: item.start_time,
-				end_time: item.end_time,
-				days_of_week: item.days_of_week,
-				order_index: item.order_index,
-			}));
-
-			const { error: itemsError } = await supabase
-				.from("playlist_items")
-				.insert(itemsToInsert);
-
-			if (itemsError) {
-				throw new Error(`Failed to insert items: ${itemsError.message}`);
-			}
-		}
-
-		return { success: true, playlistId };
+			return { success: true, playlistId };
+		});
 	} catch (error) {
 		console.error("Error saving playlist with items:", error);
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
+			error: error instanceof Error ? error.message : String(error),
 		};
 	}
 }

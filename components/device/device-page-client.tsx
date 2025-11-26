@@ -42,7 +42,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { Device, Playlist, PlaylistItem } from "@/lib/supabase/types";
+import type { Device, Playlist, PlaylistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
 	estimateBatteryLife,
@@ -916,7 +916,7 @@ export default function DevicePageClient({
 																: `${batteryEstimate.batteryPercentage}%`}
 														</span>
 														<span className="text-sm font-medium">
-															{device.battery_voltage.toFixed(2)}V
+															{device.battery_voltage}V
 														</span>
 														<span className="text-sm text-muted-foreground">
 															{batteryEstimate.isCharging
