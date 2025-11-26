@@ -1,5 +1,5 @@
-import { Suspense } from "react";
 import { headers } from "next/headers";
+import { Suspense } from "react";
 import { DashboardContent } from "@/components/dashboard/dashboard-content";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
@@ -91,6 +91,21 @@ const DashboardData = async () => {
 									</p>
 								</div>
 							</div>
+						</div>
+					)}
+					{dbStatus.error?.includes("Missing required tables") && (
+						<div className="p-4">
+							<h3 className="font-bold text-2xl mb-2">
+								🤔
+								<span className="bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
+									{" "}
+									Database schema is not valid...
+								</span>
+							</h3>
+							<p>
+								We are missing the following tables:{" "}
+								{dbStatus.error?.replace("Missing required tables: ", "")}
+							</p>
 						</div>
 					)}
 					<DbInitializer connectionUrl={dbStatus.PostgresUrl} />

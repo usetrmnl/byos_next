@@ -30,7 +30,7 @@ const NON_FATAL_ERRORS = [
 ];
 
 export async function executeSqlStatements(): Promise<SqlExecutionState> {
-	const postgresUrl = process.env.POSTGRES_URL;
+	const postgresUrl = process.env.DATABASE_URL;
 
 	if (!postgresUrl) {
 		// Return error state for all statements
@@ -39,13 +39,13 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 				status: "error",
 				result: [],
 				notices: [],
-				error: "POSTGRES_URL is not defined",
+				error: "DATABASE_URL is not defined",
 			};
 			return acc;
 		}, {} as SqlExecutionState);
 	}
 
-	// Transform POSTGRES_URL to the correct format
+	// Transform DATABASE_URL to the correct format
 	function transformPostgresUrl(url: string): string {
 		try {
 			const parsedUrl = new URL(url);
@@ -73,8 +73,8 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 		{} as SqlExecutionState,
 	);
 
-	// Configure postgres with notice handler
 	const sql = postgres(connectionString, {
+		ssl: connectionString.includes("sslmode=disable") ? false : "require",
 		onnotice: () => {
 			// We'll handle notices per query
 		},
@@ -87,6 +87,7 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 
 			// Create a new SQL client with notice handler for this specific query
 			const sqlWithNotices = postgres(connectionString, {
+				ssl: connectionString.includes("sslmode=disable") ? false : "require",
 				onnotice: (notice) => {
 					console.log(`Database notice for ${key}:`, notice);
 					notices.push(notice);

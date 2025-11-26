@@ -1,11 +1,12 @@
 // This file is auto-generated from migration files.
 // Do not edit manually. Run 'pnpm generate:sql' to regenerate.
-// Generated at: 2025-11-25T23:11:53.837Z
+// Generated at: 2025-11-26T00:42:34.681Z
 
 export const SQL_STATEMENTS = {
 	"0000_initial_schema": {
 		title: "Initial Database Schema",
-		description: "Creates the complete initial database schema including UUID extension, devices, playlists, playlist_items, logs, and system_logs tables",
+		description:
+			"Creates the complete initial database schema including UUID extension, devices, playlists, playlist_items, logs, and system_logs tables",
 		sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS public.devices (
@@ -85,7 +86,8 @@ CREATE INDEX IF NOT EXISTS idx_system_logs_level ON public.system_logs (level);`
 	},
 	"0001_add_device_status_fields": {
 		title: "Add Device Status Fields",
-		description: "Add battery_voltage, firmware_version, and rssi columns to the devices table",
+		description:
+			"Add battery_voltage, firmware_version, and rssi columns to the devices table",
 		sql: `-- Add battery_voltage, firmware_version, and rssi columns to the devices table
 ALTER TABLE devices 
 ADD COLUMN IF NOT EXISTS battery_voltage NUMERIC,
@@ -99,13 +101,15 @@ COMMENT ON COLUMN devices.rssi IS 'WiFi signal strength in dBm';`,
 	},
 	"0002_add_playlist_index_to_devices": {
 		title: "Add Playlist Index to Devices",
-		description: "Adds current_playlist_index column to devices table for tracking playlist position",
+		description:
+			"Adds current_playlist_index column to devices table for tracking playlist position",
 		sql: `ALTER TABLE devices
 ADD COLUMN IF NOT EXISTS current_playlist_index INT DEFAULT 0;`,
 	},
 	"0003_add_playlists": {
 		title: "Add Playlists and Playlist Items",
-		description: "Creates the playlists and playlist_items tables and adds playlist support to devices table",
+		description:
+			"Creates the playlists and playlist_items tables and adds playlist support to devices table",
 		sql: `-- playlists table
 CREATE TABLE IF NOT EXISTS playlists (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -129,5 +133,22 @@ CREATE TABLE IF NOT EXISTS playlist_items (
 ALTER TABLE devices
 ADD COLUMN playlist_id UUID REFERENCES playlists(id),
     ADD COLUMN use_playlist BOOLEAN DEFAULT FALSE;`,
-	}
+	},
+	validate_schema: {
+		title: "Validate Database Schema",
+		description:
+			"Validates that all required tables exist in the public schema. Returns list of tables with their status and identifies any missing tables.",
+		sql: `-- Check for missing required tables
+-- Returns empty result if all tables exist, or rows with missing table names if any are missing
+SELECT 
+  expected_table as missing_table
+FROM unnest(ARRAY['devices', 'logs', 'playlist_items', 'playlists', 'system_logs']::text[]) as expected_table
+WHERE NOT EXISTS (
+  SELECT 1 
+  FROM information_schema.tables 
+  WHERE table_schema = 'public' 
+    AND table_type = 'BASE TABLE'
+    AND table_name = expected_table
+);`,
+	},
 };
