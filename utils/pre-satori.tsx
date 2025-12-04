@@ -1,23 +1,24 @@
 import React from "react";
 import { cn } from "@/lib/utils";
-import { ditherPatterns } from "./dither-patterns";
 import { extractFontFamily } from "@/lib/fonts";
+import {
+	processResponsive,
+	processGap,
+	processDither,
+	getResetStyles,
+} from "./pre-satori-tailwind";
 
 interface PreSatoriProps {
 	useDoubling?: boolean;
+	width?: number;
+	height?: number;
 	children: React.ReactNode;
 }
 
-// Satori-compatible reset styles for HTML elements
-const satoriResetStyles: Record<string, string> = {
-	common: "m-0 p-0 border-0 bg-transparent shadow-none",
-	heading: "m-0 p-0 border-0 bg-transparent shadow-none",
-	paragraph: "m-0 p-0 border-0 bg-transparent shadow-none",
-	div: "m-0 p-0 border-0 bg-transparent shadow-none",
-};
-
 export const PreSatori: React.FC<PreSatoriProps> = ({
 	useDoubling = false,
+	width = 800,
+	height = 480,
 	children,
 }) => {
 	// Define a helper to recursively transform children.
@@ -47,44 +48,28 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 				}
 			}
 
-			const remainingClassNames: string[] = [];
+			// Process className for dither patterns, gap classes, and responsive breakpoints
+			const responsiveClass = processResponsive(className, width);
+			const { style: gapStyle, className: afterGapClass } = processGap(
+				responsiveClass,
+			);
+			const { style: ditherStyle, className: finalClass } = processDither(
+				afterGapClass,
+			);
 
-			// Process className for dither patterns
-			if (className) {
-				const classes = className.split(" ");
-				for (const cls of classes) {
-					if (cls.startsWith("dither-")) {
-						Object.assign(newStyle, ditherPatterns[cls], ditherPatterns.dither);
-					} else {
-						remainingClassNames.push(cls);
-					}
-				}
-			}
-
-			const cleanClassName = remainingClassNames.join(" ");
+			Object.assign(newStyle, gapStyle, ditherStyle);
 
 			// Determine reset styles
-			let resetStyles = "";
-			if (typeof child.type === "string") {
-				if (child.type.startsWith("h")) {
-					resetStyles = satoriResetStyles.heading;
-				} else if (child.type === "p") {
-					resetStyles = satoriResetStyles.paragraph;
-				} else if (child.type === "div") {
-					resetStyles = satoriResetStyles.div;
-				} else {
-					resetStyles = satoriResetStyles.common;
-				}
-			}
+			const resetStyles = getResetStyles(child);
 
 			// Construct new props
 			const newProps: any = {
 				...restProps,
 				style: newStyle,
-				className: cleanClassName, // Keep for browser/React
+				className: finalClass, // Keep for browser/React
 				// Pass Tailwind classes to 'tw' prop for Satori/ImageResponse
 				// We combine reset styles with user classes
-				tw: cn(resetStyles, cleanClassName),
+				tw: cn(resetStyles, finalClass),
 			};
 
 			// Recursively transform children
@@ -104,8 +89,8 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			style={{
 				display: "flex",
 				flexDirection: "column",
-				width: "100%",
-				height: "100%",
+				width: `${width}px`,
+				height: `${height}px`,
 				color: "black",
 				backgroundColor: "#ffffff",
 				fontSize: "16px",
