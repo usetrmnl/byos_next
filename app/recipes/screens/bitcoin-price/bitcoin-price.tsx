@@ -44,12 +44,12 @@ export default function BitcoinPrice({
 			{(transform) => (
 				<>
 					{transform(
-						<div className="flex flex-col w-[800px] h-[480px] bg-white justify-between p-4">
+						<div className="flex flex-col bg-white justify-between p-4">
 							<div className="flex flex-col">
 								<div className="flex items-center justify-between">
 									<div className="flex flex-col">
 										<h2 className="text-8xl font-inter">${price}</h2>
-										<div className="text-4xl">
+										<div className="text-4xl font-inter">
 											{isPositive ? "↑" : "↓"} {changeValue}%
 										</div>
 									</div>
@@ -95,7 +95,7 @@ export default function BitcoinPrice({
 								</div>
 							</div>
 							<div
-								className="w-full flex justify-between text-2xl p-2 rounded-xl dither-100"
+								className="w-full flex justify-between text-2xl text-black p-2 rounded-xl dither-100"
 								style={{ WebkitTextStroke: "4px white" }}
 							>
 								<div>Bitcoin Price Tracker</div>
