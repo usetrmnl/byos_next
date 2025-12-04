@@ -77,7 +77,6 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 				}
 			}
 
-			console.log("newStyle", newStyle);
 			// Construct new props
 			const newProps: any = {
 				...restProps,
