@@ -14,8 +14,8 @@ import { getSatoriFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 // Image dimensions constants
-const IMAGE_WIDTH = 800;
-const IMAGE_HEIGHT = 480;
+const DEFAULT_IMAGE_WIDTH = 480;
+const DEFAULT_IMAGE_HEIGHT = 800;
 
 // Logging utility to control log output based on environment
 const logger = {
@@ -94,8 +94,8 @@ const fetchComponent = cache(async (slug: string) => {
 });
 
 // Fetch props for a recipe
-const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
-	let props = config.props || {};
+const fetchProps = cache(async (slug: string, config: RecipeConfig): Promise<ComponentProps> => {
+	let props: ComponentProps = config.props || {};
 
 	const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 	if (isBuildPhase) {
@@ -140,14 +140,18 @@ const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
 });
 
 // Get image options for rendering
-const getImageOptions = (config: RecipeConfig) => {
+const getImageOptions = (
+	config: RecipeConfig,
+	width: number,
+	height: number,
+) => {
 	// Use doubleSizeForSharperText as the single source of truth for doubling
 	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
 	const scaleFactor = useDoubling ? 2 : 1;
 
 	return {
-		width: IMAGE_WIDTH * scaleFactor,
-		height: IMAGE_HEIGHT * scaleFactor,
+		width: width * scaleFactor,
+		height: height * scaleFactor,
 		fonts: fonts,
 		shapeRendering: 1,
 		textRendering: 0,
@@ -162,7 +166,10 @@ export async function generateStaticParams() {
 }
 
 // Type for component props
-type ComponentProps = Record<string, unknown>;
+type ComponentProps = Record<string, unknown> & {
+	width?: number;
+	height?: number;
+};
 
 // Define types for our cache
 interface CacheItem {
@@ -211,7 +218,12 @@ const renderAllFormats = cache(
 		imageHeight: number,
 	): Promise<CacheItem> => {
 		const renderCache = getRenderCache();
-		const cacheKey = `${slug}-${JSON.stringify(props)}`;
+		const propsWithDimensions: ComponentProps = {
+			...props,
+			width: imageWidth,
+			height: imageHeight,
+		};
+		const cacheKey = `${slug}-${imageWidth}x${imageHeight}-${JSON.stringify(propsWithDimensions)}`;
 		const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
 
 		// During production build prerendering, avoid rendering outputs so we don't
@@ -238,14 +250,15 @@ const renderAllFormats = cache(
 
 		try {
 			logger.info(`🔄 Generating all formats for: ${slug}`);
+			const imageOptions = getImageOptions(config, imageWidth, imageHeight);
 
 			// Generate all formats in parallel
 			const [bitmapResult, pngResult, svgResult] = await Promise.all([
 				(async () => {
 					try {
 						const pngResponse = await new ImageResponse(
-							createElement(Component, props),
-							getImageOptions(config),
+							createElement(Component, propsWithDimensions),
+							imageOptions,
 						);
 						return await renderBmp(pngResponse, {
 							ditheringMethod: DitheringMethod.ATKINSON,
@@ -260,8 +273,8 @@ const renderAllFormats = cache(
 				(async () => {
 					try {
 						const pngResponse = await new ImageResponse(
-							createElement(Component, props),
-							getImageOptions(config),
+							createElement(Component, propsWithDimensions),
+							imageOptions,
 						);
 						const pngBuffer = await pngResponse.arrayBuffer();
 						return Buffer.from(pngBuffer);
@@ -272,13 +285,13 @@ const renderAllFormats = cache(
 				})(),
 				(async () => {
 					try {
-						const element = createElement(Component, props);
-						return await satori(element, getImageOptions(config));
+						const element = createElement(Component, propsWithDimensions);
+						return await satori(element, imageOptions);
 					} catch (error) {
 						logger.error(`Error generating SVG for ${slug}:`, error);
-						return `<svg xmlns="http://www.w3.org/2000/svg" width="${IMAGE_WIDTH}" height="${IMAGE_HEIGHT}" viewBox="0 0 ${IMAGE_WIDTH} ${IMAGE_HEIGHT}">
-						<rect width="${IMAGE_WIDTH}" height="${IMAGE_HEIGHT}" fill="#f0f0f0" />
-						<text x="${IMAGE_WIDTH / 2}" y="${IMAGE_HEIGHT / 2}" font-family="Arial" font-size="24" text-anchor="middle">
+						return `<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}" viewBox="0 0 ${imageWidth} ${imageHeight}">
+						<rect width="${imageWidth}" height="${imageHeight}" fill="#f0f0f0" />
+						<text x="${imageWidth / 2}" y="${imageHeight / 2}" font-family="Arial" font-size="24" text-anchor="middle">
 							Unable to generate SVG content
 						</text>
 					</svg>`;
@@ -317,10 +330,14 @@ const RenderComponent = ({
 	slug,
 	format,
 	title,
+	imageWidth,
+	imageHeight,
 }: {
 	slug: string;
 	format: "bitmap" | "png" | "svg" | "react";
 	title: string;
+	imageWidth: number;
+	imageHeight: number;
 }) => {
 	// Fetch config and handle null case
 	const configResult = use(Promise.resolve(fetchConfig(slug)));
@@ -346,6 +363,11 @@ const RenderComponent = ({
 	const config = configResult;
 	const Component = componentResult;
 	const props = use(Promise.resolve(fetchProps(slug, config)));
+	const propsWithDimensions: ComponentProps = {
+		...props,
+		width: imageWidth,
+		height: imageHeight,
+	};
 
 	// Use doubleSizeForSharperText as the single source of truth for doubling
 	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
@@ -361,14 +383,16 @@ const RenderComponent = ({
 					height: useDoubling ? "200%" : "100%",
 				}}
 			>
-				<Component {...props} />
+				<Component {...propsWithDimensions} />
 			</div>
 		);
 	}
 
 	// Get all rendered formats
 	const renders = use(
-		Promise.resolve(renderAllFormats(slug, Component, props, config, IMAGE_WIDTH, IMAGE_HEIGHT)),
+		Promise.resolve(
+			renderAllFormats(slug, Component, props, config, imageWidth, imageHeight),
+		),
 	);
 
 	// For bitmap rendering
@@ -383,8 +407,8 @@ const RenderComponent = ({
 
 		return (
 			<Image
-				width={IMAGE_WIDTH}
-				height={IMAGE_HEIGHT}
+				width={imageWidth}
+				height={imageHeight}
 				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} BMP render`}
@@ -405,8 +429,8 @@ const RenderComponent = ({
 
 		return (
 			<Image
-				width={IMAGE_WIDTH * (useDoubling ? 2 : 1)}
-				height={IMAGE_HEIGHT * (useDoubling ? 2 : 1)}
+				width={imageWidth * (useDoubling ? 2 : 1)}
+				height={imageHeight * (useDoubling ? 2 : 1)}
 				src={`data:image/png;base64,${renders.png.toString("base64")}`}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} PNG render`}
@@ -450,6 +474,8 @@ export default async function RecipePage({
 }: {
 	params: Promise<{ slug: string }>;
 }) {
+	const imageWidth = DEFAULT_IMAGE_WIDTH;
+	const imageHeight = DEFAULT_IMAGE_HEIGHT;
 	// Access headers to mark route as dynamic and allow time-based operations
 	headers();
 	const { slug } = await params;
@@ -478,9 +504,10 @@ export default async function RecipePage({
 				</div>
 
 				<RecipePreviewLayout
+					canvasWidth={imageWidth}
 					bmpComponent={
-						<div style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={IMAGE_WIDTH / IMAGE_HEIGHT}>
+						<div style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -492,14 +519,16 @@ export default async function RecipePage({
 										slug={slug}
 										format="bitmap"
 										title={config.title}
+										imageWidth={imageWidth}
+										imageHeight={imageHeight}
 									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
 					}
 					pngComponent={
-						<div style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={IMAGE_WIDTH / IMAGE_HEIGHT}>
+						<div style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -511,14 +540,16 @@ export default async function RecipePage({
 										slug={slug}
 										format="png"
 										title={config.title}
+										imageWidth={imageWidth}
+										imageHeight={imageHeight}
 									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
 					}
 					svgComponent={
-						<div style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={IMAGE_WIDTH / IMAGE_HEIGHT}>
+						<div style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -530,14 +561,16 @@ export default async function RecipePage({
 										slug={slug}
 										format="svg"
 										title={config.title}
+										imageWidth={imageWidth}
+										imageHeight={imageHeight}
 									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
 					}
 					reactComponent={
-						<div style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={IMAGE_WIDTH / IMAGE_HEIGHT} style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }}>
+						<div style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+							<AspectRatio ratio={imageWidth / imageHeight} style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -549,6 +582,8 @@ export default async function RecipePage({
 										slug={slug}
 										format="react"
 										title={config.title}
+										imageWidth={imageWidth}
+										imageHeight={imageHeight}
 									/>
 								</Suspense>
 							</AspectRatio>

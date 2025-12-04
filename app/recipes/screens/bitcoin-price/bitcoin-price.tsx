@@ -10,6 +10,8 @@ interface BitcoinPriceProps {
 	high24h?: string;
 	low24h?: string;
 	historicalPrices?: Array<{ timestamp: number; price: number }>;
+	width?: number;
+	height?: number;
 }
 
 export default function BitcoinPrice({
@@ -21,6 +23,8 @@ export default function BitcoinPrice({
 	high24h = "Loading...",
 	low24h = "Loading...",
 	historicalPrices = [],
+	width = 800,
+	height = 480,
 }: BitcoinPriceProps) {
 	// Calculate if price change is positive or negative
 	const isPositive = !change24h.startsWith("-");
@@ -40,8 +44,8 @@ export default function BitcoinPrice({
 	}));
 
 	return (
-		<PreSatori>
-			<div className="flex w-[800px] h-[480px] flex-col bg-white justify-between p-4">
+		<PreSatori width={width} height={height}>
+			<div className="flex h-full w-full flex-col bg-white justify-between p-4">
 				<div className="flex flex-col">
 					<div className="flex items-center justify-between">
 						<div className="flex flex-col">
@@ -73,18 +77,23 @@ export default function BitcoinPrice({
 						</div>
 					</div>
 				</div>
-				<div className="w-full flex flex-row items-center justify-between px-4">
-					<Graph data={graphData} isTimeData={true} />
-					<div className="flex flex-col w-1/3" style={{ gap: "16px" }}>
+				<div className="w-full flex md:flex-row flex-col md:items-center md:justify-between px-4">
+					<div className="hidden md:block">
+						<Graph data={graphData} isTimeData={true} />
+					</div>
+					<div className="block md:hidden pb-4">
+						<Graph data={graphData} isTimeData={true} width={width - 50} height={300} />
+					</div>
+					<div className="flex flex-col md:flex-row md:w-1/3 w-full" style={{ gap: "16px" }}>
 						{priceStats.map((stat, index) => (
 							<div
 								key={index}
-								className="p-2 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
+								className="w-full p-2 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
 							>
-								<div className="text-[28px] leading-none m-0">
+								<div className="text-[24px] md:text-[28px] leading-none m-0">
 									{stat.label}
 								</div>
-								<div className="text-[28px] leading-none m-0">
+								<div className="text-[24px] md:text-[28px] leading-none m-0">
 									${stat.value}
 								</div>
 							</div>
@@ -92,7 +101,7 @@ export default function BitcoinPrice({
 					</div>
 				</div>
 				<div
-					className="w-full flex justify-between text-2xl text-black p-2 rounded-xl dither-100"
+					className="w-full flex md:flex-row flex-col md:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
 					style={{ WebkitTextStroke: "4px white" }}
 				>
 					<div>Bitcoin Price Tracker</div>

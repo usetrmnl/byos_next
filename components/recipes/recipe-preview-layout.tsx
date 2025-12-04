@@ -21,6 +21,7 @@ type RecipePreviewLayoutProps = {
 	defaultLayout?: "columns" | "rows";
 	defaultScale?: "full" | "half";
 	defaultRenderType?: "bmp" | "png" | "svg";
+	canvasWidth?: number;
 };
 
 const RecipePreviewLayout = ({
@@ -36,6 +37,7 @@ const RecipePreviewLayout = ({
 	defaultLayout = "rows",
 	defaultScale = "full",
 	defaultRenderType = "bmp",
+	canvasWidth = 800,
 }: RecipePreviewLayoutProps) => {
 	const [layout, setLayout] = React.useState<"columns" | "rows">(defaultLayout);
 	const [scale, setScale] = React.useState<"full" | "half">(defaultScale);
@@ -45,7 +47,7 @@ const RecipePreviewLayout = ({
 	const [isInitialized, setIsInitialized] = React.useState(false);
 
 	// Constants for width calculations
-	const singleColumnWidth = 800 + 2; // adding 2px for the border
+	const singleColumnWidth = canvasWidth + 2; // adding 2px for the border
 	const spacing = 16; // This is equivalent to gap-4 in Tailwind (4 * 4px)
 
 	// Toggle options

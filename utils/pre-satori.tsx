@@ -50,6 +50,10 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 
 			// Process className for dither patterns, gap classes, and responsive breakpoints
 			const responsiveClass = processResponsive(className, width);
+			// Check if element should be hidden - don't render it at all
+			if (style?.display === "hidden" || responsiveClass.includes("hidden")) {
+				return null;
+			}
 			const { style: gapStyle, className: afterGapClass } = processGap(
 				responsiveClass,
 			);
