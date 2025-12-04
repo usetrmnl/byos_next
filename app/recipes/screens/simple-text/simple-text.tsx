@@ -17,6 +17,15 @@ export default function SimpleText() {
 							<div className="text-base font-geneva9">
 								small text with geneva9 font
 							</div>
+							<div className="text-3xl font-inter">
+								Hello World - inter font not anti-aliased
+							</div>
+							<div className="text-3xl font-blockkie leading-none tracking-tight">
+								Hello World - leading none tracking tight
+							</div>
+							<div className="text-3xl font-blockkie leading-loose tracking-wider">
+								Hello World - leading loose tracking wider
+							</div>
 							<BitmapText
 								text={`FT font: Great for headlines`}
 								fontData={fontData}
