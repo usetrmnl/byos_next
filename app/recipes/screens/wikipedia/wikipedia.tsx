@@ -94,66 +94,60 @@ export default async function Wikipedia({
 
 	return (
 		<PreSatori useDoubling={true}>
-			{(transform) => (
-				<>
-					{transform(
-						<div className="flex flex-col w-[800px] h-[480px]">
-							<div className="flex-none p-4 border-b border-black">
-								<h1 className="text-5xl">{safeTitle}</h1>
-							</div>
-							<div className="flex-1 p-4 flex flex-row">
-								<div
-									className="text-2xl flex-grow tracking-tight leading-none"
-									style={{ textOverflow: "ellipsis", maxHeight: "240px" }}
-								>
-									{truncatedExtract}
-								</div>
-								{hasValidThumbnail && thumbnail?.source && (
-									<div className="pr-4 w-[240px]">
-										<picture>
-											{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}
-											<source srcSet={thumbnail.source} type="image/webp" />
-											<img
-												src={thumbnail.source}
-												alt={safeTitle}
-												width={thumbnail.width || 240}
-												height={thumbnail.height || 200}
-												style={{
-													width: imageDimensions.width,
-													height: imageDimensions.height,
-													maxWidth: "240px",
-													maxHeight: "320px",
-													objectFit: "contain",
-													filter:
-														"grayscale(100%) contrast(0.9) brightness(1.05)",
-												}}
-											/>
-										</picture>
-									</div>
-								)}
-							</div>
-							<div className="flex-none p-4 flex flex-col">
-								<div className="text-base font-geneva9 flex justify-between w-full ">
-									<span>{safeContentUrl}</span>
-									<span>
-										{safeDescription && safeDescription.length > 100
-											? `${safeDescription.substring(0, 100)}...`
-											: safeDescription}
-									</span>
-								</div>
-
-								<div
-									className="text-2xl text-black flex justify-between w-full p-2 rounded-xl dither-100"
-									style={{ WebkitTextStroke: "4px white" }}
-								>
-									<span>Wikipedia • Random Article</span>
-									{formattedDate && <span>Generated: {formattedDate}</span>}
-								</div>
-							</div>
-						</div>,
+			<div className="flex flex-col w-[800px] h-[480px]">
+				<div className="flex-none p-4 border-b border-black">
+					<h1 className="text-5xl">{safeTitle}</h1>
+				</div>
+				<div className="flex-1 p-4 flex flex-row">
+					<div
+						className="text-2xl flex-grow tracking-tight leading-none"
+						style={{ textOverflow: "ellipsis", maxHeight: "240px" }}
+					>
+						{truncatedExtract}
+					</div>
+					{hasValidThumbnail && thumbnail?.source && (
+						<div className="pr-4 w-[240px]">
+							<picture>
+								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}
+								<source srcSet={thumbnail.source} type="image/webp" />
+								<img
+									src={thumbnail.source}
+									alt={safeTitle}
+									width={thumbnail.width || 240}
+									height={thumbnail.height || 200}
+									style={{
+										width: imageDimensions.width,
+										height: imageDimensions.height,
+										maxWidth: "240px",
+										maxHeight: "320px",
+										objectFit: "contain",
+										filter:
+											"grayscale(100%) contrast(0.9) brightness(1.05)",
+									}}
+								/>
+							</picture>
+						</div>
 					)}
-				</>
-			)}
+				</div>
+				<div className="flex-none p-4 flex flex-col">
+					<div className="text-base font-geneva9 flex justify-between w-full ">
+						<span>{safeContentUrl}</span>
+						<span>
+							{safeDescription && safeDescription.length > 100
+								? `${safeDescription.substring(0, 100)}...`
+								: safeDescription}
+						</span>
+					</div>
+
+					<div
+						className="text-2xl text-black flex justify-between w-full p-2 rounded-xl dither-100"
+						style={{ WebkitTextStroke: "4px white" }}
+					>
+						<span>Wikipedia • Random Article</span>
+						{formattedDate && <span>Generated: {formattedDate}</span>}
+					</div>
+				</div>
+			</div>
 		</PreSatori>
 	);
 }

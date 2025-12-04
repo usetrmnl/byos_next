@@ -248,89 +248,83 @@ export default function Weather({
 
 	return (
 		<PreSatori>
-			{(transform) => (
-				<>
-					{transform(
-						<div className="flex flex-col w-[800px] h-[480px] bg-white">
-							<div className="flex-1 overflow-hidden p-4 flex flex-col">
-								<div className="flex items-center justify-between">
-									<div className="flex flex-row items-baseline">
-										<h2 className="text-9xl font-inter">{temperature}°C</h2>
-									</div>
-									<div className="flex flex-col items-center justify-center">
-										{getWeatherIcon(description)}
-										<div className="text-4xl mt-4 font-blockkie">
-											<div className="flex flex-row items-center">
-												{tempUp} {highTemp}°C
-												{tempDown} {lowTemp}°C
-											</div>
+			<div className="flex flex-col w-[800px] h-[480px] bg-white">
+				<div className="flex-1 overflow-hidden p-4 flex flex-col">
+					<div className="flex items-center justify-between">
+						<div className="flex flex-row items-baseline">
+							<h2 className="text-9xl font-inter">{temperature}°C</h2>
+						</div>
+						<div className="flex flex-col items-center justify-center">
+							{getWeatherIcon(description)}
+							<div className="text-4xl mt-4 font-blockkie">
+								<div className="flex flex-row items-center">
+									{tempUp} {highTemp}°C
+									{tempDown} {lowTemp}°C
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div className="flex-none p-4 flex flex-col">
+					<div
+						className="w-full flex flex-col mb-4"
+						style={{ gap: "16px" }}
+					>
+						{/* First row - first 3 items */}
+						<div className="w-full flex flex-row" style={{ gap: "16px" }}>
+							{weatherStats.slice(0, 3).map((stat, index) => (
+								<div
+									key={index}
+									className="p-2 rounded-xl border border-black flex-1 flex flex-row items-center"
+								>
+									<div className="p-2">{stat.icon}</div>
+									<div className="flex flex-col">
+										<div className="text-[28px] leading-none m-0">
+											{stat.label}
+										</div>
+										<div className="text-[28px] leading-none m-0 font-bold">
+											{stat.value}
 										</div>
 									</div>
 								</div>
-							</div>
-							<div className="flex-none p-4 flex flex-col">
-								<div
-									className="w-full flex flex-col mb-4"
-									style={{ gap: "16px" }}
-								>
-									{/* First row - first 3 items */}
-									<div className="w-full flex flex-row" style={{ gap: "16px" }}>
-										{weatherStats.slice(0, 3).map((stat, index) => (
-											<div
-												key={index}
-												className="p-2 rounded-xl border border-black flex-1 flex flex-row items-center"
-											>
-												<div className="p-2">{stat.icon}</div>
-												<div className="flex flex-col">
-													<div className="text-[28px] leading-none m-0">
-														{stat.label}
-													</div>
-													<div className="text-[28px] leading-none m-0 font-bold">
-														{stat.value}
-													</div>
-												</div>
+							))}
+						</div>
+						{/* Second row - remaining 3 items */}
+						{weatherStats.length > 3 && (
+							<div
+								className="w-full flex flex-row"
+								style={{ gap: "16px" }}
+							>
+								{weatherStats.slice(3).map((stat, index) => (
+									<div
+										key={index + 4}
+										className="p-2 rounded-xl border border-black flex-1 flex flex-row items-center"
+									>
+										<div className="p-2">{stat.icon}</div>
+										<div className="flex flex-col">
+											<div className="text-[28px] leading-none m-0">
+												{stat.label}
 											</div>
-										))}
-									</div>
-									{/* Second row - remaining 3 items */}
-									{weatherStats.length > 3 && (
-										<div
-											className="w-full flex flex-row"
-											style={{ gap: "16px" }}
-										>
-											{weatherStats.slice(3).map((stat, index) => (
-												<div
-													key={index + 4}
-													className="p-2 rounded-xl border border-black flex-1 flex flex-row items-center"
-												>
-													<div className="p-2">{stat.icon}</div>
-													<div className="flex flex-col">
-														<div className="text-[28px] leading-none m-0">
-															{stat.label}
-														</div>
-														<div className="text-[28px] leading-none m-0 font-bold">
-															{stat.value}
-														</div>
-													</div>
-												</div>
-											))}
+											<div className="text-[28px] leading-none m-0 font-bold">
+												{stat.value}
+											</div>
 										</div>
-									)}
-								</div>
-								<div
-									className="w-full flex justify-between text-2xl p-2 rounded-xl dither-100"
-									style={{ WebkitTextStroke: "4px white" }}
-								>
-									<div>{location}</div>
-									<div>
-										{lastUpdated && <span>Last updated: {lastUpdated}</span>}
 									</div>
-								</div>
+								))}
 							</div>
-						</div>,
-					)}
-				</>
-			)}
+						)}
+					</div>
+					<div
+						className="w-full flex justify-between text-2xl p-2 rounded-xl dither-100"
+						style={{ WebkitTextStroke: "4px white" }}
+					>
+						<div>{location}</div>
+						<div>
+							{lastUpdated && <span>Last updated: {lastUpdated}</span>}
+						</div>
+					</div>
+				</div>
+			</div>
 		</PreSatori>
 	);
 }

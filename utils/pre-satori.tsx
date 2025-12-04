@@ -1,17 +1,11 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import { ditherPatterns } from "./dither-patterns";
-import { fonts } from "@/lib/fonts";
+import { extractFontFamily } from "@/lib/fonts";
 
 interface PreSatoriProps {
 	useDoubling?: boolean;
-	children: (
-		transform: (child: React.ReactNode) => React.ReactNode,
-		props: Record<
-			string,
-			React.CSSProperties | string | undefined | React.ReactNode
-		>,
-	) => React.ReactNode;
+	children: React.ReactNode;
 }
 
 // Satori-compatible reset styles for HTML elements
@@ -21,51 +15,10 @@ const satoriResetStyles: Record<string, string> = {
 	paragraph: "m-0 p-0 border-0 bg-transparent shadow-none",
 	div: "m-0 p-0 border-0 bg-transparent shadow-none",
 };
-// Add new helper function to extract font family
-const extractFontFamily = (className?: string): string | undefined => {
-	if (!className) return undefined;
-
-	// Look for font-* classes
-	const fontClass = className.split(" ").find((cls) => cls.startsWith("font-"));
-
-	if (fontClass) {
-		// Remove 'font-' prefix to match font keys
-		const fontKey = fontClass.replace("font-", "");
-
-		// Check if it's one of our configured fonts
-		const configuredFontKeys: Record<string, true> = {};
-		for (const key of Object.keys(fonts)) {
-			configuredFontKeys[key.toLowerCase()] = true;
-		}
-		if (configuredFontKeys[fontKey.toLowerCase()]) {
-			return fontKey;
-		}
-
-		// Handle system font stacks
-		switch (fontKey) {
-			case "sans":
-				return "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif";
-			case "serif":
-				return "ui-serif, Georgia, Cambria, Times New Roman, Times, serif";
-			case "mono":
-				return "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace";
-			default: {
-				// Handle any custom font-[...] classes
-				const customFontMatch = fontClass.match(/font-\[(.*?)\]/);
-				if (customFontMatch?.[1]) {
-					return customFontMatch[1].replace(/['"]/g, ""); // Remove quotes if present
-				}
-				return undefined;
-			}
-		}
-	}
-	return undefined;
-};
 
 export const PreSatori: React.FC<PreSatoriProps> = ({
 	useDoubling = false,
 	children,
-	...props
 }) => {
 	// Define a helper to recursively transform children.
 	const transform = (child: React.ReactNode): React.ReactNode => {
@@ -124,6 +77,7 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 				}
 			}
 
+			console.log("newStyle", newStyle);
 			// Construct new props
 			const newProps: any = {
 				...restProps,
@@ -160,7 +114,7 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 				...(useDoubling ? { transform: "scale(2)" } : {}),
 			}}
 		>
-			{children(transform, props)}
+			{React.Children.map(children, (child) => transform(child))}
 		</div>
 	);
 };
