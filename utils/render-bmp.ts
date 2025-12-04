@@ -203,6 +203,8 @@ const applyDithering = (
 export interface RenderBmpOptions {
 	ditheringMethod?: DitheringMethod;
 	inverted?: boolean;
+	width?: number;
+	height?: number;
 }
 
 export async function renderBmp(
@@ -217,8 +219,8 @@ export async function renderBmp(
 	const pngBuffer = await pngResponse.arrayBuffer();
 
 	// Fixed dimensions to match the device requirements
-	const targetWidth = 800;
-	const targetHeight = 480;
+	const targetWidth = options.width ?? 800;
+	const targetHeight = options.height ?? 480;
 	const targetPixelCount = targetWidth * targetHeight;
 
 	// Load image metadata

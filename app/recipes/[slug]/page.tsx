@@ -13,6 +13,10 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { getSatoriFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
+// Image dimensions constants
+const IMAGE_WIDTH = 800;
+const IMAGE_HEIGHT = 480;
+
 // Logging utility to control log output based on environment
 const logger = {
 	info: (message: string) => {
@@ -142,8 +146,8 @@ const getImageOptions = (config: RecipeConfig) => {
 	const scaleFactor = useDoubling ? 2 : 1;
 
 	return {
-		width: 800 * scaleFactor,
-		height: 480 * scaleFactor,
+		width: IMAGE_WIDTH * scaleFactor,
+		height: IMAGE_HEIGHT * scaleFactor,
 		fonts: fonts,
 		shapeRendering: 1,
 		textRendering: 0,
@@ -203,6 +207,8 @@ const renderAllFormats = cache(
 		Component: React.ComponentType<ComponentProps>,
 		props: ComponentProps,
 		config: RecipeConfig,
+		imageWidth: number,
+		imageHeight: number,
 	): Promise<CacheItem> => {
 		const renderCache = getRenderCache();
 		const cacheKey = `${slug}-${JSON.stringify(props)}`;
@@ -221,14 +227,14 @@ const renderAllFormats = cache(
 		}
 
 		// Check cache first
-		if (renderCache?.has(cacheKey)) {
-			const cached = renderCache.get(cacheKey);
-			if (cached && cached.expiresAt > Date.now()) {
-				logger.info(`Cache hit for ${slug} renders`);
-				return cached;
-			}
-			logger.info(`Cache expired for ${slug} renders`);
-		}
+		// if (renderCache?.has(cacheKey)) {
+		// 	const cached = renderCache.get(cacheKey);
+		// 	if (cached && cached.expiresAt > Date.now()) {
+		// 		logger.info(`Cache hit for ${slug} renders`);
+		// 		return cached;
+		// 	}
+		// 	logger.info(`Cache expired for ${slug} renders`);
+		// }
 
 		try {
 			logger.info(`🔄 Generating all formats for: ${slug}`);
@@ -243,6 +249,8 @@ const renderAllFormats = cache(
 						);
 						return await renderBmp(pngResponse, {
 							ditheringMethod: DitheringMethod.ATKINSON,
+							width: imageWidth,
+							height: imageHeight,
 						});
 					} catch (error) {
 						logger.error(`Error generating bitmap for ${slug}:`, error);
@@ -268,9 +276,9 @@ const renderAllFormats = cache(
 						return await satori(element, getImageOptions(config));
 					} catch (error) {
 						logger.error(`Error generating SVG for ${slug}:`, error);
-						return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
-						<rect width="800" height="480" fill="#f0f0f0" />
-						<text x="400" y="240" font-family="Arial" font-size="24" text-anchor="middle">
+						return `<svg xmlns="http://www.w3.org/2000/svg" width="${IMAGE_WIDTH}" height="${IMAGE_HEIGHT}" viewBox="0 0 ${IMAGE_WIDTH} ${IMAGE_HEIGHT}">
+						<rect width="${IMAGE_WIDTH}" height="${IMAGE_HEIGHT}" fill="#f0f0f0" />
+						<text x="${IMAGE_WIDTH / 2}" y="${IMAGE_HEIGHT / 2}" font-family="Arial" font-size="24" text-anchor="middle">
 							Unable to generate SVG content
 						</text>
 					</svg>`;
@@ -360,7 +368,7 @@ const RenderComponent = ({
 
 	// Get all rendered formats
 	const renders = use(
-		Promise.resolve(renderAllFormats(slug, Component, props, config)),
+		Promise.resolve(renderAllFormats(slug, Component, props, config, IMAGE_WIDTH, IMAGE_HEIGHT)),
 	);
 
 	// For bitmap rendering
@@ -375,8 +383,8 @@ const RenderComponent = ({
 
 		return (
 			<Image
-				width={800}
-				height={480}
+				width={IMAGE_WIDTH}
+				height={IMAGE_HEIGHT}
 				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} BMP render`}
@@ -397,8 +405,8 @@ const RenderComponent = ({
 
 		return (
 			<Image
-				width={800 * (useDoubling ? 2 : 1)}
-				height={480 * (useDoubling ? 2 : 1)}
+				width={IMAGE_WIDTH * (useDoubling ? 2 : 1)}
+				height={IMAGE_HEIGHT * (useDoubling ? 2 : 1)}
 				src={`data:image/png;base64,${renders.png.toString("base64")}`}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} PNG render`}
@@ -471,8 +479,8 @@ export default async function RecipePage({
 
 				<RecipePreviewLayout
 					bmpComponent={
-						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={5 / 3}>
+						<div style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+							<AspectRatio ratio={IMAGE_WIDTH / IMAGE_HEIGHT}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -490,8 +498,8 @@ export default async function RecipePage({
 						</div>
 					}
 					pngComponent={
-						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={5 / 3}>
+						<div style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+							<AspectRatio ratio={IMAGE_WIDTH / IMAGE_HEIGHT}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -509,8 +517,8 @@ export default async function RecipePage({
 						</div>
 					}
 					svgComponent={
-						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={5 / 3}>
+						<div style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+							<AspectRatio ratio={IMAGE_WIDTH / IMAGE_HEIGHT}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -528,8 +536,8 @@ export default async function RecipePage({
 						</div>
 					}
 					reactComponent={
-						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={5 / 3} className="w-[800px] h-[480px]">
+						<div style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+							<AspectRatio ratio={IMAGE_WIDTH / IMAGE_HEIGHT} style={{ width: `${IMAGE_WIDTH}px`, height: `${IMAGE_HEIGHT}px` }}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
