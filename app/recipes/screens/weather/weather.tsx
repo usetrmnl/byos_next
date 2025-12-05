@@ -253,7 +253,6 @@ export default function Weather({
 	const format = height > width ? "vertical" : "horizontal";
 	const nbCols = format === "vertical" ? 2 : 3;
 	const nbRows = Math.ceil(weatherStats.length / nbCols);
-	console.log(nbRows, nbCols);
 
 	return (
 		<PreSatori width={width} height={height}>
