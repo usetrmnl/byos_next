@@ -99,7 +99,7 @@ export default function BitmapPatterns({
 						.map(({ value }) => (
 							<div
 								key={`text-${value}`}
-								className={`text-white sm:text-${value > 850 ? "white" : "black"}`}
+								className={value > 850 ? "text-white sm:text-white" : "text-white sm:text-black"}
 								style={{
 									height: `${rowHeight}px`,
 								}}
