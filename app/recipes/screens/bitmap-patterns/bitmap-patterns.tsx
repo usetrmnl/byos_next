@@ -55,14 +55,13 @@ export default function BitmapPatterns({
 						// note it starts from 1 not 0, as total 6 - last index 5 is 1
 
 						let size = { w: 0, h: 0 };
-						let location = { x: 0, y: 0 };
 						// use height for the first 6
 						const deltaRadiusForFirst6 = height / 6;
 						size = {
 							w: deltaRadiusForFirst6 * realIndex,
 							h: deltaRadiusForFirst6 * realIndex,
 						};
-						location = {
+						const location = {
 							x: -1 * Math.round(size.w / 2) + width / 2,
 							y: (6 - realIndex) * deltaRadiusForFirst6,
 						};
@@ -99,7 +98,11 @@ export default function BitmapPatterns({
 						.map(({ value }) => (
 							<div
 								key={`text-${value}`}
-								className={value > 850 ? "text-white sm:text-white" : "text-white sm:text-black"}
+								className={
+									value > 850
+										? "text-white sm:text-white"
+										: "text-white sm:text-black"
+								}
 								style={{
 									height: `${rowHeight}px`,
 								}}
