@@ -108,7 +108,7 @@ export default async function Wikipedia({
 						{truncatedExtract}
 					</div>
 					{hasValidThumbnail && thumbnail?.source && (
-						<div className="pr-4 w-[240px]">
+						<div className="pt-8 sm:pt-0 sm:pr-4 w-full sm:w-[240px] items-center justify-center">
 							<picture>
 								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}
 								<source srcSet={thumbnail.source} type="image/webp" />
