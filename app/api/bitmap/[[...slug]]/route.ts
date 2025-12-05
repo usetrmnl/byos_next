@@ -47,6 +47,16 @@ declare global {
 	var bitmapCache: Map<string, CacheItem> | undefined;
 }
 
+// Define a type for the recipe configuration
+type RecipeConfig = (typeof screens)[keyof typeof screens] & {
+	renderSettings?: {
+		// Consolidate into a single property for double sizing
+		doubleSizeForSharperText?: boolean;
+		[key: string]: boolean | string | number | undefined;
+	};
+};
+
+
 // Use the global bitmap cache only in development
 const getBitmapCache = (): Map<string, CacheItem> | null => {
 	// Check for forced cache usage via environment variable
@@ -73,19 +83,9 @@ const fonts = getSatoriFonts();
 // Get image options based on recipe configuration
 const getImageOptions = (recipeId: string) => {
 	// Check if the recipe exists and has doubleSizeForSharperText setting
-	const config = screens[recipeId as keyof typeof screens];
+	const config = screens[recipeId as keyof typeof screens] as RecipeConfig;
 
-	// Perform thorough type checking for nested properties
-	let useDoubling = false;
-	if (
-		config &&
-		"renderSettings" in config &&
-		config.renderSettings &&
-		typeof config.renderSettings === "object" &&
-		"doubleSizeForSharperText" in config.renderSettings
-	) {
-		useDoubling = Boolean(config.renderSettings.doubleSizeForSharperText);
-	}
+	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
 
 	const scaleFactor = useDoubling ? 2 : 1;
 
