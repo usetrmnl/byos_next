@@ -271,36 +271,30 @@ export default function Weather({
 						</div>
 					</div>
 				</div>
-				<div className="flex-none p-4 flex flex-col">
-					<div className="w-full flex flex-col mb-4" style={{ gap: "16px" }}>
-						<div className="w-full flex flex-col" style={{ gap: "16px" }}>
-							{Array.from({ length: nbRows }).map((_, rowIndex) => (
-								<div
-									key={rowIndex}
-									className="flex flex-row"
-									style={{ gap: "16px" }}
-								>
-									{weatherStats
-										.slice(rowIndex * nbCols, (rowIndex + 1) * nbCols)
-										.map((stat, index) => (
-											<div
-												key={index}
-												className="p-2 w-1/3 rounded-xl border border-black flex-1 flex flex-row items-center"
-											>
-												<div className="p-2">{stat.icon}</div>
-												<div className="flex flex-col">
-													<div className="text-[28px] leading-none m-0">
-														{stat.label}
-													</div>
-													<div className="text-[28px] leading-none m-0 font-bold">
-														{stat.value}
-													</div>
+				<div className="p-4 flex flex-col flex-1">
+					<div className="w-full flex flex-col flex-1 mb-4 gap-4">
+						{Array.from({ length: nbRows }).map((_, rowIndex) => (
+							<div key={rowIndex} className="flex flex-row gap-4 flex-1">
+								{weatherStats
+									.slice(rowIndex * nbCols, (rowIndex + 1) * nbCols)
+									.map((stat, index) => (
+										<div
+											key={index}
+											className="h-full rounded-xl border border-black flex-1 flex flex-row items-center"
+										>
+											<div className="p-2">{stat.icon}</div>
+											<div className="flex flex-col">
+												<div className="text-[28px] leading-none m-0">
+													{stat.label}
+												</div>
+												<div className="text-[28px] leading-none m-0 font-bold">
+													{stat.value}
 												</div>
 											</div>
-										))}
-								</div>
-							))}
-						</div>
+										</div>
+									))}
+							</div>
+						))}
 					</div>
 					<div
 						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"

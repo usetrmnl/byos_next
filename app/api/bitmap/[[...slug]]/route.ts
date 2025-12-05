@@ -12,7 +12,7 @@ import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
 
 export async function GET(
-	_req: NextRequest,
+	req: NextRequest,
 	{ params }: { params: Promise<{ slug?: string[] }> },
 ) {
 	try {
@@ -21,8 +21,22 @@ export async function GET(
 		const bitmapPath = Array.isArray(slug) ? slug.join("/") : slug;
 		const recipeSlug = bitmapPath.replace(".bmp", "");
 
+		// Get width and height from query parameters
+		const { searchParams } = new URL(req.url);
+		const widthParam = searchParams.get("width");
+		const heightParam = searchParams.get("height");
+
+		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
+		const height = heightParam
+			? parseInt(heightParam, 10)
+			: DEFAULT_IMAGE_HEIGHT;
+
+		// Validate width and height are positive numbers
+		const validWidth = width > 0 ? width : DEFAULT_IMAGE_WIDTH;
+		const validHeight = height > 0 ? height : DEFAULT_IMAGE_HEIGHT;
+
 		logger.info(
-			`Bitmap request for: ${bitmapPath} in ${DEFAULT_IMAGE_WIDTH}x${DEFAULT_IMAGE_HEIGHT}`,
+			`Bitmap request for: ${bitmapPath} in ${validWidth}x${validHeight}`,
 		);
 
 		const recipeId = screens[recipeSlug as keyof typeof screens]
@@ -31,8 +45,8 @@ export async function GET(
 
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeId,
-			DEFAULT_IMAGE_WIDTH,
-			DEFAULT_IMAGE_HEIGHT,
+			validWidth,
+			validHeight,
 		);
 
 		if (

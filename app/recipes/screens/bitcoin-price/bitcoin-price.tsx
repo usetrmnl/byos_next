@@ -78,12 +78,12 @@ export default function BitcoinPrice({
 					<div className="hidden sm:flex">
 						<Graph data={graphData} isTimeData={true} />
 					</div>
-					<div className="block sm:hidden pb-4">
+					<div className="flex sm:hidden pb-4">
 						<Graph
 							data={graphData}
 							isTimeData={true}
-							width={width - 50}
-							height={300}
+							width={width - 60}
+							height={height - 500}
 						/>
 					</div>
 					<div

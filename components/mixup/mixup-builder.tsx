@@ -3,7 +3,6 @@
 import { LayoutGrid } from "lucide-react";
 import { useMemo, useState } from "react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
 	Select,
@@ -27,6 +26,8 @@ type LayoutSlot = {
 	rowSpan?: number;
 	colSpan?: number;
 	hint?: string;
+	width?: number;
+	height?: number;
 };
 
 type LayoutOption = {
@@ -45,59 +46,87 @@ const LAYOUT_OPTIONS: LayoutOption[] = [
 	{
 		id: "quarters",
 		slots: [
-			{ id: "top-left", label: "Top left" },
-			{ id: "top-right", label: "Top right" },
-			{ id: "bottom-left", label: "Bottom left" },
-			{ id: "bottom-right", label: "Bottom right" },
+			{ id: "top-left", label: "Top left", width: 800, height: 480 },
+			{ id: "top-right", label: "Top right", width: 800, height: 480 },
+			{ id: "bottom-left", label: "Bottom left", width: 800, height: 480 },
+			{ id: "bottom-right", label: "Bottom right", width: 800, height: 480 },
 		],
 	},
 	{
 		id: "top-banner",
 		slots: [
-			{ id: "top", label: "Top span", colSpan: 2, hint: "2 quarters" },
-			{ id: "bottom-left", label: "Bottom left" },
-			{ id: "bottom-right", label: "Bottom right" },
+			{
+				id: "top",
+				label: "Top span",
+				colSpan: 2,
+				hint: "2 quarters",
+				width: 1600,
+				height: 480,
+			},
+			{ id: "bottom-left", label: "Bottom left", width: 800, height: 480 },
+			{ id: "bottom-right", label: "Bottom right", width: 800, height: 480 },
 		],
 	},
 	{
 		id: "left-rail",
 		slots: [
-			{ id: "left", label: "Left column", rowSpan: 2, hint: "2 quarters" },
-			{ id: "top-right", label: "Top right" },
-			{ id: "bottom-right", label: "Bottom right" },
+			{
+				id: "left",
+				label: "Left column",
+				rowSpan: 2,
+				hint: "2 quarters",
+				width: 550,
+				height: 660,
+			},
+			{ id: "top-right", label: "Top right", width: 800, height: 480 },
+			{ id: "bottom-right", label: "Bottom right", width: 800, height: 480 },
 		],
 	},
 	{
 		id: "vertical-halves",
 		slots: [
-			{ id: "left-half", label: "Left half", rowSpan: 2, hint: "2 quarters" },
+			{
+				id: "left-half",
+				label: "Left half",
+				rowSpan: 2,
+				hint: "2 quarters",
+				width: 550,
+				height: 660,
+			},
 			{
 				id: "right-half",
 				label: "Right half",
 				rowSpan: 2,
 				hint: "2 quarters",
+				width: 550,
+				height: 660,
 			},
 		],
 	},
 	{
 		id: "horizontal-halves",
 		slots: [
-			{ id: "top-half", label: "Top half", colSpan: 2, hint: "2 quarters" },
+			{
+				id: "top-half",
+				label: "Top half",
+				colSpan: 2,
+				hint: "2 quarters",
+				width: 800,
+				height: 240,
+			},
 			{
 				id: "bottom-half",
 				label: "Bottom half",
 				colSpan: 2,
 				hint: "2 quarters",
+				width: 800,
+				height: 240,
 			},
 		],
 	},
 ];
 
-const LayoutPreview = ({
-	layout,
-}: {
-	layout: LayoutOption;
-}) => {
+const LayoutPreview = ({ layout }: { layout: LayoutOption }) => {
 	return (
 		<div className="aspect-square w-full max-w-[48px] overflow-hidden rounded-xs border bg-muted/30 p-0.5 shadow-xs">
 			<div
@@ -229,7 +258,9 @@ export function MixupBuilder({ recipes }: { recipes: MixupRecipe[] }) {
 						>
 							{currentLayout.slots.map((slot, index) => {
 								const selectedSlug = assignments[slot.id];
-								const recipe = selectedSlug ? recipeMap[selectedSlug] : undefined;
+								const recipe = selectedSlug
+									? recipeMap[selectedSlug]
+									: undefined;
 								const gradient = SLOT_GRADIENTS[index % SLOT_GRADIENTS.length];
 
 								return (
@@ -248,13 +279,13 @@ export function MixupBuilder({ recipes }: { recipes: MixupRecipe[] }) {
 											{recipe ? (
 												<picture>
 													<source
-														srcSet={`/api/bitmap/${recipe.slug}.bmp`}
+														srcSet={`/api/bitmap/${recipe.slug}.bmp?width=${slot.width}&height=${slot.height}`}
 														type="image/bmp"
 													/>
 													<img
 														src={`/api/bitmap/${recipe.slug}.bmp`}
 														alt={`${recipe.title} preview`}
-														className="h-full w-full object-cover"
+														className="h-full w-full object-contain"
 														style={{ imageRendering: "pixelated" }}
 													/>
 												</picture>

@@ -176,6 +176,7 @@ export function Graph({
 
 	return (
 		<div
+			className="w-full h-full bg-red-500"
 			style={{
 				display: "flex",
 				flexDirection: "row",
