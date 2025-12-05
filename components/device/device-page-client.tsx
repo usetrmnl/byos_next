@@ -55,6 +55,7 @@ import {
 	isValidFriendlyId,
 	timezones,
 } from "@/utils/helpers";
+import { DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT } from "@/app/recipes/lib/constants";
 
 // Helper function to convert RSSI to signal quality description
 const getSignalQuality = (rssi: number): string => {
@@ -677,10 +678,10 @@ export default function DevicePageClient({
 
 								{(!editedDevice?.refresh_schedule?.time_ranges ||
 									editedDevice.refresh_schedule.time_ranges.length === 0) && (
-									<p className="text-sm text-muted-foreground">
-										No custom time ranges configured.
-									</p>
-								)}
+										<p className="text-sm text-muted-foreground">
+											No custom time ranges configured.
+										</p>
+									)}
 
 								<Button
 									type="button"
@@ -782,7 +783,7 @@ export default function DevicePageClient({
 										configuration
 									</p>
 								) : (
-									<AspectRatio ratio={5 / 3}>
+									<AspectRatio ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}>
 										<Image
 											src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp`}
 											alt="Device Screen"
@@ -979,7 +980,7 @@ export default function DevicePageClient({
 										</p>
 										<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 											{playlistScreens.map((screen) => (
-												<AspectRatio key={screen.screen} ratio={5 / 3}>
+												<AspectRatio key={screen.screen} ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}>
 													<Image
 														src={`/api/bitmap/${screen.screen || "simple-text"}.bmp`}
 														alt="Device Screen"
@@ -993,7 +994,7 @@ export default function DevicePageClient({
 										</div>
 									</>
 								) : (
-									<AspectRatio ratio={5 / 3}>
+									<AspectRatio ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}>
 										<Image
 											src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp`}
 											alt="Device Screen"
