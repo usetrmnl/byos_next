@@ -1,6 +1,6 @@
 import { PreSatori } from "@/utils/pre-satori";
 
-export default function BitmapPatterns() {
+export default function BitmapPatterns({ width = 800, height = 480 }: { width?: number, height?: number }) {
 	// Define an array of dither values and their corresponding percentages
 	const ditherValues = [
 		{ value: 0, percentage: "0%" },
@@ -27,10 +27,10 @@ export default function BitmapPatterns() {
 	];
 
 	// Calculate row height to evenly distribute across the container
-	const rowHeight = 480 / Math.ceil(ditherValues.length / 2);
+	const rowHeight = height / Math.ceil(ditherValues.length / 2);
 	return (
-		<PreSatori>
-			<div className="w-[800px] h-[480px] bg-white relative overflow-hidden">
+		<PreSatori width={width} height={height}>
+			<div className="w-full h-full bg-white relative">
 				<div
 					style={{
 						position: "absolute",
@@ -50,14 +50,14 @@ export default function BitmapPatterns() {
 
 						let size = { w: 0, h: 0 };
 						let location = { x: 0, y: 0 };
-						// use height 480px for the first 6
-						const deltaRadiusForFirst6 = 480 / 6;
+						// use height for the first 6
+						const deltaRadiusForFirst6 = height / 6;
 						size = {
 							w: deltaRadiusForFirst6 * realIndex,
 							h: deltaRadiusForFirst6 * realIndex,
 						};
 						location = {
-							x: -1 * Math.round(size.w / 2) + 800 / 2,
+							x: -1 * Math.round(size.w / 2) + width / 2,
 							y: (6 - realIndex) * deltaRadiusForFirst6,
 						};
 						return (
@@ -93,9 +93,9 @@ export default function BitmapPatterns() {
 						.map(({ value }) => (
 							<div
 								key={`text-${value}`}
+								className={`text-white sm:text-${value > 850 ? "white" : "black"}`}
 								style={{
 									height: `${rowHeight}px`,
-									color: value > 850 ? "white" : "black",
 								}}
 							>
 								<div
@@ -111,7 +111,7 @@ export default function BitmapPatterns() {
 							</div>
 						))}
 				</div>
-				<div className="absolute bottom-0 right-0 flex flex-col text-2xl p-2 items-end text-black">
+				<div className="absolute bottom-0 right-0 flex flex-col text-2xl p-2 items-end text-white sm:text-black">
 					<div>22 shades of gray</div>
 					<div>0: white, 1000: black</div>
 				</div>

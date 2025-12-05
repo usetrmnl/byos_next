@@ -14,8 +14,8 @@ import { getSatoriFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 // Image dimensions constants
-const DEFAULT_IMAGE_WIDTH = 480;
-const DEFAULT_IMAGE_HEIGHT = 800;
+const DEFAULT_IMAGE_WIDTH = 800;
+const DEFAULT_IMAGE_HEIGHT = 480;
 
 // Logging utility to control log output based on environment
 const logger = {

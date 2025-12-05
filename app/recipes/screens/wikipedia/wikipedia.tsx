@@ -9,7 +9,9 @@ export default async function Wikipedia({
 	description,
 	fullurl,
 	displaytitle,
-}: WikipediaData) {
+	width = 800,
+	height = 480,
+}: WikipediaData & { width?: number, height?: number }) {
 	"use cache";
 	// Sanitize the data to ensure we only work with valid inputs
 	const safeTitle =
@@ -26,11 +28,11 @@ export default async function Wikipedia({
 	// Enhanced thumbnail validation to catch more edge cases
 	const hasValidThumbnail = thumbnail?.source
 		? typeof thumbnail.source === "string" &&
-			thumbnail.source.startsWith("https://") &&
-			typeof thumbnail.width === "number" &&
-			thumbnail.width > 0 &&
-			typeof thumbnail.height === "number" &&
-			thumbnail.height > 0
+		thumbnail.source.startsWith("https://") &&
+		typeof thumbnail.width === "number" &&
+		thumbnail.width > 0 &&
+		typeof thumbnail.height === "number" &&
+		thumbnail.height > 0
 		: false;
 
 	// Calculate a more appropriate extract length based on content length
@@ -93,12 +95,12 @@ export default async function Wikipedia({
 	const imageDimensions = getImageDimensions();
 
 	return (
-		<PreSatori useDoubling={true}>
-			<div className="flex flex-col w-[800px] h-[480px]">
+		<PreSatori useDoubling={true} width={width} height={height}>
+			<div className="flex flex-col w-full h-full">
 				<div className="flex-none p-4 border-b border-black">
 					<h1 className="text-5xl">{safeTitle}</h1>
 				</div>
-				<div className="flex-1 p-4 flex flex-row">
+				<div className="flex-1 p-4 flex flex-col sm:flex-row">
 					<div
 						className="text-2xl flex-grow tracking-tight leading-none"
 						style={{ textOverflow: "ellipsis", maxHeight: "240px" }}
@@ -140,7 +142,7 @@ export default async function Wikipedia({
 					</div>
 
 					<div
-						className="text-2xl text-black flex justify-between w-full p-2 rounded-xl dither-100"
+						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
 						style={{ WebkitTextStroke: "4px white" }}
 					>
 						<span>Wikipedia • Random Article</span>

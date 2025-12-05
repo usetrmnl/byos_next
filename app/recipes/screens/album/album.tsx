@@ -1,10 +1,10 @@
 import { PreSatori } from "@/utils/pre-satori";
 
-export default async function Album() {
+export default async function Album({ width = 800, height = 480 }: { width?: number, height?: number }) {
 	"use cache";
 	return (
-		<PreSatori>
-			<div className="w-[800px] h-[480px] bg-white flex flex-col items-center justify-center relative">
+		<PreSatori width={width} height={height}>
+			<div className="w-full h-full bg-black flex flex-col items-center justify-center relative">
 				<picture className="w-full h-full absolute inset-0">
 					<source
 						srcSet={`https://byos-nextjs.vercel.app/album/london.png`}
@@ -13,8 +13,9 @@ export default async function Album() {
 					<img
 						src={`https://byos-nextjs.vercel.app/album/london.png`}
 						alt="Album 1"
-						width={800}
-						height={480}
+						width={width}
+						height={height}
+						className="w-full h-full object-cover"
 						style={{ imageRendering: "pixelated" }}
 					/>
 				</picture>

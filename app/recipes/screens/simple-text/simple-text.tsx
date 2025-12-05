@@ -2,10 +2,10 @@ import fontData from "@/components/bitmap-font/bitmap-font.json";
 import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 import { PreSatori } from "@/utils/pre-satori";
 
-export default function SimpleText() {
+export default function SimpleText({ width = 800, height = 480 }: { width?: number, height?: number }) {
 	return (
-		<PreSatori useDoubling={true}>
-			<div className="w-[800px] h-[480px] bg-white flex flex-col items-center justify-center">
+		<PreSatori useDoubling={true} width={width} height={height}>
+			<div className="w-full h-full p-4 bg-white flex flex-col items-center justify-center text-center">
 				<div className="text-4xl font-blockkie">
 					Hello World - blockkie font
 				</div>

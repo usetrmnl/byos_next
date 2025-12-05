@@ -206,6 +206,8 @@ interface WeatherProps {
 	sunrise?: string;
 	latitude?: number;
 	longitude?: number;
+	width?: number;
+	height?: number;
 }
 
 export default function Weather({
@@ -221,6 +223,8 @@ export default function Weather({
 	pressure = "Loading...",
 	sunset = "Loading...",
 	sunrise = "Loading...",
+	width = 800,
+	height = 480,
 }: WeatherProps) {
 	// Weather statistics
 	const weatherStats = [
@@ -246,21 +250,24 @@ export default function Weather({
 		return CloudIcon; // default
 	};
 
+	const format = height > width ? "vertical" : "horizontal";
+	const nbCols = format === "vertical" ? 2 : 3;
+	const nbRows = Math.ceil(weatherStats.length / nbCols);
+	console.log(nbRows, nbCols);
+
 	return (
-		<PreSatori>
-			<div className="flex flex-col w-[800px] h-[480px] bg-white">
-				<div className="flex-1 overflow-hidden p-4 flex flex-col">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-row items-baseline">
-							<h2 className="text-9xl font-inter">{temperature}°C</h2>
-						</div>
-						<div className="flex flex-col items-center justify-center">
-							{getWeatherIcon(description)}
-							<div className="text-4xl mt-4 font-blockkie">
-								<div className="flex flex-row items-center">
-									{tempUp} {highTemp}°C
-									{tempDown} {lowTemp}°C
-								</div>
+		<PreSatori width={width} height={height}>
+			<div className="flex flex-col w-full h-full bg-white">
+				<div className="flex flex-col flex-1 p-4 sm:flex-row items-center justify-center sm:justify-between">
+					<div className="flex flex-row items-baseline">
+						<h2 className="text-9xl font-inter">{temperature}°C</h2>
+					</div>
+					<div className="flex flex-col items-center justify-center">
+						{getWeatherIcon(description)}
+						<div className="text-4xl mt-4 font-blockkie">
+							<div className="flex flex-row items-center">
+								{tempUp} {highTemp}°C
+								{tempDown} {lowTemp}°C
 							</div>
 						</div>
 					</div>
@@ -270,52 +277,31 @@ export default function Weather({
 						className="w-full flex flex-col mb-4"
 						style={{ gap: "16px" }}
 					>
-						{/* First row - first 3 items */}
-						<div className="w-full flex flex-row" style={{ gap: "16px" }}>
-							{weatherStats.slice(0, 3).map((stat, index) => (
-								<div
-									key={index}
-									className="p-2 rounded-xl border border-black flex-1 flex flex-row items-center"
-								>
-									<div className="p-2">{stat.icon}</div>
-									<div className="flex flex-col">
-										<div className="text-[28px] leading-none m-0">
-											{stat.label}
+						<div className="w-full flex flex-col" style={{ gap: "16px" }}>
+							{Array.from({ length: nbRows }).map((_, rowIndex) => (
+								<div key={rowIndex} className="flex flex-row" style={{ gap: "16px" }}>
+									{weatherStats.slice(rowIndex * nbCols, (rowIndex + 1) * nbCols).map((stat, index) => (
+										<div
+											key={index}
+											className="p-2 w-1/3 rounded-xl border border-black flex-1 flex flex-row items-center"
+										>
+											<div className="p-2">{stat.icon}</div>
+											<div className="flex flex-col">
+												<div className="text-[28px] leading-none m-0">
+													{stat.label}
+												</div>
+												<div className="text-[28px] leading-none m-0 font-bold">
+													{stat.value}
+												</div>
+											</div>
 										</div>
-										<div className="text-[28px] leading-none m-0 font-bold">
-											{stat.value}
-										</div>
-									</div>
+									))}
 								</div>
 							))}
 						</div>
-						{/* Second row - remaining 3 items */}
-						{weatherStats.length > 3 && (
-							<div
-								className="w-full flex flex-row"
-								style={{ gap: "16px" }}
-							>
-								{weatherStats.slice(3).map((stat, index) => (
-									<div
-										key={index + 4}
-										className="p-2 rounded-xl border border-black flex-1 flex flex-row items-center"
-									>
-										<div className="p-2">{stat.icon}</div>
-										<div className="flex flex-col">
-											<div className="text-[28px] leading-none m-0">
-												{stat.label}
-											</div>
-											<div className="text-[28px] leading-none m-0 font-bold">
-												{stat.value}
-											</div>
-										</div>
-									</div>
-								))}
-							</div>
-						)}
 					</div>
 					<div
-						className="w-full flex justify-between text-2xl p-2 rounded-xl dither-100"
+						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
 						style={{ WebkitTextStroke: "4px white" }}
 					>
 						<div>{location}</div>
