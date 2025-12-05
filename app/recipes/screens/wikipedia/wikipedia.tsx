@@ -21,6 +21,8 @@ export default async function Wikipedia({
 	const safeExtract = extract || "Article content is unavailable.";
 	const safeDescription = typeof description === "string" ? description : "";
 
+	const isHalfScreen = width === 400 && height === 480;
+
 	// Use fullurl if available, otherwise fall back to content_urls
 	const safeContentUrl =
 		fullurl || content_urls?.desktop?.page || "https://en.wikipedia.org";
@@ -28,11 +30,11 @@ export default async function Wikipedia({
 	// Enhanced thumbnail validation to catch more edge cases
 	const hasValidThumbnail = thumbnail?.source
 		? typeof thumbnail.source === "string" &&
-			thumbnail.source.startsWith("https://") &&
-			typeof thumbnail.width === "number" &&
-			thumbnail.width > 0 &&
-			typeof thumbnail.height === "number" &&
-			thumbnail.height > 0
+		thumbnail.source.startsWith("https://") &&
+		typeof thumbnail.width === "number" &&
+		thumbnail.width > 0 &&
+		typeof thumbnail.height === "number" &&
+		thumbnail.height > 0
 		: false;
 
 	// Calculate a more appropriate extract length based on content length
@@ -41,7 +43,7 @@ export default async function Wikipedia({
 		if (!safeExtract) return "";
 
 		// Base length for truncation - adjusted based on thumbnail presence
-		const baseLength = hasValidThumbnail ? 650 : 800;
+		const baseLength = hasValidThumbnail ? (isHalfScreen ? 325 : 650) : (isHalfScreen ? 400 : 800);
 
 		if (safeExtract.length <= baseLength) return safeExtract;
 
@@ -94,20 +96,20 @@ export default async function Wikipedia({
 
 	const imageDimensions = getImageDimensions();
 
+
 	return (
 		<PreSatori useDoubling={true} width={width} height={height}>
 			<div className="flex flex-col w-full h-full">
 				<div className="flex-none p-4 border-b border-black">
-					<h1 className="text-5xl">{safeTitle}</h1>
+					<h1 className={` ${isHalfScreen ? "text-4xl" : "text-5xl"}`}>{safeTitle}</h1>
 				</div>
-				<div className="flex-1 p-4 flex flex-col sm:flex-row">
+				<div className="flex flex-col flex-1 p-4 sm:flex-row">
 					<div
-						className="text-2xl flex-grow tracking-tight leading-none"
-						style={{ textOverflow: "ellipsis", maxHeight: "240px" }}
+						className="text-2xl flex flex-grow tracking-tight leading-none"
 					>
 						{truncatedExtract}
 					</div>
-					{hasValidThumbnail && thumbnail?.source && (
+					{hasValidThumbnail && thumbnail?.source && !isHalfScreen && (
 						<div className="pt-8 sm:pt-0 sm:pr-4 w-full sm:w-[240px] items-center justify-center">
 							<picture>
 								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}

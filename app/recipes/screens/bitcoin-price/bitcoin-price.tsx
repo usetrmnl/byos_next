@@ -43,13 +43,15 @@ export default function BitcoinPrice({
 		y: d.price,
 	}));
 
+	const isHalfScreen = width === 400 && height === 480;
+
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="flex h-full w-full flex-col bg-white justify-between p-4">
 				<div className="flex flex-col">
 					<div className="flex flex-col">
 						<div className="flex items-center justify-between">
-							<h2 className="text-7xl sm:text-8xl font-inter">${price}</h2>
+							<h2 className="text-6xl sm:text-7xl font-inter">${price}</h2>
 							<picture className="w-[100px] h-[100px]">
 								<source
 									srcSet="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
@@ -75,20 +77,23 @@ export default function BitcoinPrice({
 					</div>
 				</div>
 				<div className="w-full flex flex-col sm:flex-row  sm:items-center sm:justify-between px-4">
-					<div className="hidden sm:flex">
-						<Graph data={graphData} isTimeData={true} />
-					</div>
-					<div className="flex sm:hidden pb-4">
-						<Graph
-							data={graphData}
-							isTimeData={true}
-							width={width - 60}
-							height={height - 500}
-						/>
-					</div>
+					{!isHalfScreen && (
+						<>
+							<div className="hidden sm:flex">
+								<Graph data={graphData} isTimeData={true} />
+							</div>
+							<div className="flex sm:hidden pb-4">
+								<Graph
+									data={graphData}
+									isTimeData={true}
+									width={width - 60}
+									height={height - 500}
+								/>
+							</div>
+						</>
+					)}
 					<div
-						className="flex flex-col w-full sm:w-1/3"
-						style={{ gap: "16px" }}
+						className="flex flex-col w-full sm:w-1/3 gap-4"
 					>
 						{priceStats.map((stat, index) => (
 							<div
