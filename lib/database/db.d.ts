@@ -5,94 +5,114 @@
 
 import type { ColumnType } from "kysely";
 
-export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
-	? ColumnType<S, I | undefined, U>
-	: ColumnType<T, T | undefined, T>;
+export type DeviceDisplayMode = "mixup" | "playlist" | "screen";
 
-export type Int8 = ColumnType<
-	string,
-	bigint | number | string,
-	bigint | number | string
->;
+export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
+  ? ColumnType<S, I | undefined, U>
+  : ColumnType<T, T | undefined, T>;
+
+export type Int8 = ColumnType<string, bigint | number | string, bigint | number | string>;
 
 export type Json = JsonValue;
 
 export type JsonArray = JsonValue[];
 
 export type JsonObject = {
-	[x: string]: JsonValue | undefined;
+  [x: string]: JsonValue | undefined;
 };
 
 export type JsonPrimitive = boolean | number | string | null;
 
 export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 
+export type MixupLayoutId = "horizontal-halves" | "left-rail" | "quarters" | "top-banner" | "vertical-halves";
+
 export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Devices {
-	api_key: string;
-	battery_voltage: Numeric | null;
-	created_at: Generated<Timestamp | null>;
-	current_playlist_index: Generated<number | null>;
-	firmware_version: string | null;
-	friendly_id: string;
-	id: Generated<Int8>;
-	last_refresh_duration: number | null;
-	last_update_time: Timestamp | null;
-	mac_address: string;
-	name: string;
-	next_expected_update: Timestamp | null;
-	playlist_id: string | null;
-	refresh_schedule: Json | null;
-	rssi: number | null;
-	screen: string | null;
-	timezone: Generated<string>;
-	updated_at: Generated<Timestamp | null>;
-	use_playlist: Generated<boolean | null>;
+  api_key: string;
+  battery_voltage: Numeric | null;
+  created_at: Generated<Timestamp | null>;
+  current_playlist_index: Generated<number | null>;
+  display_mode: Generated<DeviceDisplayMode | null>;
+  firmware_version: string | null;
+  friendly_id: string;
+  id: Generated<Int8>;
+  last_refresh_duration: number | null;
+  last_update_time: Timestamp | null;
+  mac_address: string;
+  mixup_id: string | null;
+  name: string;
+  next_expected_update: Timestamp | null;
+  playlist_id: string | null;
+  refresh_schedule: Json | null;
+  rssi: number | null;
+  screen: string | null;
+  timezone: Generated<string>;
+  updated_at: Generated<Timestamp | null>;
 }
 
 export interface Logs {
-	created_at: Generated<Timestamp | null>;
-	friendly_id: string | null;
-	id: Generated<Int8>;
-	log_data: string;
+  created_at: Generated<Timestamp | null>;
+  friendly_id: string | null;
+  id: Generated<Int8>;
+  log_data: string;
+}
+
+export interface Mixups {
+  created_at: Generated<Timestamp | null>;
+  id: Generated<string>;
+  layout_id: MixupLayoutId;
+  name: string;
+  updated_at: Generated<Timestamp | null>;
+}
+
+export interface MixupSlots {
+  created_at: Generated<Timestamp | null>;
+  id: Generated<string>;
+  mixup_id: string | null;
+  order_index: number;
+  recipe_slug: string | null;
+  slot_id: string;
 }
 
 export interface PlaylistItems {
-	created_at: Generated<Timestamp | null>;
-	days_of_week: Json | null;
-	duration: Generated<number>;
-	end_time: string | null;
-	id: Generated<string>;
-	order_index: number;
-	playlist_id: string | null;
-	screen_id: string;
-	start_time: string | null;
+  created_at: Generated<Timestamp | null>;
+  days_of_week: Json | null;
+  duration: Generated<number>;
+  end_time: string | null;
+  id: Generated<string>;
+  order_index: number;
+  playlist_id: string | null;
+  screen_id: string;
+  start_time: string | null;
 }
 
 export interface Playlists {
-	created_at: Generated<Timestamp | null>;
-	id: Generated<string>;
-	name: string;
-	updated_at: Generated<Timestamp | null>;
+  created_at: Generated<Timestamp | null>;
+  id: Generated<string>;
+  name: string;
+  updated_at: Generated<Timestamp | null>;
 }
 
 export interface SystemLogs {
-	created_at: Generated<Timestamp | null>;
-	id: Generated<string>;
-	level: string;
-	message: string;
-	metadata: string | null;
-	source: string | null;
-	trace: string | null;
+  created_at: Generated<Timestamp | null>;
+  id: Generated<string>;
+  level: string;
+  message: string;
+  metadata: string | null;
+  source: string | null;
+  trace: string | null;
 }
 
 export interface DB {
-	devices: Devices;
-	logs: Logs;
-	playlist_items: PlaylistItems;
-	playlists: Playlists;
-	system_logs: SystemLogs;
+  devices: Devices;
+  logs: Logs;
+  mixup_slots: MixupSlots;
+  mixups: Mixups;
+  playlist_items: PlaylistItems;
+  playlists: Playlists;
+  system_logs: SystemLogs;
 }
