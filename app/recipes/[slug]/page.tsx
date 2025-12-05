@@ -3,49 +3,24 @@ import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ImageResponse } from "next/og";
-import { cache, createElement, Suspense, use } from "react";
-import satori from "satori";
+import { cache, Suspense, use } from "react";
 import screens from "@/app/recipes/screens.json";
+import {
+	fetchRecipeComponent,
+	fetchRecipeConfig,
+	fetchRecipeProps,
+	logger,
+	RecipeConfig,
+	ComponentProps,
+	renderRecipeOutputs,
+	DEFAULT_IMAGE_WIDTH,
+	DEFAULT_IMAGE_HEIGHT,
+	isBuildPhase,
+	addDimensionsToProps,
+} from "@/app/recipes/lib/recipe-renderer";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { getSatoriFonts } from "@/lib/fonts";
-import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
-
-// Image dimensions constants
-const DEFAULT_IMAGE_WIDTH = 800;
-const DEFAULT_IMAGE_HEIGHT = 480;
-
-// Logging utility to control log output based on environment
-const logger = {
-	info: (message: string) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			console.log(message);
-		}
-	},
-	error: (message: string, error?: unknown) => {
-		if (error) {
-			console.error(message, error);
-		} else {
-			console.error(message);
-		}
-	},
-	success: (message: string) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			console.log(`✅ ${message}`);
-		}
-	},
-	warn: (message: string, error?: unknown) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			if (error) {
-				console.warn(message, error);
-			} else {
-				console.warn(message);
-			}
-		}
-	},
-};
 
 export async function generateMetadata() {
 	// This empty function enables streaming for this route
@@ -59,155 +34,12 @@ async function refreshData(slug: string) {
 	revalidateTag(slug, "max");
 }
 
-// Cache the fonts at module initialization
-const fonts = getSatoriFonts();
-
-// Define a type for the recipe configuration
-type RecipeConfig = (typeof screens)[keyof typeof screens] & {
-	renderSettings?: {
-		// Consolidate into a single property for double sizing
-		doubleSizeForSharperText?: boolean;
-		[key: string]: boolean | string | number | undefined;
-	};
-};
-
-// Fetch recipe configuration
-const fetchConfig = cache((slug: string): RecipeConfig | null => {
-	const config = screens[slug as keyof typeof screens];
-	if (!config || (!config.published && process.env.NODE_ENV === "production")) {
-		return null;
-	}
-	return config as RecipeConfig;
-});
-
-// Fetch component for a recipe
-const fetchComponent = cache(async (slug: string) => {
-	try {
-		const { default: Component } = await import(
-			`@/app/recipes/screens/${slug}/${slug}.tsx`
-		);
-		return Component;
-	} catch (error) {
-		logger.error(`Error loading component for ${slug}:`, error);
-		return null;
-	}
-});
-
-// Fetch props for a recipe
-const fetchProps = cache(async (slug: string, config: RecipeConfig): Promise<ComponentProps> => {
-	let props: ComponentProps = config.props || {};
-
-	const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
-	if (isBuildPhase) {
-		return props;
-	}
-
-	if (!config.hasDataFetch) {
-		return props;
-	}
-
-	try {
-		const { default: fetchDataFunction } = await import(
-			`@/app/recipes/screens/${slug}/getData.ts`
-		);
-
-		// Set a timeout for data fetching to prevent hanging
-		const fetchPromise = fetchDataFunction();
-		const timeoutPromise = new Promise((_, reject) => {
-			setTimeout(() => reject(new Error("Data fetch timeout")), 10000);
-		});
-
-		// Race between the fetch and the timeout
-		const fetchedData = await Promise.race([
-			fetchPromise,
-			timeoutPromise,
-		]).catch((error) => {
-			logger.error(`Data fetch error for ${slug}:`, error);
-			return null;
-		});
-
-		// Check if the fetched data is valid
-		if (fetchedData && typeof fetchedData === "object") {
-			props = fetchedData;
-		} else {
-			logger.error(`Invalid or missing data for ${slug}`);
-		}
-	} catch (error) {
-		logger.error(`Error fetching data for ${slug}:`, error);
-	}
-
-	return props;
-});
-
-// Get image options for rendering
-const getImageOptions = (
-	config: RecipeConfig,
-	width: number,
-	height: number,
-) => {
-	// Use doubleSizeForSharperText as the single source of truth for doubling
-	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
-	const scaleFactor = useDoubling ? 2 : 1;
-
-	return {
-		width: width * scaleFactor,
-		height: height * scaleFactor,
-		fonts: fonts,
-		shapeRendering: 1,
-		textRendering: 0,
-		imageRendering: 1,
-		debug: false,
-	};
-};
-
 // Generate static params for all recipes
 export async function generateStaticParams() {
 	return Object.keys(screens).map((slug) => ({ slug }));
 }
 
-// Type for component props
-type ComponentProps = Record<string, unknown> & {
-	width?: number;
-	height?: number;
-};
-
-// Define types for our cache
-interface CacheItem {
-	bitmap: Buffer | null;
-	png: Buffer | null;
-	svg: string | null;
-	expiresAt: number;
-}
-
-// Extend NodeJS namespace for global variables
-declare global {
-	var renderCache: Map<string, CacheItem> | undefined;
-}
-
-// Cache management function
-const getRenderCache = (): Map<string, CacheItem> | null => {
-	// Check for forced cache usage via environment variable
-	const forceBitmapCache = process.env.FORCE_BITMAP_CACHE === "true";
-
-	// In production, return null unless forced
-	if (process.env.NODE_ENV === "production" && !forceBitmapCache) {
-		return null;
-	}
-
-	// Use global cache in development or when forced in production
-	if (!global.renderCache) {
-		global.renderCache = new Map<string, CacheItem>();
-		logger.info(
-			`Initializing render cache (${process.env.NODE_ENV} mode${forceBitmapCache ? ", forced" : ""})`,
-		);
-	}
-	return global.renderCache;
-};
-
-// Cache duration in seconds
-const CACHE_DURATION = 60;
-
-// Combined render function for all formats
+// Combined render function for all formats (relies on Next.js cache)
 const renderAllFormats = cache(
 	async (
 		slug: string,
@@ -216,110 +48,36 @@ const renderAllFormats = cache(
 		config: RecipeConfig,
 		imageWidth: number,
 		imageHeight: number,
-	): Promise<CacheItem> => {
-		const renderCache = getRenderCache();
-		const propsWithDimensions: ComponentProps = {
-			...props,
-			width: imageWidth,
-			height: imageHeight,
-		};
-		const cacheKey = `${slug}-${imageWidth}x${imageHeight}-${JSON.stringify(propsWithDimensions)}`;
-		const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+	) => {
+		const propsWithDimensions = addDimensionsToProps(props, imageWidth, imageHeight);
 
 		// During production build prerendering, avoid rendering outputs so we don't
 		// trigger remote asset fetches or use Date.now() in a request-less context.
-		if (isBuildPhase) {
+		if (isBuildPhase()) {
 			logger.info(`Skipping render for ${slug} during build prerender`);
 			return {
-				bitmap: null,
-				png: null,
-				svg: null,
-				expiresAt: 0,
+				bitmap: null as Buffer | null,
+				png: null as Buffer | null,
+				svg: null as string | null,
 			};
 		}
 
-		// Check cache first
-		// if (renderCache?.has(cacheKey)) {
-		// 	const cached = renderCache.get(cacheKey);
-		// 	if (cached && cached.expiresAt > Date.now()) {
-		// 		logger.info(`Cache hit for ${slug} renders`);
-		// 		return cached;
-		// 	}
-		// 	logger.info(`Cache expired for ${slug} renders`);
-		// }
-
 		try {
 			logger.info(`🔄 Generating all formats for: ${slug}`);
-			const imageOptions = getImageOptions(config, imageWidth, imageHeight);
-
-			// Generate all formats in parallel
-			const [bitmapResult, pngResult, svgResult] = await Promise.all([
-				(async () => {
-					try {
-						const pngResponse = await new ImageResponse(
-							createElement(Component, propsWithDimensions),
-							imageOptions,
-						);
-						return await renderBmp(pngResponse, {
-							ditheringMethod: DitheringMethod.ATKINSON,
-							width: imageWidth,
-							height: imageHeight,
-						});
-					} catch (error) {
-						logger.error(`Error generating bitmap for ${slug}:`, error);
-						return null;
-					}
-				})(),
-				(async () => {
-					try {
-						const pngResponse = await new ImageResponse(
-							createElement(Component, propsWithDimensions),
-							imageOptions,
-						);
-						const pngBuffer = await pngResponse.arrayBuffer();
-						return Buffer.from(pngBuffer);
-					} catch (error) {
-						logger.error(`Error generating PNG for ${slug}:`, error);
-						return null;
-					}
-				})(),
-				(async () => {
-					try {
-						const element = createElement(Component, propsWithDimensions);
-						return await satori(element, imageOptions);
-					} catch (error) {
-						logger.error(`Error generating SVG for ${slug}:`, error);
-						return `<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}" viewBox="0 0 ${imageWidth} ${imageHeight}">
-						<rect width="${imageWidth}" height="${imageHeight}" fill="#f0f0f0" />
-						<text x="${imageWidth / 2}" y="${imageHeight / 2}" font-family="Arial" font-size="24" text-anchor="middle">
-							Unable to generate SVG content
-						</text>
-					</svg>`;
-					}
-				})(),
-			]);
-
-			const result = {
-				bitmap: bitmapResult,
-				png: pngResult,
-				svg: svgResult,
-				expiresAt: Date.now() + CACHE_DURATION * 1000,
-			};
-
-			// Store in cache if enabled
-			if (renderCache) {
-				renderCache.set(cacheKey, result);
-				logger.success(`Cached all renders for: ${slug}`);
-			}
-
-			return result;
+			return await renderRecipeOutputs({
+				slug,
+				Component,
+				props: propsWithDimensions,
+				config,
+				imageWidth,
+				imageHeight,
+			});
 		} catch (error) {
 			logger.error(`Error generating formats for ${slug}:`, error);
 			return {
-				bitmap: null,
-				png: null,
-				svg: null,
-				expiresAt: Date.now(),
+				bitmap: null as Buffer | null,
+				png: null as Buffer | null,
+				svg: null as string | null,
 			};
 		}
 	},
@@ -340,7 +98,7 @@ const RenderComponent = ({
 	imageHeight: number;
 }) => {
 	// Fetch config and handle null case
-	const configResult = use(Promise.resolve(fetchConfig(slug)));
+	const configResult = use(Promise.resolve(fetchRecipeConfig(slug)));
 	if (!configResult) {
 		return (
 			<div className="w-full h-full flex items-center justify-center">
@@ -350,7 +108,7 @@ const RenderComponent = ({
 	}
 
 	// Fetch component and handle null case
-	const componentResult = use(Promise.resolve(fetchComponent(slug)));
+	const componentResult = use(Promise.resolve(fetchRecipeComponent(slug)));
 	if (!componentResult) {
 		return (
 			<div className="w-full h-full flex items-center justify-center">
@@ -362,12 +120,8 @@ const RenderComponent = ({
 	// Now we have valid config and component
 	const config = configResult;
 	const Component = componentResult;
-	const props = use(Promise.resolve(fetchProps(slug, config)));
-	const propsWithDimensions: ComponentProps = {
-		...props,
-		width: imageWidth,
-		height: imageHeight,
-	};
+	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
+	const propsWithDimensions = addDimensionsToProps(propsResult, imageWidth, imageHeight);
 
 	// Use doubleSizeForSharperText as the single source of truth for doubling
 	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
@@ -391,7 +145,14 @@ const RenderComponent = ({
 	// Get all rendered formats
 	const renders = use(
 		Promise.resolve(
-			renderAllFormats(slug, Component, props, config, imageWidth, imageHeight),
+			renderAllFormats(
+				slug,
+				Component,
+				propsResult,
+				config,
+				imageWidth,
+				imageHeight,
+			),
 		),
 	);
 
@@ -480,7 +241,7 @@ export default async function RecipePage({
 	headers();
 	const { slug } = await params;
 	const { format } = await searchParams;
-	const config = await fetchConfig(slug);
+	const config = await fetchRecipeConfig(slug);
 	const isPortrait = format === "portrait";
 	const imageWidth = isPortrait ? DEFAULT_IMAGE_HEIGHT : DEFAULT_IMAGE_WIDTH;
 	const imageHeight = isPortrait ? DEFAULT_IMAGE_WIDTH : DEFAULT_IMAGE_HEIGHT;
@@ -680,6 +441,12 @@ const PropsDisplay = ({
 	slug: string;
 	config: RecipeConfig;
 }) => {
-	const props = use(Promise.resolve(fetchProps(slug, config)));
-	return <RecipeProps props={props} slug={slug} refreshAction={refreshData} />;
+	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
+	return (
+		<RecipeProps
+			props={propsResult}
+			slug={slug}
+			refreshAction={refreshData}
+		/>
+	);
 };
