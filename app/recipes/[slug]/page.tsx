@@ -471,15 +471,19 @@ const RenderComponent = ({
 // Main recipe page component
 export default async function RecipePage({
 	params,
+	searchParams,
 }: {
 	params: Promise<{ slug: string }>;
+	searchParams: Promise<{ format?: string }>;
 }) {
-	const imageWidth = DEFAULT_IMAGE_WIDTH;
-	const imageHeight = DEFAULT_IMAGE_HEIGHT;
 	// Access headers to mark route as dynamic and allow time-based operations
 	headers();
 	const { slug } = await params;
+	const { format } = await searchParams;
 	const config = await fetchConfig(slug);
+	const isPortrait = format === "portrait";
+	const imageWidth = isPortrait ? DEFAULT_IMAGE_HEIGHT : DEFAULT_IMAGE_WIDTH;
+	const imageHeight = isPortrait ? DEFAULT_IMAGE_WIDTH : DEFAULT_IMAGE_HEIGHT;
 
 	if (!config) {
 		notFound();
@@ -500,6 +504,20 @@ export default async function RecipePage({
 								screens.json.
 							</p>
 						)}
+						<div className="mt-4 inline-flex rounded-md border p-1 gap-1">
+							<Link
+								href={`/recipes/${slug}`}
+								className={`px-3 py-1 text-sm rounded ${isPortrait ? "text-muted-foreground" : "bg-primary text-primary-foreground"}`}
+							>
+								Landscape
+							</Link>
+							<Link
+								href={`/recipes/${slug}?format=portrait`}
+								className={`px-3 py-1 text-sm rounded ${isPortrait ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+							>
+								Portrait
+							</Link>
+						</div>
 					</Suspense>
 				</div>
 
