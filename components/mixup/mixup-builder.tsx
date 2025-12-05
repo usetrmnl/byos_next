@@ -285,7 +285,7 @@ export function MixupBuilder({ recipes }: { recipes: MixupRecipe[] }) {
 													<img
 														src={`/api/bitmap/${recipe.slug}.bmp`}
 														alt={`${recipe.title} preview`}
-														className="h-full w-full object-contain"
+														className="h-full w-full object-cover"
 														style={{ imageRendering: "pixelated" }}
 													/>
 												</picture>
@@ -341,7 +341,7 @@ export function MixupBuilder({ recipes }: { recipes: MixupRecipe[] }) {
 												<p className="text-xs text-white/85">
 													{recipe
 														? (recipe.tags || []).slice(0, 3).join(" / ") ||
-															recipe.slug
+														recipe.slug
 														: "Unassigned slot"}
 												</p>
 											</div>
