@@ -88,6 +88,64 @@ The playground uses the `renderBmp` utility to convert components to bitmap imag
 
 This allows you to see exactly how your component will look on an e-ink display.
 
+## Responsive Design and Tailwind Markers
+
+Recipe components support responsive Tailwind classes and special markers that are processed during rendering. This allows you to create layouts that adapt to different screen sizes and orientations.
+
+### Responsive Breakpoints
+
+The rendering system supports standard Tailwind responsive breakpoints:
+
+- `sm:` - 640px and above
+- `md:` - 768px and above
+- `lg:` - 1024px and above
+- `xl:` - 1280px and above
+- `2xl:` - 1536px and above
+
+You can also use `max-` prefix for maximum width queries:
+- `max-sm:` - below 640px
+- `max-md:` - below 768px
+- `max-lg:` - below 1024px
+- `max-xl:` - below 1280px
+- `max-2xl:` - below 1536px
+
+**Example:**
+```tsx
+<div className="flex flex-col md:flex-row gap-2 sm:gap-4">
+  <div className="text-xl sm:text-2xl lg:text-3xl">Responsive Text</div>
+  <div className="hidden md:block">Visible on medium screens and up</div>
+</div>
+```
+
+### Gap Utilities
+
+Gap utilities (`gap`, `gap-x`, `gap-y`) are automatically converted to CSS styles for better compatibility with Satori rendering:
+
+```tsx
+<div className="flex flex-row gap-4 gap-y-2">
+  {/* gap-4 sets both row and column gap */}
+  {/* gap-y-2 sets only row gap */}
+</div>
+```
+
+### Dither Patterns
+
+Special dither pattern classes are available for creating visual effects on e-ink displays:
+
+```tsx
+<div className="dither-100">
+  {/* Applies dither pattern for visual effect */}
+</div>
+```
+
+These patterns help create gradients and visual depth on 1-bit displays.
+
+### Best Practices
+
+- Use responsive classes to adapt layouts for portrait vs landscape orientations
+- Test your components at different viewport sizes using the recipe preview
+- Combine responsive classes with conditional rendering for maximum flexibility
+
 ## Routing
 
 The playground uses Next.js's dynamic routing to provide two main views:

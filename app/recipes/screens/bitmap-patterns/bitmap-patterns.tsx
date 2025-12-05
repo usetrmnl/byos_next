@@ -1,6 +1,12 @@
 import { PreSatori } from "@/utils/pre-satori";
 
-export default function BitmapPatterns({ width = 800, height = 480 }: { width?: number, height?: number }) {
+export default function BitmapPatterns({
+	width = 800,
+	height = 480,
+}: {
+	width?: number;
+	height?: number;
+}) {
 	// Define an array of dither values and their corresponding percentages
 	const ditherValues = [
 		{ value: 0, percentage: "0%" },

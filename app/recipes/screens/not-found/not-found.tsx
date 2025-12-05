@@ -1,6 +1,14 @@
 import { PreSatori } from "@/utils/pre-satori";
 
-export default function NotFoundScreen({ slug, width = 800, height = 480 }: { slug?: string, width?: number, height?: number }) {
+export default function NotFoundScreen({
+	slug,
+	width = 800,
+	height = 480,
+}: {
+	slug?: string;
+	width?: number;
+	height?: number;
+}) {
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="w-full h-full p-4 bg-white flex flex-col items-center justify-center">

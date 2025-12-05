@@ -1,11 +1,11 @@
 import React from "react";
-import { cn } from "@/lib/utils";
 import { extractFontFamily } from "@/lib/fonts";
+import { cn } from "@/lib/utils";
 import {
-	processResponsive,
-	processGap,
-	processDither,
 	getResetStyles,
+	processDither,
+	processGap,
+	processResponsive,
 } from "./pre-satori-tailwind";
 
 interface PreSatoriProps {
@@ -24,11 +24,16 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 	// Define a helper to recursively transform children.
 	const transform = (child: React.ReactNode): React.ReactNode => {
 		if (React.isValidElement(child)) {
-			const { className, style, children: childChildren, ...restProps } = child.props as {
+			const {
+				className,
+				style,
+				children: childChildren,
+				...restProps
+			} = child.props as {
 				className?: string;
 				style?: React.CSSProperties;
 				children?: React.ReactNode;
-				[key: string]: any;
+				[key: string]: unknown;
 			};
 			const fontFamily = extractFontFamily(className);
 			const newStyle: React.CSSProperties = {
@@ -54,12 +59,10 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			if (responsiveClass.includes("hidden")) {
 				return null;
 			}
-			const { style: gapStyle, className: afterGapClass } = processGap(
-				responsiveClass,
-			);
-			const { style: ditherStyle, className: finalClass } = processDither(
-				afterGapClass,
-			);
+			const { style: gapStyle, className: afterGapClass } =
+				processGap(responsiveClass);
+			const { style: ditherStyle, className: finalClass } =
+				processDither(afterGapClass);
 
 			Object.assign(newStyle, gapStyle, ditherStyle);
 
@@ -67,7 +70,7 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			const resetStyles = getResetStyles(child);
 
 			// Construct new props
-			const newProps: any = {
+			const newProps: Record<string, unknown> = {
 				...restProps,
 				style: newStyle,
 				className: finalClass, // Keep for browser/React

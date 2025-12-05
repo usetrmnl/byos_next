@@ -11,7 +11,7 @@ export default async function Wikipedia({
 	displaytitle,
 	width = 800,
 	height = 480,
-}: WikipediaData & { width?: number, height?: number }) {
+}: WikipediaData & { width?: number; height?: number }) {
 	"use cache";
 	// Sanitize the data to ensure we only work with valid inputs
 	const safeTitle =
@@ -28,11 +28,11 @@ export default async function Wikipedia({
 	// Enhanced thumbnail validation to catch more edge cases
 	const hasValidThumbnail = thumbnail?.source
 		? typeof thumbnail.source === "string" &&
-		thumbnail.source.startsWith("https://") &&
-		typeof thumbnail.width === "number" &&
-		thumbnail.width > 0 &&
-		typeof thumbnail.height === "number" &&
-		thumbnail.height > 0
+			thumbnail.source.startsWith("https://") &&
+			typeof thumbnail.width === "number" &&
+			thumbnail.width > 0 &&
+			typeof thumbnail.height === "number" &&
+			thumbnail.height > 0
 		: false;
 
 	// Calculate a more appropriate extract length based on content length
@@ -123,8 +123,7 @@ export default async function Wikipedia({
 										maxWidth: "240px",
 										maxHeight: "320px",
 										objectFit: "contain",
-										filter:
-											"grayscale(100%) contrast(0.9) brightness(1.05)",
+										filter: "grayscale(100%) contrast(0.9) brightness(1.05)",
 									}}
 								/>
 							</picture>

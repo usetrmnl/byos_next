@@ -2,7 +2,13 @@ import fontData from "@/components/bitmap-font/bitmap-font.json";
 import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 import { PreSatori } from "@/utils/pre-satori";
 
-export default function SimpleText({ width = 800, height = 480 }: { width?: number, height?: number }) {
+export default function SimpleText({
+	width = 800,
+	height = 480,
+}: {
+	width?: number;
+	height?: number;
+}) {
 	return (
 		<PreSatori useDoubling={true} width={width} height={height}>
 			<div className="w-full h-full p-4 bg-white flex flex-col items-center justify-center text-center">

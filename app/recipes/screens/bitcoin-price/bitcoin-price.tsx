@@ -64,8 +64,7 @@ export default function BitcoinPrice({
 										objectFit: "contain",
 										width: "100px",
 										height: "100px",
-										filter:
-											"grayscale(100%) brightness(100%) contrast(200%)",
+										filter: "grayscale(100%) brightness(100%) contrast(200%)",
 									}}
 								/>
 							</picture>
@@ -80,9 +79,17 @@ export default function BitcoinPrice({
 						<Graph data={graphData} isTimeData={true} />
 					</div>
 					<div className="block sm:hidden pb-4">
-						<Graph data={graphData} isTimeData={true} width={width - 50} height={300} />
+						<Graph
+							data={graphData}
+							isTimeData={true}
+							width={width - 50}
+							height={300}
+						/>
 					</div>
-					<div className="flex flex-col w-full sm:w-1/3" style={{ gap: "16px" }}>
+					<div
+						className="flex flex-col w-full sm:w-1/3"
+						style={{ gap: "16px" }}
+					>
 						{priceStats.map((stat, index) => (
 							<div
 								key={index}
@@ -103,9 +110,7 @@ export default function BitcoinPrice({
 					style={{ WebkitTextStroke: "4px white" }}
 				>
 					<div>Bitcoin Price Tracker</div>
-					<div>
-						{lastUpdated && <span>Last updated: {lastUpdated}</span>}
-					</div>
+					<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
 				</div>
 			</div>
 		</PreSatori>

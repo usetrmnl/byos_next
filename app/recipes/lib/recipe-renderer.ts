@@ -49,7 +49,7 @@ export type RecipeConfig = (typeof screens)[keyof typeof screens] & {
 };
 
 // Re-export constants from shared file
-export { DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT } from "./constants";
+export { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from "./constants";
 
 // Utility to check if we're in build phase
 export const isBuildPhase = (): boolean =>
@@ -205,8 +205,9 @@ export const renderRecipeOutputs = cache(
 		const results = getDefaultRenderResults();
 		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
 
-		const tasks: Array<Promise<{ key: keyof RenderResults; value: Buffer | string | null }>> =
-			[];
+		const tasks: Array<
+			Promise<{ key: keyof RenderResults; value: Buffer | string | null }>
+		> = [];
 
 		if (formats.includes("bitmap")) {
 			tasks.push(
@@ -302,12 +303,12 @@ export const buildRecipeElement = async ({
 	const props = await fetchRecipeProps(slug, config, {
 		validateFetchedData: validateProps
 			? (slug: string, data: unknown) => {
-				return (
-					typeof data === "object" &&
-					data !== null &&
-					validateProps(slug, data as ComponentProps)
-				);
-			}
+					return (
+						typeof data === "object" &&
+						data !== null &&
+						validateProps(slug, data as ComponentProps)
+					);
+				}
 			: undefined,
 	});
 

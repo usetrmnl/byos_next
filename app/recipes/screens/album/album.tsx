@@ -1,6 +1,12 @@
 import { PreSatori } from "@/utils/pre-satori";
 
-export default async function Album({ width = 800, height = 480 }: { width?: number, height?: number }) {
+export default async function Album({
+	width = 800,
+	height = 480,
+}: {
+	width?: number;
+	height?: number;
+}) {
 	"use cache";
 	return (
 		<PreSatori width={width} height={height}>

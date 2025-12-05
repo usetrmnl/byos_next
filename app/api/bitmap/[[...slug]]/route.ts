@@ -1,15 +1,15 @@
 import type { NextRequest } from "next/server";
 import { cache } from "react";
-import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
-import screens from "@/app/recipes/screens.json";
 import {
+	addDimensionsToProps,
 	buildRecipeElement,
-	logger,
-	renderRecipeOutputs,
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
-	addDimensionsToProps,
+	logger,
+	renderRecipeOutputs,
 } from "@/app/recipes/lib/recipe-renderer";
+import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
+import screens from "@/app/recipes/screens.json";
 
 export async function GET(
 	_req: NextRequest,
@@ -21,7 +21,9 @@ export async function GET(
 		const bitmapPath = Array.isArray(slug) ? slug.join("/") : slug;
 		const recipeSlug = bitmapPath.replace(".bmp", "");
 
-		logger.info(`Bitmap request for: ${bitmapPath} in ${DEFAULT_IMAGE_WIDTH}x${DEFAULT_IMAGE_HEIGHT}`);
+		logger.info(
+			`Bitmap request for: ${bitmapPath} in ${DEFAULT_IMAGE_WIDTH}x${DEFAULT_IMAGE_HEIGHT}`,
+		);
 
 		const recipeId = screens[recipeSlug as keyof typeof screens]
 			? recipeSlug
@@ -33,8 +35,14 @@ export async function GET(
 			DEFAULT_IMAGE_HEIGHT,
 		);
 
-		if (!recipeBuffer || !(recipeBuffer instanceof Buffer) || recipeBuffer.length === 0) {
-			logger.warn(`Failed to generate bitmap for ${recipeId}, returning fallback`);
+		if (
+			!recipeBuffer ||
+			!(recipeBuffer instanceof Buffer) ||
+			recipeBuffer.length === 0
+		) {
+			logger.warn(
+				`Failed to generate bitmap for ${recipeId}, returning fallback`,
+			);
 			const fallback = await renderFallbackBitmap();
 			return fallback;
 		}

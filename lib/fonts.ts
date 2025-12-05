@@ -108,7 +108,7 @@ export const getSatoriFonts = () => {
 };
 
 export const extractFontFamily = (className?: string): string | undefined => {
-	const defaultFont = 'blockkie';
+	const defaultFont = "blockkie";
 	if (!className) return defaultFont;
 
 	const fontClass = className.split(" ").find((cls) => cls.startsWith("font-"));

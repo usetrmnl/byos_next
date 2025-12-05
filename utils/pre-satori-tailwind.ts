@@ -1,6 +1,6 @@
 import React, { type CSSProperties } from "react";
-import { ditherPatterns } from "./dither-patterns";
 import { twMerge } from "tailwind-merge";
+import { ditherPatterns } from "./dither-patterns";
 
 const BREAKPOINTS = {
 	sm: 640,
@@ -38,10 +38,16 @@ function normalizeGapValue(value: string): string | undefined {
 	if (value === "0") return "0px";
 	if (value === "px") return "1px";
 	const numericValue = parseFloat(value);
-	return Number.isNaN(numericValue) ? undefined : `${numericValue * GAP_SCALE}px`;
+	return Number.isNaN(numericValue)
+		? undefined
+		: `${numericValue * GAP_SCALE}px`;
 }
 
-function parseGapClass(className: string): { gap?: string; gapX?: string; gapY?: string } {
+function parseGapClass(className: string): {
+	gap?: string;
+	gapX?: string;
+	gapY?: string;
+} {
 	if (!className.startsWith("gap-")) return {};
 	const value = className.slice(4);
 

@@ -4,4 +4,3 @@
 
 export const DEFAULT_IMAGE_WIDTH = 800;
 export const DEFAULT_IMAGE_HEIGHT = 480;
-

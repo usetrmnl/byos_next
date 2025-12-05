@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/app/recipes/lib/constants";
 import screens from "@/app/recipes/screens.json";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
-import { DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT } from "@/app/recipes/lib/constants";
 
 // Get published components
 const getPublishedComponents = () => {

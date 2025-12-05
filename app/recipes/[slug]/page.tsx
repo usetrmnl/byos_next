@@ -4,20 +4,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache, Suspense, use } from "react";
-import screens from "@/app/recipes/screens.json";
 import {
+	addDimensionsToProps,
+	ComponentProps,
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
 	fetchRecipeComponent,
 	fetchRecipeConfig,
 	fetchRecipeProps,
+	isBuildPhase,
 	logger,
 	RecipeConfig,
-	ComponentProps,
 	renderRecipeOutputs,
-	DEFAULT_IMAGE_WIDTH,
-	DEFAULT_IMAGE_HEIGHT,
-	isBuildPhase,
-	addDimensionsToProps,
 } from "@/app/recipes/lib/recipe-renderer";
+import screens from "@/app/recipes/screens.json";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
@@ -49,7 +49,11 @@ const renderAllFormats = cache(
 		imageWidth: number,
 		imageHeight: number,
 	) => {
-		const propsWithDimensions = addDimensionsToProps(props, imageWidth, imageHeight);
+		const propsWithDimensions = addDimensionsToProps(
+			props,
+			imageWidth,
+			imageHeight,
+		);
 
 		// During production build prerendering, avoid rendering outputs so we don't
 		// trigger remote asset fetches or use Date.now() in a request-less context.
@@ -121,7 +125,11 @@ const RenderComponent = ({
 	const config = configResult;
 	const Component = componentResult;
 	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
-	const propsWithDimensions = addDimensionsToProps(propsResult, imageWidth, imageHeight);
+	const propsWithDimensions = addDimensionsToProps(
+		propsResult,
+		imageWidth,
+		imageHeight,
+	);
 
 	// Use doubleSizeForSharperText as the single source of truth for doubling
 	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
@@ -285,7 +293,10 @@ export default async function RecipePage({
 				<RecipePreviewLayout
 					canvasWidth={imageWidth}
 					bmpComponent={
-						<div style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+						<div
+							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							className="border border-gray-200 overflow-hidden rounded-sm"
+						>
 							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
@@ -306,7 +317,10 @@ export default async function RecipePage({
 						</div>
 					}
 					pngComponent={
-						<div style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+						<div
+							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							className="border border-gray-200 overflow-hidden rounded-sm"
+						>
 							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
@@ -327,7 +341,10 @@ export default async function RecipePage({
 						</div>
 					}
 					svgComponent={
-						<div style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
+						<div
+							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							className="border border-gray-200 overflow-hidden rounded-sm"
+						>
 							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
@@ -348,8 +365,14 @@ export default async function RecipePage({
 						</div>
 					}
 					reactComponent={
-						<div style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }} className="border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={imageWidth / imageHeight} style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}>
+						<div
+							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							className="border border-gray-200 overflow-hidden rounded-sm"
+						>
+							<AspectRatio
+								ratio={imageWidth / imageHeight}
+								style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -443,10 +466,6 @@ const PropsDisplay = ({
 }) => {
 	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
 	return (
-		<RecipeProps
-			props={propsResult}
-			slug={slug}
-			refreshAction={refreshData}
-		/>
+		<RecipeProps props={propsResult} slug={slug} refreshAction={refreshData} />
 	);
 };
