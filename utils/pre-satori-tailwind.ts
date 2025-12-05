@@ -158,8 +158,12 @@ export function processDither(className: string): {
 
 	for (const token of tokens) {
 		if (token.startsWith("dither-")) {
-			const ditherStyle = ditherPatterns[token] || ditherPatterns.dither;
-			Object.assign(style, ditherStyle);
+			const ditherStyle = ditherPatterns[token];
+			if (ditherStyle) {
+				Object.assign(style, ditherStyle);
+			} else {
+				remainingClasses.push(token);
+			}
 		} else {
 			remainingClasses.push(token);
 		}
