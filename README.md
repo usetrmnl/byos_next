@@ -1,7 +1,7 @@
 # BYOS Next.js for TRMNL 🖥️
 
 [![License](https://img.shields.io/github/license/usetrmnl/byos_next)](https://github.com/usetrmnl/byos_next/blob/main/LICENSE)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=flat&logo=react)](https://react.dev/)
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.0-38B2AC?style=flat&logo=tailwind-css)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
@@ -39,6 +39,7 @@ live demo: [https://byos-nextjs.vercel.app/](https://byos-nextjs.vercel.app/)
 - 📊 Comprehensive logging system
 - 🔒 Secure API key management
 - 💻 Modern tech stack (Next.js 16, React 19, Tailwind CSS v4)
+- 🐳 Docker support for local development
 - 🧹 Clean, standardized codebase with Biome for formatting
 - ⚠️ Using a canary version of Shadcn for Tailwind v4 support; be cautious with AI-generated code.
 
@@ -118,98 +119,62 @@ SUPABASE_URL
 ```bash
 # Clone the repository
 git clone https://github.com/usetrmnl/byos_next
-cd byos-nextjs
+cd byos_next
 
 # Install dependencies
 pnpm install # or npm install or yarn install
 ```
+
+#### Database Setup
+
+**Option A: Using Supabase (Recommended)**
+
 Set up a Supabase account and add these environment variables to your `.env.local` file:
 ```
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-```
-Manually initialize the database tables in your Supabase SQL editor:
-```sql
--- Enable UUID generation extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- Playlists Table
-CREATE TABLE public.playlists (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Playlist Items Table
-CREATE TABLE public.playlist_items (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    playlist_id UUID REFERENCES public.playlists(id) ON DELETE CASCADE,
-    screen_id TEXT NOT NULL,
-    duration INT NOT NULL DEFAULT 30,
-    start_time TIME,
-    end_time TIME,
-    days_of_week JSONB,
-    order_index INT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Devices Table
-CREATE TABLE public.devices (
-    id BIGSERIAL PRIMARY KEY,
-    friendly_id VARCHAR NOT NULL UNIQUE,
-    name VARCHAR NOT NULL,
-    mac_address VARCHAR NOT NULL UNIQUE,
-    api_key VARCHAR NOT NULL UNIQUE,
-    screen VARCHAR NULL DEFAULT NULL,
-    refresh_schedule JSONB NULL,
-    timezone TEXT NOT NULL DEFAULT 'UTC',
-    last_update_time TIMESTAMPTZ NULL,
-    next_expected_update TIMESTAMPTZ NULL,
-    last_refresh_duration INTEGER NULL,
-    battery_voltage NUMERIC NULL,
-    firmware_version TEXT NULL,
-    rssi INTEGER NULL,
-    playlist_id UUID REFERENCES public.playlists(id),
-    use_playlist BOOLEAN DEFAULT FALSE,
-    current_playlist_index INT DEFAULT 0,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
-);
-
--- Indexes for Devices
-CREATE INDEX idx_devices_refresh_schedule ON public.devices USING GIN (refresh_schedule);
-
--- Logs Table
-CREATE TABLE public.logs (
-    id BIGSERIAL PRIMARY KEY,
-    friendly_id TEXT NULL,
-    log_data TEXT NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT logs_friendly_id_fkey FOREIGN KEY (friendly_id) REFERENCES public.devices (friendly_id)
-);
-
--- System Logs Table
-CREATE TABLE public.system_logs (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    level VARCHAR NOT NULL,
-    message TEXT NOT NULL,
-    source VARCHAR NULL,
-    metadata TEXT NULL,
-    trace TEXT NULL
-);
-
--- Indexes for System Logs
-CREATE INDEX idx_system_logs_created_at ON public.system_logs (created_at);
-CREATE INDEX idx_system_logs_level ON public.system_logs (level);
+DATABASE_URL
 ```
 
-Start the development server:
+Manually initialize the database tables in your Supabase SQL editor by running the migration files in order:
+Run the migration files from the `migrations/` directory in order:
+1. `0000_initial_schema.sql` - Creates all base tables
+2. `0001_add_device_status_fields.sql` - Adds device status fields
+3. `0002_add_playlist_index_to_devices.sql` - Adds playlist index tracking
+4. `0003_add_playlists.sql` - Adds playlist support (if not already in initial schema)
+
+
+**Option B: Using Docker (Local PostgreSQL)**
+
+You can use Docker Compose to run a local PostgreSQL database:
+
+```bash
+# Set a password for PostgreSQL
+export POSTGRES_PASSWORD=your_password_here
+
+# Start PostgreSQL and the Next.js app
+docker-compose up -d
+
+# The database will be available at localhost:5432
+# Update your .env.local with:
+# DATABASE_URL=postgres://postgres:your_password_here@localhost:5432/byos_db?sslmode=disable
+```
+
+Then run the migration SQL scripts in your local database.
+
+**Option C: No Database Mode**
+
+The application can run without a database connection. In this mode:
+- Device setup is skipped
+- Default screens are served (e.g., "album")
+- No device management features are available
+- Useful for testing screen generation without database setup
+
+Simply start the development server without database environment variables:
 ```bash
 # Start development server
 pnpm run dev # or npm run dev or yarn run dev
 ```
+
+The app will automatically detect the missing database connection and operate in "noDB" mode.
 
 ### Code Formatting
 This project uses Biome for code formatting. To format your code:
@@ -217,12 +182,6 @@ This project uses Biome for code formatting. To format your code:
 ```bash
 # Format code
 pnpm lint
-```
-
-### Important Note
-When dealing with AI-generated code, be aware that Tailwind v4 has some syntax differences. Use the following command to add new Shadcn components:
-```bash
-pnpm dlx shadcn@canary add [component1] [component2] [component3]
 ```
 
 ## 🔍 How It Works
@@ -263,12 +222,25 @@ curl -X GET http://[YOUR BASE URL]/api/setup \
   1. Provides the URL for the next screen to display
   2. Specifies how long the device should sleep before requesting again
   3. Can optionally signal firmware reset/update requirements
+  4. Tracks device status (battery voltage, firmware version, RSSI, refresh duration)
+  5. Supports playlist-based screen scheduling with time and day-of-week restrictions
   
+**Request Headers**:
+- `ID`: Device MAC address (required)
+- `Access-Token`: Device API key (optional, but recommended)
+- `Refresh-Rate`: Current device refresh rate in seconds (optional)
+- `Battery-Voltage`: Current battery voltage (optional)
+- `FW-Version`: Firmware version string (optional)
+- `RSSI`: WiFi signal strength in dBm (optional)
+
 ```bash
 curl -X GET http://[YOUR BASE URL]/api/display \
 -H "Content-Type: application/json" \
 -H "ID: 12:34:56:78:9A:BC" \
--H "Access-Token: uniqueApiKey"
+-H "Access-Token: uniqueApiKey" \
+-H "Battery-Voltage: 3.7" \
+-H "FW-Version: 1.0.0" \
+-H "RSSI: -45"
 ```
 
 **Response Example**:
@@ -279,9 +251,13 @@ curl -X GET http://[YOUR BASE URL]/api/display \
    "filename": "DEVICE_ID_TIMESTAMP.bmp",
    "refresh_rate": 180,
    "reset_firmware": false,
-   "update_firmware": false
+   "update_firmware": false,
+   "firmware_url": null,
+   "special_function": "restart_playlist"
 }
 ```
+
+> **Note**: The `refresh_rate` is specified in seconds. The default is 180 seconds (3 minutes), but this can be customized per device through refresh schedules or playlist items.
 
 > **Note**: This implementation does not currently handle button functionality.
 
@@ -305,22 +281,56 @@ Unlike the official Ruby/Python implementations, this Next.js implementation:
 #### Technical Specifications
 - **Image Format**: 800x480 pixel 1-bit bitmap (.bmp)
 - **Rendering**: Uses Satori for dynamic image generation
-Rendering pipeline:
-JSX component -> pre-satori wrapper -> satori (svg) -> vercel image response (png) -> jimp (bmp) -> fixed header to fit TRMNL display
+- **Rendering Pipeline**: 
+  JSX component → pre-satori wrapper → Satori (SVG) → Vercel ImageResponse (PNG) → Jimp (BMP) → fixed header to fit TRMNL display
+- **Caching Strategy**: 
+  - Development: 60-second memory cache with revalidation
+  - Production: Next.js built-in caching with 60-second default revalidation
+- **Default Refresh Rate**: 180 seconds (3 minutes) for devices
 
-- **Caching Strategy**: 60-second revalidation window
+### 3. Device Status Tracking
 
-### 3. Authentication Considerations
+The system automatically tracks device status information when devices make display requests:
+
+- **Battery Voltage**: Monitored to track device power levels
+- **Firmware Version**: Tracks device firmware for compatibility
+- **RSSI**: WiFi signal strength for network diagnostics
+- **Last Update Time**: Timestamp of the last successful request
+- **Next Expected Update**: Calculated based on refresh rate
+- **Last Refresh Duration**: Time taken for the last screen refresh
+
+This information is stored in the `devices` table and can be viewed in the device management interface.
+
+### 4. Authentication Considerations
 
 **Important**: This implementation does not include a comprehensive authentication system.
 
 - **No user management**: Unlike some official implementations, there is no built-in user field in the database
-- **Basic device authentication**: Only verifies device MAC address and API key
+- **Basic device authentication**: Verifies device MAC address and/or API key
+- **Flexible authentication**: Devices can authenticate by MAC address only, API key only, or both
+- **Auto-registration**: Unknown devices with valid API keys are automatically registered
 - **Production deployment recommendations**:
   - Implement your own authentication layer (e.g., NextAuth, SupabaseAuth)
   - Use middleware for request validation
   - Update the database schema to include user management if needed
   - Consider rate limiting and other security measures
+
+## 📋 Playlists
+
+The system supports playlist-based screen scheduling for devices. Playlists allow you to:
+
+- **Schedule screens by time**: Show different screens during specific time ranges (e.g., morning vs. evening)
+- **Schedule by day of week**: Display different content on weekdays vs. weekends
+- **Set custom durations**: Control how long each screen is displayed
+- **Automatic rotation**: Devices automatically cycle through playlist items based on time and day restrictions
+
+To use playlists:
+1. Create a playlist in the playlists interface
+2. Add playlist items with screen IDs, durations, and optional time/day restrictions
+3. Assign the playlist to a device
+4. Enable playlist mode on the device
+
+When a device uses a playlist, it will automatically display the appropriate screen based on the current time and day of week, cycling through items that match the current conditions.
 
 ## 🧪 Recipes
 
@@ -336,9 +346,13 @@ To set up your own screen recipe, use the following structure:
 2. Add your component and data fetching logic (if needed)
 3. Add an entry to `app/recipes/screens.json`
 
-Each recipe is defined in `app/recipes/screens.json` and can be accessed via its slug.
+Each recipe is defined in `app/recipes/screens.json` and can be accessed via its slug (e.g., `/recipes/album`, `/recipes/bitcoin-price`).
 
-This allows you to code and preview before pointing your device to any of the screens.
+This allows you to code and preview before pointing your device to any of the screens. Recipes support:
+- Responsive Tailwind CSS classes
+- Dynamic data fetching
+- Time-based and day-of-week scheduling (for playlists)
+- Custom props and configuration
 
 For more details, see the [Recipes README](app/recipes/README.md).
 
@@ -357,7 +371,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 ## 🌐 Community
 
-- 📢 [GitHub Discussions](https://github.com/usetrmnl/byos_nextjs/discussions)
+- 📢 [GitHub Discussions](https://github.com/usetrmnl/byos_next/discussions)
 - 🐦 [Twitter @usetrmnl](https://twitter.com/usetrmnl)
 - 💬 Join our community channels
 
@@ -365,11 +379,18 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Supabase Documentation](https://supabase.com/docs)
 - [TRMNL Device Website](https://usetrmnl.com)
+- [Satori Documentation](https://github.com/vercel/satori) - For understanding the rendering pipeline
+
+## 🐳 Docker Support
+
+This project includes Docker Compose configuration for local development with PostgreSQL. See `docker-compose.yml` for details.
+
+To use Docker:
+1. Set the `POSTGRES_PASSWORD` environment variable
+2. Run `docker-compose up -d` to start PostgreSQL and the Next.js app
+3. The database will be available at `localhost:5432`
+4. Update your `.env.local` with the appropriate `DATABASE_URL`
 
 ## 📄 License
 
 This project is open-source and available under the MIT License.
-
----
-
-**Happy Coding! 🚀**

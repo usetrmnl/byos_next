@@ -76,11 +76,11 @@ const dataFetchFunctions: Record<string, DataFetchFunction> = {
 
 3. Set `hasDataFetch` to `true` in your component's entry in `components.json`
 
-The playground will automatically fetch the data and pass it as props to your component.
+The recipes system will automatically fetch the data and pass it as props to your component.
 
 ## Bitmap Rendering
 
-The playground uses the `renderBmp` utility to convert components to bitmap images suitable for e-ink displays. The rendering process:
+The recipes system uses the `renderBmp` utility to convert components to bitmap images suitable for e-ink displays. The rendering process:
 
 1. Uses Next.js's `ImageResponse` to render the component to a PNG
 2. Converts the PNG to a 1-bit BMP using the `renderBmp` utility
@@ -148,9 +148,9 @@ These patterns help create gradients and visual depth on 1-bit displays.
 
 ## Routing
 
-The playground uses Next.js's dynamic routing to provide two main views:
+The recipes system uses Next.js's dynamic routing to provide two main views:
 
-- `/playground` - Index view showing all components
-- `/playground/[slug]` - Detailed view of a specific component
+- `/recipes` - Index view showing all recipes
+- `/recipes/[slug]` - Detailed view of a specific recipe
 
-The `generateStaticParams` function in `app/playground/[slug]/page.tsx` ensures that all component pages are pre-rendered at build time. 
+The `generateStaticParams` function in `app/recipes/[slug]/page.tsx` ensures that all recipe pages are pre-rendered at build time. 
