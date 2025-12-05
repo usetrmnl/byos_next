@@ -1,9 +1,12 @@
 "use client";
 
-import { LayoutGrid } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, LayoutGrid, Save } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -11,6 +14,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import {
+	buildAssignments,
+	LAYOUT_OPTIONS,
+	type LayoutOption,
+	type LayoutSlot,
+	type MixupLayoutId,
+} from "@/lib/mixup/constants";
 import { cn } from "@/lib/utils";
 
 type MixupRecipe = {
@@ -20,110 +30,26 @@ type MixupRecipe = {
 	tags?: string[];
 };
 
-type LayoutSlot = {
-	id: string;
-	label: string;
-	rowSpan?: number;
-	colSpan?: number;
-	hint?: string;
-	width?: number;
-	height?: number;
+export type MixupBuilderData = {
+	id?: string;
+	name: string;
+	layout_id: MixupLayoutId | string;
+	assignments: Record<string, string>;
 };
 
-type LayoutOption = {
-	id: string;
-	slots: LayoutSlot[];
-};
+interface MixupBuilderProps {
+	recipes: MixupRecipe[];
+	initialData?: MixupBuilderData;
+	onSave?: (data: MixupBuilderData) => void;
+	onCancel?: () => void;
+	isSaving?: boolean;
+}
 
 const SLOT_GRADIENTS = [
 	"from-sky-500/70 via-cyan-400/50 to-blue-500/30",
 	"from-fuchsia-500/60 via-purple-500/40 to-indigo-500/30",
 	"from-amber-500/70 via-orange-400/50 to-yellow-400/30",
 	"from-emerald-500/70 via-lime-400/60 to-green-400/30",
-];
-
-const LAYOUT_OPTIONS: LayoutOption[] = [
-	{
-		id: "quarters",
-		slots: [
-			{ id: "top-left", label: "Top left", width: 800, height: 480 },
-			{ id: "top-right", label: "Top right", width: 800, height: 480 },
-			{ id: "bottom-left", label: "Bottom left", width: 800, height: 480 },
-			{ id: "bottom-right", label: "Bottom right", width: 800, height: 480 },
-		],
-	},
-	{
-		id: "top-banner",
-		slots: [
-			{
-				id: "top",
-				label: "Top span",
-				colSpan: 2,
-				hint: "2 quarters",
-				width: 1600,
-				height: 480,
-			},
-			{ id: "bottom-left", label: "Bottom left", width: 800, height: 480 },
-			{ id: "bottom-right", label: "Bottom right", width: 800, height: 480 },
-		],
-	},
-	{
-		id: "left-rail",
-		slots: [
-			{
-				id: "left",
-				label: "Left column",
-				rowSpan: 2,
-				hint: "2 quarters",
-				width: 550,
-				height: 660,
-			},
-			{ id: "top-right", label: "Top right", width: 800, height: 480 },
-			{ id: "bottom-right", label: "Bottom right", width: 800, height: 480 },
-		],
-	},
-	{
-		id: "vertical-halves",
-		slots: [
-			{
-				id: "left-half",
-				label: "Left half",
-				rowSpan: 2,
-				hint: "2 quarters",
-				width: 550,
-				height: 660,
-			},
-			{
-				id: "right-half",
-				label: "Right half",
-				rowSpan: 2,
-				hint: "2 quarters",
-				width: 550,
-				height: 660,
-			},
-		],
-	},
-	{
-		id: "horizontal-halves",
-		slots: [
-			{
-				id: "top-half",
-				label: "Top half",
-				colSpan: 2,
-				hint: "2 quarters",
-				width: 800,
-				height: 240,
-			},
-			{
-				id: "bottom-half",
-				label: "Bottom half",
-				colSpan: 2,
-				hint: "2 quarters",
-				width: 800,
-				height: 240,
-			},
-		],
-	},
 ];
 
 const LayoutPreview = ({ layout }: { layout: LayoutOption }) => {
@@ -159,25 +85,13 @@ const spanLabel = (slot: LayoutSlot) => {
 	return spanSize > 1 ? `${spanSize} quarters` : "1 quarter";
 };
 
-const buildAssignments = (
-	layout: LayoutOption,
-	recipes: MixupRecipe[],
-	existing?: Record<string, string>,
-) => {
-	const next: Record<string, string> = {};
-	layout.slots.forEach((slot, index) => {
-		const inherited = existing?.[slot.id];
-		const fallback = recipes[index]?.slug;
-		if (inherited) {
-			next[slot.id] = inherited;
-		} else if (fallback) {
-			next[slot.id] = fallback;
-		}
-	});
-	return next;
-};
-
-export function MixupBuilder({ recipes }: { recipes: MixupRecipe[] }) {
+export function MixupBuilder({
+	recipes,
+	initialData,
+	onSave,
+	onCancel,
+	isSaving = false,
+}: MixupBuilderProps) {
 	const recipeMap = useMemo(
 		() =>
 			recipes.reduce<Record<string, MixupRecipe>>((acc, recipe) => {
@@ -187,10 +101,25 @@ export function MixupBuilder({ recipes }: { recipes: MixupRecipe[] }) {
 		[recipes],
 	);
 
-	const [layoutId, setLayoutId] = useState(LAYOUT_OPTIONS[0].id);
-	const [assignments, setAssignments] = useState<Record<string, string>>(() =>
-		buildAssignments(LAYOUT_OPTIONS[0], recipes),
+	const [name, setName] = useState(initialData?.name ?? "");
+	const [layoutId, setLayoutId] = useState<MixupLayoutId | string>(
+		initialData?.layout_id ?? LAYOUT_OPTIONS[0].id,
 	);
+	const [assignments, setAssignments] = useState<Record<string, string>>(() => {
+		if (initialData?.assignments) {
+			return initialData.assignments;
+		}
+		return buildAssignments(LAYOUT_OPTIONS[0], recipes);
+	});
+
+	// Update assignments when initial data changes (e.g., when editing different mixup)
+	useEffect(() => {
+		if (initialData) {
+			setName(initialData.name);
+			setLayoutId(initialData.layout_id);
+			setAssignments(initialData.assignments);
+		}
+	}, [initialData]);
 
 	const currentLayout =
 		LAYOUT_OPTIONS.find((option) => option.id === layoutId) ??
@@ -215,8 +144,54 @@ export function MixupBuilder({ recipes }: { recipes: MixupRecipe[] }) {
 		});
 	};
 
+	const handleSave = () => {
+		if (!name.trim()) return;
+		onSave?.({
+			id: initialData?.id,
+			name: name.trim(),
+			layout_id: layoutId,
+			assignments,
+		});
+	};
+
+	const isValid = name.trim().length > 0;
+
 	return (
 		<div className="space-y-4">
+			{/* Header with save/cancel */}
+			<div className="flex items-center justify-between gap-4">
+				{onCancel && (
+					<Button variant="ghost" size="sm" onClick={onCancel}>
+						<ArrowLeft className="h-4 w-4 mr-1" />
+						Back
+					</Button>
+				)}
+				<div className="flex-1" />
+				{onSave && (
+					<Button
+						onClick={handleSave}
+						disabled={!isValid || isSaving}
+						size="sm"
+					>
+						<Save className="h-4 w-4 mr-1" />
+						{isSaving ? "Saving..." : initialData?.id ? "Update" : "Save"}
+					</Button>
+				)}
+			</div>
+
+			{/* Name input */}
+			<div className="space-y-2">
+				<Label htmlFor="mixup-name">Mixup Name</Label>
+				<Input
+					id="mixup-name"
+					value={name}
+					onChange={(e) => setName(e.target.value)}
+					placeholder="Enter a name for this mixup..."
+					className="max-w-md"
+				/>
+			</div>
+
+			{/* Layout selector */}
 			<div className="flex items-center justify-between gap-2">
 				<div className="flex gap-2 overflow-x-auto pb-1">
 					{LAYOUT_OPTIONS.map((option) => {
@@ -341,7 +316,7 @@ export function MixupBuilder({ recipes }: { recipes: MixupRecipe[] }) {
 												<p className="text-xs text-white/85">
 													{recipe
 														? (recipe.tags || []).slice(0, 3).join(" / ") ||
-														recipe.slug
+															recipe.slug
 														: "Unassigned slot"}
 												</p>
 											</div>

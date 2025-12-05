@@ -4,6 +4,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache, Suspense, use } from "react";
+import screens from "@/app/recipes/screens.json";
+import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
+import RecipeProps from "@/components/recipes/recipe-props";
+import { AspectRatio } from "@/components/ui/aspect-ratio";
 import {
 	addDimensionsToProps,
 	ComponentProps,
@@ -16,11 +20,7 @@ import {
 	logger,
 	RecipeConfig,
 	renderRecipeOutputs,
-} from "@/app/recipes/lib/recipe-renderer";
-import screens from "@/app/recipes/screens.json";
-import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
-import RecipeProps from "@/components/recipes/recipe-props";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
+} from "@/lib/recipes/recipe-renderer";
 
 export async function generateMetadata() {
 	// This empty function enables streaming for this route

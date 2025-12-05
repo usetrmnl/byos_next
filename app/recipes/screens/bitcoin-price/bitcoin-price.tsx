@@ -92,9 +92,7 @@ export default function BitcoinPrice({
 							</div>
 						</>
 					)}
-					<div
-						className="flex flex-col w-full sm:w-1/3 gap-4"
-					>
+					<div className="flex flex-col w-full sm:w-1/3 gap-4">
 						{priceStats.map((stat, index) => (
 							<div
 								key={index}

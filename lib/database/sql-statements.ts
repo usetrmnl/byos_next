@@ -4,7 +4,8 @@
 export const SQL_STATEMENTS = {
 	"0000_initial_schema": {
 		title: "Initial Database Schema",
-		description: "Creates the complete initial database schema including UUID extension, devices, playlists, playlist_items, logs, and system_logs tables",
+		description:
+			"Creates the complete initial database schema including UUID extension, devices, playlists, playlist_items, logs, and system_logs tables",
 		sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS public.devices (
@@ -84,7 +85,8 @@ CREATE INDEX IF NOT EXISTS idx_system_logs_level ON public.system_logs (level);`
 	},
 	"0001_add_device_status_fields": {
 		title: "Add Device Status Fields",
-		description: "Add battery_voltage, firmware_version, and rssi columns to the devices table",
+		description:
+			"Add battery_voltage, firmware_version, and rssi columns to the devices table",
 		sql: `-- Add battery_voltage, firmware_version, and rssi columns to the devices table
 ALTER TABLE devices 
 ADD COLUMN IF NOT EXISTS battery_voltage NUMERIC,
@@ -98,13 +100,15 @@ COMMENT ON COLUMN devices.rssi IS 'WiFi signal strength in dBm';`,
 	},
 	"0002_add_playlist_index_to_devices": {
 		title: "Add Playlist Index to Devices",
-		description: "Adds current_playlist_index column to devices table for tracking playlist position",
+		description:
+			"Adds current_playlist_index column to devices table for tracking playlist position",
 		sql: `ALTER TABLE devices
 ADD COLUMN IF NOT EXISTS current_playlist_index INT DEFAULT 0;`,
 	},
 	"0003_add_playlists": {
 		title: "Add Playlists and Playlist Items",
-		description: "Creates the playlists and playlist_items tables and adds playlist support to devices table",
+		description:
+			"Creates the playlists and playlist_items tables and adds playlist support to devices table",
 		sql: `-- playlists table
 CREATE TABLE IF NOT EXISTS playlists (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -131,7 +135,8 @@ ADD COLUMN playlist_id UUID REFERENCES playlists(id),
 	},
 	"0004_add_mixups": {
 		title: "Add Mixups and Display Mode",
-		description: "Creates mixups tables and replaces use_playlist with display_mode enum",
+		description:
+			"Creates mixups tables and replaces use_playlist with display_mode enum",
 		sql: `-- Create enum for layout IDs
 CREATE TYPE mixup_layout_id AS ENUM (
     'quarters',
@@ -186,9 +191,10 @@ UPDATE devices SET display_mode = 'screen' WHERE use_playlist = FALSE OR use_pla
 -- Drop the old use_playlist column
 ALTER TABLE devices DROP COLUMN IF EXISTS use_playlist;`,
 	},
-	"validate_schema": {
+	validate_schema: {
 		title: "Validate Database Schema",
-		description: "Validates that all required tables exist in the public schema. Returns list of tables with their status and identifies any missing tables.",
+		description:
+			"Validates that all required tables exist in the public schema. Returns list of tables with their status and identifies any missing tables.",
 		sql: `-- Check for missing required tables
 -- Returns empty result if all tables exist, or rows with missing table names if any are missing
 SELECT 
@@ -201,5 +207,5 @@ WHERE NOT EXISTS (
     AND table_type = 'BASE TABLE'
     AND table_name = expected_table
 );`,
-	}
+	},
 };

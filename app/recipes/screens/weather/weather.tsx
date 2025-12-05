@@ -1,20 +1,21 @@
 import { PreSatori } from "@/utils/pre-satori";
 import {
 	CloudIcon,
-	SunIcon,
-	ThunderIcon,
-	SnowIcon,
-	RainIcon,
 	FogIcon,
-	tempUp,
-	tempDown,
-	sunsetIcon,
-	sunriseIcon,
-	windIcon,
-	tempIcon,
-	pressureIcon,
 	humidityIcon,
+	pressureIcon,
+	RainIcon,
+	SnowIcon,
+	SunIcon,
+	sunriseIcon,
+	sunsetIcon,
+	ThunderIcon,
+	tempDown,
+	tempIcon,
+	tempUp,
+	windIcon,
 } from "./icons";
+
 interface WeatherProps {
 	temperature?: string;
 	feelsLike?: string;
@@ -85,7 +86,11 @@ export default function Weather({
 			<div className="flex flex-col w-full h-full bg-white">
 				<div className="flex flex-col p-4 sm:flex-row items-center justify-center sm:justify-between">
 					<div className="flex flex-row items-baseline">
-						<h2 className={`font-inter ${isHalfScreen ? "text-8xl" : "text-9xl"}`}>{temperature}°C</h2>
+						<h2
+							className={`font-inter ${isHalfScreen ? "text-8xl" : "text-9xl"}`}
+						>
+							{temperature}°C
+						</h2>
 					</div>
 					{!isHalfScreen && (
 						<div className="flex flex-col items-center justify-center">
@@ -100,9 +105,14 @@ export default function Weather({
 					)}
 				</div>
 				<div className="p-4 flex flex-col flex-1">
-					<div className={`w-full flex flex-col flex-1 mb-4 ${isHalfScreen ? "gap-2" : "gap-4"}`}>
+					<div
+						className={`w-full flex flex-col flex-1 mb-4 ${isHalfScreen ? "gap-2" : "gap-4"}`}
+					>
 						{Array.from({ length: nbRows }).map((_, rowIndex) => (
-							<div key={rowIndex} className={`flex flex-row flex-1 ${isHalfScreen ? "gap-2" : "gap-4"}`}>
+							<div
+								key={rowIndex}
+								className={`flex flex-row flex-1 ${isHalfScreen ? "gap-2" : "gap-4"}`}
+							>
 								{weatherStats
 									.slice(rowIndex * nbCols, (rowIndex + 1) * nbCols)
 									.map((stat, index) => (
@@ -112,10 +122,14 @@ export default function Weather({
 										>
 											<div className="p-2">{stat.icon}</div>
 											<div className="flex flex-col">
-												<div className={`leading-none m-0 ${isHalfScreen ? "text-2xl" : "text-3xl"}`}>
+												<div
+													className={`leading-none m-0 ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
+												>
 													{stat.label}
 												</div>
-												<div className={`leading-none m-0 font-bold ${isHalfScreen ? "text-2xl" : "text-3xl"}`}>
+												<div
+													className={`leading-none m-0 font-bold ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
+												>
 													{stat.value}
 												</div>
 											</div>

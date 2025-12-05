@@ -1,12 +1,13 @@
+import { fetchMixups } from "@/app/actions/mixup";
 import screens from "@/app/recipes/screens.json";
-import { MixupBuilder } from "@/components/mixup/mixup-builder";
+import { MixupPageClient } from "@/components/mixup/mixup-page-client";
 
 export const metadata = {
 	title: "Mixup",
 	description: "Compose split-screen layouts with your recipes.",
 };
 
-export default function MixupPage() {
+export default async function MixupPage() {
 	const availableRecipes = Object.entries(screens)
 		.filter(
 			([, config]) => process.env.NODE_ENV !== "production" || config.published,
@@ -19,17 +20,7 @@ export default function MixupPage() {
 		}))
 		.sort((a, b) => a.title.localeCompare(b.title));
 
-	return (
-		<div className="space-y-6">
-			<div className="space-y-2">
-				<h1 className="text-3xl font-bold">Mixup</h1>
-				<p className="text-muted-foreground max-w-2xl">
-					Blend up to four recipes on the same screen. Choose a layout, drop
-					recipes into each quarter, and preview how they will share space.
-				</p>
-			</div>
+	const mixups = await fetchMixups();
 
-			<MixupBuilder recipes={availableRecipes} />
-		</div>
-	);
+	return <MixupPageClient initialMixups={mixups} recipes={availableRecipes} />;
 }

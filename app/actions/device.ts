@@ -180,8 +180,9 @@ export async function updateDevice(
 	if (device.screen !== undefined) updateData.screen = device.screen;
 	if (device.playlist_id !== undefined)
 		updateData.playlist_id = device.playlist_id;
-	if (device.use_playlist !== undefined)
-		updateData.use_playlist = device.use_playlist;
+	if (device.mixup_id !== undefined) updateData.mixup_id = device.mixup_id;
+	if (device.display_mode !== undefined)
+		updateData.display_mode = device.display_mode;
 	if (device.battery_voltage !== undefined)
 		updateData.battery_voltage = device.battery_voltage;
 	if (device.firmware_version !== undefined)

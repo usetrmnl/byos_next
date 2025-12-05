@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
 import { cache } from "react";
+import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
+import screens from "@/app/recipes/screens.json";
 import {
 	addDimensionsToProps,
 	buildRecipeElement,
@@ -7,9 +9,7 @@ import {
 	DEFAULT_IMAGE_WIDTH,
 	logger,
 	renderRecipeOutputs,
-} from "@/app/recipes/lib/recipe-renderer";
-import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
-import screens from "@/app/recipes/screens.json";
+} from "@/lib/recipes/recipe-renderer";
 
 export async function GET(
 	req: NextRequest,

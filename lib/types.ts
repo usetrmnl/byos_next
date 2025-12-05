@@ -1,3 +1,5 @@
+import { DeviceDisplayMode } from "@/lib/mixup/constants";
+
 export type Json =
 	| string
 	| number
@@ -35,7 +37,8 @@ export type Device = {
 	created_at: string | null;
 	updated_at: string | null;
 	playlist_id: string | null;
-	use_playlist: boolean | null;
+	mixup_id: string | null;
+	display_mode: DeviceDisplayMode;
 	current_playlist_index: number | null;
 };
 
@@ -58,6 +61,23 @@ export type PlaylistItem = {
 	created_at: string | null;
 };
 
+export type Mixup = {
+	id: string;
+	name: string;
+	layout_id: string;
+	created_at: string | null;
+	updated_at: string | null;
+};
+
+export type MixupSlot = {
+	id: string;
+	mixup_id: string | null;
+	slot_id: string;
+	recipe_slug: string | null;
+	order_index: number;
+	created_at: string | null;
+};
+
 export type Log = {
 	id: number;
 	friendly_id: string | null;
@@ -74,3 +94,6 @@ export type SystemLog = {
 	metadata: string | null;
 	trace: string | null;
 };
+
+// Re-export for convenience
+export { DeviceDisplayMode } from "@/lib/mixup/constants";
