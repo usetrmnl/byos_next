@@ -47,15 +47,10 @@ export default function BitcoinPrice({
 		<PreSatori width={width} height={height}>
 			<div className="flex h-full w-full flex-col bg-white justify-between p-4">
 				<div className="flex flex-col">
-					<div className="flex items-center justify-between">
-						<div className="flex flex-col">
-							<h2 className="text-8xl font-inter">${price}</h2>
-							<div className="text-4xl font-inter">
-								{isPositive ? "↑" : "↓"} {changeValue}%
-							</div>
-						</div>
-						<div className="w-[100px] h-[100px]">
-							<picture>
+					<div className="flex flex-col">
+						<div className="flex items-center justify-between">
+							<h2 className="text-7xl sm:text-8xl font-inter">${price}</h2>
+							<picture className="w-[100px] h-[100px]">
 								<source
 									srcSet="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
 									type="image/png"
@@ -63,8 +58,8 @@ export default function BitcoinPrice({
 								<img
 									src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
 									alt="Bitcoin Logo"
-									width={64}
-									height={64}
+									width={100}
+									height={100}
 									style={{
 										objectFit: "contain",
 										width: "100px",
@@ -75,25 +70,28 @@ export default function BitcoinPrice({
 								/>
 							</picture>
 						</div>
+						<div className="text-4xl font-inter">
+							{isPositive ? "↑" : "↓"} {changeValue}%
+						</div>
 					</div>
 				</div>
-				<div className="w-full flex md:flex-row flex-col md:items-center md:justify-between px-4">
-					<div className="hidden md:block">
+				<div className="w-full flex flex-col sm:flex-row  sm:items-center sm:justify-between px-4">
+					<div className="hidden sm:flex">
 						<Graph data={graphData} isTimeData={true} />
 					</div>
-					<div className="block md:hidden pb-4">
+					<div className="block sm:hidden pb-4">
 						<Graph data={graphData} isTimeData={true} width={width - 50} height={300} />
 					</div>
-					<div className="flex flex-col md:flex-row md:w-1/3 w-full" style={{ gap: "16px" }}>
+					<div className="flex flex-col w-full sm:w-1/3" style={{ gap: "16px" }}>
 						{priceStats.map((stat, index) => (
 							<div
 								key={index}
 								className="w-full p-2 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
 							>
-								<div className="text-[24px] md:text-[28px] leading-none m-0">
+								<div className="text-[24px] sm:text-[28px] leading-none m-0">
 									{stat.label}
 								</div>
-								<div className="text-[24px] md:text-[28px] leading-none m-0">
+								<div className="text-[24px] sm:text-[28px] leading-none m-0">
 									${stat.value}
 								</div>
 							</div>
@@ -101,7 +99,7 @@ export default function BitcoinPrice({
 					</div>
 				</div>
 				<div
-					className="w-full flex md:flex-row flex-col md:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
+					className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
 					style={{ WebkitTextStroke: "4px white" }}
 				>
 					<div>Bitcoin Price Tracker</div>

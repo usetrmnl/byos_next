@@ -1,5 +1,6 @@
 import React, { type CSSProperties } from "react";
 import { ditherPatterns } from "./dither-patterns";
+import { twMerge } from "tailwind-merge";
 
 const BREAKPOINTS = {
 	sm: 640,
@@ -92,7 +93,9 @@ export function processResponsive(
 		return acc;
 	}, []);
 
-	return activeClasses.join(" ");
+	const mergedClasses = twMerge(activeClasses);
+
+	return mergedClasses;
 }
 
 export function processGap(className: string): {
