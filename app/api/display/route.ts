@@ -13,6 +13,7 @@ import {
 	precacheImageInBackground,
 	updateDeviceStatus,
 } from "./utils";
+import { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from "@/lib/recipes/recipe-renderer";
 
 export const DEFAULT_SCREEN = "album";
 export const DEFAULT_REFRESH_RATE = 180;
@@ -48,6 +49,8 @@ export async function GET(request: Request) {
 		}
 
 		let screenToDisplay = device.screen;
+		const deviceWidth = device.screen_width || DEFAULT_IMAGE_WIDTH;
+		const deviceHeight = device.screen_height || DEFAULT_IMAGE_HEIGHT;
 		let dynamicRefreshRate = 180;
 		let imageUrl: string;
 
@@ -74,16 +77,16 @@ export async function GET(request: Request) {
 						dynamicRefreshRate = 60;
 					}
 				}
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
+				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
 				break;
 
 			case DeviceDisplayMode.MIXUP:
 				if (device.mixup_id) {
-					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp`;
+					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
 					const metadata = { deviceId: device.friendly_id, mixupId: device.mixup_id };
 					logInfo("Using mixup display mode", { source: "api/display", metadata });
 				} else {
-					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
+					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
 				}
 				dynamicRefreshRate = calculateRefreshRate(
 					device.refresh_schedule as unknown as RefreshSchedule,
@@ -98,7 +101,7 @@ export async function GET(request: Request) {
 					180,
 					device.timezone || "UTC"
 				);
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
+				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
 				break;
 		}
 
