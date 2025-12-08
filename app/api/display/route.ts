@@ -49,8 +49,9 @@ export async function GET(request: Request) {
 		}
 
 		let screenToDisplay = device.screen;
-		const deviceWidth = device.screen_width || DEFAULT_IMAGE_WIDTH;
-		const deviceHeight = device.screen_height || DEFAULT_IMAGE_HEIGHT;
+		const orientation = device.screen_orientation || "horizontal";
+		const deviceWidth = orientation === "horizontal" ? device.screen_width || DEFAULT_IMAGE_WIDTH : device.screen_height || DEFAULT_IMAGE_HEIGHT;
+		const deviceHeight = orientation === "horizontal" ? device.screen_height || DEFAULT_IMAGE_HEIGHT : device.screen_width || DEFAULT_IMAGE_WIDTH;
 		let dynamicRefreshRate = 180;
 		let imageUrl: string;
 
