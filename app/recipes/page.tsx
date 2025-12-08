@@ -3,6 +3,10 @@ import { Suspense } from "react";
 import screens from "@/app/recipes/screens.json";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 
 // Get published components
 const getPublishedComponents = () => {
@@ -24,7 +28,7 @@ const ComponentPreview = ({
 }) => {
 	return (
 		<AspectRatio
-			ratio={5 / 3}
+			ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
 			className="bg-neutral-100 flex items-center justify-center p-0 border-b"
 		>
 			<picture>
@@ -32,8 +36,8 @@ const ComponentPreview = ({
 				<img
 					src={`/api/bitmap/${slug}.bmp`}
 					alt={`${config.title} preview`}
-					width={800}
-					height={480}
+					width={DEFAULT_IMAGE_WIDTH}
+					height={DEFAULT_IMAGE_HEIGHT}
 					className="object-cover"
 					style={{
 						imageRendering: "pixelated",

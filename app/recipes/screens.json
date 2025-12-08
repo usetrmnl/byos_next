@@ -114,7 +114,25 @@
 		},
 		"tags": ["tailwind", "weather", "api", "live-data", "configurable"],
 		"author": {
-			"name": "Assistant",
+			"name": "rbouteiller",
+			"github": ""
+		},
+		"renderSettings": {},
+		"version": "0.1.0",
+		"category": "display-components"
+	},
+	"responsive-example": {
+		"title": "Responsive Example",
+		"published": true,
+		"createdAt": "2025-03-01T00:00:00Z",
+		"updatedAt": "2025-03-01T00:00:00Z",
+		"description": "An example component demonstrating responsive design patterns and layout techniques for bitmap displays.",
+		"componentPath": "./screens/responsive-example",
+		"hasDataFetch": false,
+		"props": {},
+		"tags": ["bitmap", "responsive", "layout", "example"],
+		"author": {
+			"name": "rbouteiller",
 			"github": ""
 		},
 		"renderSettings": {},

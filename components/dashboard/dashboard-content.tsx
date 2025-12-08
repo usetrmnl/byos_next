@@ -26,13 +26,11 @@ import { formatDate, getDeviceStatus } from "@/utils/helpers";
 interface DashboardContentProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
-	hostUrl: string;
 }
 
 export const DashboardContent = ({
 	devices,
 	systemLogs,
-	hostUrl,
 }: DashboardContentProps) => {
 	// Process devices data
 	const processedDevices = devices.map((device) => ({
@@ -104,12 +102,6 @@ export const DashboardContent = ({
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-2">
-								<div className="flex justify-between items-center">
-									<span className="text-sm font-medium">Host URL:</span>
-									<span className="text-sm text-muted-foreground">
-										<a href={hostUrl}>{hostUrl}</a>
-									</span>
-								</div>
 								<div className="flex justify-between items-center">
 									<span className="text-sm font-medium">Total Devices:</span>
 									<span className="text-sm text-muted-foreground">

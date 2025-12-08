@@ -1,14 +1,20 @@
 import { cache } from "react";
 import { db } from "@/lib/database/db";
 import { getDbStatus } from "@/lib/database/utils";
-import type { Device, Playlist, PlaylistItem, SystemLog } from "@/lib/types";
-import { getHostUrl } from "@/utils/helpers";
+import type {
+	Device,
+	Mixup,
+	Playlist,
+	PlaylistItem,
+	SystemLog,
+} from "@/lib/types";
 import "server-only";
 
 export type InitialData = {
 	devices: Device[];
 	playlists: Playlist[];
 	playlistItems: PlaylistItem[];
+	mixups: Mixup[];
 	systemLogs: SystemLog[];
 	uniqueSources: string[];
 	totalLogs: number;
@@ -17,7 +23,6 @@ export type InitialData = {
 		error?: string;
 		PostgresUrl?: string;
 	};
-	hostUrl: string;
 };
 
 /**
@@ -37,7 +42,6 @@ export type InitialData = {
  */
 export const getInitData = cache(async (): Promise<InitialData> => {
 	const dbStatus = await getDbStatus();
-	const hostUrl = getHostUrl();
 
 	// Default empty values if DB is not ready
 	let devices: Device[] = [];
@@ -46,6 +50,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 	let totalLogs = 0;
 	let playlists: Playlist[] = [];
 	let playlistItems: PlaylistItem[] = [];
+	let mixups: Mixup[] = [];
 
 	// Fetch data only if DB is ready
 	if (dbStatus.ready) {
@@ -54,6 +59,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 				devicesResult,
 				playlistsResult,
 				playlistItemsResult,
+				mixupsResult,
 				logsResult,
 				sourcesResult,
 				logsCountResult,
@@ -72,6 +78,12 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 				db
 					.selectFrom("playlist_items")
 					.selectAll()
+					.execute(),
+				// Fetch mixups
+				db
+					.selectFrom("mixups")
+					.selectAll()
+					.orderBy("created_at", "desc")
 					.execute(),
 				// Fetch recent logs
 				db
@@ -97,6 +109,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 			devices = devicesResult as unknown as Device[];
 			playlists = playlistsResult as unknown as Playlist[];
 			playlistItems = playlistItemsResult as unknown as PlaylistItem[];
+			mixups = mixupsResult as unknown as Mixup[];
 			systemLogs = logsResult as unknown as SystemLog[];
 			uniqueSources = Array.from(
 				new Set(
@@ -113,11 +126,11 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 		devices,
 		playlists,
 		playlistItems,
+		mixups,
 		systemLogs,
 		uniqueSources,
 		totalLogs,
 		dbStatus,
-		hostUrl,
 	};
 });
 

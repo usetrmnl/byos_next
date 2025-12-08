@@ -36,8 +36,8 @@ Documentation improvements are always welcome! Fix typos, add examples, or clari
 
 ```bash
 # Clone the repo
-git clone https://github.com/ghcpuman902/byos-nextjs.git
-cd byos-nextjs
+git clone https://github.com/usetrmnl/byos_next.git
+cd byos_next
 
 # Install dependencies
 pnpm install  # or npm install or yarn
@@ -51,7 +51,7 @@ pnpm run dev  # or npm run dev or yarn dev
 We're not super strict, but please try to follow the existing style:
 - Use TypeScript when possible
 - Use functional React components with hooks
-- Format your code (we use Prettier)
+- Format your code using Biome (run `pnpm lint` to check, `pnpm format` to auto-fix)
 - Add comments for non-obvious code
 
 ## Questions?

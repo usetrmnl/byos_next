@@ -9,7 +9,9 @@ export default async function Wikipedia({
 	description,
 	fullurl,
 	displaytitle,
-}: WikipediaData) {
+	width = 800,
+	height = 480,
+}: WikipediaData & { width?: number; height?: number }) {
 	"use cache";
 	// Sanitize the data to ensure we only work with valid inputs
 	const safeTitle =
@@ -18,6 +20,8 @@ export default async function Wikipedia({
 		"Wikipedia Article"; // display title contains html, need to be stripped
 	const safeExtract = extract || "Article content is unavailable.";
 	const safeDescription = typeof description === "string" ? description : "";
+
+	const isHalfScreen = width === 400 && height === 480;
 
 	// Use fullurl if available, otherwise fall back to content_urls
 	const safeContentUrl =
@@ -39,7 +43,13 @@ export default async function Wikipedia({
 		if (!safeExtract) return "";
 
 		// Base length for truncation - adjusted based on thumbnail presence
-		const baseLength = hasValidThumbnail ? 650 : 800;
+		const baseLength = hasValidThumbnail
+			? isHalfScreen
+				? 325
+				: 650
+			: isHalfScreen
+				? 400
+				: 800;
 
 		if (safeExtract.length <= baseLength) return safeExtract;
 
@@ -93,67 +103,59 @@ export default async function Wikipedia({
 	const imageDimensions = getImageDimensions();
 
 	return (
-		<PreSatori useDoubling={true}>
-			{(transform) => (
-				<>
-					{transform(
-						<div className="flex flex-col w-[800px] h-[480px]">
-							<div className="flex-none p-4 border-b border-black">
-								<h1 className="text-5xl">{safeTitle}</h1>
-							</div>
-							<div className="flex-1 p-4 flex flex-row">
-								<div
-									className="text-2xl flex-grow tracking-tight leading-none"
-									style={{ textOverflow: "ellipsis", maxHeight: "240px" }}
-								>
-									{truncatedExtract}
-								</div>
-								{hasValidThumbnail && thumbnail?.source && (
-									<div className="pr-4 w-[240px]">
-										<picture>
-											{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}
-											<source srcSet={thumbnail.source} type="image/webp" />
-											<img
-												src={thumbnail.source}
-												alt={safeTitle}
-												width={thumbnail.width || 240}
-												height={thumbnail.height || 200}
-												style={{
-													width: imageDimensions.width,
-													height: imageDimensions.height,
-													maxWidth: "240px",
-													maxHeight: "320px",
-													objectFit: "contain",
-													filter:
-														"grayscale(100%) contrast(0.9) brightness(1.05)",
-												}}
-											/>
-										</picture>
-									</div>
-								)}
-							</div>
-							<div className="flex-none p-4 flex flex-col">
-								<div className="text-base font-geneva9 flex justify-between w-full ">
-									<span>{safeContentUrl}</span>
-									<span>
-										{safeDescription && safeDescription.length > 100
-											? `${safeDescription.substring(0, 100)}...`
-											: safeDescription}
-									</span>
-								</div>
-
-								<div
-									className="text-2xl text-black flex justify-between w-full p-2 rounded-xl dither-100"
-									style={{ WebkitTextStroke: "4px white" }}
-								>
-									<span>Wikipedia • Random Article</span>
-									{formattedDate && <span>Generated: {formattedDate}</span>}
-								</div>
-							</div>
-						</div>,
+		<PreSatori useDoubling={true} width={width} height={height}>
+			<div className="flex flex-col w-full h-full">
+				<div className="flex-none p-4 border-b border-black">
+					<h1 className={` ${isHalfScreen ? "text-4xl" : "text-5xl"}`}>
+						{safeTitle}
+					</h1>
+				</div>
+				<div className="flex flex-col flex-1 p-4 sm:flex-row">
+					<div className="text-2xl flex flex-grow tracking-tight leading-none">
+						{truncatedExtract}
+					</div>
+					{hasValidThumbnail && thumbnail?.source && !isHalfScreen && (
+						<div className="pt-8 sm:pt-0 sm:pr-4 w-full sm:w-[240px] items-center justify-center">
+							<picture>
+								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}
+								<source srcSet={thumbnail.source} type="image/webp" />
+								<img
+									src={thumbnail.source}
+									alt={safeTitle}
+									width={thumbnail.width || 240}
+									height={thumbnail.height || 200}
+									style={{
+										width: imageDimensions.width,
+										height: imageDimensions.height,
+										maxWidth: "240px",
+										maxHeight: "320px",
+										objectFit: "contain",
+										filter: "grayscale(100%) contrast(0.9) brightness(1.05)",
+									}}
+								/>
+							</picture>
+						</div>
 					)}
-				</>
-			)}
+				</div>
+				<div className="flex-none p-4 flex flex-col">
+					<div className="text-base font-geneva9 flex justify-between w-full ">
+						<span>{safeContentUrl}</span>
+						<span>
+							{safeDescription && safeDescription.length > 100
+								? `${safeDescription.substring(0, 100)}...`
+								: safeDescription}
+						</span>
+					</div>
+
+					<div
+						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
+						style={{ WebkitTextStroke: "4px white" }}
+					>
+						<span>Wikipedia • Random Article</span>
+						{formattedDate && <span>Generated: {formattedDate}</span>}
+					</div>
+				</div>
+			</div>
 		</PreSatori>
 	);
 }

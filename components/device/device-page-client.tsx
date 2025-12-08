@@ -9,7 +9,6 @@ import { fetchDeviceByFriendlyId, updateDevice } from "@/app/actions/device";
 import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
-
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -42,7 +41,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { Device, Playlist, PlaylistItem } from "@/lib/types";
+import { DeviceDisplayMode } from "@/lib/mixup/constants";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import type { Device, Mixup, Playlist, PlaylistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
 	estimateBatteryLife,
@@ -69,6 +73,7 @@ interface DevicePageClientProps {
 	initialDevice: Device & { status?: string; type?: string };
 	availableScreens: { id: string; title: string }[];
 	availablePlaylists: Playlist[];
+	availableMixups: Mixup[];
 	playlistItems: PlaylistItem[];
 }
 
@@ -76,6 +81,7 @@ export default function DevicePageClient({
 	initialDevice,
 	availableScreens,
 	availablePlaylists,
+	availableMixups,
 	playlistItems,
 }: DevicePageClientProps) {
 	const [device, setDevice] = useState<
@@ -243,7 +249,8 @@ export default function DevicePageClient({
 				refresh_schedule: editedDevice.refresh_schedule,
 				screen: editedDevice.screen,
 				playlist_id: editedDevice.playlist_id,
-				use_playlist: editedDevice.use_playlist,
+				mixup_id: editedDevice.mixup_id,
+				display_mode: editedDevice.display_mode,
 			});
 
 			if (result.success) {
@@ -695,33 +702,59 @@ export default function DevicePageClient({
 
 							<div className="space-y-2">
 								<Label>Display Mode</Label>
-								<div className="flex items-center gap-4">
+								<div className="flex items-center gap-2 flex-wrap">
 									<Button
-										variant={!editedDevice.use_playlist ? "default" : "outline"}
+										type="button"
+										variant={
+											editedDevice.display_mode === DeviceDisplayMode.SCREEN
+												? "default"
+												: "outline"
+										}
 										onClick={() => {
 											setEditedDevice({
 												...editedDevice,
-												use_playlist: false,
+												display_mode: DeviceDisplayMode.SCREEN,
 											});
 										}}
 									>
 										Single Screen
 									</Button>
 									<Button
-										variant={editedDevice.use_playlist ? "default" : "outline"}
+										type="button"
+										variant={
+											editedDevice.display_mode === DeviceDisplayMode.PLAYLIST
+												? "default"
+												: "outline"
+										}
 										onClick={() => {
 											setEditedDevice({
 												...editedDevice,
-												use_playlist: true,
+												display_mode: DeviceDisplayMode.PLAYLIST,
 											});
 										}}
 									>
 										Playlist
 									</Button>
+									<Button
+										type="button"
+										variant={
+											editedDevice.display_mode === DeviceDisplayMode.MIXUP
+												? "default"
+												: "outline"
+										}
+										onClick={() => {
+											setEditedDevice({
+												...editedDevice,
+												display_mode: DeviceDisplayMode.MIXUP,
+											});
+										}}
+									>
+										Mixup
+									</Button>
 								</div>
 							</div>
 
-							{editedDevice.use_playlist ? (
+							{editedDevice.display_mode === DeviceDisplayMode.PLAYLIST && (
 								<div className="space-y-2">
 									<Label htmlFor="playlist">Playlist</Label>
 									<Select
@@ -747,7 +780,41 @@ export default function DevicePageClient({
 										</SelectContent>
 									</Select>
 								</div>
-							) : (
+							)}
+
+							{editedDevice.display_mode === DeviceDisplayMode.MIXUP && (
+								<div className="space-y-2">
+									<Label htmlFor="mixup">Mixup</Label>
+									<Select
+										value={editedDevice?.mixup_id || ""}
+										onValueChange={(value) =>
+											handleSelectChange(
+												"mixup_id",
+												value === "none" ? "" : value,
+											)
+										}
+										disabled={!isEditing}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select mixup..." />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="none">None</SelectItem>
+											{availableMixups.map((mixup) => (
+												<SelectItem key={mixup.id} value={mixup.id}>
+													{mixup.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<p className="text-sm text-muted-foreground">
+										A mixup combines multiple recipes into a single split-screen
+										layout.
+									</p>
+								</div>
+							)}
+
+							{editedDevice.display_mode === DeviceDisplayMode.SCREEN && (
 								<div className="space-y-2">
 									<Label htmlFor="screen">Screen Component</Label>
 									<Select
@@ -776,13 +843,30 @@ export default function DevicePageClient({
 								</div>
 							)}
 							<div className="w-full max-w-3xl">
-								{editedDevice.use_playlist && editedDevice.playlist_id ? (
+								{editedDevice.display_mode === DeviceDisplayMode.PLAYLIST &&
+								editedDevice.playlist_id ? (
 									<p className="text-sm text-muted-foreground mt-2">
 										Playlist mode: Shows rotating screens based on playlist
 										configuration
 									</p>
+								) : editedDevice.display_mode === DeviceDisplayMode.MIXUP &&
+									editedDevice.mixup_id ? (
+									<AspectRatio
+										ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+									>
+										<Image
+											src={`/api/bitmap/mixup/${editedDevice.mixup_id}.bmp`}
+											alt="Mixup Preview"
+											fill
+											className="object-cover rounded-xs ring-2 ring-gray-200"
+											style={{ imageRendering: "pixelated" }}
+											unoptimized
+										/>
+									</AspectRatio>
 								) : (
-									<AspectRatio ratio={5 / 3}>
+									<AspectRatio
+										ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+									>
 										<Image
 											src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp`}
 											alt="Device Screen"
@@ -971,15 +1055,19 @@ export default function DevicePageClient({
 							</div>
 
 							<div className="col-span-1 md:col-span-2 lg:col-span-3">
-								{editedDevice.use_playlist && editedDevice.playlist_id ? (
+								{device.display_mode === DeviceDisplayMode.PLAYLIST &&
+								device.playlist_id ? (
 									<>
-										<p className="text-sm text-muted-foreground mt-2">
-											Playlist mode: Shows rotating screens based on playlist
-											configuration
+										<p className="text-sm text-muted-foreground mt-2 mb-4">
+											<span className="font-medium">Playlist mode:</span> Shows
+											rotating screens based on playlist configuration
 										</p>
 										<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 											{playlistScreens.map((screen) => (
-												<AspectRatio key={screen.screen} ratio={5 / 3}>
+												<AspectRatio
+													key={screen.screen}
+													ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+												>
 													<Image
 														src={`/api/bitmap/${screen.screen || "simple-text"}.bmp`}
 														alt="Device Screen"
@@ -992,10 +1080,32 @@ export default function DevicePageClient({
 											))}
 										</div>
 									</>
+								) : device.display_mode === DeviceDisplayMode.MIXUP &&
+									device.mixup_id ? (
+									<>
+										<p className="text-sm text-muted-foreground mt-2 mb-4">
+											<span className="font-medium">Mixup mode:</span> Shows a
+											split-screen layout with multiple recipes
+										</p>
+										<AspectRatio
+											ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+										>
+											<Image
+												src={`/api/bitmap/mixup/${device.mixup_id}.bmp`}
+												alt="Mixup Preview"
+												fill
+												className="object-cover rounded-xs ring-2 ring-gray-200"
+												style={{ imageRendering: "pixelated" }}
+												unoptimized
+											/>
+										</AspectRatio>
+									</>
 								) : (
-									<AspectRatio ratio={5 / 3}>
+									<AspectRatio
+										ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+									>
 										<Image
-											src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp`}
+											src={`/api/bitmap/${device?.screen || "simple-text"}.bmp`}
 											alt="Device Screen"
 											fill
 											className="object-cover rounded-xs ring-2 ring-gray-200"

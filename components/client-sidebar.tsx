@@ -6,6 +6,7 @@ import {
 	ListRestart,
 	Monitor,
 	Palette,
+	PanelsTopLeft,
 	PencilRuler,
 	Server,
 	Wrench,
@@ -490,6 +491,13 @@ export function ClientSidebar({
 				currentPath={currentPath}
 				icon={<ListRestart className="mr-2 size-4" />}
 				label="Playlists"
+			/>
+
+			<NavLink
+				href="/mixup"
+				currentPath={currentPath}
+				icon={<PanelsTopLeft className="mr-2 size-4" />}
+				label="Mixup"
 			/>
 
 			<ToolsSection

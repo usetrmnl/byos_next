@@ -10,6 +10,8 @@ interface BitcoinPriceProps {
 	high24h?: string;
 	low24h?: string;
 	historicalPrices?: Array<{ timestamp: number; price: number }>;
+	width?: number;
+	height?: number;
 }
 
 export default function BitcoinPrice({
@@ -21,6 +23,8 @@ export default function BitcoinPrice({
 	high24h = "Loading...",
 	low24h = "Loading...",
 	historicalPrices = [],
+	width = 800,
+	height = 480,
 }: BitcoinPriceProps) {
 	// Calculate if price change is positive or negative
 	const isPositive = !change24h.startsWith("-");
@@ -39,74 +43,79 @@ export default function BitcoinPrice({
 		y: d.price,
 	}));
 
+	const isHalfScreen = width === 400 && height === 480;
+
 	return (
-		<PreSatori>
-			{(transform) => (
-				<>
-					{transform(
-						<div className="flex flex-col w-[800px] h-[480px] bg-white justify-between p-4">
-							<div className="flex flex-col">
-								<div className="flex items-center justify-between">
-									<div className="flex flex-col">
-										<h2 className="text-8xl font-inter">${price}</h2>
-										<div className="text-4xl">
-											{isPositive ? "↑" : "↓"} {changeValue}%
-										</div>
-									</div>
-									<div className="w-[100px] h-[100px]">
-										<picture>
-											<source
-												srcSet="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
-												type="image/png"
-											/>
-											<img
-												src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
-												alt="Bitcoin Logo"
-												width={64}
-												height={64}
-												style={{
-													objectFit: "contain",
-													width: "100px",
-													height: "100px",
-													filter:
-														"grayscale(100%) brightness(100%) contrast(200%)",
-												}}
-											/>
-										</picture>
-									</div>
-								</div>
-							</div>
-							<div className="w-full flex flex-row items-center justify-between px-4">
+		<PreSatori width={width} height={height}>
+			<div className="flex h-full w-full flex-col bg-white justify-between p-4">
+				<div className="flex flex-col">
+					<div className="flex flex-col">
+						<div className="flex items-center justify-between">
+							<h2 className="text-6xl sm:text-7xl font-inter">${price}</h2>
+							<picture className="w-[100px] h-[100px]">
+								<source
+									srcSet="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
+									type="image/png"
+								/>
+								<img
+									src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
+									alt="Bitcoin Logo"
+									width={100}
+									height={100}
+									style={{
+										objectFit: "contain",
+										width: "100px",
+										height: "100px",
+										filter: "grayscale(100%) brightness(100%) contrast(200%)",
+									}}
+								/>
+							</picture>
+						</div>
+						<div className="text-4xl font-inter">
+							{isPositive ? "↑" : "↓"} {changeValue}%
+						</div>
+					</div>
+				</div>
+				<div className="w-full flex flex-col sm:flex-row  sm:items-center sm:justify-between px-4">
+					{!isHalfScreen && (
+						<>
+							<div className="hidden sm:flex">
 								<Graph data={graphData} isTimeData={true} />
-								<div className="flex flex-col w-1/3" style={{ gap: "16px" }}>
-									{priceStats.map((stat, index) => (
-										<div
-											key={index}
-											className="p-2 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
-										>
-											<div className="text-[28px] leading-none m-0">
-												{stat.label}
-											</div>
-											<div className="text-[28px] leading-none m-0">
-												${stat.value}
-											</div>
-										</div>
-									))}
-								</div>
 							</div>
-							<div
-								className="w-full flex justify-between text-2xl p-2 rounded-xl dither-100"
-								style={{ WebkitTextStroke: "4px white" }}
-							>
-								<div>Bitcoin Price Tracker</div>
-								<div>
-									{lastUpdated && <span>Last updated: {lastUpdated}</span>}
-								</div>
+							<div className="flex sm:hidden pb-4">
+								<Graph
+									data={graphData}
+									isTimeData={true}
+									width={width - 60}
+									height={height - 500}
+								/>
 							</div>
-						</div>,
+						</>
 					)}
-				</>
-			)}
+					<div className="flex flex-col w-full sm:w-1/3 gap-4">
+						{priceStats.map((stat, index) => (
+							<div
+								key={index}
+								className="w-full p-2 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
+							>
+								<div className="text-[24px] sm:text-[28px] leading-none m-0">
+									{stat.label}
+								</div>
+								<div className="text-[24px] sm:text-[28px] leading-none m-0">
+									${stat.value}
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+				<div
+					className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
+					style={{ WebkitTextStroke: "4px white" }}
+				>
+					<div>Bitcoin Price Tracker</div>
+					<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
+				</div>
+			</div>
 		</PreSatori>
 	);
 }

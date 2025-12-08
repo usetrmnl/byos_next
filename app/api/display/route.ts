@@ -4,18 +4,14 @@ import type { CustomError } from "@/lib/api/types";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
+import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import type {
 	Device,
 	PlaylistItem,
 	RefreshSchedule,
 	TimeRange,
 } from "@/lib/types";
-import {
-	generateApiKey,
-	generateFriendlyId,
-	getHostUrl,
-	timezones,
-} from "@/utils/helpers";
+import { generateApiKey, generateFriendlyId, timezones } from "@/utils/helpers";
 
 const DEFAULT_SCREEN = "album";
 const DEFAULT_REFRESH_RATE = 180;
@@ -271,12 +267,16 @@ export async function GET(request: Request) {
 	const batteryVoltage = request.headers.get("Battery-Voltage");
 	const fwVersion = request.headers.get("FW-Version");
 	const rssi = request.headers.get("RSSI");
+	const hostUrl =
+		request.headers.get("x-forwarded-proto") +
+		"://" +
+		request.headers.get("x-forwarded-host");
 	// log all headers in console for debugging, use entries with iterator and table logger
 	console.table(Object.fromEntries(request.headers.entries()));
 
 	const { ready } = await checkDbConnection();
 
-	const baseUrl = `${getHostUrl()}/api/bitmap`;
+	const baseUrl = `${hostUrl}/api/bitmap`;
 
 	const uniqueId =
 		Math.random().toString(36).substring(2, 7) +
@@ -811,56 +811,91 @@ export async function GET(request: Request) {
 				rssi: device.rssi,
 				screen: device.screen,
 				playlist_id: device.playlist_id,
-				use_playlist: device.use_playlist,
+				mixup_id: device.mixup_id,
+				display_mode: device.display_mode,
 				current_playlist_index: device.current_playlist_index,
 			},
 		});
 
 		let screenToDisplay = device.screen;
 		let dynamicRefreshRate = 180; // Default refresh rate
+		let imageUrl: string;
 
-		if (device.use_playlist && device.playlist_id) {
-			const activeItem = await getActivePlaylistItem(
-				device.playlist_id,
-				device.current_playlist_index || 0,
-				device.timezone || "UTC",
-			);
+		// Handle display mode
+		switch (device.display_mode) {
+			case DeviceDisplayMode.PLAYLIST:
+				if (device.playlist_id) {
+					const activeItem = await getActivePlaylistItem(
+						device.playlist_id,
+						device.current_playlist_index || 0,
+						device.timezone || "UTC",
+					);
 
-			if (activeItem) {
-				screenToDisplay = activeItem.screen_id;
-				dynamicRefreshRate = activeItem.duration;
-				await db
-					.updateTable("devices")
-					.set({ current_playlist_index: activeItem.order_index })
-					.where("id", "=", device.id.toString())
-					.execute();
-			} else {
-				// No active item found - this could happen if all items have time/day restrictions
-				// that don't match the current time. In this case, we should keep the current index
-				// and use a fallback screen with a reasonable refresh rate.
-				logInfo("No active playlist item found, using fallback", {
-					source: "api/display",
-					metadata: {
-						device_id: device.friendly_id,
-						current_index: device.current_playlist_index,
-						timezone: device.timezone,
-					},
-				});
+					if (activeItem) {
+						screenToDisplay = activeItem.screen_id;
+						dynamicRefreshRate = activeItem.duration;
+						await db
+							.updateTable("devices")
+							.set({ current_playlist_index: activeItem.order_index })
+							.where("id", "=", device.id.toString())
+							.execute();
+					} else {
+						// No active item found - this could happen if all items have time/day restrictions
+						// that don't match the current time. In this case, we should keep the current index
+						// and use a fallback screen with a reasonable refresh rate.
+						logInfo("No active playlist item found, using fallback", {
+							source: "api/display",
+							metadata: {
+								device_id: device.friendly_id,
+								current_index: device.current_playlist_index,
+								timezone: device.timezone,
+							},
+						});
 
-				// Use the device's default screen or a fallback
-				screenToDisplay = device.screen || "not-found";
-				dynamicRefreshRate = 60; // Shorter refresh rate to check again soon
+						// Use the device's default screen or a fallback
+						screenToDisplay = device.screen || "not-found";
+						dynamicRefreshRate = 60; // Shorter refresh rate to check again soon
+					}
+				}
+				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
+				break;
+
+			case DeviceDisplayMode.MIXUP: {
+				if (device.mixup_id) {
+					// Use the mixup rendering endpoint
+					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp`;
+					logInfo("Using mixup display mode", {
+						source: "api/display",
+						metadata: {
+							device_id: device.friendly_id,
+							mixup_id: device.mixup_id,
+						},
+					});
+				} else {
+					// Fallback to default screen if no mixup assigned
+					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
+				}
+				// Use default refresh rate from schedule for mixups
+				const mixupTimezone = device.timezone || "UTC";
+				dynamicRefreshRate = calculateRefreshRate(
+					device.refresh_schedule as unknown as RefreshSchedule,
+					180,
+					mixupTimezone,
+				);
+				break;
 			}
-		} else {
-			const deviceTimezone = device.timezone || "UTC";
-			dynamicRefreshRate = calculateRefreshRate(
-				device.refresh_schedule as unknown as RefreshSchedule,
-				180,
-				deviceTimezone,
-			);
+			default: {
+				// Default single screen mode
+				const deviceTimezone = device.timezone || "UTC";
+				dynamicRefreshRate = calculateRefreshRate(
+					device.refresh_schedule as unknown as RefreshSchedule,
+					180,
+					deviceTimezone,
+				);
+				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
+				break;
+			}
 		}
-
-		const imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp`;
 
 		// Start pre-caching the current image in the background
 		// This ensures the image is cached by the time the device requests it
@@ -887,8 +922,9 @@ export async function GET(request: Request) {
 				screen: screenToDisplay,
 				refresh_rate: dynamicRefreshRate,
 				next_update: nextUpdateTime.toISOString(),
-				playlist_mode: device.use_playlist,
+				display_mode: device.display_mode,
 				playlist_id: device.playlist_id,
+				mixup_id: device.mixup_id,
 			},
 		});
 

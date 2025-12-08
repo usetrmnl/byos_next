@@ -106,3 +106,11 @@ export const getSatoriFonts = () => {
 
 	return satoriFonts;
 };
+
+export const extractFontFamily = (className?: string): string | undefined => {
+	const defaultFont = "blockkie";
+	if (!className) return defaultFont;
+
+	const fontClass = className.split(" ").find((cls) => cls.startsWith("font-"));
+	return fontClass?.replace("font-", "") || defaultFont;
+};

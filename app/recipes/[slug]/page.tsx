@@ -3,45 +3,24 @@ import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ImageResponse } from "next/og";
-import { cache, createElement, Suspense, use } from "react";
-import satori from "satori";
+import { cache, Suspense, use } from "react";
 import screens from "@/app/recipes/screens.json";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { getSatoriFonts } from "@/lib/fonts";
-import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
-
-// Logging utility to control log output based on environment
-const logger = {
-	info: (message: string) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			console.log(message);
-		}
-	},
-	error: (message: string, error?: unknown) => {
-		if (error) {
-			console.error(message, error);
-		} else {
-			console.error(message);
-		}
-	},
-	success: (message: string) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			console.log(`✅ ${message}`);
-		}
-	},
-	warn: (message: string, error?: unknown) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			if (error) {
-				console.warn(message, error);
-			} else {
-				console.warn(message);
-			}
-		}
-	},
-};
+import {
+	addDimensionsToProps,
+	ComponentProps,
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+	fetchRecipeComponent,
+	fetchRecipeConfig,
+	fetchRecipeProps,
+	isBuildPhase,
+	logger,
+	RecipeConfig,
+	renderRecipeOutputs,
+} from "@/lib/recipes/recipe-renderer";
 
 export async function generateMetadata() {
 	// This empty function enables streaming for this route
@@ -55,250 +34,54 @@ async function refreshData(slug: string) {
 	revalidateTag(slug, "max");
 }
 
-// Cache the fonts at module initialization
-const fonts = getSatoriFonts();
-
-// Define a type for the recipe configuration
-type RecipeConfig = (typeof screens)[keyof typeof screens] & {
-	renderSettings?: {
-		// Consolidate into a single property for double sizing
-		doubleSizeForSharperText?: boolean;
-		[key: string]: boolean | string | number | undefined;
-	};
-};
-
-// Fetch recipe configuration
-const fetchConfig = cache((slug: string): RecipeConfig | null => {
-	const config = screens[slug as keyof typeof screens];
-	if (!config || (!config.published && process.env.NODE_ENV === "production")) {
-		return null;
-	}
-	return config as RecipeConfig;
-});
-
-// Fetch component for a recipe
-const fetchComponent = cache(async (slug: string) => {
-	try {
-		const { default: Component } = await import(
-			`@/app/recipes/screens/${slug}/${slug}.tsx`
-		);
-		return Component;
-	} catch (error) {
-		logger.error(`Error loading component for ${slug}:`, error);
-		return null;
-	}
-});
-
-// Fetch props for a recipe
-const fetchProps = cache(async (slug: string, config: RecipeConfig) => {
-	let props = config.props || {};
-
-	const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
-	if (isBuildPhase) {
-		return props;
-	}
-
-	if (!config.hasDataFetch) {
-		return props;
-	}
-
-	try {
-		const { default: fetchDataFunction } = await import(
-			`@/app/recipes/screens/${slug}/getData.ts`
-		);
-
-		// Set a timeout for data fetching to prevent hanging
-		const fetchPromise = fetchDataFunction();
-		const timeoutPromise = new Promise((_, reject) => {
-			setTimeout(() => reject(new Error("Data fetch timeout")), 10000);
-		});
-
-		// Race between the fetch and the timeout
-		const fetchedData = await Promise.race([
-			fetchPromise,
-			timeoutPromise,
-		]).catch((error) => {
-			logger.error(`Data fetch error for ${slug}:`, error);
-			return null;
-		});
-
-		// Check if the fetched data is valid
-		if (fetchedData && typeof fetchedData === "object") {
-			props = fetchedData;
-		} else {
-			logger.error(`Invalid or missing data for ${slug}`);
-		}
-	} catch (error) {
-		logger.error(`Error fetching data for ${slug}:`, error);
-	}
-
-	return props;
-});
-
-// Get image options for rendering
-const getImageOptions = (config: RecipeConfig) => {
-	// Use doubleSizeForSharperText as the single source of truth for doubling
-	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
-	const scaleFactor = useDoubling ? 2 : 1;
-
-	return {
-		width: 800 * scaleFactor,
-		height: 480 * scaleFactor,
-		fonts: fonts,
-		shapeRendering: 1,
-		textRendering: 0,
-		imageRendering: 1,
-		debug: false,
-	};
-};
-
 // Generate static params for all recipes
 export async function generateStaticParams() {
 	return Object.keys(screens).map((slug) => ({ slug }));
 }
 
-// Type for component props
-type ComponentProps = Record<string, unknown>;
-
-// Define types for our cache
-interface CacheItem {
-	bitmap: Buffer | null;
-	png: Buffer | null;
-	svg: string | null;
-	expiresAt: number;
-}
-
-// Extend NodeJS namespace for global variables
-declare global {
-	var renderCache: Map<string, CacheItem> | undefined;
-}
-
-// Cache management function
-const getRenderCache = (): Map<string, CacheItem> | null => {
-	// Check for forced cache usage via environment variable
-	const forceBitmapCache = process.env.FORCE_BITMAP_CACHE === "true";
-
-	// In production, return null unless forced
-	if (process.env.NODE_ENV === "production" && !forceBitmapCache) {
-		return null;
-	}
-
-	// Use global cache in development or when forced in production
-	if (!global.renderCache) {
-		global.renderCache = new Map<string, CacheItem>();
-		logger.info(
-			`Initializing render cache (${process.env.NODE_ENV} mode${forceBitmapCache ? ", forced" : ""})`,
-		);
-	}
-	return global.renderCache;
-};
-
-// Cache duration in seconds
-const CACHE_DURATION = 60;
-
-// Combined render function for all formats
+// Combined render function for all formats (relies on Next.js cache)
 const renderAllFormats = cache(
 	async (
 		slug: string,
 		Component: React.ComponentType<ComponentProps>,
 		props: ComponentProps,
 		config: RecipeConfig,
-	): Promise<CacheItem> => {
-		const renderCache = getRenderCache();
-		const cacheKey = `${slug}-${JSON.stringify(props)}`;
-		const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+		imageWidth: number,
+		imageHeight: number,
+	) => {
+		const propsWithDimensions = addDimensionsToProps(
+			props,
+			imageWidth,
+			imageHeight,
+		);
 
 		// During production build prerendering, avoid rendering outputs so we don't
 		// trigger remote asset fetches or use Date.now() in a request-less context.
-		if (isBuildPhase) {
+		if (isBuildPhase()) {
 			logger.info(`Skipping render for ${slug} during build prerender`);
 			return {
-				bitmap: null,
-				png: null,
-				svg: null,
-				expiresAt: 0,
+				bitmap: null as Buffer | null,
+				png: null as Buffer | null,
+				svg: null as string | null,
 			};
-		}
-
-		// Check cache first
-		if (renderCache?.has(cacheKey)) {
-			const cached = renderCache.get(cacheKey);
-			if (cached && cached.expiresAt > Date.now()) {
-				logger.info(`Cache hit for ${slug} renders`);
-				return cached;
-			}
-			logger.info(`Cache expired for ${slug} renders`);
 		}
 
 		try {
 			logger.info(`🔄 Generating all formats for: ${slug}`);
-
-			// Generate all formats in parallel
-			const [bitmapResult, pngResult, svgResult] = await Promise.all([
-				(async () => {
-					try {
-						const pngResponse = await new ImageResponse(
-							createElement(Component, props),
-							getImageOptions(config),
-						);
-						return await renderBmp(pngResponse, {
-							ditheringMethod: DitheringMethod.ATKINSON,
-						});
-					} catch (error) {
-						logger.error(`Error generating bitmap for ${slug}:`, error);
-						return null;
-					}
-				})(),
-				(async () => {
-					try {
-						const pngResponse = await new ImageResponse(
-							createElement(Component, props),
-							getImageOptions(config),
-						);
-						const pngBuffer = await pngResponse.arrayBuffer();
-						return Buffer.from(pngBuffer);
-					} catch (error) {
-						logger.error(`Error generating PNG for ${slug}:`, error);
-						return null;
-					}
-				})(),
-				(async () => {
-					try {
-						const element = createElement(Component, props);
-						return await satori(element, getImageOptions(config));
-					} catch (error) {
-						logger.error(`Error generating SVG for ${slug}:`, error);
-						return `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480">
-						<rect width="800" height="480" fill="#f0f0f0" />
-						<text x="400" y="240" font-family="Arial" font-size="24" text-anchor="middle">
-							Unable to generate SVG content
-						</text>
-					</svg>`;
-					}
-				})(),
-			]);
-
-			const result = {
-				bitmap: bitmapResult,
-				png: pngResult,
-				svg: svgResult,
-				expiresAt: Date.now() + CACHE_DURATION * 1000,
-			};
-
-			// Store in cache if enabled
-			if (renderCache) {
-				renderCache.set(cacheKey, result);
-				logger.success(`Cached all renders for: ${slug}`);
-			}
-
-			return result;
+			return await renderRecipeOutputs({
+				slug,
+				Component,
+				props: propsWithDimensions,
+				config,
+				imageWidth,
+				imageHeight,
+			});
 		} catch (error) {
 			logger.error(`Error generating formats for ${slug}:`, error);
 			return {
-				bitmap: null,
-				png: null,
-				svg: null,
-				expiresAt: Date.now(),
+				bitmap: null as Buffer | null,
+				png: null as Buffer | null,
+				svg: null as string | null,
 			};
 		}
 	},
@@ -309,13 +92,17 @@ const RenderComponent = ({
 	slug,
 	format,
 	title,
+	imageWidth,
+	imageHeight,
 }: {
 	slug: string;
 	format: "bitmap" | "png" | "svg" | "react";
 	title: string;
+	imageWidth: number;
+	imageHeight: number;
 }) => {
 	// Fetch config and handle null case
-	const configResult = use(Promise.resolve(fetchConfig(slug)));
+	const configResult = use(Promise.resolve(fetchRecipeConfig(slug)));
 	if (!configResult) {
 		return (
 			<div className="w-full h-full flex items-center justify-center">
@@ -325,7 +112,7 @@ const RenderComponent = ({
 	}
 
 	// Fetch component and handle null case
-	const componentResult = use(Promise.resolve(fetchComponent(slug)));
+	const componentResult = use(Promise.resolve(fetchRecipeComponent(slug)));
 	if (!componentResult) {
 		return (
 			<div className="w-full h-full flex items-center justify-center">
@@ -337,7 +124,12 @@ const RenderComponent = ({
 	// Now we have valid config and component
 	const config = configResult;
 	const Component = componentResult;
-	const props = use(Promise.resolve(fetchProps(slug, config)));
+	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
+	const propsWithDimensions = addDimensionsToProps(
+		propsResult,
+		imageWidth,
+		imageHeight,
+	);
 
 	// Use doubleSizeForSharperText as the single source of truth for doubling
 	const useDoubling = config.renderSettings?.doubleSizeForSharperText ?? false;
@@ -353,14 +145,23 @@ const RenderComponent = ({
 					height: useDoubling ? "200%" : "100%",
 				}}
 			>
-				<Component {...props} />
+				<Component {...propsWithDimensions} />
 			</div>
 		);
 	}
 
 	// Get all rendered formats
 	const renders = use(
-		Promise.resolve(renderAllFormats(slug, Component, props, config)),
+		Promise.resolve(
+			renderAllFormats(
+				slug,
+				Component,
+				propsResult,
+				config,
+				imageWidth,
+				imageHeight,
+			),
+		),
 	);
 
 	// For bitmap rendering
@@ -375,8 +176,8 @@ const RenderComponent = ({
 
 		return (
 			<Image
-				width={800}
-				height={480}
+				width={imageWidth}
+				height={imageHeight}
 				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} BMP render`}
@@ -397,8 +198,8 @@ const RenderComponent = ({
 
 		return (
 			<Image
-				width={800 * (useDoubling ? 2 : 1)}
-				height={480 * (useDoubling ? 2 : 1)}
+				width={imageWidth * (useDoubling ? 2 : 1)}
+				height={imageHeight * (useDoubling ? 2 : 1)}
 				src={`data:image/png;base64,${renders.png.toString("base64")}`}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} PNG render`}
@@ -439,13 +240,19 @@ const RenderComponent = ({
 // Main recipe page component
 export default async function RecipePage({
 	params,
+	searchParams,
 }: {
 	params: Promise<{ slug: string }>;
+	searchParams: Promise<{ format?: string }>;
 }) {
 	// Access headers to mark route as dynamic and allow time-based operations
 	headers();
 	const { slug } = await params;
-	const config = await fetchConfig(slug);
+	const { format } = await searchParams;
+	const config = await fetchRecipeConfig(slug);
+	const isPortrait = format === "portrait";
+	const imageWidth = isPortrait ? DEFAULT_IMAGE_HEIGHT : DEFAULT_IMAGE_WIDTH;
+	const imageHeight = isPortrait ? DEFAULT_IMAGE_WIDTH : DEFAULT_IMAGE_HEIGHT;
 
 	if (!config) {
 		notFound();
@@ -466,13 +273,31 @@ export default async function RecipePage({
 								screens.json.
 							</p>
 						)}
+						<div className="mt-4 inline-flex rounded-md border p-1 gap-1">
+							<Link
+								href={`/recipes/${slug}`}
+								className={`px-3 py-1 text-sm rounded ${isPortrait ? "text-muted-foreground" : "bg-primary text-primary-foreground"}`}
+							>
+								Landscape
+							</Link>
+							<Link
+								href={`/recipes/${slug}?format=portrait`}
+								className={`px-3 py-1 text-sm rounded ${isPortrait ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+							>
+								Portrait
+							</Link>
+						</div>
 					</Suspense>
 				</div>
 
 				<RecipePreviewLayout
+					canvasWidth={imageWidth}
 					bmpComponent={
-						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={5 / 3}>
+						<div
+							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							className="border border-gray-200 overflow-hidden rounded-sm"
+						>
+							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -484,14 +309,19 @@ export default async function RecipePage({
 										slug={slug}
 										format="bitmap"
 										title={config.title}
+										imageWidth={imageWidth}
+										imageHeight={imageHeight}
 									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
 					}
 					pngComponent={
-						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={5 / 3}>
+						<div
+							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							className="border border-gray-200 overflow-hidden rounded-sm"
+						>
+							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -503,14 +333,19 @@ export default async function RecipePage({
 										slug={slug}
 										format="png"
 										title={config.title}
+										imageWidth={imageWidth}
+										imageHeight={imageHeight}
 									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
 					}
 					svgComponent={
-						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={5 / 3}>
+						<div
+							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							className="border border-gray-200 overflow-hidden rounded-sm"
+						>
+							<AspectRatio ratio={imageWidth / imageHeight}>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -522,14 +357,22 @@ export default async function RecipePage({
 										slug={slug}
 										format="svg"
 										title={config.title}
+										imageWidth={imageWidth}
+										imageHeight={imageHeight}
 									/>
 								</Suspense>
 							</AspectRatio>
 						</div>
 					}
 					reactComponent={
-						<div className="w-[800px] h-[480px] border border-gray-200 overflow-hidden rounded-sm">
-							<AspectRatio ratio={5 / 3} className="w-[800px] h-[480px]">
+						<div
+							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							className="border border-gray-200 overflow-hidden rounded-sm"
+						>
+							<AspectRatio
+								ratio={imageWidth / imageHeight}
+								style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+							>
 								<Suspense
 									fallback={
 										<div className="w-full h-full flex items-center justify-center">
@@ -541,6 +384,8 @@ export default async function RecipePage({
 										slug={slug}
 										format="react"
 										title={config.title}
+										imageWidth={imageWidth}
+										imageHeight={imageHeight}
 									/>
 								</Suspense>
 							</AspectRatio>
@@ -619,6 +464,8 @@ const PropsDisplay = ({
 	slug: string;
 	config: RecipeConfig;
 }) => {
-	const props = use(Promise.resolve(fetchProps(slug, config)));
-	return <RecipeProps props={props} slug={slug} refreshAction={refreshData} />;
+	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
+	return (
+		<RecipeProps props={propsResult} slug={slug} refreshAction={refreshData} />
+	);
 };

@@ -95,7 +95,6 @@ WHERE NOT EXISTS (
 	// Generate TypeScript code
 	const output = `// This file is auto-generated from migration files.
 // Do not edit manually. Run 'pnpm generate:sql' to regenerate.
-// Generated at: ${new Date().toISOString()}
 
 export const SQL_STATEMENTS = {
 ${Object.entries(migrations)
