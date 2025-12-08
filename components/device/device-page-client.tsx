@@ -990,31 +990,37 @@ export default function DevicePageClient({
 									</p>
 								) : editedDevice.display_mode === DeviceDisplayMode.MIXUP &&
 									editedDevice.mixup_id ? (
-									<AspectRatio
-										ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
-									>
-										<Image
-											src={`/api/bitmap/mixup/${editedDevice.mixup_id}.bmp`}
-											alt="Mixup Preview"
-											fill
-											className="object-cover rounded-xs ring-2 ring-gray-200"
-											style={{ imageRendering: "pixelated" }}
-											unoptimized
-										/>
-									</AspectRatio>
+									<div className="max-w-[300px]"
+										style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
+										<AspectRatio
+											ratio={deviceWidth / deviceHeight}
+										>
+											<Image
+												src={`/api/bitmap/mixup/${editedDevice.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+												alt="Mixup Preview"
+												fill
+												className="object-cover rounded-xs ring-2 ring-gray-200"
+												style={{ imageRendering: "pixelated" }}
+												unoptimized
+											/>
+										</AspectRatio>
+									</div>
 								) : (
-									<AspectRatio
-										ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
-									>
-										<Image
-											src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp`}
-											alt="Device Screen"
-											fill
-											className="object-cover rounded-xs ring-2 ring-gray-200"
-											style={{ imageRendering: "pixelated" }}
-											unoptimized
-										/>
-									</AspectRatio>
+									<div className="max-w-[300px]"
+										style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
+										<AspectRatio
+											ratio={deviceWidth / deviceHeight}
+										>
+											<Image
+												src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+												alt="Device Screen"
+												fill
+												className="object-cover rounded-xs ring-2 ring-gray-200"
+												style={{ imageRendering: "pixelated" }}
+												unoptimized
+											/>
+										</AspectRatio>
+									</div>
 								)}
 							</div>
 						</CardContent>
@@ -1203,19 +1209,22 @@ export default function DevicePageClient({
 										</p>
 										<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 											{playlistScreens.map((screen) => (
-												<AspectRatio
-													key={screen.screen}
-													ratio={deviceWidth / deviceHeight}
-												>
-													<Image
-														src={`/api/bitmap/${screen.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
-														alt="Device Screen"
-														fill
-														className="object-cover rounded-xs ring-2 ring-gray-200"
-														style={{ imageRendering: "pixelated" }}
-														unoptimized
-													/>
-												</AspectRatio>
+												<div className="max-w-[300px]"
+													style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
+													<AspectRatio
+														key={screen.screen}
+														ratio={deviceWidth / deviceHeight}
+													>
+														<Image
+															src={`/api/bitmap/${screen.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+															alt="Device Screen"
+															fill
+															className="object-cover rounded-xs ring-2 ring-gray-200"
+															style={{ imageRendering: "pixelated" }}
+															unoptimized
+														/>
+													</AspectRatio>
+												</div>
 											))}
 										</div>
 									</>
@@ -1226,32 +1235,38 @@ export default function DevicePageClient({
 											<span className="font-medium">Mixup mode:</span> Shows a
 											split-screen layout with multiple recipes
 										</p>
+										<div className="max-w-[300px]"
+											style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
+											<AspectRatio
+												ratio={deviceWidth / deviceHeight}
+											>
+												<Image
+													src={`/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+													alt="Mixup Preview"
+													fill
+													className="object-cover rounded-xs ring-2 ring-gray-200"
+													style={{ imageRendering: "pixelated" }}
+													unoptimized
+												/>
+											</AspectRatio>
+										</div>
+									</>
+								) : (
+									<div className="max-w-[300px]"
+										style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
 										<AspectRatio
 											ratio={deviceWidth / deviceHeight}
 										>
 											<Image
-												src={`/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
-												alt="Mixup Preview"
+												src={`/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+												alt="Device Screen"
 												fill
 												className="object-cover rounded-xs ring-2 ring-gray-200"
 												style={{ imageRendering: "pixelated" }}
 												unoptimized
 											/>
 										</AspectRatio>
-									</>
-								) : (
-									<AspectRatio
-										ratio={deviceWidth / deviceHeight}
-									>
-										<Image
-											src={`/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
-											alt="Device Screen"
-											fill
-											className="object-cover rounded-xs ring-2 ring-gray-200"
-											style={{ imageRendering: "pixelated" }}
-											unoptimized
-										/>
-									</AspectRatio>
+									</div>
 								)}
 							</div>
 						</dl>

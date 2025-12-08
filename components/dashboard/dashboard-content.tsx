@@ -73,7 +73,8 @@ export const DashboardContent = ({
 					<CardContent>
 						{lastUpdatedDevice ? (
 							<div className="flex flex-col items-center">
-								<div className="rounded-xs bg-muted border overflow-hidden w-full max-w-[300px] max-h-[calc(300px * (deviceWidth / deviceHeight))]">
+								<div className="rounded-xs bg-muted border overflow-hidden w-full max-w-[300px]"
+									style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
 									<AspectRatio ratio={deviceWidth / deviceHeight} className="w-full">
 										<Image
 											src={`/api/bitmap/${lastUpdatedDevice?.screen}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
