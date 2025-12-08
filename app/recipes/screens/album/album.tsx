@@ -7,7 +7,6 @@ export default async function Album({
 	width?: number;
 	height?: number;
 }) {
-	"use cache";
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="w-full h-full bg-black flex flex-col items-center justify-center relative">
