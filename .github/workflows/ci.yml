@@ -5,17 +5,18 @@ on:
     branches: [main, dev/*]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   lint:
     name: Biome Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
       - run: pnpm install --frozen-lockfile
@@ -25,11 +26,11 @@ jobs:
     name: Biome Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v3
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
         with:
           version: 10
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: "20"
       - run: pnpm install --frozen-lockfile
