@@ -69,6 +69,15 @@ const getSignalQuality = (rssi: number): string => {
 	return "Very Poor";
 };
 
+// Device size presets
+const DEVICE_SIZE_PRESETS = {
+	"800x480": { width: 800, height: 480 },
+	"1872x1404": { width: 1872, height: 1404 },
+	"custom": null,
+} as const;
+
+type DeviceSizePreset = keyof typeof DEVICE_SIZE_PRESETS;
+
 interface DevicePageClientProps {
 	initialDevice: Device & { status?: string; type?: string };
 	availableScreens: { id: string; title: string }[];
@@ -99,6 +108,17 @@ export default function DevicePageClient({
 	// State for validation error messages
 	const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 	const [friendlyIdError, setFriendlyIdError] = useState<string | null>(null);
+
+	// State for device size preset
+	const [deviceSizePreset, setDeviceSizePreset] = useState<DeviceSizePreset>(() => {
+		const width = editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
+		const height = editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
+
+		// Check if current dimensions match a preset
+		if (width === 800 && height === 480) return "800x480";
+		if (width === 1872 && height === 1404) return "1872x1404";
+		return "custom";
+	});
 
 	// Handle form input changes
 	const handleInputChange = (
@@ -215,6 +235,34 @@ export default function DevicePageClient({
 		});
 	};
 
+	// Handle device size preset change
+	const handleDeviceSizePresetChange = (preset: DeviceSizePreset) => {
+		setDeviceSizePreset(preset);
+		if (preset !== "custom" && DEVICE_SIZE_PRESETS[preset]) {
+			const { width, height } = DEVICE_SIZE_PRESETS[preset]!;
+			setEditedDevice({
+				...editedDevice,
+				screen_width: width,
+				screen_height: height,
+			});
+		}
+	};
+
+	// Handle custom width/height change
+	const handleCustomSizeChange = (field: "width" | "height", value: number) => {
+		setEditedDevice({
+			...editedDevice,
+			screen_width: field === "width" ? value : editedDevice.screen_width,
+			screen_height: field === "height" ? value : editedDevice.screen_height,
+		});
+		// Update preset to custom if dimensions don't match a preset
+		const width = field === "width" ? value : (editedDevice.screen_width || DEFAULT_IMAGE_WIDTH);
+		const height = field === "height" ? value : (editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT);
+		if (!(width === 800 && height === 480) && !(width === 1872 && height === 1404)) {
+			setDeviceSizePreset("custom");
+		}
+	};
+
 	// Handle form submission
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -251,6 +299,10 @@ export default function DevicePageClient({
 				playlist_id: editedDevice.playlist_id,
 				mixup_id: editedDevice.mixup_id,
 				display_mode: editedDevice.display_mode,
+				screen_width: editedDevice.screen_width,
+				screen_height: editedDevice.screen_height,
+				screen_orientation: editedDevice.screen_orientation,
+				grayscale: editedDevice.grayscale,
 			});
 
 			if (result.success) {
@@ -684,10 +736,10 @@ export default function DevicePageClient({
 
 								{(!editedDevice?.refresh_schedule?.time_ranges ||
 									editedDevice.refresh_schedule.time_ranges.length === 0) && (
-									<p className="text-sm text-muted-foreground">
-										No custom time ranges configured.
-									</p>
-								)}
+										<p className="text-sm text-muted-foreground">
+											No custom time ranges configured.
+										</p>
+									)}
 
 								<Button
 									type="button"
@@ -842,9 +894,92 @@ export default function DevicePageClient({
 									</p>
 								</div>
 							)}
+
+							{/* Device Size Settings */}
+							<div className="space-y-4 border-t pt-4 mt-4">
+								<h3 className="text-sm font-medium">Screen Size & Settings</h3>
+
+								<div className="space-y-2">
+									<Label htmlFor="device_size_preset">Device Size</Label>
+									<Select
+										value={deviceSizePreset}
+										onValueChange={(value) => handleDeviceSizePresetChange(value as DeviceSizePreset)}
+										disabled={!isEditing}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select device size..." />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="800x480">800x480</SelectItem>
+											<SelectItem value="1872x1404">1872x1404</SelectItem>
+											<SelectItem value="custom">Custom</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+
+								{deviceSizePreset === "custom" && (
+									<div className="grid grid-cols-2 gap-4">
+										<div className="space-y-2">
+											<Label htmlFor="screen_width">Width (px)</Label>
+											<Input
+												id="screen_width"
+												name="screen_width"
+												type="number"
+												min="1"
+												value={editedDevice?.screen_width || DEFAULT_IMAGE_WIDTH}
+												onChange={(e) => handleCustomSizeChange("width", Number.parseInt(e.target.value, 10) || DEFAULT_IMAGE_WIDTH)}
+											/>
+										</div>
+										<div className="space-y-2">
+											<Label htmlFor="screen_height">Height (px)</Label>
+											<Input
+												id="screen_height"
+												name="screen_height"
+												type="number"
+												min="1"
+												value={editedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT}
+												onChange={(e) => handleCustomSizeChange("height", Number.parseInt(e.target.value, 10) || DEFAULT_IMAGE_HEIGHT)}
+											/>
+										</div>
+									</div>
+								)}
+
+								<div className="space-y-2">
+									<Label htmlFor="screen_orientation">Orientation</Label>
+									<Select
+										value={editedDevice?.screen_orientation || "landscape"}
+										onValueChange={(value) => handleSelectChange("screen_orientation", value)}
+										disabled={!isEditing}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select orientation..." />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="landscape">Landscape</SelectItem>
+											<SelectItem value="portrait">Portrait</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="grayscale">Grayscale Level (0-255)</Label>
+									<Input
+										id="grayscale"
+										name="grayscale"
+										type="number"
+										min="0"
+										max="255"
+										value={editedDevice?.grayscale ?? 0}
+										onChange={handleInputChange}
+									/>
+									<p className="text-xs text-muted-foreground">
+										0 = Full color, 255 = Full grayscale
+									</p>
+								</div>
+							</div>
 							<div className="w-full max-w-3xl">
 								{editedDevice.display_mode === DeviceDisplayMode.PLAYLIST &&
-								editedDevice.playlist_id ? (
+									editedDevice.playlist_id ? (
 									<p className="text-sm text-muted-foreground mt-2">
 										Playlist mode: Shows rotating screens based on playlist
 										configuration
@@ -1056,7 +1191,7 @@ export default function DevicePageClient({
 
 							<div className="col-span-1 md:col-span-2 lg:col-span-3">
 								{device.display_mode === DeviceDisplayMode.PLAYLIST &&
-								device.playlist_id ? (
+									device.playlist_id ? (
 									<>
 										<p className="text-sm text-muted-foreground mt-2 mb-4">
 											<span className="font-medium">Playlist mode:</span> Shows
