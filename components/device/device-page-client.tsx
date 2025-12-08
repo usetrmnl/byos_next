@@ -763,10 +763,10 @@ export default function DevicePageClient({
 
 								{(!editedDevice?.refresh_schedule?.time_ranges ||
 									editedDevice.refresh_schedule.time_ranges.length === 0) && (
-										<p className="text-sm text-muted-foreground">
-											No custom time ranges configured.
-										</p>
-									)}
+									<p className="text-sm text-muted-foreground">
+										No custom time ranges configured.
+									</p>
+								)}
 
 								<Button
 									type="button"
@@ -962,7 +962,7 @@ export default function DevicePageClient({
 													handleCustomSizeChange(
 														"width",
 														Number.parseInt(e.target.value, 10) ||
-														DEFAULT_IMAGE_WIDTH,
+															DEFAULT_IMAGE_WIDTH,
 													)
 												}
 											/>
@@ -981,7 +981,7 @@ export default function DevicePageClient({
 													handleCustomSizeChange(
 														"height",
 														Number.parseInt(e.target.value, 10) ||
-														DEFAULT_IMAGE_HEIGHT,
+															DEFAULT_IMAGE_HEIGHT,
 													)
 												}
 											/>
@@ -1026,7 +1026,7 @@ export default function DevicePageClient({
 							</div>
 							<div className="w-full max-w-3xl">
 								{editedDevice.display_mode === DeviceDisplayMode.PLAYLIST &&
-									editedDevice.playlist_id ? (
+								editedDevice.playlist_id ? (
 									<p className="text-sm text-muted-foreground mt-2">
 										Playlist mode: Shows rotating screens based on playlist
 										configuration
@@ -1248,7 +1248,7 @@ export default function DevicePageClient({
 
 							<div className="col-span-1 md:col-span-2 lg:col-span-3">
 								{device.display_mode === DeviceDisplayMode.PLAYLIST &&
-									device.playlist_id ? (
+								device.playlist_id ? (
 									<>
 										<p className="text-sm text-muted-foreground mt-2 mb-4">
 											<span className="font-medium">Playlist mode:</span> Shows
