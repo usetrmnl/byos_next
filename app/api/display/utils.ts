@@ -367,8 +367,9 @@ export const findOrCreateDevice = async (
 					.where("id", "=", device.id.toString())
 					.execute();
 			}
-			logger.info("Using existing mock device", {
-				friendly_id: device.friendly_id,
+			logInfo("Using existing mock device", {
+				source: "api/display",
+				metadata: { friendly_id: device.friendly_id },
 			});
 			return device;
 		}
