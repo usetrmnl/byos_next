@@ -2,10 +2,7 @@ import type { NextRequest } from "next/server";
 import sharp from "sharp";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
-import {
-	getLayoutById,
-	type LayoutSlot,
-} from "@/lib/mixup/constants";
+import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
 import {
 	addDimensionsToProps,
 	buildRecipeElement,

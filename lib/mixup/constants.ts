@@ -3,7 +3,7 @@
 // so it can be safely imported in client components and API routes.
 import {
 	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH
+	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 
 export enum MixupLayoutId {

@@ -2,10 +2,11 @@
 // Do not edit manually. Run 'pnpm generate:sql' to regenerate.
 
 export const SQL_STATEMENTS = {
-  "0000_initial_schema": {
-    title: "Initial Database Schema",
-    description: "Creates the complete initial database schema including UUID extension, devices, playlists, playlist_items, logs, and system_logs tables",
-    sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+	"0000_initial_schema": {
+		title: "Initial Database Schema",
+		description:
+			"Creates the complete initial database schema including UUID extension, devices, playlists, playlist_items, logs, and system_logs tables",
+		sql: `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE IF NOT EXISTS public.devices (
   id BIGSERIAL PRIMARY KEY,
@@ -81,11 +82,12 @@ CREATE TABLE IF NOT EXISTS public.system_logs (
 
 CREATE INDEX IF NOT EXISTS idx_system_logs_created_at ON public.system_logs (created_at);
 CREATE INDEX IF NOT EXISTS idx_system_logs_level ON public.system_logs (level);`,
-  },
-  "0001_add_device_status_fields": {
-    title: "Add Device Status Fields",
-    description: "Add battery_voltage, firmware_version, and rssi columns to the devices table",
-    sql: `-- Add battery_voltage, firmware_version, and rssi columns to the devices table
+	},
+	"0001_add_device_status_fields": {
+		title: "Add Device Status Fields",
+		description:
+			"Add battery_voltage, firmware_version, and rssi columns to the devices table",
+		sql: `-- Add battery_voltage, firmware_version, and rssi columns to the devices table
 ALTER TABLE devices 
 ADD COLUMN IF NOT EXISTS battery_voltage NUMERIC,
 ADD COLUMN IF NOT EXISTS firmware_version TEXT,
@@ -95,17 +97,19 @@ ADD COLUMN IF NOT EXISTS rssi INTEGER;
 COMMENT ON COLUMN devices.battery_voltage IS 'Battery voltage in volts';
 COMMENT ON COLUMN devices.firmware_version IS 'Device firmware version';
 COMMENT ON COLUMN devices.rssi IS 'WiFi signal strength in dBm';`,
-  },
-  "0002_add_playlist_index_to_devices": {
-    title: "Add Playlist Index to Devices",
-    description: "Adds current_playlist_index column to devices table for tracking playlist position",
-    sql: `ALTER TABLE devices
+	},
+	"0002_add_playlist_index_to_devices": {
+		title: "Add Playlist Index to Devices",
+		description:
+			"Adds current_playlist_index column to devices table for tracking playlist position",
+		sql: `ALTER TABLE devices
 ADD COLUMN IF NOT EXISTS current_playlist_index INT DEFAULT 0;`,
-  },
-  "0003_add_playlists": {
-    title: "Add Playlists and Playlist Items",
-    description: "Creates the playlists and playlist_items tables and adds playlist support to devices table",
-    sql: `-- playlists table
+	},
+	"0003_add_playlists": {
+		title: "Add Playlists and Playlist Items",
+		description:
+			"Creates the playlists and playlist_items tables and adds playlist support to devices table",
+		sql: `-- playlists table
 CREATE TABLE IF NOT EXISTS playlists (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -128,11 +132,12 @@ CREATE TABLE IF NOT EXISTS playlist_items (
 ALTER TABLE devices
 ADD COLUMN playlist_id UUID REFERENCES playlists(id),
     ADD COLUMN use_playlist BOOLEAN DEFAULT FALSE;`,
-  },
-  "0004_add_mixups": {
-    title: "Add Mixups and Display Mode",
-    description: "Creates mixups tables and replaces use_playlist with display_mode enum",
-    sql: `-- Create enum for layout IDs
+	},
+	"0004_add_mixups": {
+		title: "Add Mixups and Display Mode",
+		description:
+			"Creates mixups tables and replaces use_playlist with display_mode enum",
+		sql: `-- Create enum for layout IDs
 CREATE TYPE mixup_layout_id AS ENUM (
     'quarters',
     'top-banner',
@@ -185,11 +190,12 @@ UPDATE devices SET display_mode = 'screen' WHERE use_playlist = FALSE OR use_pla
 
 -- Drop the old use_playlist column
 ALTER TABLE devices DROP COLUMN IF EXISTS use_playlist;`,
-  },
-  "0005_add_screen_size_settings": {
-    title: "Add Screen Size Settings",
-    description: "Adds screen width, height, orientation, and grayscale level to devices table",
-    sql: `-- Add screen dimensions and settings columns
+	},
+	"0005_add_screen_size_settings": {
+		title: "Add Screen Size Settings",
+		description:
+			"Adds screen width, height, orientation, and grayscale level to devices table",
+		sql: `-- Add screen dimensions and settings columns
 ALTER TABLE devices
 ADD COLUMN IF NOT EXISTS screen_width INTEGER DEFAULT 800,
 ADD COLUMN IF NOT EXISTS screen_height INTEGER DEFAULT 480,
@@ -201,11 +207,12 @@ COMMENT ON COLUMN devices.screen_width IS 'Screen width in pixels';
 COMMENT ON COLUMN devices.screen_height IS 'Screen height in pixels';
 COMMENT ON COLUMN devices.screen_orientation IS 'Screen orientation: portrait or landscape';
 COMMENT ON COLUMN devices.grayscale IS 'Grayscale level (0-255, where 0 is full color and 255 is full grayscale)';`,
-  },
-  "validate_schema": {
-    title: "Validate Database Schema",
-    description: "Validates that all required tables exist in the public schema. Returns list of tables with their status and identifies any missing tables.",
-    sql: `-- Check for missing required tables
+	},
+	validate_schema: {
+		title: "Validate Database Schema",
+		description:
+			"Validates that all required tables exist in the public schema. Returns list of tables with their status and identifies any missing tables.",
+		sql: `-- Check for missing required tables
 -- Returns empty result if all tables exist, or rows with missing table names if any are missing
 SELECT 
   expected_table as missing_table
@@ -217,5 +224,5 @@ WHERE NOT EXISTS (
     AND table_type = 'BASE TABLE'
     AND table_name = expected_table
 );`,
-  }
+	},
 };

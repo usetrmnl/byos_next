@@ -73,7 +73,7 @@ const getSignalQuality = (rssi: number): string => {
 const DEVICE_SIZE_PRESETS = {
 	"800x480": { width: 800, height: 480 },
 	"1872x1404": { width: 1872, height: 1404 },
-	"custom": null,
+	custom: null,
 } as const;
 
 type DeviceSizePreset = keyof typeof DEVICE_SIZE_PRESETS;
@@ -110,19 +110,27 @@ export default function DevicePageClient({
 	const [friendlyIdError, setFriendlyIdError] = useState<string | null>(null);
 
 	// State for device size preset
-	const [deviceSizePreset, setDeviceSizePreset] = useState<DeviceSizePreset>(() => {
-		const width = editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
-		const height = editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const [deviceSizePreset, setDeviceSizePreset] = useState<DeviceSizePreset>(
+		() => {
+			const width = editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
+			const height = editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
 
-		// Check if current dimensions match a preset
-		if (width === 800 && height === 480) return "800x480";
-		if (width === 1872 && height === 1404) return "1872x1404";
-		return "custom";
-	});
+			// Check if current dimensions match a preset
+			if (width === 800 && height === 480) return "800x480";
+			if (width === 1872 && height === 1404) return "1872x1404";
+			return "custom";
+		},
+	);
 
 	const orientation = editedDevice.screen_orientation || "horizontal";
-	const deviceWidth = orientation === "horizontal" ? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH : editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const deviceHeight = orientation === "horizontal" ? editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT : editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
+	const deviceWidth =
+		orientation === "horizontal"
+			? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH
+			: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const deviceHeight =
+		orientation === "horizontal"
+			? editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT
+			: editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
 
 	// Handle form input changes
 	const handleInputChange = (
@@ -243,7 +251,7 @@ export default function DevicePageClient({
 	const handleDeviceSizePresetChange = (preset: DeviceSizePreset) => {
 		setDeviceSizePreset(preset);
 		if (preset !== "custom" && DEVICE_SIZE_PRESETS[preset]) {
-			const { width, height } = DEVICE_SIZE_PRESETS[preset]!;
+			const { width, height } = DEVICE_SIZE_PRESETS[preset];
 			setEditedDevice({
 				...editedDevice,
 				screen_width: width,
@@ -260,9 +268,18 @@ export default function DevicePageClient({
 			screen_height: field === "height" ? value : editedDevice.screen_height,
 		});
 		// Update preset to custom if dimensions don't match a preset
-		const width = field === "width" ? value : (editedDevice.screen_width || DEFAULT_IMAGE_WIDTH);
-		const height = field === "height" ? value : (editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT);
-		if (!(width === 800 && height === 480) && !(width === 1872 && height === 1404)) {
+		const width =
+			field === "width"
+				? value
+				: editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
+		const height =
+			field === "height"
+				? value
+				: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
+		if (
+			!(width === 800 && height === 480) &&
+			!(width === 1872 && height === 1404)
+		) {
 			setDeviceSizePreset("custom");
 		}
 	};
@@ -740,10 +757,10 @@ export default function DevicePageClient({
 
 								{(!editedDevice?.refresh_schedule?.time_ranges ||
 									editedDevice.refresh_schedule.time_ranges.length === 0) && (
-										<p className="text-sm text-muted-foreground">
-											No custom time ranges configured.
-										</p>
-									)}
+									<p className="text-sm text-muted-foreground">
+										No custom time ranges configured.
+									</p>
+								)}
 
 								<Button
 									type="button"
@@ -907,7 +924,9 @@ export default function DevicePageClient({
 									<Label htmlFor="device_size_preset">Device Size</Label>
 									<Select
 										value={deviceSizePreset}
-										onValueChange={(value) => handleDeviceSizePresetChange(value as DeviceSizePreset)}
+										onValueChange={(value) =>
+											handleDeviceSizePresetChange(value as DeviceSizePreset)
+										}
 										disabled={!isEditing}
 									>
 										<SelectTrigger className="w-full">
@@ -930,8 +949,16 @@ export default function DevicePageClient({
 												name="screen_width"
 												type="number"
 												min="1"
-												value={editedDevice?.screen_width || DEFAULT_IMAGE_WIDTH}
-												onChange={(e) => handleCustomSizeChange("width", Number.parseInt(e.target.value, 10) || DEFAULT_IMAGE_WIDTH)}
+												value={
+													editedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
+												}
+												onChange={(e) =>
+													handleCustomSizeChange(
+														"width",
+														Number.parseInt(e.target.value, 10) ||
+															DEFAULT_IMAGE_WIDTH,
+													)
+												}
 											/>
 										</div>
 										<div className="space-y-2">
@@ -941,8 +968,16 @@ export default function DevicePageClient({
 												name="screen_height"
 												type="number"
 												min="1"
-												value={editedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT}
-												onChange={(e) => handleCustomSizeChange("height", Number.parseInt(e.target.value, 10) || DEFAULT_IMAGE_HEIGHT)}
+												value={
+													editedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
+												}
+												onChange={(e) =>
+													handleCustomSizeChange(
+														"height",
+														Number.parseInt(e.target.value, 10) ||
+															DEFAULT_IMAGE_HEIGHT,
+													)
+												}
 											/>
 										</div>
 									</div>
@@ -952,7 +987,9 @@ export default function DevicePageClient({
 									<Label htmlFor="screen_orientation">Orientation</Label>
 									<Select
 										value={editedDevice?.screen_orientation || "landscape"}
-										onValueChange={(value) => handleSelectChange("screen_orientation", value)}
+										onValueChange={(value) =>
+											handleSelectChange("screen_orientation", value)
+										}
 										disabled={!isEditing}
 									>
 										<SelectTrigger className="w-full">
@@ -983,18 +1020,20 @@ export default function DevicePageClient({
 							</div>
 							<div className="w-full max-w-3xl">
 								{editedDevice.display_mode === DeviceDisplayMode.PLAYLIST &&
-									editedDevice.playlist_id ? (
+								editedDevice.playlist_id ? (
 									<p className="text-sm text-muted-foreground mt-2">
 										Playlist mode: Shows rotating screens based on playlist
 										configuration
 									</p>
 								) : editedDevice.display_mode === DeviceDisplayMode.MIXUP &&
 									editedDevice.mixup_id ? (
-									<div className="max-w-[300px]"
-										style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
-										<AspectRatio
-											ratio={deviceWidth / deviceHeight}
-										>
+									<div
+										className="max-w-[300px]"
+										style={{
+											maxHeight: `${(300 * deviceHeight) / deviceWidth}px`,
+										}}
+									>
+										<AspectRatio ratio={deviceWidth / deviceHeight}>
 											<Image
 												src={`/api/bitmap/mixup/${editedDevice.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
 												alt="Mixup Preview"
@@ -1006,11 +1045,13 @@ export default function DevicePageClient({
 										</AspectRatio>
 									</div>
 								) : (
-									<div className="max-w-[300px]"
-										style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
-										<AspectRatio
-											ratio={deviceWidth / deviceHeight}
-										>
+									<div
+										className="max-w-[300px]"
+										style={{
+											maxHeight: `${(300 * deviceHeight) / deviceWidth}px`,
+										}}
+									>
+										<AspectRatio ratio={deviceWidth / deviceHeight}>
 											<Image
 												src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
 												alt="Device Screen"
@@ -1201,7 +1242,7 @@ export default function DevicePageClient({
 
 							<div className="col-span-1 md:col-span-2 lg:col-span-3">
 								{device.display_mode === DeviceDisplayMode.PLAYLIST &&
-									device.playlist_id ? (
+								device.playlist_id ? (
 									<>
 										<p className="text-sm text-muted-foreground mt-2 mb-4">
 											<span className="font-medium">Playlist mode:</span> Shows
@@ -1209,12 +1250,14 @@ export default function DevicePageClient({
 										</p>
 										<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
 											{playlistScreens.map((screen) => (
-												<div className="max-w-[300px]"
-													style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
-													<AspectRatio
-														key={screen.screen}
-														ratio={deviceWidth / deviceHeight}
-													>
+												<div
+													className="max-w-[300px]"
+													style={{
+														maxHeight: `${(300 * deviceHeight) / deviceWidth}px`,
+													}}
+													key={screen.screen}
+												>
+													<AspectRatio ratio={deviceWidth / deviceHeight}>
 														<Image
 															src={`/api/bitmap/${screen.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
 															alt="Device Screen"
@@ -1235,11 +1278,13 @@ export default function DevicePageClient({
 											<span className="font-medium">Mixup mode:</span> Shows a
 											split-screen layout with multiple recipes
 										</p>
-										<div className="max-w-[300px]"
-											style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
-											<AspectRatio
-												ratio={deviceWidth / deviceHeight}
-											>
+										<div
+											className="max-w-[300px]"
+											style={{
+												maxHeight: `${(300 * deviceHeight) / deviceWidth}px`,
+											}}
+										>
+											<AspectRatio ratio={deviceWidth / deviceHeight}>
 												<Image
 													src={`/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
 													alt="Mixup Preview"
@@ -1252,11 +1297,13 @@ export default function DevicePageClient({
 										</div>
 									</>
 								) : (
-									<div className="max-w-[300px]"
-										style={{ maxHeight: `${300 * deviceHeight / deviceWidth}px` }}>
-										<AspectRatio
-											ratio={deviceWidth / deviceHeight}
-										>
+									<div
+										className="max-w-[300px]"
+										style={{
+											maxHeight: `${(300 * deviceHeight) / deviceWidth}px`,
+										}}
+									>
+										<AspectRatio ratio={deviceWidth / deviceHeight}>
 											<Image
 												src={`/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
 												alt="Device Screen"

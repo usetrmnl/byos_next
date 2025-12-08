@@ -188,9 +188,12 @@ export async function updateDevice(
 	if (device.firmware_version !== undefined)
 		updateData.firmware_version = device.firmware_version;
 	if (device.rssi !== undefined) updateData.rssi = device.rssi;
-	if (device.screen_width !== undefined) updateData.screen_width = device.screen_width;
-	if (device.screen_height !== undefined) updateData.screen_height = device.screen_height;
-	if (device.screen_orientation !== undefined) updateData.screen_orientation = device.screen_orientation;
+	if (device.screen_width !== undefined)
+		updateData.screen_width = device.screen_width;
+	if (device.screen_height !== undefined)
+		updateData.screen_height = device.screen_height;
+	if (device.screen_orientation !== undefined)
+		updateData.screen_orientation = device.screen_orientation;
 	if (device.grayscale !== undefined) updateData.grayscale = device.grayscale;
 
 	updateData.updated_at = new Date().toISOString();

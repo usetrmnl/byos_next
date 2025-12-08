@@ -1,8 +1,12 @@
-import { checkDbConnection } from "@/lib/database/utils";
 import { db } from "@/lib/database/db";
-import { DeviceDisplayMode } from "@/lib/mixup/constants";
-import type { RefreshSchedule } from "@/lib/types";
+import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
+import { DeviceDisplayMode } from "@/lib/mixup/constants";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/recipe-renderer";
+import type { RefreshSchedule } from "@/lib/types";
 import {
 	buildDisplayResponse,
 	buildErrorResponse,
@@ -13,7 +17,6 @@ import {
 	precacheImageInBackground,
 	updateDeviceStatus,
 } from "./utils";
-import { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from "@/lib/recipes/recipe-renderer";
 
 export const DEFAULT_SCREEN = "album";
 export const DEFAULT_REFRESH_RATE = 180;
@@ -26,32 +29,49 @@ export async function GET(request: Request) {
 
 	const { ready } = await checkDbConnection();
 	const baseUrl = `${headers.hostUrl}/api/bitmap`;
-	const uniqueId = Math.random().toString(36).substring(2, 7) + Date.now().toString(36).slice(-3);
+	const uniqueId =
+		Math.random().toString(36).substring(2, 7) +
+		Date.now().toString(36).slice(-3);
 
 	if (!ready) {
 		console.warn("Database client not initialized, using noDB mode");
-		logInfo("Database client not initialized, using noDB mode", { source: "api/display", metadata: { headers } });
+		logInfo("Database client not initialized, using noDB mode", {
+			source: "api/display",
+			metadata: { headers },
+		});
 		return buildDisplayResponse(
 			`${baseUrl}/${DEFAULT_SCREEN}.bmp`,
 			`${DEFAULT_SCREEN}_${uniqueId}.bmp`,
-			DEFAULT_REFRESH_RATE
+			DEFAULT_REFRESH_RATE,
 		);
 	}
 
-	logInfo("Display API Request", { source: "api/display", metadata: { headers } });
+	logInfo("Display API Request", {
+		source: "api/display",
+		metadata: { headers },
+	});
 
 	try {
 		const device = await findOrCreateDevice(headers);
 
 		if (!device) {
-			logError("Error fetching/creating device", { source: "api/display", metadata: { headers } });
+			logError("Error fetching/creating device", {
+				source: "api/display",
+				metadata: { headers },
+			});
 			return buildErrorResponse("Device not found", baseUrl, uniqueId);
 		}
 
 		let screenToDisplay = device.screen;
 		const orientation = device.screen_orientation || "horizontal";
-		const deviceWidth = orientation === "horizontal" ? device.screen_width || DEFAULT_IMAGE_WIDTH : device.screen_height || DEFAULT_IMAGE_HEIGHT;
-		const deviceHeight = orientation === "horizontal" ? device.screen_height || DEFAULT_IMAGE_HEIGHT : device.screen_width || DEFAULT_IMAGE_WIDTH;
+		const deviceWidth =
+			orientation === "horizontal"
+				? device.screen_width || DEFAULT_IMAGE_WIDTH
+				: device.screen_height || DEFAULT_IMAGE_HEIGHT;
+		const deviceHeight =
+			orientation === "horizontal"
+				? device.screen_height || DEFAULT_IMAGE_HEIGHT
+				: device.screen_width || DEFAULT_IMAGE_WIDTH;
 		let dynamicRefreshRate = 180;
 		let imageUrl: string;
 
@@ -68,12 +88,16 @@ export async function GET(request: Request) {
 						screenToDisplay = activeItem.screen_id;
 						dynamicRefreshRate = activeItem.duration;
 						// Update playlist index
-						await db.updateTable("devices")
+						await db
+							.updateTable("devices")
 							.set({ current_playlist_index: activeItem.order_index })
 							.where("id", "=", device.id.toString())
 							.execute();
 					} else {
-						logInfo("No active playlist item found, using fallback", { source: "api/display", metadata: { deviceId: device.friendly_id } });
+						logInfo("No active playlist item found, using fallback", {
+							source: "api/display",
+							metadata: { deviceId: device.friendly_id },
+						});
 						screenToDisplay = device.screen || "not-found";
 						dynamicRefreshRate = 60;
 					}
@@ -84,15 +108,21 @@ export async function GET(request: Request) {
 			case DeviceDisplayMode.MIXUP:
 				if (device.mixup_id) {
 					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
-					const metadata = { deviceId: device.friendly_id, mixupId: device.mixup_id };
-					logInfo("Using mixup display mode", { source: "api/display", metadata });
+					const metadata = {
+						deviceId: device.friendly_id,
+						mixupId: device.mixup_id,
+					};
+					logInfo("Using mixup display mode", {
+						source: "api/display",
+						metadata,
+					});
 				} else {
 					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
 				}
 				dynamicRefreshRate = calculateRefreshRate(
 					device.refresh_schedule as unknown as RefreshSchedule,
 					180,
-					device.timezone || "UTC"
+					device.timezone || "UTC",
 				);
 				break;
 
@@ -100,7 +130,7 @@ export async function GET(request: Request) {
 				dynamicRefreshRate = calculateRefreshRate(
 					device.refresh_schedule as unknown as RefreshSchedule,
 					180,
-					device.timezone || "UTC"
+					device.timezone || "UTC",
 				);
 				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
 				break;
@@ -110,17 +140,24 @@ export async function GET(request: Request) {
 
 		// Update device status in background
 		updateDeviceStatus(device, headers, dynamicRefreshRate);
-		const metadata = { deviceId: device.friendly_id, screen: screenToDisplay, refreshRate: dynamicRefreshRate, displayMode: device.display_mode };
+		const metadata = {
+			deviceId: device.friendly_id,
+			screen: screenToDisplay,
+			refreshRate: dynamicRefreshRate,
+			displayMode: device.display_mode,
+		};
 		logInfo("Display request successful", { source: "api/display", metadata });
 
 		return buildDisplayResponse(
 			imageUrl,
 			`${screenToDisplay || "not-found"}_${uniqueId}.bmp`,
-			dynamicRefreshRate
+			dynamicRefreshRate,
 		);
-
-	} catch (error) {
-		logError("Internal server error", { source: "api/display", metadata: { headers } });
+	} catch (_error) {
+		logError("Internal server error", {
+			source: "api/display",
+			metadata: { headers },
+		});
 		return buildErrorResponse("Internal server error", baseUrl, uniqueId);
 	}
 }

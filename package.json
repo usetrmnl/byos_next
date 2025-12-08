@@ -3,7 +3,7 @@
 	"version": "0.1.0",
 	"private": true,
 	"scripts": {
-		"generate:sql": "node scripts/generate-sql-statements.js",
+		"generate:sql": "node scripts/generate-sql-statements.js && pnpm format",
 		"generate:types": "kysely-codegen --dialect postgres --include-pattern='public.*' --out-file lib/database/db.d.ts",
 		"prebuild": "pnpm generate:sql",
 		"dev": "pnpm generate:sql && next dev --turbopack",
