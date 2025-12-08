@@ -2,6 +2,7 @@
 
 import { ArrowRightIcon } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import {
 	Card,
@@ -22,6 +23,8 @@ import {
 } from "@/components/ui/table";
 import type { Device, SystemLog } from "@/lib/types";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
+import { DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT } from "@/lib/recipes/constants";
+import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 
 interface DashboardContentProps {
 	devices: Device[];
@@ -45,11 +48,15 @@ export const DashboardContent = ({
 	const lastUpdatedDevice =
 		processedDevices.length > 0
 			? processedDevices.sort(
-					(a, b) =>
-						new Date(b.last_update_time || "").getTime() -
-						new Date(a.last_update_time || "").getTime(),
-				)[0]
+				(a, b) =>
+					new Date(b.last_update_time || "").getTime() -
+					new Date(a.last_update_time || "").getTime(),
+			)[0]
 			: null;
+
+	const orientation = lastUpdatedDevice?.screen_orientation || "horizontal";
+	const deviceWidth = orientation === "horizontal" ? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH : lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const deviceHeight = orientation === "horizontal" ? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT : lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
 
 	return (
 		<>
@@ -65,25 +72,24 @@ export const DashboardContent = ({
 					</CardHeader>
 					<CardContent>
 						{lastUpdatedDevice ? (
-							<>
-								<div className="relative rounded-xs overflow-hidden bg-muted flex items-center justify-center border">
-									<picture>
-										<img
-											src={`/api/bitmap/${lastUpdatedDevice?.screen}.bmp`}
-											alt="Bitmap"
-											width={800}
-											height={480}
-											className="antialiased"
+							<div className="flex flex-col items-center">
+								<div className="rounded-xs bg-muted border overflow-hidden w-full max-w-[300px] max-h-[calc(300px * (deviceWidth / deviceHeight))]">
+									<AspectRatio ratio={deviceWidth / deviceHeight} className="w-full">
+										<Image
+											src={`/api/bitmap/${lastUpdatedDevice?.screen}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+											alt="Device Screen"
+											fill
+											className="object-contain rounded-xs ring-2 ring-gray-200"
 											style={{ imageRendering: "pixelated" }}
-											suppressHydrationWarning
+											unoptimized
 										/>
-									</picture>
+									</AspectRatio>
 								</div>
 								<div className="text-xs text-amber-500 dark:text-amber-500/50 mt-2">
 									Warning: due to the passive nature of the device, the screen
 									shown here might be newer than the actual screen
 								</div>
-							</>
+							</div>
 						) : (
 							<div className="flex flex-col space-y-3">
 								<Skeleton className="h-[240px] w-full rounded-md" />
@@ -245,10 +251,10 @@ export const DashboardContent = ({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-													new Date(prevLog.created_at || "").getTime(),
+												new Date(prevLog.created_at || "").getTime(),
 											) /
-												1000 >=
-												3);
+											1000 >=
+											3);
 									// Check if we should show level based on level difference with previous log or time difference
 									const shouldLevelBeShown =
 										index === 0 ||
@@ -256,10 +262,10 @@ export const DashboardContent = ({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-													new Date(prevLog.created_at || "").getTime(),
+												new Date(prevLog.created_at || "").getTime(),
 											) /
-												1000 >=
-												3);
+											1000 >=
+											3);
 
 									return (
 										<TableRow key={log.id}>

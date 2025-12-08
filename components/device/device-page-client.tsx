@@ -120,6 +120,10 @@ export default function DevicePageClient({
 		return "custom";
 	});
 
+	const orientation = editedDevice.screen_orientation || "horizontal";
+	const deviceWidth = orientation === "horizontal" ? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH : editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const deviceHeight = orientation === "horizontal" ? editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT : editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
+
 	// Handle form input changes
 	const handleInputChange = (
 		e: React.ChangeEvent<
@@ -1201,10 +1205,10 @@ export default function DevicePageClient({
 											{playlistScreens.map((screen) => (
 												<AspectRatio
 													key={screen.screen}
-													ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+													ratio={deviceWidth / deviceHeight}
 												>
 													<Image
-														src={`/api/bitmap/${screen.screen || "simple-text"}.bmp`}
+														src={`/api/bitmap/${screen.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
 														alt="Device Screen"
 														fill
 														className="object-cover rounded-xs ring-2 ring-gray-200"
@@ -1223,10 +1227,10 @@ export default function DevicePageClient({
 											split-screen layout with multiple recipes
 										</p>
 										<AspectRatio
-											ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+											ratio={deviceWidth / deviceHeight}
 										>
 											<Image
-												src={`/api/bitmap/mixup/${device.mixup_id}.bmp`}
+												src={`/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
 												alt="Mixup Preview"
 												fill
 												className="object-cover rounded-xs ring-2 ring-gray-200"
@@ -1237,10 +1241,10 @@ export default function DevicePageClient({
 									</>
 								) : (
 									<AspectRatio
-										ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+										ratio={deviceWidth / deviceHeight}
 									>
 										<Image
-											src={`/api/bitmap/${device?.screen || "simple-text"}.bmp`}
+											src={`/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
 											alt="Device Screen"
 											fill
 											className="object-cover rounded-xs ring-2 ring-gray-200"
