@@ -10,6 +10,7 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "biome check ./app ./components ./lib ./utils ./hooks",
+		"lint:fix": "biome check --write --unsafe ./app ./components ./lib ./utils ./hooks",
 		"format": "biome format --write ./app ./components ./lib ./utils ./hooks",
 		"release:major": "pnpm version major -m 'chore(release): %s' && git push --follow-tags",
 		"release:minor": "pnpm version minor -m 'chore(release): %s' && git push --follow-tags",

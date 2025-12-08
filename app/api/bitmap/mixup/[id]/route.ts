@@ -180,7 +180,9 @@ async function renderMixupComposite(
 
 	// Convert to BMP with dithering
 	const bmpBuffer = await renderBmp(
-		new Response(new Uint8Array(compositedPng), { headers: { "Content-Type": "image/png" } }),
+		new Response(new Uint8Array(compositedPng), {
+			headers: { "Content-Type": "image/png" },
+		}),
 		{
 			ditheringMethod: DitheringMethod.ATKINSON,
 			width: MIXUP_CANVAS_WIDTH,

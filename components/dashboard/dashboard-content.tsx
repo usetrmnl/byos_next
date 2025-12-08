@@ -45,10 +45,10 @@ export const DashboardContent = ({
 	const lastUpdatedDevice =
 		processedDevices.length > 0
 			? processedDevices.sort(
-				(a, b) =>
-					new Date(b.last_update_time || "").getTime() -
-					new Date(a.last_update_time || "").getTime(),
-			)[0]
+					(a, b) =>
+						new Date(b.last_update_time || "").getTime() -
+						new Date(a.last_update_time || "").getTime(),
+				)[0]
 			: null;
 
 	return (
@@ -245,10 +245,10 @@ export const DashboardContent = ({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
+													new Date(prevLog.created_at || "").getTime(),
 											) /
-											1000 >=
-											3);
+												1000 >=
+												3);
 									// Check if we should show level based on level difference with previous log or time difference
 									const shouldLevelBeShown =
 										index === 0 ||
@@ -256,10 +256,10 @@ export const DashboardContent = ({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
+													new Date(prevLog.created_at || "").getTime(),
 											) /
-											1000 >=
-											3);
+												1000 >=
+												3);
 
 									return (
 										<TableRow key={log.id}>

@@ -8,7 +8,6 @@ import type {
 	PlaylistItem,
 	SystemLog,
 } from "@/lib/types";
-import { getHostUrl } from "@/utils/helpers";
 import "server-only";
 
 export type InitialData = {
