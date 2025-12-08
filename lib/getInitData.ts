@@ -24,7 +24,6 @@ export type InitialData = {
 		error?: string;
 		PostgresUrl?: string;
 	};
-	hostUrl: string;
 };
 
 /**
@@ -44,7 +43,6 @@ export type InitialData = {
  */
 export const getInitData = cache(async (): Promise<InitialData> => {
 	const dbStatus = await getDbStatus();
-	const hostUrl = getHostUrl();
 
 	// Default empty values if DB is not ready
 	let devices: Device[] = [];
@@ -134,7 +132,6 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 		uniqueSources,
 		totalLogs,
 		dbStatus,
-		hostUrl,
 	};
 });
 

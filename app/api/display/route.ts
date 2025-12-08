@@ -14,7 +14,6 @@ import type {
 import {
 	generateApiKey,
 	generateFriendlyId,
-	getHostUrl,
 	timezones,
 } from "@/utils/helpers";
 
@@ -272,12 +271,13 @@ export async function GET(request: Request) {
 	const batteryVoltage = request.headers.get("Battery-Voltage");
 	const fwVersion = request.headers.get("FW-Version");
 	const rssi = request.headers.get("RSSI");
+	const hostUrl = request.headers.get("x-forwarded-proto") + "://" + request.headers.get("x-forwarded-host");
 	// log all headers in console for debugging, use entries with iterator and table logger
 	console.table(Object.fromEntries(request.headers.entries()));
 
 	const { ready } = await checkDbConnection();
 
-	const baseUrl = `${getHostUrl()}/api/bitmap`;
+	const baseUrl = `${hostUrl}/api/bitmap`;
 
 	const uniqueId =
 		Math.random().toString(36).substring(2, 7) +
@@ -495,9 +495,9 @@ export async function GET(request: Request) {
 								last_update_time: new Date().toISOString(),
 								next_expected_update: new Date(
 									Date.now() +
-										(refreshRate
-											? Number.parseInt(refreshRate, 10) * 1000
-											: 3600 * 1000),
+									(refreshRate
+										? Number.parseInt(refreshRate, 10) * 1000
+										: 3600 * 1000),
 								).toISOString(),
 								timezone: "UTC",
 								battery_voltage: batteryVoltage
@@ -580,9 +580,9 @@ export async function GET(request: Request) {
 					const new_api_key = macAddress
 						? apiKey
 						: generateApiKey(
-								mockMacAddress,
-								new Date().toISOString().replace(/[-:Z]/g, ""),
-							);
+							mockMacAddress,
+							new Date().toISOString().replace(/[-:Z]/g, ""),
+						);
 
 					try {
 						const newDevice = await db
@@ -601,9 +601,9 @@ export async function GET(request: Request) {
 								last_update_time: new Date().toISOString(),
 								next_expected_update: new Date(
 									Date.now() +
-										(refreshRate
-											? Number.parseInt(refreshRate, 10) * 1000
-											: 3600 * 1000),
+									(refreshRate
+										? Number.parseInt(refreshRate, 10) * 1000
+										: 3600 * 1000),
 								).toISOString(),
 								timezone: "UTC",
 								battery_voltage: batteryVoltage

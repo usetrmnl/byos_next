@@ -11,7 +11,7 @@ import { getInitData } from "@/lib/getInitData";
 const DashboardData = async () => {
 	// Get data from the centralized getInitData
 	// Since this is cached, it won't cause duplicate requests
-	const { devices, systemLogs, dbStatus, hostUrl } = await getInitData();
+	const { devices, systemLogs, dbStatus } = await getInitData();
 	if (!dbStatus.ready) {
 		return (
 			<>
@@ -119,7 +119,6 @@ const DashboardData = async () => {
 		<DashboardContent
 			devices={devices}
 			systemLogs={systemLogs}
-			hostUrl={hostUrl}
 		/>
 	);
 };
@@ -132,7 +131,7 @@ export default async function Dashboard() {
 	const _userAgent = headersList.get("user-agent");
 
 	// Get minimal data for the header only
-	const { dbStatus, hostUrl } = await getInitData();
+	const { dbStatus } = await getInitData();
 
 	// Now we can safely use new Date() after accessing headers
 	const currentHour = new Date().getHours();
@@ -154,14 +153,6 @@ export default async function Dashboard() {
 						</Badge>
 					)}
 				</h2>
-				<p className="text-muted-foreground">
-					Next.js app running on{" "}
-					<a href={hostUrl} className="underline">
-						{hostUrl}
-					</a>{" "}
-					in {process.env.NODE_ENV} mode. (
-					<WifiConnectModal customServerUrl={hostUrl} />)
-				</p>
 			</div>
 
 			<Suspense fallback={<DashboardSkeleton />}>
