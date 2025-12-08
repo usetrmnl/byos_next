@@ -5,24 +5,34 @@ import { checkDbConnection } from "@/lib/database/utils";
 import {
 	getLayoutById,
 	type LayoutSlot,
-	MIXUP_CANVAS_HEIGHT,
-	MIXUP_CANVAS_WIDTH,
 } from "@/lib/mixup/constants";
 import {
 	addDimensionsToProps,
 	buildRecipeElement,
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
 	logger,
 	renderRecipeOutputs,
 } from "@/lib/recipes/recipe-renderer";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
-	_req: NextRequest,
+	req: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	try {
 		const { id } = await params;
 		const mixupId = id.replace(".bmp", "");
+
+		// Get width and height from query parameters
+		const { searchParams } = new URL(req.url);
+		const widthParam = searchParams.get("width");
+		const heightParam = searchParams.get("height");
+
+		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
+		const height = heightParam
+			? parseInt(heightParam, 10)
+			: DEFAULT_IMAGE_HEIGHT;
 
 		const { ready } = await checkDbConnection();
 		if (!ready) {
@@ -50,7 +60,7 @@ export async function GET(
 			return new Response("Mixup not found", { status: 404 });
 		}
 
-		const layout = getLayoutById(mixup.layout_id);
+		const layout = getLayoutById(mixup.layout_id, width, height);
 		if (!layout) {
 			logger.warn(`Invalid layout for mixup ${mixupId}: ${mixup.layout_id}`);
 			return new Response("Invalid layout", { status: 400 });
@@ -70,6 +80,8 @@ export async function GET(
 		const compositeBuffer = await renderMixupComposite(
 			layout.slots,
 			assignments,
+			width,
+			height,
 		);
 
 		return new Response(new Uint8Array(compositeBuffer), {
@@ -129,6 +141,8 @@ async function renderSlot(
 async function renderMixupComposite(
 	slots: LayoutSlot[],
 	assignments: Record<string, string | null>,
+	width: number,
+	height: number,
 ): Promise<Buffer> {
 	// Render all slots in parallel
 	const slotRenders = await Promise.all(
@@ -168,8 +182,8 @@ async function renderMixupComposite(
 	// Create the base canvas and composite all overlays
 	const compositedPng = await sharp({
 		create: {
-			width: MIXUP_CANVAS_WIDTH,
-			height: MIXUP_CANVAS_HEIGHT,
+			width,
+			height,
 			channels: 3,
 			background: { r: 255, g: 255, b: 255 },
 		},
@@ -185,8 +199,8 @@ async function renderMixupComposite(
 		}),
 		{
 			ditheringMethod: DitheringMethod.ATKINSON,
-			width: MIXUP_CANVAS_WIDTH,
-			height: MIXUP_CANVAS_HEIGHT,
+			width,
+			height,
 		},
 	);
 
