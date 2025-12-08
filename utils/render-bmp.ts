@@ -1,9 +1,6 @@
 import type { ImageResponse } from "next/og";
 import sharp from "sharp";
 
-// The exact size expected by the firmware
-export const DISPLAY_BMP_IMAGE_SIZE = 48062;
-
 /** Dithering method options */
 export enum DitheringMethod {
 	FLOYD_STEINBERG = "floyd-steinberg",
@@ -299,7 +296,8 @@ export async function renderBmp(
 	const bitsPerPixel = 1; // 1-bit monochrome
 	const rowSize = Math.floor((targetWidth * bitsPerPixel + 31) / 32) * 4;
 	const paletteSize = 8; // 2 colors * 4 bytes each
-	const fileSize = DISPLAY_BMP_IMAGE_SIZE; // Exactly match the expected size
+	const headerSize = fileHeaderSize + infoHeaderSize + paletteSize;
+	const fileSize = headerSize + rowSize * targetHeight;
 
 	// Create a buffer of exactly the required size
 	const buffer = Buffer.alloc(fileSize);
@@ -376,13 +374,6 @@ export async function renderBmp(
 			// Write the byte to the buffer
 			buffer[destRowOffset + (x >> 3)] = byte; // x / 8 using bit shift
 		}
-	}
-
-	// Ensure the buffer is exactly DISPLAY_BMP_IMAGE_SIZE bytes
-	if (buffer.length !== DISPLAY_BMP_IMAGE_SIZE) {
-		console.warn(
-			`BMP size mismatch: ${buffer.length} vs expected ${DISPLAY_BMP_IMAGE_SIZE}`,
-		);
 	}
 
 	return buffer;
