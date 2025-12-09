@@ -5,6 +5,7 @@ import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
 import { getTakumiFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+import { getScreenParams } from "@/app/actions/screens-params";
 
 // Logging utility shared between recipe renderers
 export const logger = {
@@ -41,11 +42,24 @@ export type ComponentProps = Record<string, unknown> & {
 	height?: number;
 };
 
+export type RecipeParamType = "string" | "number" | "boolean";
+
+export type RecipeParamDefinition = {
+	label: string;
+	type: RecipeParamType;
+	description?: string;
+	default?: unknown;
+	placeholder?: string;
+};
+
+export type RecipeParamDefinitions = Record<string, RecipeParamDefinition>;
+
 export type RecipeConfig = (typeof screens)[keyof typeof screens] & {
 	renderSettings?: {
 		doubleSizeForSharperText?: boolean;
 		[key: string]: boolean | string | number | undefined;
 	};
+	params?: RecipeParamDefinitions;
 };
 
 // Re-export constants from shared file
@@ -116,7 +130,14 @@ export const fetchRecipeProps = cache(
 		config: RecipeConfig,
 		options?: FetchPropsOptions,
 	): Promise<ComponentProps> => {
-		let props: ComponentProps = config.props || {};
+		const params = config.params
+			? await getScreenParams(slug, config.params)
+			: {};
+
+		let props: ComponentProps = {
+			...(config.props || {}),
+			...(Object.keys(params).length > 0 ? { params } : {}),
+		};
 
 		if (isBuildPhase()) {
 			return props;
@@ -127,12 +148,14 @@ export const fetchRecipeProps = cache(
 		}
 
 		try {
-			const { default: fetchDataFunction } = await import(
+			const { default: fetchDataFunction } = (await import(
 				`@/app/recipes/screens/${slug}/getData.ts`
-			);
+			)) as {
+				default: (params?: Record<string, unknown>) => Promise<ComponentProps>;
+			};
 
 			// Set a timeout for data fetching to prevent hanging
-			const fetchPromise = fetchDataFunction();
+			const fetchPromise = fetchDataFunction(params);
 			const timeoutPromise = new Promise((_, reject) => {
 				setTimeout(() => reject(new Error("Data fetch timeout")), 10000);
 			});
@@ -299,12 +322,12 @@ export const buildRecipeElement = async ({
 	const props = await fetchRecipeProps(slug, config, {
 		validateFetchedData: validateProps
 			? (slug: string, data: unknown) => {
-					return (
-						typeof data === "object" &&
-						data !== null &&
-						validateProps(slug, data as ComponentProps)
-					);
-				}
+				return (
+					typeof data === "object" &&
+					data !== null &&
+					validateProps(slug, data as ComponentProps)
+				);
+			}
 			: undefined,
 	});
 

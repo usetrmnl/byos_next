@@ -106,6 +106,14 @@ export interface Playlists {
 	updated_at: Generated<Timestamp | null>;
 }
 
+export interface ScreenConfigs {
+	created_at: Generated<Timestamp | null>;
+	id: Generated<string>;
+	params: Json;
+	screen_id: string;
+	updated_at: Generated<Timestamp | null>;
+}
+
 export interface SystemLogs {
 	created_at: Generated<Timestamp | null>;
 	id: Generated<string>;
@@ -123,5 +131,6 @@ export interface DB {
 	mixups: Mixups;
 	playlist_items: PlaylistItems;
 	playlists: Playlists;
+	screen_configs: ScreenConfigs;
 	system_logs: SystemLogs;
 }

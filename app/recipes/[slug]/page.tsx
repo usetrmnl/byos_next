@@ -4,9 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache, Suspense, use } from "react";
+import {
+	getScreenParams,
+	updateScreenParams,
+} from "@/app/actions/screens-params";
 import screens from "@/app/recipes/screens.json";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
+import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import {
 	addDimensionsToProps,
@@ -33,7 +38,6 @@ async function refreshData(slug: string) {
 	await new Promise((resolve) => setTimeout(resolve, 500)); // Demo loading state
 	revalidateTag(slug, "max");
 }
-
 // Generate static params for all recipes
 export async function generateStaticParams() {
 	return Object.keys(screens).map((slug) => ({ slug }));
@@ -233,6 +237,10 @@ export default async function RecipePage({
 		notFound();
 	}
 
+	const screenParams = config.params
+		? await getScreenParams(slug, config.params)
+		: {};
+
 	return (
 		<div className="@container">
 			<div className="flex flex-col">
@@ -263,6 +271,15 @@ export default async function RecipePage({
 							</Link>
 						</div>
 					</Suspense>
+
+					{config.params && Object.keys(config.params).length > 0 && (
+						<ScreenParamsForm
+							slug={slug}
+							paramsSchema={config.params}
+							initialValues={screenParams}
+							updateAction={updateScreenParams}
+						/>
+					)}
 				</div>
 
 				<RecipePreviewLayout

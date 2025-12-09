@@ -8,6 +8,7 @@
 		"componentPath": "./screens/simple-text",
 		"hasDataFetch": false,
 		"props": {},
+		"params": {},
 		"tags": ["bitmap", "text"],
 		"author": {
 			"name": "Mangle Kuo",
@@ -28,6 +29,7 @@
 		"componentPath": "./screens/album",
 		"hasDataFetch": false,
 		"props": {},
+		"params": {},
 		"tags": ["bitmap", "text"],
 		"author": {
 			"name": "Mangle Kuo",
@@ -46,6 +48,7 @@
 		"componentPath": "./screens/bitmap-patterns",
 		"hasDataFetch": false,
 		"props": {},
+		"params": {},
 		"tags": ["bitmap", "patterns"],
 		"author": {
 			"name": "Mangle Kuo",
@@ -67,6 +70,7 @@
 			"title": "Wikipedia (Default)",
 			"extract": "Loading article..."
 		},
+		"params": {},
 		"tags": ["tailwind", "text", "api", "live-data", "advanced"],
 		"author": {
 			"name": "Mangle Kuo",
@@ -90,6 +94,7 @@
 			"price": "Loading...",
 			"change24h": "0"
 		},
+		"params": {},
 		"tags": ["tailwind", "cryptocurrency", "api"],
 		"author": {
 			"name": "Mangle Kuo",
@@ -112,6 +117,14 @@
 			"description": "Loading...",
 			"location": "Loading..."
 		},
+		"params": {
+			"location": {
+				"type": "string",
+				"label": "Location",
+				"description": "City or place name to fetch weather for",
+				"default": "San Francisco"
+			}
+		},
 		"tags": ["tailwind", "weather", "api", "live-data", "configurable"],
 		"author": {
 			"name": "rbouteiller",
@@ -130,6 +143,7 @@
 		"componentPath": "./screens/responsive-example",
 		"hasDataFetch": false,
 		"props": {},
+		"params": {},
 		"tags": ["bitmap", "responsive", "layout", "example"],
 		"author": {
 			"name": "rbouteiller",
@@ -150,6 +164,7 @@
 		"props": {
 			"slug": ""
 		},
+		"params": {},
 		"tags": ["system", "fallback", "error"],
 		"author": {
 			"name": "System",

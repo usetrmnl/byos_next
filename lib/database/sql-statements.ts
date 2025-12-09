@@ -208,6 +208,24 @@ COMMENT ON COLUMN devices.screen_height IS 'Screen height in pixels';
 COMMENT ON COLUMN devices.screen_orientation IS 'Screen orientation: portrait or landscape';
 COMMENT ON COLUMN devices.grayscale IS 'Grayscale level (0-255, where 0 is full color and 255 is full grayscale)';`,
 	},
+	"0006_add_screen_configs": {
+		title: "Add Screen Configs",
+		description: "Stores per-screen parameter configurations",
+		sql: `CREATE TABLE IF NOT EXISTS public.screen_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  screen_id TEXT NOT NULL UNIQUE,
+  params JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index to speed up lookups by screen_id
+CREATE INDEX IF NOT EXISTS idx_screen_configs_screen_id ON public.screen_configs (screen_id);
+
+-- Comment for clarity
+COMMENT ON TABLE public.screen_configs IS 'Per-screen configuration parameters stored as JSONB';
+COMMENT ON COLUMN public.screen_configs.params IS 'JSON blob of screen parameters';`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:
@@ -216,7 +234,7 @@ COMMENT ON COLUMN devices.grayscale IS 'Grayscale level (0-255, where 0 is full 
 -- Returns empty result if all tables exist, or rows with missing table names if any are missing
 SELECT 
   expected_table as missing_table
-FROM unnest(ARRAY['devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'system_logs']::text[]) as expected_table
+FROM unnest(ARRAY['devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'screen_configs', 'system_logs']::text[]) as expected_table
 WHERE NOT EXISTS (
   SELECT 1 
   FROM information_schema.tables 

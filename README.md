@@ -140,6 +140,9 @@ Run the migration files from the `migrations/` directory in order:
 2. `0001_add_device_status_fields.sql` - Adds device status fields
 3. `0002_add_playlist_index_to_devices.sql` - Adds playlist index tracking
 4. `0003_add_playlists.sql` - Adds playlist support (if not already in initial schema)
+5. `0004_add_mixups.sql` - Adds mixup layouts and device display mode
+6. `0005_add_screen_size_settings.sql` - Adds screen size/orientation settings
+7. `0006_add_screen_configs.sql` - Adds per-screen parameter storage
 
 
 **Option B: Using Docker (Local PostgreSQL)**
