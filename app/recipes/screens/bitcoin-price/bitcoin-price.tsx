@@ -54,14 +54,16 @@ export default function BitcoinPrice({
 							<p className="text-6xl sm:text-7xl lg:text-9xl font-inter">
 								${price}
 							</p>
-
-							<img
-								src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
-								alt="Bitcoin Logo"
-								width={100}
-								height={100}
-								className="grayscale w-[100px] h-[100px] lg:w-[200px] lg:h-[200px]"
-							/>
+							<picture>
+								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI/TAKUMI DOES NOT SUPPORT IT */}
+								<img
+									src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
+									alt="Bitcoin Logo"
+									width={100}
+									height={100}
+									className="grayscale w-[100px] h-[100px] lg:w-[200px] lg:h-[200px]"
+								/>
+							</picture>
 						</div>
 						<div className="text-4xl lg:text-5xl font-inter">
 							{isPositive ? "↑" : "↓"} {changeValue}%
