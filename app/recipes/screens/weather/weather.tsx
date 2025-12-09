@@ -75,66 +75,49 @@ export default function Weather({
 		return CloudIcon; // default
 	};
 
-	const format = height > width ? "vertical" : "horizontal";
-	const nbCols = format === "vertical" ? 2 : 3;
-	const nbRows = Math.ceil(weatherStats.length / nbCols);
-
 	const isHalfScreen = width === 400 && height === 480;
 
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="flex flex-col w-full h-full bg-white">
-				<div className="flex flex-col p-4 sm:flex-row items-center justify-center sm:justify-between">
-					<div className="flex flex-row items-baseline">
-						<h2
-							className={`font-inter ${isHalfScreen ? "text-8xl" : "text-9xl"}`}
-						>
-							{temperature}°C
-						</h2>
-					</div>
-					{!isHalfScreen && (
-						<div className="flex flex-col items-center justify-center">
-							{getWeatherIcon(description)}
+				<div className={`flex p-4 sm:flex-row items-center justify-between ${isHalfScreen ? "flex-row" : "flex-col sm:flex-row"}`}>
+					<h2 className={`font-inter ${isHalfScreen ? "text-8xl" : "text-9xl"}`}>
+						{temperature}°C
+					</h2>
+					<div className="flex flex-col items-center justify-center">
+						{getWeatherIcon(description)}
+						{!isHalfScreen && (
 							<div className="text-4xl mt-4 font-blockkie">
 								<div className="flex flex-row items-center">
 									{tempUp} {highTemp}°C
 									{tempDown} {lowTemp}°C
 								</div>
 							</div>
-						</div>
-					)}
+						)}
+					</div>
 				</div>
 				<div className="p-4 flex flex-col flex-1">
 					<div
-						className={`w-full flex flex-col flex-1 mb-4 ${isHalfScreen ? "gap-2" : "gap-4"}`}
+						className={`w-full flex flex-col flex-1 mb-4 ${isHalfScreen ? "gap-2" : "gap-4"} grid grid-cols-2 sm:grid-cols-3`}
 					>
-						{Array.from({ length: nbRows }).map((_, rowIndex) => (
+						{weatherStats.map((stat, index) => (
 							<div
-								key={rowIndex}
-								className={`flex flex-row flex-1 ${isHalfScreen ? "gap-2" : "gap-4"}`}
+								key={index}
+								className=" rounded-xl border border-black flex-1 flex flex-row items-center"
 							>
-								{weatherStats
-									.slice(rowIndex * nbCols, (rowIndex + 1) * nbCols)
-									.map((stat, index) => (
-										<div
-											key={index}
-											className="h-full rounded-xl border border-black flex-1 flex flex-row items-center"
-										>
-											<div className="p-2">{stat.icon}</div>
-											<div className="flex flex-col">
-												<div
-													className={`leading-none m-0 ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
-												>
-													{stat.label}
-												</div>
-												<div
-													className={`leading-none m-0 font-bold ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
-												>
-													{stat.value}
-												</div>
-											</div>
-										</div>
-									))}
+								<div className="p-2 max-h-20">{stat.icon}</div>
+								<div className="flex flex-col">
+									<div
+										className={`leading-none m-0 ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
+									>
+										{stat.label}
+									</div>
+									<div
+										className={`leading-none m-0 font-bold ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
+									>
+										{stat.value}
+									</div>
+								</div>
 							</div>
 						))}
 					</div>
