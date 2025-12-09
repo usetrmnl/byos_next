@@ -29,14 +29,22 @@
 		"componentPath": "./screens/album",
 		"hasDataFetch": false,
 		"props": {},
-		"params": {},
-		"tags": ["bitmap", "text"],
+		"params": {
+			"imageUrl": {
+				"type": "string",
+				"label": "Image URL",
+				"description": "URL of the image to display in the album",
+				"default": "https://byos-nextjs.vercel.app/album/london.png",
+				"placeholder": "https://example.com/image.png"
+			}
+		},
+		"tags": ["bitmap", "text", "configurable"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
 		},
 		"renderSettings": {},
-		"version": "0.1.0",
+		"version": "0.2.0",
 		"category": "display-components"
 	},
 	"bitmap-patterns": {
