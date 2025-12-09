@@ -122,8 +122,7 @@ export default function Weather({
 						))}
 					</div>
 					<div
-						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
-						style={{ WebkitTextStroke: "4px white" }}
+						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500"
 					>
 						<div>{location}</div>
 						<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>

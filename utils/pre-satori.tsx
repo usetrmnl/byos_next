@@ -61,10 +61,10 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			// }
 			// const { style: gapStyle, className: afterGapClass } =
 			// 	processGap(responsiveClass);
-			// const { style: ditherStyle, className: finalClass } =
-			// 	processDither(afterGapClass);
+			const { style: ditherStyle, className: finalClass } =
+				processDither(responsiveClass);
 
-			// Object.assign(newStyle, gapStyle, ditherStyle);
+			Object.assign(newStyle, ditherStyle);
 
 			// Determine reset styles
 			const resetStyles = getResetStyles(child);
@@ -73,10 +73,10 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			const newProps: Record<string, unknown> = {
 				...restProps,
 				style: newStyle,
-				className: cn(resetStyles, responsiveClass), // Keep for browser/React
+				className: cn(resetStyles, finalClass), // Keep for browser/React
 				// Pass Tailwind classes to 'tw' prop for Takumi/Satori rendering
 				// We combine reset styles with user classes
-				tw: cn(resetStyles, responsiveClass),
+				tw: cn(resetStyles, finalClass),
 			};
 
 			// Recursively transform children

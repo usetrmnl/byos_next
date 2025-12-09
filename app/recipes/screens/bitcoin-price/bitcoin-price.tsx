@@ -62,12 +62,7 @@ export default function BitcoinPrice({
 									alt="Bitcoin Logo"
 									width={100}
 									height={100}
-									style={{
-										objectFit: "contain",
-										width: "100px",
-										height: "100px",
-										filter: "grayscale(100%) brightness(100%) contrast(200%)",
-									}}
+									className="grayscale"
 								/>
 							</picture>
 						</div>
@@ -92,16 +87,16 @@ export default function BitcoinPrice({
 							</div>
 						</>
 					)}
-					<div className="flex flex-col w-full sm:w-1/3 gap-4">
+					<div className="flex flex-col w-full gap-4 sm:ml-4">
 						{priceStats.map((stat, index) => (
 							<div
 								key={index}
 								className="w-full p-2 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
 							>
-								<div className="text-[24px] sm:text-[28px] leading-none m-0">
+								<div className="text-2xl sm:text-2xl leading-none m-0">
 									{stat.label}
 								</div>
-								<div className="text-[24px] sm:text-[28px] leading-none m-0">
+								<div className="text-2xl sm:text-2xl leading-none m-0">
 									${stat.value}
 								</div>
 							</div>
@@ -109,8 +104,7 @@ export default function BitcoinPrice({
 					</div>
 				</div>
 				<div
-					className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
-					style={{ WebkitTextStroke: "4px white" }}
+					className="w-full flex flex-col sm:flex-row sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500"
 				>
 					<div>Bitcoin Price Tracker</div>
 					<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
