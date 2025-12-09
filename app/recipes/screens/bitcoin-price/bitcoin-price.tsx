@@ -51,33 +51,30 @@ export default function BitcoinPrice({
 				<div className="flex flex-col">
 					<div className="flex flex-col">
 						<div className="flex items-center justify-between">
-							<h2 className="text-6xl sm:text-7xl font-inter">${price}</h2>
-							<picture className="w-[100px] h-[100px]">
-								<source
-									srcSet="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
-									type="image/png"
-								/>
-								<img
-									src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
-									alt="Bitcoin Logo"
-									width={100}
-									height={100}
-									className="grayscale"
-								/>
-							</picture>
+							<p className="text-6xl sm:text-7xl lg:text-9xl font-inter">
+								${price}
+							</p>
+
+							<img
+								src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
+								alt="Bitcoin Logo"
+								width={100}
+								height={100}
+								className="grayscale w-[100px] h-[100px] lg:w-[200px] lg:h-[200px]"
+							/>
 						</div>
-						<div className="text-4xl font-inter">
+						<div className="text-4xl lg:text-5xl font-inter">
 							{isPositive ? "↑" : "↓"} {changeValue}%
 						</div>
 					</div>
 				</div>
-				<div className="w-full flex flex-col sm:flex-row  sm:items-center sm:justify-between px-4">
+				<div className="w-full flex flex-col sm:flex-row lg:flex-col  sm:items-center sm:justify-between px-4">
 					{!isHalfScreen && (
-						<>
-							<div className="hidden sm:flex">
+						<div>
+							<div className="hidden sm:flex lg:hidden">
 								<Graph data={graphData} isTimeData={true} />
 							</div>
-							<div className="flex sm:hidden pb-4">
+							<div className="flex sm:hidden lg:flex pb-4">
 								<Graph
 									data={graphData}
 									isTimeData={true}
@@ -85,27 +82,25 @@ export default function BitcoinPrice({
 									height={height - 500}
 								/>
 							</div>
-						</>
+						</div>
 					)}
-					<div className="flex flex-col w-full gap-4 sm:ml-4">
+					<div className="flex flex-col lg:flex-row w-full gap-4 sm:ml-4">
 						{priceStats.map((stat, index) => (
 							<div
 								key={index}
-								className="w-full p-2 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
+								className="w-full p-2 lg:p-6 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
 							>
-								<div className="text-2xl sm:text-2xl leading-none m-0">
+								<div className="text-2xl lg:text-5xl leading-none m-0">
 									{stat.label}
 								</div>
-								<div className="text-2xl sm:text-2xl leading-none m-0">
+								<div className="text-2xl lg:text-5xl leading-none m-0">
 									${stat.value}
 								</div>
 							</div>
 						))}
 					</div>
 				</div>
-				<div
-					className="w-full flex flex-col sm:flex-row sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500"
-				>
+				<div className="w-full flex flex-col sm:flex-row sm:justify-between items-center text-2xl lg:text-5xl text-white p-2 rounded-xl bg-gray-500">
 					<div>Bitcoin Price Tracker</div>
 					<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
 				</div>

@@ -69,6 +69,8 @@ export function Graph({
 	const innerWidth = width - margin.left - margin.right;
 	const innerHeight = height - margin.top - margin.bottom;
 
+	const fontSize = Math.round((50 * Math.max(innerWidth, innerHeight)) / 800);
+
 	// Create scales
 	const xScale = isTimeData
 		? d3
@@ -206,7 +208,7 @@ export function Graph({
 								right: "5px",
 								top: `${y}px`,
 								transform: "translateY(-50%)",
-								fontSize: "18px",
+								fontSize: `${fontSize}px`,
 								color: "currentColor",
 								whiteSpace: "nowrap",
 							}}
@@ -257,7 +259,7 @@ export function Graph({
 									position: "absolute",
 									left: `${x}px`,
 									transform: "translateX(-50%)",
-									fontSize: "18px",
+									fontSize: `${fontSize}px`,
 									color: "currentColor",
 									whiteSpace: "nowrap",
 								}}
