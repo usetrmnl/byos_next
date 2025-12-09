@@ -98,8 +98,12 @@ async function generateFallbackImage(
 		height: 480,
 	});
 
+	// Convert ImageResponse to Buffer
+	const arrayBuffer = await imageResponse.arrayBuffer();
+	const pngBuffer = Buffer.from(arrayBuffer);
+
 	// Convert to bitmap using render-bmp
-	const buffer = await renderBmp(imageResponse, {
+	const buffer = await renderBmp(pngBuffer, {
 		ditheringMethod: DitheringMethod.ATKINSON,
 	});
 
@@ -166,9 +170,13 @@ async function generateImageData(slug: string): Promise<{
 			height: 480,
 		});
 
+		// Convert ImageResponse to Buffer
+		const arrayBuffer = await imageResponse.arrayBuffer();
+		const pngBuffer = Buffer.from(arrayBuffer);
+
 		// Convert to bitmap using render-bmp
 		console.log("🖼️ Converting to bitmap");
-		const buffer = await renderBmp(imageResponse, {
+		const buffer = await renderBmp(pngBuffer, {
 			ditheringMethod: DitheringMethod.ATKINSON,
 		});
 
