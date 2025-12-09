@@ -1,11 +1,11 @@
 import { Renderer } from "@takumi-rs/core";
 import { fromJsx } from "@takumi-rs/helpers/jsx";
 import { cache, createElement } from "react";
+import { getScreenParams } from "@/app/actions/screens-params";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
 import { getTakumiFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
-import { getScreenParams } from "@/app/actions/screens-params";
 
 // Logging utility shared between recipe renderers
 export const logger = {
@@ -322,12 +322,12 @@ export const buildRecipeElement = async ({
 	const props = await fetchRecipeProps(slug, config, {
 		validateFetchedData: validateProps
 			? (slug: string, data: unknown) => {
-				return (
-					typeof data === "object" &&
-					data !== null &&
-					validateProps(slug, data as ComponentProps)
-				);
-			}
+					return (
+						typeof data === "object" &&
+						data !== null &&
+						validateProps(slug, data as ComponentProps)
+					);
+				}
 			: undefined,
 	});
 
