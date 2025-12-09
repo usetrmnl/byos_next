@@ -98,20 +98,11 @@ export const getTakumiFonts = () => {
 	const style = "normal" as const;
 
 	const takumiFonts = Object.entries(fonts).map(([fontName, fontBuffer]) => {
-		// Convert Buffer to ArrayBuffer for Takumi
-		let data: ArrayBuffer | Uint8Array;
-		if (fontBuffer instanceof Buffer) {
-			// Create a new ArrayBuffer from the Buffer
-			data = fontBuffer.buffer.slice(
-				fontBuffer.byteOffset,
-				fontBuffer.byteOffset + fontBuffer.byteLength,
-			);
-		} else if (fontBuffer instanceof ArrayBuffer) {
+		let data: ArrayBuffer;
+		if (fontBuffer instanceof ArrayBuffer) {
 			data = fontBuffer;
-		} else {
-			// Convert to Uint8Array if needed
-			data = new Uint8Array(fontBuffer);
 		}
+		data = Uint8Array.from(fontBuffer).buffer;
 
 		return {
 			name: fontName,

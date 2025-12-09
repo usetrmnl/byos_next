@@ -409,7 +409,7 @@ export const findOrCreateDevice = async (
 				.executeTakeFirst();
 
 			if (newDevice) {
-				logger.info("Created new mock device", { friendly_id });
+				logger.info(`Created new mock device: ${friendly_id}`);
 				return newDevice as unknown as Device;
 			}
 		} catch (e) {
