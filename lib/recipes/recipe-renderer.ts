@@ -1,9 +1,9 @@
-import { ImageResponse } from "next/og";
+import { Renderer } from "@takumi-rs/core";
+import { fromJsx } from "@takumi-rs/helpers/jsx";
 import { cache, createElement } from "react";
-import satori from "satori";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
-import { getSatoriFonts } from "@/lib/fonts";
+import { getTakumiFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 // Logging utility shared between recipe renderers
@@ -67,7 +67,24 @@ export const addDimensionsToProps = (
 });
 
 // Cache the fonts at module initialization
-const fonts = getSatoriFonts();
+// Takumi is used for PNG/bitmap generation (replaces Next.js ImageResponse which used Satori)
+const takumiFonts = getTakumiFonts();
+
+// Initialize Takumi renderer
+// Note: If using a bundler, @takumi-rs/core should be marked as external
+// const takumiRenderer = new Renderer({
+// 	fonts: takumiFonts,
+// });
+const takumiRenderer = new Renderer({ fonts: takumiFonts });
+
+async function localFetch(url: string) {
+	return {
+		arrayBuffer: () =>
+			fetch(url)
+				.then((res) => res.arrayBuffer())
+				.then((ab) => Buffer.from(ab)),
+	};
+}
 
 export const fetchRecipeConfig = cache((slug: string): RecipeConfig | null => {
 	const config = screens[slug as keyof typeof screens];
@@ -160,15 +177,10 @@ export const getRecipeImageOptions = (
 	return {
 		width: width * scaleFactor,
 		height: height * scaleFactor,
-		fonts: fonts,
-		shapeRendering: 1,
-		textRendering: 0,
-		imageRendering: 1,
-		debug: false,
 	};
 };
 
-type RenderFormats = Array<"bitmap" | "png" | "svg">;
+type RenderFormats = Array<"bitmap" | "png">;
 
 type RenderOptions = {
 	slug: string;
@@ -183,13 +195,11 @@ type RenderOptions = {
 type RenderResults = {
 	bitmap: Buffer | null;
 	png: Buffer | null;
-	svg: string | null;
 };
 
 const getDefaultRenderResults = (): RenderResults => ({
 	bitmap: null,
 	png: null,
-	svg: null,
 });
 
 export const renderRecipeOutputs = cache(
@@ -200,24 +210,28 @@ export const renderRecipeOutputs = cache(
 		config,
 		imageWidth,
 		imageHeight,
-		formats = ["bitmap", "png", "svg"],
+		formats = ["bitmap", "png"],
 	}: RenderOptions): Promise<RenderResults> => {
 		const results = getDefaultRenderResults();
 		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
 
 		const tasks: Array<
-			Promise<{ key: keyof RenderResults; value: Buffer | string | null }>
+			Promise<{ key: keyof RenderResults; value: Buffer | null }>
 		> = [];
 
 		if (formats.includes("bitmap")) {
 			tasks.push(
 				(async () => {
 					try {
-						const pngResponse = await new ImageResponse(
-							createElement(Component, props),
-							imageOptions,
-						);
-						const buffer = await renderBmp(pngResponse, {
+						const element = createElement(Component, props);
+						const node = await fromJsx(element);
+						const png = await takumiRenderer.render(node, {
+							width: imageOptions.width,
+							height: imageOptions.height,
+							format: "png",
+							fetch: localFetch,
+						});
+						const buffer = await renderBmp(png, {
 							ditheringMethod: DitheringMethod.ATKINSON,
 							width: imageWidth,
 							height: imageHeight,
@@ -235,38 +249,20 @@ export const renderRecipeOutputs = cache(
 			tasks.push(
 				(async () => {
 					try {
-						const pngResponse = await new ImageResponse(
-							createElement(Component, props),
-							imageOptions,
-						);
-						const pngBuffer = await pngResponse.arrayBuffer();
+						const element = createElement(Component, props);
+						// const element = "<div>Hello, world!</div>";
+						const node = await fromJsx(element);
+
+						const pngBuffer = await takumiRenderer.render(node, {
+							width: imageOptions.width,
+							height: imageOptions.height,
+							format: "png",
+							fetch: localFetch,
+						});
 						return { key: "png", value: Buffer.from(pngBuffer) };
 					} catch (error) {
 						logger.error(`Error generating PNG for ${slug}:`, error);
 						return { key: "png", value: null };
-					}
-				})(),
-			);
-		}
-
-		if (formats.includes("svg")) {
-			tasks.push(
-				(async () => {
-					try {
-						const element = createElement(Component, props);
-						const svgValue = await satori(element, imageOptions);
-						return { key: "svg", value: svgValue };
-					} catch (error) {
-						logger.error(`Error generating SVG for ${slug}:`, error);
-						return {
-							key: "svg",
-							value: `<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}" viewBox="0 0 ${imageWidth} ${imageHeight}">
-								<rect width="${imageWidth}" height="${imageHeight}" fill="#f0f0f0" />
-								<text x="${imageWidth / 2}" y="${imageHeight / 2}" font-family="Arial" font-size="24" text-anchor="middle">
-									Unable to generate SVG content
-								</text>
-							</svg>`,
-						};
 					}
 				})(),
 			);

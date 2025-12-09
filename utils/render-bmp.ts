@@ -204,16 +204,11 @@ export interface RenderBmpOptions {
 	height?: number;
 }
 
-export async function renderBmp(
-	pngResponse: ImageResponse,
-	options: RenderBmpOptions = {},
-) {
+export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	const {
 		ditheringMethod = DitheringMethod.FLOYD_STEINBERG,
 		inverted = false,
 	} = options;
-
-	const pngBuffer = await pngResponse.arrayBuffer();
 
 	// Fixed dimensions to match the device requirements
 	const targetWidth = options.width ?? 800;
@@ -221,12 +216,12 @@ export async function renderBmp(
 	const targetPixelCount = targetWidth * targetHeight;
 
 	// Load image metadata
-	const metadata = await sharp(Buffer.from(pngBuffer)).metadata();
+	const metadata = await sharp(png).metadata();
 	const isDoubleSize =
 		metadata.width === targetWidth * 2 && metadata.height === targetHeight * 2;
 
 	// Step 1: Resize to 800x480 if necessary
-	let image = sharp(Buffer.from(pngBuffer));
+	let image = sharp(png);
 	if (isDoubleSize) {
 		image = image.resize(targetWidth, targetHeight, {
 			kernel: sharp.kernel.nearest,

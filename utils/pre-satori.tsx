@@ -42,29 +42,29 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 				...(fontFamily ? { fontFamily } : {}),
 			};
 
-			// Special handling for display properties
-			if (child.type === "div") {
-				if (
-					style?.display !== "flex" &&
-					style?.display !== "contents" &&
-					style?.display !== "none"
-				) {
-					newStyle.display = "flex";
-				}
-			}
+			// // Special handling for display properties
+			// if (child.type === "div") {
+			// 	if (
+			// 		style?.display !== "flex" &&
+			// 		style?.display !== "contents" &&
+			// 		style?.display !== "none"
+			// 	) {
+			// 		newStyle.display = "flex";
+			// 	}
+			// }
 
 			// Process className for dither patterns, gap classes, and responsive breakpoints
 			const responsiveClass = processResponsive(className, width);
 			// Check if element should be hidden - don't render it at all
-			if (responsiveClass.includes("hidden")) {
-				return null;
-			}
-			const { style: gapStyle, className: afterGapClass } =
-				processGap(responsiveClass);
-			const { style: ditherStyle, className: finalClass } =
-				processDither(afterGapClass);
+			// if (responsiveClass.includes("hidden")) {
+			// 	return null;
+			// }
+			// const { style: gapStyle, className: afterGapClass } =
+			// 	processGap(responsiveClass);
+			// const { style: ditherStyle, className: finalClass } =
+			// 	processDither(afterGapClass);
 
-			Object.assign(newStyle, gapStyle, ditherStyle);
+			// Object.assign(newStyle, gapStyle, ditherStyle);
 
 			// Determine reset styles
 			const resetStyles = getResetStyles(child);
@@ -73,10 +73,10 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			const newProps: Record<string, unknown> = {
 				...restProps,
 				style: newStyle,
-				className: finalClass, // Keep for browser/React
-				// Pass Tailwind classes to 'tw' prop for Satori/ImageResponse
+				className: cn(resetStyles, responsiveClass), // Keep for browser/React
+				// Pass Tailwind classes to 'tw' prop for Takumi/Satori rendering
 				// We combine reset styles with user classes
-				tw: cn(resetStyles, finalClass),
+				tw: cn(resetStyles, responsiveClass),
 			};
 
 			// Recursively transform children
@@ -94,18 +94,14 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 	return (
 		<div
 			style={{
-				display: "flex",
-				flexDirection: "column",
 				width: `${width}px`,
 				height: `${height}px`,
-				color: "black",
-				backgroundColor: "#ffffff",
-				fontSize: "16px",
 				transformOrigin: "top left",
 				...(useDoubling ? { transform: "scale(2)" } : {}),
 			}}
 		>
 			{React.Children.map(children, (child) => transform(child))}
+			{/* {children} */}
 		</div>
 	);
 };

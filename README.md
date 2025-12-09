@@ -280,9 +280,9 @@ Unlike the official Ruby/Python implementations, this Next.js implementation:
 
 #### Technical Specifications
 - **Image Format**: 800x480 pixel 1-bit bitmap (.bmp)
-- **Rendering**: Uses Satori for dynamic image generation
+- **Rendering**: Uses Takumi for dynamic image generation (PNG/bitmap)
 - **Rendering Pipeline**: 
-  JSX component → pre-satori wrapper → Satori (SVG) → Vercel ImageResponse (PNG) → Jimp (BMP) → fixed header to fit TRMNL display
+  JSX component → pre-satori wrapper → Takumi (PNG) → Jimp (BMP) → fixed header to fit TRMNL display
 - **Caching Strategy**: 
   - Development: 60-second memory cache with revalidation
   - Production: Next.js built-in caching with 60-second default revalidation
@@ -379,7 +379,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Supabase Documentation](https://supabase.com/docs)
 - [TRMNL Device Website](https://usetrmnl.com)
-- [Satori Documentation](https://github.com/vercel/satori) - For understanding the rendering pipeline
+- [Takumi Documentation](https://takumi.kane.tw/) - For understanding the rendering pipeline
 
 ## 🐳 Docker Support
 

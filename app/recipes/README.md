@@ -119,7 +119,7 @@ You can also use `max-` prefix for maximum width queries:
 
 ### Gap Utilities
 
-Gap utilities (`gap`, `gap-x`, `gap-y`) are automatically converted to CSS styles for better compatibility with Satori rendering:
+Gap utilities (`gap`, `gap-x`, `gap-y`) are automatically converted to CSS styles for better compatibility with Takumi/Satori rendering:
 
 ```tsx
 <div className="flex flex-row gap-4 gap-y-2">

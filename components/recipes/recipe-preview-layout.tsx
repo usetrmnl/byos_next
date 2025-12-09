@@ -12,15 +12,13 @@ type RecipePreviewLayoutProps = {
 	children?: React.ReactNode;
 	bmpComponent?: React.ReactNode;
 	pngComponent?: React.ReactNode;
-	svgComponent?: React.ReactNode;
 	reactComponent?: React.ReactNode;
 	bmpLinkComponent?: React.ReactNode;
 	pngLinkComponent?: React.ReactNode;
-	svgLinkComponent?: React.ReactNode;
 	reactLinkComponent?: React.ReactNode;
 	defaultLayout?: "columns" | "rows";
 	defaultScale?: "full" | "half";
-	defaultRenderType?: "bmp" | "png" | "svg";
+	defaultRenderType?: "bmp" | "png";
 	canvasWidth?: number;
 };
 
@@ -28,11 +26,9 @@ const RecipePreviewLayout = ({
 	children,
 	bmpComponent,
 	pngComponent,
-	svgComponent,
 	reactComponent,
 	bmpLinkComponent,
 	pngLinkComponent,
-	svgLinkComponent,
 	reactLinkComponent,
 	defaultLayout = "rows",
 	defaultScale = "full",
@@ -41,7 +37,7 @@ const RecipePreviewLayout = ({
 }: RecipePreviewLayoutProps) => {
 	const [layout, setLayout] = React.useState<"columns" | "rows">(defaultLayout);
 	const [scale, setScale] = React.useState<"full" | "half">(defaultScale);
-	const [renderType, setRenderType] = React.useState<"bmp" | "png" | "svg">(
+	const [renderType, setRenderType] = React.useState<"bmp" | "png">(
 		defaultRenderType,
 	);
 	const [isInitialized, setIsInitialized] = React.useState(false);
@@ -96,7 +92,7 @@ const RecipePreviewLayout = ({
 					| null;
 				const savedRenderType = localStorage.getItem(
 					"recipePreviewRenderType",
-				) as "bmp" | "png" | "svg" | null;
+				) as "bmp" | "png" | null;
 
 				if (savedLayout) {
 					setLayout(savedLayout);
@@ -159,7 +155,7 @@ const RecipePreviewLayout = ({
 
 	// Handle render type change
 	const handleRenderTypeChange = React.useCallback(
-		(newRenderType: "bmp" | "png" | "svg") => {
+		(newRenderType: "bmp" | "png") => {
 			setRenderType(newRenderType);
 			// Defer localStorage update to not block rendering
 			setTimeout(() => {
@@ -209,7 +205,7 @@ const RecipePreviewLayout = ({
 	// Determine what to render based on provided components or children
 	const renderContent = () => {
 		// If specific components are provided, use them
-		if (bmpComponent || pngComponent || svgComponent || reactComponent) {
+		if (bmpComponent || pngComponent || reactComponent) {
 			let imageComponent: React.ReactNode | undefined;
 			let linkComponent: React.ReactNode | undefined;
 
@@ -219,9 +215,6 @@ const RecipePreviewLayout = ({
 			} else if (renderType === "png") {
 				imageComponent = pngComponent;
 				linkComponent = pngLinkComponent;
-			} else if (renderType === "svg") {
-				imageComponent = svgComponent;
-				linkComponent = svgLinkComponent;
 			}
 
 			// Create an array of components to render
@@ -256,7 +249,7 @@ const RecipePreviewLayout = ({
 
 	// Determine which render type options to show based on available components
 	const getRenderTypeOptions = () => {
-		const options: SlideToggleOption<"bmp" | "png" | "svg">[] = [];
+		const options: SlideToggleOption<"bmp" | "png">[] = [];
 
 		if (bmpComponent) {
 			options.push({
@@ -276,15 +269,6 @@ const RecipePreviewLayout = ({
 			});
 		}
 
-		if (svgComponent) {
-			options.push({
-				value: "svg",
-				icon: undefined,
-				label: "SVG",
-				ariaLabel: "SVG rendering",
-			});
-		}
-
 		return options;
 	};
 
@@ -301,8 +285,8 @@ const RecipePreviewLayout = ({
 					value={scale}
 					onChange={handleScaleChange}
 				/>
-				{(bmpComponent || pngComponent || svgComponent) && (
-					<SlideToggle<"bmp" | "png" | "svg">
+				{(bmpComponent || pngComponent) && (
+					<SlideToggle<"bmp" | "png">
 						options={getRenderTypeOptions()}
 						value={renderType}
 						onChange={handleRenderTypeChange}

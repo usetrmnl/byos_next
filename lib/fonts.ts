@@ -87,24 +87,41 @@ export const loadFont = cache(() => {
 });
 
 /**
- * Returns an array of Satori-compatible font objects
+ * Returns an array of Takumi-compatible font objects
  * @param fonts Object containing font buffers from loadFont()
- * @returns Array of font configurations for Satori
+ * @returns Array of font configurations for Takumi
  */
-export const getSatoriFonts = () => {
+export const getTakumiFonts = () => {
 	const fonts = loadFont();
 	if (!fonts) return [];
 	const weight = 400 as const;
 	const style = "normal" as const;
 
-	const satoriFonts = Object.entries(fonts).map(([fontName, fontBuffer]) => ({
-		name: fontName,
-		data: fontBuffer,
-		weight: weight,
-		style: style,
-	}));
+	const takumiFonts = Object.entries(fonts).map(([fontName, fontBuffer]) => {
+		// Convert Buffer to ArrayBuffer for Takumi
+		let data: ArrayBuffer | Uint8Array;
+		if (fontBuffer instanceof Buffer) {
+			// Create a new ArrayBuffer from the Buffer
+			data = fontBuffer.buffer.slice(
+				fontBuffer.byteOffset,
+				fontBuffer.byteOffset + fontBuffer.byteLength,
+			);
+		} else if (fontBuffer instanceof ArrayBuffer) {
+			data = fontBuffer;
+		} else {
+			// Convert to Uint8Array if needed
+			data = new Uint8Array(fontBuffer);
+		}
 
-	return satoriFonts;
+		return {
+			name: fontName,
+			data: data,
+			weight: weight,
+			style: style,
+		};
+	});
+
+	return takumiFonts;
 };
 
 export const extractFontFamily = (className?: string): string | undefined => {

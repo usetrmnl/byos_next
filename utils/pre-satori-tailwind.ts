@@ -14,10 +14,10 @@ const responsivePattern = /^(max-)?(sm|md|lg|xl|2xl):(.+)$/;
 
 // Satori-compatible reset styles
 const satoriResetStyles = {
-	common: "m-0 p-0 border-0 bg-transparent shadow-none",
-	heading: "m-0 p-0 border-0 bg-transparent shadow-none",
-	paragraph: "m-0 p-0 border-0 bg-transparent shadow-none",
-	div: "m-0 p-0 border-0 bg-transparent shadow-none",
+	common: "m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none",
+	heading: "m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none",
+	paragraph: "m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none",
+	div: "m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none",
 } as const;
 
 export function getResetStyles(child: React.ReactNode): string {

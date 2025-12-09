@@ -96,7 +96,7 @@ const RenderComponent = ({
 	imageHeight,
 }: {
 	slug: string;
-	format: "bitmap" | "png" | "svg" | "react";
+	format: "bitmap" | "png" | "react";
 	title: string;
 	imageWidth: number;
 	imageHeight: number;
@@ -124,6 +124,7 @@ const RenderComponent = ({
 	// Now we have valid config and component
 	const config = configResult;
 	const Component = componentResult;
+	console.log("Component", Component, typeof Component);
 	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
 	const propsWithDimensions = addDimensionsToProps(
 		propsResult,
@@ -204,32 +205,6 @@ const RenderComponent = ({
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} PNG render`}
 				className="w-full object-cover"
-			/>
-		);
-	}
-
-	// For SVG rendering
-	if (format === "svg") {
-		if (!renders.svg) {
-			return (
-				<div className="w-full h-full flex items-center justify-center">
-					Failed to generate SVG
-				</div>
-			);
-		}
-
-		return (
-			<div
-				className="w-full h-full"
-				// biome-ignore lint/security/noDangerouslySetInnerHtml: SVG content is sanitized and trusted
-				dangerouslySetInnerHTML={{ __html: renders.svg }}
-				style={{
-					imageRendering: "pixelated",
-					transform: useDoubling ? "scale(0.5)" : "none",
-					transformOrigin: "top left",
-				}}
-				role="img"
-				aria-label={`${title} SVG render`}
 			/>
 		);
 	}
@@ -340,30 +315,6 @@ export default async function RecipePage({
 							</AspectRatio>
 						</div>
 					}
-					svgComponent={
-						<div
-							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
-							className="border border-gray-200 overflow-hidden rounded-sm"
-						>
-							<AspectRatio ratio={imageWidth / imageHeight}>
-								<Suspense
-									fallback={
-										<div className="w-full h-full flex items-center justify-center">
-											Rendering SVG...
-										</div>
-									}
-								>
-									<RenderComponent
-										slug={slug}
-										format="svg"
-										title={config.title}
-										imageWidth={imageWidth}
-										imageHeight={imageHeight}
-									/>
-								</Suspense>
-							</AspectRatio>
-						</div>
-					}
 					reactComponent={
 						<div
 							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
@@ -393,8 +344,7 @@ export default async function RecipePage({
 					}
 					bmpLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → Satori SVG → ImageResponse PNG →
-							utils/render-bmp.ts →
+							JSX → utils/pre-satori.tsx → Takumi PNG → utils/render-bmp.ts →
 							<Link
 								href={`/api/bitmap/${slug}.bmp`}
 								className="hover:underline text-blue-600 dark:text-blue-400"
@@ -405,26 +355,11 @@ export default async function RecipePage({
 					}
 					pngLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → Satori SVG →{" "}
-							<span className="text-blue-600 dark:text-blue-400">
-								ImageResponse PNG
-							</span>{" "}
-							→ utils/render-bmp.ts →
-							<Link
-								href={`/api/bitmap/${slug}.bmp`}
-								className="hover:underline"
-							>
-								/api/bitmap/{slug}.bmp
-							</Link>
-						</p>
-					}
-					svgLinkComponent={
-						<p className="leading-7 text-xs">
 							JSX → utils/pre-satori.tsx →{" "}
 							<span className="text-blue-600 dark:text-blue-400">
-								Satori SVG
+								Takumi PNG
 							</span>{" "}
-							→ ImageResponse PNG → utils/render-bmp.ts →
+							→ utils/render-bmp.ts →
 							<Link
 								href={`/api/bitmap/${slug}.bmp`}
 								className="hover:underline"
