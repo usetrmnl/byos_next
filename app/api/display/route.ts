@@ -63,13 +63,13 @@ export async function GET(request: Request) {
 		}
 
 		let screenToDisplay = device.screen;
-		const orientation = device.screen_orientation || "horizontal";
+		const orientation = device.screen_orientation || "landscape";
 		const deviceWidth =
-			orientation === "horizontal"
+			orientation === "landscape"
 				? device.screen_width || DEFAULT_IMAGE_WIDTH
 				: device.screen_height || DEFAULT_IMAGE_HEIGHT;
 		const deviceHeight =
-			orientation === "horizontal"
+			orientation === "landscape"
 				? device.screen_height || DEFAULT_IMAGE_HEIGHT
 				: device.screen_width || DEFAULT_IMAGE_WIDTH;
 		let dynamicRefreshRate = 180;
