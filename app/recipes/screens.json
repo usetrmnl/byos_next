@@ -83,25 +83,33 @@
 		"category": "display-components"
 	},
 	"bitcoin-price": {
-		"title": "Bitcoin Price",
+		"title": "Crypto Price Tracker",
 		"published": true,
 		"createdAt": "2025-03-01T00:00:00Z",
 		"updatedAt": "2025-03-01T00:00:00Z",
-		"description": "A component that displays the current Bitcoin price and market data.",
+		"description": "A component that displays the current cryptocurrency price and market data. Supports any cryptocurrency available on CoinGecko.",
 		"componentPath": "./screens/bitcoin-price",
 		"hasDataFetch": true,
 		"props": {
 			"price": "Loading...",
 			"change24h": "0"
 		},
-		"params": {},
-		"tags": ["tailwind", "cryptocurrency", "api"],
+		"params": {
+			"cryptoSymbol": {
+				"type": "string",
+				"label": "Cryptocurrency Symbol",
+				"description": "The CoinGecko ID of the cryptocurrency (e.g., 'bitcoin', 'ethereum', 'cardano'). Defaults to 'bitcoin'.",
+				"default": "bitcoin",
+				"placeholder": "bitcoin"
+			}
+		},
+		"tags": ["tailwind", "cryptocurrency", "api", "configurable"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
 		},
 		"renderSettings": {},
-		"version": "0.1.0",
+		"version": "0.2.0",
 		"category": "display-components"
 	},
 	"weather": {

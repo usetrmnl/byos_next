@@ -1,7 +1,7 @@
 import { Graph } from "@/components/ui/graph";
 import { PreSatori } from "@/utils/pre-satori";
 
-interface BitcoinPriceProps {
+interface CryptoPriceProps {
 	price?: string;
 	change24h?: string;
 	marketCap?: string;
@@ -10,11 +10,13 @@ interface BitcoinPriceProps {
 	high24h?: string;
 	low24h?: string;
 	historicalPrices?: Array<{ timestamp: number; price: number }>;
+	cryptoName?: string;
+	cryptoImage?: string;
 	width?: number;
 	height?: number;
 }
 
-export default function BitcoinPrice({
+export default function CryptoPrice({
 	price = "Loading...",
 	change24h = "0",
 	marketCap = "Loading...",
@@ -23,9 +25,11 @@ export default function BitcoinPrice({
 	high24h = "Loading...",
 	low24h = "Loading...",
 	historicalPrices = [],
+	cryptoName = "Bitcoin",
+	cryptoImage,
 	width = 800,
 	height = 480,
-}: BitcoinPriceProps) {
+}: CryptoPriceProps) {
 	// Calculate if price change is positive or negative
 	const isPositive = !change24h.startsWith("-");
 	const changeValue = isPositive ? change24h : change24h.substring(1);
@@ -54,16 +58,18 @@ export default function BitcoinPrice({
 							<p className="text-6xl sm:text-7xl lg:text-9xl font-inter">
 								${price}
 							</p>
-							<picture>
-								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI/TAKUMI DOES NOT SUPPORT IT */}
-								<img
-									src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/Bitcoin.svg/64px-Bitcoin.svg.png"
-									alt="Bitcoin Logo"
-									width={100}
-									height={100}
-									className="grayscale w-[100px] h-[100px] lg:w-[200px] lg:h-[200px]"
-								/>
-							</picture>
+							{cryptoImage && (
+								<picture>
+									{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI/TAKUMI DOES NOT SUPPORT IT */}
+									<img
+										src={cryptoImage}
+										alt={`${cryptoName} Logo`}
+										width={100}
+										height={100}
+										className="grayscale w-[100px] h-[100px] lg:w-[200px] lg:h-[200px]"
+									/>
+								</picture>
+							)}
 						</div>
 						<div className="text-4xl lg:text-5xl font-inter">
 							{isPositive ? "↑" : "↓"} {changeValue}%
@@ -103,7 +109,7 @@ export default function BitcoinPrice({
 					</div>
 				</div>
 				<div className="w-full flex flex-col sm:flex-row sm:justify-between items-center text-2xl lg:text-5xl text-white p-2 rounded-xl bg-gray-500">
-					<div>Bitcoin Price Tracker</div>
+					<div>{cryptoName} Price Tracker</div>
 					<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
 				</div>
 			</div>
