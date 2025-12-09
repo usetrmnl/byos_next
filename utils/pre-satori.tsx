@@ -4,7 +4,6 @@ import { cn } from "@/lib/utils";
 import {
 	getResetStyles,
 	processDither,
-	processGap,
 	processResponsive,
 } from "./pre-satori-tailwind";
 

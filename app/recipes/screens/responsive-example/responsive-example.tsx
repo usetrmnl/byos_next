@@ -33,7 +33,9 @@ export default function ResponsiveExample({
 
 				{/* Footer section - responsive height and text size */}
 				<div className="bg-purple-500 flex items-center justify-center text-white font-blockkie h-[10%] md:h-[15%] text-base sm:text-xl lg:text-2xl">
-					<p>Footer - {width}x{height}</p>
+					<p>
+						Footer - {width}x{height}
+					</p>
 				</div>
 			</div>
 		</PreSatori>

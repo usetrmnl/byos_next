@@ -80,8 +80,12 @@ export default function Weather({
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="flex flex-col w-full h-full bg-white">
-				<div className={`flex p-4 sm:flex-row items-center justify-between ${isHalfScreen ? "flex-row" : "flex-col sm:flex-row"}`}>
-					<h2 className={`font-inter ${isHalfScreen ? "text-8xl" : "text-9xl"}`}>
+				<div
+					className={`flex p-4 sm:flex-row items-center justify-between ${isHalfScreen ? "flex-row" : "flex-col sm:flex-row"}`}
+				>
+					<h2
+						className={`font-inter ${isHalfScreen ? "text-8xl" : "text-9xl"}`}
+					>
 						{temperature}°C
 					</h2>
 					<div className="flex flex-col items-center justify-center">
@@ -121,9 +125,7 @@ export default function Weather({
 							</div>
 						))}
 					</div>
-					<div
-						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500"
-					>
+					<div className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500">
 						<div>{location}</div>
 						<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
 					</div>

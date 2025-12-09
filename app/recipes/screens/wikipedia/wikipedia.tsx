@@ -30,11 +30,11 @@ export default async function Wikipedia({
 	// Enhanced thumbnail validation to catch more edge cases
 	const hasValidThumbnail = thumbnail?.source
 		? typeof thumbnail.source === "string" &&
-		thumbnail.source.startsWith("https://") &&
-		typeof thumbnail.width === "number" &&
-		thumbnail.width > 0 &&
-		typeof thumbnail.height === "number" &&
-		thumbnail.height > 0
+			thumbnail.source.startsWith("https://") &&
+			typeof thumbnail.width === "number" &&
+			thumbnail.width > 0 &&
+			typeof thumbnail.height === "number" &&
+			thumbnail.height > 0
 		: false;
 
 	// Calculate a more appropriate extract length based on content length
@@ -147,11 +147,11 @@ export default async function Wikipedia({
 						</span>
 					</div>
 
-					<div
-						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500"
-					>
+					<div className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500">
 						<span>Wikipedia • Random Article</span>
-						<span>{formattedDate && <span>Generated: {formattedDate}</span>}</span>
+						<span>
+							{formattedDate && <span>Generated: {formattedDate}</span>}
+						</span>
 					</div>
 				</div>
 			</div>

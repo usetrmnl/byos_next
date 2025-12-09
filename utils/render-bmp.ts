@@ -1,4 +1,3 @@
-import type { ImageResponse } from "next/og";
 import sharp from "sharp";
 
 /** Dithering method options */
