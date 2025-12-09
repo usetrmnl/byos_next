@@ -57,13 +57,13 @@ export const DashboardContent = ({
 				)[0]
 			: null;
 
-	const orientation = lastUpdatedDevice?.screen_orientation || "horizontal";
+	const orientation = lastUpdatedDevice?.screen_orientation || "landscape";
 	const deviceWidth =
-		orientation === "horizontal"
+		orientation === "landscape"
 			? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
 			: lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
 	const deviceHeight =
-		orientation === "horizontal"
+		orientation === "landscape"
 			? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
 			: lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
 

@@ -122,13 +122,13 @@ export default function DevicePageClient({
 		},
 	);
 
-	const orientation = editedDevice.screen_orientation || "horizontal";
+	const orientation = editedDevice.screen_orientation || "landscape";
 	const deviceWidth =
-		orientation === "horizontal"
+		orientation === "landscape"
 			? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH
 			: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
 	const deviceHeight =
-		orientation === "horizontal"
+		orientation === "landscape"
 			? editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT
 			: editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
 
