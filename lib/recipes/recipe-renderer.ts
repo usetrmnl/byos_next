@@ -1,6 +1,7 @@
 import { Renderer } from "@takumi-rs/core";
 import { fromJsx } from "@takumi-rs/helpers/jsx";
-import { cache, createElement } from "react";
+import { ImageResponse } from "next/og";
+import React, { cache, createElement } from "react";
 import { getScreenParams } from "@/app/actions/screens-params";
 import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
 import screens from "@/app/recipes/screens.json";
@@ -80,16 +81,18 @@ export const addDimensionsToProps = (
 	height,
 });
 
+// Get renderer type from environment variable (defaults to "takumi")
+export const getRendererType = (): "takumi" | "satori" => {
+	const renderer = process.env.REACT_RENDERER?.toLowerCase();
+	return renderer === "satori" ? "satori" : "takumi";
+};
+
 // Cache the fonts at module initialization
-// Takumi is used for PNG/bitmap generation (replaces Next.js ImageResponse which used Satori)
-const takumiFonts = getTakumiFonts();
+const rendererFonts = getTakumiFonts();
 
 // Initialize Takumi renderer
-// Note: If using a bundler, @takumi-rs/core should be marked as external
-// const takumiRenderer = new Renderer({
-// 	fonts: takumiFonts,
-// });
-const takumiRenderer = new Renderer({ fonts: takumiFonts });
+
+const takumiRenderer = new Renderer({ fonts: rendererFonts });
 
 async function localFetch(url: string) {
 	return {
@@ -98,6 +101,43 @@ async function localFetch(url: string) {
 				.then((res) => res.arrayBuffer())
 				.then((ab) => Buffer.from(ab)),
 	};
+}
+
+/**
+ * Render React element using Takumi
+ */
+async function renderWithTakumi(
+	element: React.ReactElement,
+	width: number,
+	height: number,
+): Promise<Buffer> {
+	const node = await fromJsx(element);
+	const png = await takumiRenderer.render(node, {
+		width,
+		height,
+		format: "png",
+		fetch: localFetch,
+	});
+	return Buffer.from(png);
+}
+
+async function renderWithSatori(
+	element: React.ReactElement,
+	width: number,
+	height: number,
+): Promise<Buffer> {
+	const imageOptions = {
+		width: width,
+		height: height,
+		fonts: rendererFonts,
+		shapeRendering: 1,
+		textRendering: 0,
+		imageRendering: 1,
+		debug: false,
+	};
+	const pngResponse = await new ImageResponse(element, imageOptions);
+	const pngBuffer = await pngResponse.arrayBuffer();
+	return Buffer.from(pngBuffer);
 }
 
 export const fetchRecipeConfig = cache((slug: string): RecipeConfig | null => {
@@ -237,6 +277,7 @@ export const renderRecipeOutputs = cache(
 	}: RenderOptions): Promise<RenderResults> => {
 		const results = getDefaultRenderResults();
 		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
+		const rendererType = getRendererType();
 
 		const tasks: Array<
 			Promise<{ key: keyof RenderResults; value: Buffer | null }>
@@ -247,13 +288,18 @@ export const renderRecipeOutputs = cache(
 				(async () => {
 					try {
 						const element = createElement(Component, props);
-						const node = await fromJsx(element);
-						const png = await takumiRenderer.render(node, {
-							width: imageOptions.width,
-							height: imageOptions.height,
-							format: "png",
-							fetch: localFetch,
-						});
+						const png =
+							rendererType === "satori"
+								? await renderWithSatori(
+										element,
+										imageOptions.width,
+										imageOptions.height,
+									)
+								: await renderWithTakumi(
+										element,
+										imageOptions.width,
+										imageOptions.height,
+									);
 						const buffer = await renderBmp(png, {
 							ditheringMethod: DitheringMethod.ATKINSON,
 							width: imageWidth,
@@ -273,16 +319,19 @@ export const renderRecipeOutputs = cache(
 				(async () => {
 					try {
 						const element = createElement(Component, props);
-						// const element = "<div>Hello, world!</div>";
-						const node = await fromJsx(element);
-
-						const pngBuffer = await takumiRenderer.render(node, {
-							width: imageOptions.width,
-							height: imageOptions.height,
-							format: "png",
-							fetch: localFetch,
-						});
-						return { key: "png", value: Buffer.from(pngBuffer) };
+						const pngBuffer =
+							rendererType === "satori"
+								? await renderWithSatori(
+										element,
+										imageOptions.width,
+										imageOptions.height,
+									)
+								: await renderWithTakumi(
+										element,
+										imageOptions.width,
+										imageOptions.height,
+									);
+						return { key: "png", value: pngBuffer };
 					} catch (error) {
 						logger.error(`Error generating PNG for ${slug}:`, error);
 						return { key: "png", value: null };

@@ -283,9 +283,10 @@ Unlike the official Ruby/Python implementations, this Next.js implementation:
 
 #### Technical Specifications
 - **Image Format**: 800x480 pixel 1-bit bitmap (.bmp)
-- **Rendering**: Uses Takumi for dynamic image generation (PNG/bitmap)
+- **Rendering**: Uses Takumi or Satori for dynamic image generation (PNG/bitmap)
+  - Set `REACT_RENDERER=takumi` (default) or `REACT_RENDERER=satori` to choose the renderer
 - **Rendering Pipeline**: 
-  JSX component → pre-satori wrapper → Takumi (PNG) → Jimp (BMP) → fixed header to fit TRMNL display
+  JSX component → pre-satori wrapper → [Takumi/Satori] (PNG) → Sharp (BMP) → fixed header to fit TRMNL display
 - **Caching Strategy**: 
   - Development: 60-second memory cache with revalidation
   - Production: Next.js built-in caching with 60-second default revalidation

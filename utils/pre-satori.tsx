@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import {
 	getResetStyles,
 	processDither,
+	processGap,
 	processResponsive,
 } from "./pre-satori-tailwind";
 
@@ -13,6 +14,10 @@ interface PreSatoriProps {
 	height?: number;
 	children: React.ReactNode;
 }
+export const getRendererType = (): "takumi" | "satori" => {
+	const renderer = process.env.REACT_RENDERER?.toLowerCase();
+	return renderer === "satori" ? "satori" : "takumi";
+};
 
 export const PreSatori: React.FC<PreSatoriProps> = ({
 	useDoubling = false,
@@ -41,29 +46,36 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 				...(fontFamily ? { fontFamily } : {}),
 			};
 
-			// // Special handling for display properties
-			// if (child.type === "div") {
-			// 	if (
-			// 		style?.display !== "flex" &&
-			// 		style?.display !== "contents" &&
-			// 		style?.display !== "none"
-			// 	) {
-			// 		newStyle.display = "flex";
-			// 	}
-			// }
+			// Special handling for display properties
+			if (getRendererType() === "satori") {
+				if (
+					style?.display !== "flex" &&
+					style?.display !== "contents" &&
+					style?.display !== "none"
+				) {
+					newStyle.display = "flex";
+				}
+			}
 
 			// Process className for dither patterns, gap classes, and responsive breakpoints
 			const responsiveClass = processResponsive(className, width);
 			// Check if element should be hidden - don't render it at all
-			// if (responsiveClass.includes("hidden")) {
-			// 	return null;
-			// }
-			// const { style: gapStyle, className: afterGapClass } =
-			// 	processGap(responsiveClass);
+			if (
+				responsiveClass.includes("hidden") &&
+				getRendererType() === "satori"
+			) {
+				return null;
+			}
+			let afterGapClass = responsiveClass;
+			let gapStyle = {};
+			if (getRendererType() === "satori") {
+				({ style: gapStyle, className: afterGapClass } =
+					processGap(responsiveClass));
+			}
 			const { style: ditherStyle, className: finalClass } =
-				processDither(responsiveClass);
+				processDither(afterGapClass);
 
-			Object.assign(newStyle, ditherStyle);
+			Object.assign(newStyle, gapStyle, ditherStyle);
 
 			// Determine reset styles
 			const resetStyles = getResetStyles(child);
@@ -93,6 +105,7 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 	return (
 		<div
 			style={{
+				display: "flex",
 				width: `${width}px`,
 				height: `${height}px`,
 				transformOrigin: "top left",

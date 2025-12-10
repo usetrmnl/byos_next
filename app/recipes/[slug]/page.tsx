@@ -21,6 +21,7 @@ import {
 	fetchRecipeComponent,
 	fetchRecipeConfig,
 	fetchRecipeProps,
+	getRendererType,
 	isBuildPhase,
 	logger,
 	RecipeConfig,
@@ -361,7 +362,8 @@ export default async function RecipePage({
 					}
 					bmpLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → Takumi PNG → utils/render-bmp.ts →
+							JSX → utils/pre-satori.tsx → {getRendererType()} PNG →
+							utils/render-bmp.ts →
 							<Link
 								href={`/api/bitmap/${slug}.bmp`}
 								className="hover:underline text-blue-600 dark:text-blue-400"
@@ -374,7 +376,7 @@ export default async function RecipePage({
 						<p className="leading-7 text-xs">
 							JSX → utils/pre-satori.tsx →{" "}
 							<span className="text-blue-600 dark:text-blue-400">
-								Takumi PNG
+								{getRendererType()} PNG
 							</span>{" "}
 							→ utils/render-bmp.ts →
 							<Link
