@@ -85,10 +85,6 @@ vercel.json
 tmp/
 temp/
 
-# Development tools
-eslint.config.mjs
-biome.json
-
 # Database (migrations should be included, but local db files excluded)
 *.sqlite
 *.db
