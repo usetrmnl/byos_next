@@ -55,9 +55,9 @@ export default function CryptoPrice({
 				<div className="flex flex-col">
 					<div className="flex flex-col">
 						<div className="flex items-center justify-between">
-							<p className="text-6xl sm:text-7xl lg:text-9xl font-inter">
+							<h2 className="text-6xl sm:text-8xl lg:text-9xl font-inter">
 								${price}
-							</p>
+							</h2>
 							{cryptoImage && (
 								<picture>
 									{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI/TAKUMI DOES NOT SUPPORT IT */}

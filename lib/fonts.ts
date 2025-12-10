@@ -1,12 +1,13 @@
 import fs from "fs";
 import { Geist_Mono as FontMono, Geist as FontSans } from "next/font/google";
 import localFont from "next/font/local";
+import path from "path";
 import { cache } from "react";
 
 const fontPaths = {
-	blockKie: "./public/fonts/BlockKie.ttf",
-	geneva9: "./public/fonts/geneva-9.ttf",
-	inter: "./public/fonts/Inter_18pt-Regular.ttf",
+	blockKie: path.join(process.cwd(), "public", "fonts", "BlockKie.ttf"),
+	geneva9: path.join(process.cwd(), "public", "fonts", "geneva-9.ttf"),
+	inter: path.join(process.cwd(), "public", "fonts", "Inter_18pt-Regular.ttf"),
 };
 
 // System fonts configuration

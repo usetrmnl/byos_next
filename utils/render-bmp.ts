@@ -400,7 +400,22 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 					const pixelX = x + bit;
 					const idx = yOffset + pixelX;
 					const ditheredValue = dithered[idx];
+					const gray = grayscaleData[idx];
 					let paletteIndex = valueToIndex(ditheredValue);
+
+					if (gray < 10) {
+						// Pure black pixel
+						paletteIndex = 1;
+					} else if (gray > 240) {
+						// Pure white pixel
+						paletteIndex = 0;
+					} else if (isEdge[idx]) {
+						// On an edge (likely text) - round to black for better contrast
+						paletteIndex = gray < 128 ? 1 : 0;
+					} else {
+						// Not on an edge (likely in an image) - use dithered result
+						paletteIndex = ditheredValue < 128 ? 1 : 0; // Values are either 0 or 255
+					}
 
 					// Invert if needed
 					if (inverted) {
@@ -426,7 +441,22 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 					const pixelX = x + bit;
 					const idx = yOffset + pixelX;
 					const ditheredValue = dithered[idx];
+					const gray = grayscaleData[idx];
 					let paletteIndex = valueToIndex(ditheredValue);
+
+					if (gray < 10) {
+						// Pure black pixel
+						paletteIndex = grayscale - 1;
+					} else if (gray > 240) {
+						// Pure white pixel
+						paletteIndex = 0;
+					} else if (isEdge[idx]) {
+						// On an edge (likely text) - round to black or white for better contrast
+						paletteIndex = gray < 128 ? grayscale - 1 : 0;
+					} else {
+						// Not on an edge (likely in an image) - use dithered result
+						paletteIndex = valueToIndex(ditheredValue);
+					}
 
 					// Invert if needed
 					if (inverted) {
@@ -449,7 +479,22 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 					const pixelX = x + bit;
 					const idx = yOffset + pixelX;
 					const ditheredValue = dithered[idx];
+					const gray = grayscaleData[idx];
 					let paletteIndex = valueToIndex(ditheredValue);
+
+					if (gray < 10) {
+						// Pure black pixel
+						paletteIndex = grayscale - 1;
+					} else if (gray > 240) {
+						// Pure white pixel
+						paletteIndex = 0;
+					} else if (isEdge[idx]) {
+						// On an edge (likely text) - round to black or white for better contrast
+						paletteIndex = gray < 128 ? grayscale - 1 : 0;
+					} else {
+						// Not on an edge (likely in an image) - use dithered result
+						paletteIndex = valueToIndex(ditheredValue);
+					}
 
 					// Invert if needed
 					if (inverted) {

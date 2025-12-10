@@ -109,15 +109,15 @@ export default function Weather({
 								key={index}
 								className=" rounded-xl border border-black flex-1 flex flex-row items-center"
 							>
-								<div className="p-2 max-h-20">{stat.icon}</div>
-								<div className="flex flex-col">
+								<div className="p-2 max-h-16">{stat.icon}</div>
+								<div className="flex flex-col sm:ml-2">
 									<div
 										className={`leading-none m-0 ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
 									>
 										{stat.label}
 									</div>
 									<div
-										className={`leading-none m-0 font-bold ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
+										className={`leading-none m-0 ${isHalfScreen ? "text-2xl" : "text-3xl"}`}
 									>
 										{stat.value}
 									</div>
