@@ -39,13 +39,7 @@ export function PlaylistPageClient({
 				(a, b) =>
 					(a.order_index ?? Number.MAX_SAFE_INTEGER) -
 					(b.order_index ?? Number.MAX_SAFE_INTEGER),
-			)
-			.map((item) => ({
-				...item,
-				start_time: item.start_time ?? undefined,
-				end_time: item.end_time ?? undefined,
-				days_of_week: item.days_of_week ?? undefined,
-			}));
+			);
 
 		setEditingPlaylist({
 			...playlist,
@@ -140,7 +134,12 @@ export function PlaylistPageClient({
 							? {
 									id: editingPlaylist.id,
 									name: editingPlaylist.name,
-									items: editingPlaylist.items,
+									items: editingPlaylist.items?.map((item) => ({
+										...item,
+										start_time: item.start_time ?? undefined,
+										end_time: item.end_time ?? undefined,
+										days_of_week: item.days_of_week ?? undefined,
+									})),
 								}
 							: undefined
 					}
