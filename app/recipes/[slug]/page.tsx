@@ -4,9 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache, Suspense, use } from "react";
+import {
+	getScreenParams,
+	updateScreenParams,
+} from "@/app/actions/screens-params";
 import screens from "@/app/recipes/screens.json";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
+import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import {
 	addDimensionsToProps,
@@ -16,6 +21,7 @@ import {
 	fetchRecipeComponent,
 	fetchRecipeConfig,
 	fetchRecipeProps,
+	getRendererType,
 	isBuildPhase,
 	logger,
 	RecipeConfig,
@@ -33,7 +39,6 @@ async function refreshData(slug: string) {
 	await new Promise((resolve) => setTimeout(resolve, 500)); // Demo loading state
 	revalidateTag(slug, "max");
 }
-
 // Generate static params for all recipes
 export async function generateStaticParams() {
 	return Object.keys(screens).map((slug) => ({ slug }));
@@ -96,7 +101,7 @@ const RenderComponent = ({
 	imageHeight,
 }: {
 	slug: string;
-	format: "bitmap" | "png" | "svg" | "react";
+	format: "bitmap" | "png" | "react";
 	title: string;
 	imageWidth: number;
 	imageHeight: number;
@@ -124,6 +129,7 @@ const RenderComponent = ({
 	// Now we have valid config and component
 	const config = configResult;
 	const Component = componentResult;
+
 	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
 	const propsWithDimensions = addDimensionsToProps(
 		propsResult,
@@ -208,32 +214,6 @@ const RenderComponent = ({
 		);
 	}
 
-	// For SVG rendering
-	if (format === "svg") {
-		if (!renders.svg) {
-			return (
-				<div className="w-full h-full flex items-center justify-center">
-					Failed to generate SVG
-				</div>
-			);
-		}
-
-		return (
-			<div
-				className="w-full h-full"
-				// biome-ignore lint/security/noDangerouslySetInnerHtml: SVG content is sanitized and trusted
-				dangerouslySetInnerHTML={{ __html: renders.svg }}
-				style={{
-					imageRendering: "pixelated",
-					transform: useDoubling ? "scale(0.5)" : "none",
-					transformOrigin: "top left",
-				}}
-				role="img"
-				aria-label={`${title} SVG render`}
-			/>
-		);
-	}
-
 	return null;
 };
 
@@ -257,6 +237,10 @@ export default async function RecipePage({
 	if (!config) {
 		notFound();
 	}
+
+	const screenParams = config.params
+		? await getScreenParams(slug, config.params)
+		: {};
 
 	return (
 		<div className="@container">
@@ -288,6 +272,15 @@ export default async function RecipePage({
 							</Link>
 						</div>
 					</Suspense>
+
+					{config.params && Object.keys(config.params).length > 0 && (
+						<ScreenParamsForm
+							slug={slug}
+							paramsSchema={config.params}
+							initialValues={screenParams}
+							updateAction={updateScreenParams}
+						/>
+					)}
 				</div>
 
 				<RecipePreviewLayout
@@ -340,30 +333,6 @@ export default async function RecipePage({
 							</AspectRatio>
 						</div>
 					}
-					svgComponent={
-						<div
-							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
-							className="border border-gray-200 overflow-hidden rounded-sm"
-						>
-							<AspectRatio ratio={imageWidth / imageHeight}>
-								<Suspense
-									fallback={
-										<div className="w-full h-full flex items-center justify-center">
-											Rendering SVG...
-										</div>
-									}
-								>
-									<RenderComponent
-										slug={slug}
-										format="svg"
-										title={config.title}
-										imageWidth={imageWidth}
-										imageHeight={imageHeight}
-									/>
-								</Suspense>
-							</AspectRatio>
-						</div>
-					}
 					reactComponent={
 						<div
 							style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
@@ -393,7 +362,7 @@ export default async function RecipePage({
 					}
 					bmpLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → Satori SVG → ImageResponse PNG →
+							JSX → utils/pre-satori.tsx → {getRendererType()} PNG →
 							utils/render-bmp.ts →
 							<Link
 								href={`/api/bitmap/${slug}.bmp`}
@@ -405,26 +374,11 @@ export default async function RecipePage({
 					}
 					pngLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → Satori SVG →{" "}
-							<span className="text-blue-600 dark:text-blue-400">
-								ImageResponse PNG
-							</span>{" "}
-							→ utils/render-bmp.ts →
-							<Link
-								href={`/api/bitmap/${slug}.bmp`}
-								className="hover:underline"
-							>
-								/api/bitmap/{slug}.bmp
-							</Link>
-						</p>
-					}
-					svgLinkComponent={
-						<p className="leading-7 text-xs">
 							JSX → utils/pre-satori.tsx →{" "}
 							<span className="text-blue-600 dark:text-blue-400">
-								Satori SVG
+								{getRendererType()} PNG
 							</span>{" "}
-							→ ImageResponse PNG → utils/render-bmp.ts →
+							→ utils/render-bmp.ts →
 							<Link
 								href={`/api/bitmap/${slug}.bmp`}
 								className="hover:underline"

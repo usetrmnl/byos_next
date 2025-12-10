@@ -2,27 +2,36 @@ import type { NextRequest } from "next/server";
 import sharp from "sharp";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
-import {
-	getLayoutById,
-	type LayoutSlot,
-	MIXUP_CANVAS_HEIGHT,
-	MIXUP_CANVAS_WIDTH,
-} from "@/lib/mixup/constants";
+import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
 import {
 	addDimensionsToProps,
 	buildRecipeElement,
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
 	logger,
 	renderRecipeOutputs,
 } from "@/lib/recipes/recipe-renderer";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
-	_req: NextRequest,
+	req: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	try {
 		const { id } = await params;
 		const mixupId = id.replace(".bmp", "");
+
+		// Get width, height, and grayscale from query parameters
+		const { searchParams } = new URL(req.url);
+		const widthParam = searchParams.get("width");
+		const heightParam = searchParams.get("height");
+		const grayscaleParam = searchParams.get("grayscale");
+
+		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
+		const height = heightParam
+			? parseInt(heightParam, 10)
+			: DEFAULT_IMAGE_HEIGHT;
+		const grayscaleLevels = grayscaleParam ? parseInt(grayscaleParam, 10) : 2;
 
 		const { ready } = await checkDbConnection();
 		if (!ready) {
@@ -50,7 +59,7 @@ export async function GET(
 			return new Response("Mixup not found", { status: 404 });
 		}
 
-		const layout = getLayoutById(mixup.layout_id);
+		const layout = getLayoutById(mixup.layout_id, width, height);
 		if (!layout) {
 			logger.warn(`Invalid layout for mixup ${mixupId}: ${mixup.layout_id}`);
 			return new Response("Invalid layout", { status: 400 });
@@ -70,6 +79,9 @@ export async function GET(
 		const compositeBuffer = await renderMixupComposite(
 			layout.slots,
 			assignments,
+			width,
+			height,
+			grayscaleLevels,
 		);
 
 		return new Response(new Uint8Array(compositeBuffer), {
@@ -129,6 +141,9 @@ async function renderSlot(
 async function renderMixupComposite(
 	slots: LayoutSlot[],
 	assignments: Record<string, string | null>,
+	width: number,
+	height: number,
+	grayscaleLevels: number = 2,
 ): Promise<Buffer> {
 	// Render all slots in parallel
 	const slotRenders = await Promise.all(
@@ -168,8 +183,8 @@ async function renderMixupComposite(
 	// Create the base canvas and composite all overlays
 	const compositedPng = await sharp({
 		create: {
-			width: MIXUP_CANVAS_WIDTH,
-			height: MIXUP_CANVAS_HEIGHT,
+			width,
+			height,
 			channels: 3,
 			background: { r: 255, g: 255, b: 255 },
 		},
@@ -179,16 +194,12 @@ async function renderMixupComposite(
 		.toBuffer();
 
 	// Convert to BMP with dithering
-	const bmpBuffer = await renderBmp(
-		new Response(new Uint8Array(compositedPng), {
-			headers: { "Content-Type": "image/png" },
-		}),
-		{
-			ditheringMethod: DitheringMethod.ATKINSON,
-			width: MIXUP_CANVAS_WIDTH,
-			height: MIXUP_CANVAS_HEIGHT,
-		},
-	);
+	const bmpBuffer = await renderBmp(compositedPng, {
+		ditheringMethod: DitheringMethod.ATKINSON,
+		width,
+		height,
+		grayscale: grayscaleLevels,
+	});
 
 	return bmpBuffer;
 }

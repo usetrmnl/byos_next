@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Bump and Release
+    runs-on: ubuntu-latest
+    # allow tag pushes (head_commit == null) and skip if [skip release] on main
+    if: github.event.head_commit == null || !contains(github.event.head_commit.message, '[skip release]')
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # needed to read previous version and tags
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Detect version context
+        id: version
+        run: |
+          # If this is a tag push, just derive version from the tag
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+            echo "from_tag=true" >> "$GITHUB_OUTPUT"
+            echo "should_bump=false" >> "$GITHUB_OUTPUT"
+            echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Branch push (e.g. main)
+          CURRENT=$(node -p "require('./package.json').version")
+
+          if git rev-parse HEAD^ >/dev/null 2>&1 && git show HEAD^:package.json >/tmp/prev_package.json 2>/dev/null; then
+            PREVIOUS=$(node -pe "JSON.parse(require('fs').readFileSync('/tmp/prev_package.json','utf8')).version")
+          else
+            PREVIOUS="$CURRENT"
+          fi
+
+          if [ "$CURRENT" != "$PREVIOUS" ]; then
+            # version already bumped in this commit
+            echo "should_bump=false" >> "$GITHUB_OUTPUT"
+          else
+            # need to bump
+            echo "should_bump=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          echo "from_tag=false" >> "$GITHUB_OUTPUT"
+          echo "version=$CURRENT" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version (patch)
+        id: bump
+        if: steps.version.outputs.should_bump == 'true'
+        run: |
+          pnpm version patch --no-git-tag-version
+          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
+      - name: Configure Git
+        if: steps.version.outputs.should_bump == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit version bump
+        if: steps.version.outputs.should_bump == 'true'
+        env:
+          NEW_VERSION: ${{ steps.bump.outputs.version }}
+        run: |
+          git add package.json pnpm-lock.yaml || true
+          git commit -m "chore(release): v${NEW_VERSION} [skip release]"
+          git push origin HEAD
+
+      - name: Create tag (for branch pushes)
+        if: steps.version.outputs.from_tag == 'false'
+        env:
+          RELEASE_VERSION: ${{ steps.bump.outputs.version || steps.version.outputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          TAG="v${RELEASE_VERSION}"
+
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists, skipping creation."
+          else
+            git tag "$TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        env:
+          RELEASE_VERSION: ${{ steps.bump.outputs.version || steps.version.outputs.version }}
+        with:
+          tag_name: v${{ env.RELEASE_VERSION }}
+          name: Release v${{ env.RELEASE_VERSION }}
+          generate_release_notes: true

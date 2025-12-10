@@ -56,6 +56,15 @@ importers:
       '@redux-devtools/extension':
         specifier: ^3.3.0
         version: 3.3.0(redux@5.0.1)
+      '@takumi-rs/core':
+        specifier: ^0.57.3
+        version: 0.57.3
+      '@takumi-rs/helpers':
+        specifier: ^0.57.3
+        version: 0.57.3
+      '@takumi-rs/wasm':
+        specifier: ^0.57.3
+        version: 0.57.3
       '@tanstack/react-virtual':
         specifier: ^3.13.12
         version: 3.13.12(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
@@ -105,8 +114,8 @@ importers:
         specifier: ^4.14.1
         version: 4.14.1(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       satori:
-        specifier: ^0.18.3
-        version: 0.18.3
+        specifier: ^0.4.3
+        version: 0.4.14
       sharp:
         specifier: ^0.34.5
         version: 0.34.5
@@ -1305,6 +1314,64 @@ packages:
   '@tailwindcss/postcss@4.1.17':
     resolution: {integrity: sha512-+nKl9N9mN5uJ+M7dBOOCzINw94MPstNR/GtIhz1fpZysxL/4a+No64jCBD6CPN+bIHWFx3KWuu8XJRrj/572Dw==}
 
+  '@takumi-rs/core-darwin-arm64@0.57.3':
+    resolution: {integrity: sha512-gFCStS46t1FYU7PPRd1Paiopk2wy0h3LiIWmaQXctp2gpqlmjx2c+HwwFl+nT9HrArKY4FlvkIbEy9Lu6JlM7g==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@takumi-rs/core-darwin-x64@0.57.3':
+    resolution: {integrity: sha512-AVhwmJWJ1lnWwDyjoA2yd1zqNvcJFD8cUBk1MqQAuBcyn/LvLs2q4wjuY8Tl9veHKYLG7Qn6JFQeWkn8B/r38g==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@takumi-rs/core-linux-arm64-gnu@0.57.3':
+    resolution: {integrity: sha512-LYtnPQp9SlyEWhW36chaNlQfbXhVOiYmCu2MvLWunYBrvNO0OUBhB3PI07tcKgIfrh034lL+Xf7zCmoKiB2F/A==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@takumi-rs/core-linux-arm64-musl@0.57.3':
+    resolution: {integrity: sha512-Qt4USlFXZQIjj9UyXQFq706qbds2DLIOaboZRrckQNqV4mxdHoWjJBjtOeTlRk643VcyczEN+ecdtxnMHWmM/Q==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@takumi-rs/core-linux-x64-gnu@0.57.3':
+    resolution: {integrity: sha512-bd0zO01f4Va5HqUo2WjWUCBZa50T4YsvC4aLYJA2hFD8ZvA29aF2v4BKiwpQLDj+3uZoh06lPApnaFo2uniuLA==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@takumi-rs/core-linux-x64-musl@0.57.3':
+    resolution: {integrity: sha512-tYhQvtSXCJS6ok1gm3BtuZbhgKEQ7ontQQuMRjxajFw2gS1mQduIpSDgBnACb4mEiiuKGJAuMMsZZ/Z34T9BkQ==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [x64]
+    os: [linux]
+
+  '@takumi-rs/core-win32-arm64-msvc@0.57.3':
+    resolution: {integrity: sha512-ab7QldNYstcZyi+csJQzdgK4iDwxG0VJ3WxfwjTVwhGyy9WNVJ02hGH1zJa2VGzKLYAFV0hMHbyRTcMN64vg+w==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [arm64]
+    os: [win32]
+
+  '@takumi-rs/core-win32-x64-msvc@0.57.3':
+    resolution: {integrity: sha512-dGfowfrs2ciw9Xyw93zhxPO2GO8wTOk1BurGRTgjN2Bq7FCNc0CMPXv2CGt78zV4+Oo0cbgZQYIHNW4nSjCL6g==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+    cpu: [x64]
+    os: [win32]
+
+  '@takumi-rs/core@0.57.3':
+    resolution: {integrity: sha512-RrVRpo0wjjzJ+G/bEYZWCSweiqW0VXaR8qoYmA31J+4EvoI33G0qXPu0JbETml0Hskm/NBkPcqgdXoSJPjDD8Q==}
+    engines: {node: '>= 12.22.0 < 13 || >= 14.17.0 < 15 || >= 15.12.0 < 16 || >= 16.0.0'}
+
+  '@takumi-rs/helpers@0.57.3':
+    resolution: {integrity: sha512-zV/N8vI8SfaN/EQuzPIIB2fyb1NP9GxesWZN1KVe+aDXldg8cu/R6YkF9+Cc7OCp6vD3ZT82QSFB9lSMSKBOCg==}
+
+  '@takumi-rs/wasm@0.57.3':
+    resolution: {integrity: sha512-0Ghs2CcoTZoEW9ICx5OppiQT+D+Ll8iIfINhvLePZB85NJtxMGMzUx1XPRYtKDCq/KMNKltY890PawIocoI4VA==}
+
   '@tanstack/react-virtual@3.13.12':
     resolution: {integrity: sha512-Gd13QdxPSukP8ZrkbgS2RwoZseTTbQPLnQEn7HY/rqtM+8Zt95f7xKC7N0EsKs7aoz0WzZ+fditZux+F8EzYxA==}
     peerDependencies:
@@ -1817,10 +1884,6 @@ packages:
     resolution: {integrity: sha512-FyyrDHZKEjXDpNJYvVsV960FiqQyXc/LlYmsxl2BcdMb2WPx0OGRVgTg55rPSyLSNMqP52R9r8geSp7apN3Ofg==}
     engines: {node: '>=4'}
 
-  css-gradient-parser@0.0.17:
-    resolution: {integrity: sha512-w2Xy9UMMwlKtou0vlRnXvWglPAceXCTtcmVSo8ZBUvqCV5aXEFP/PC6d+I464810I9FT++UACwTD5511bmGPUg==}
-    engines: {node: '>=16'}
-
   css-to-react-native@3.2.0:
     resolution: {integrity: sha512-e8RKaLXMOFii+02mOlqwjbD00KSEKqblnpO9e++1aXS1fPQOpS1YoqdVHBqPjHNoxeF2mimzVqawm2KCbEdtHQ==}
 
@@ -2038,9 +2101,8 @@ packages:
   electron-to-chromium@1.5.260:
     resolution: {integrity: sha512-ov8rBoOBhVawpzdre+Cmz4FB+y66Eqrk6Gwqd8NGxuhv99GQ8XqMAr351KEkOt7gukXWDg6gJWEMKgL2RLMPtA==}
 
-  emoji-regex-xs@2.0.1:
-    resolution: {integrity: sha512-1QFuh8l7LqUcKe24LsPUNzjrzJQ7pgRwp1QMcZ5MX6mFplk2zQ08NVCM84++1cveaUUYtcCYHmeFEuNg16sU4g==}
-    engines: {node: '>=10.0.0'}
+  emoji-regex@10.6.0:
+    resolution: {integrity: sha512-toUI84YS5YmxW219erniWD0CIVOo46xGKColeNQRgOzDorgBi1v4D71/OFzgD9GO2UGKIv1C3Sp8DAn0+j5w7A==}
 
   emoji-regex@9.2.2:
     resolution: {integrity: sha512-L18DaJsXSUk2+42pv8mLs5jJT2hqFkFE4j21wOmgbUqsZ2hL72NsUU785g9RXgo3s0ZNgVl42TiHp3ZtOv/Vyg==}
@@ -2091,9 +2153,6 @@ packages:
   escalade@3.2.0:
     resolution: {integrity: sha512-WUj2qlxaQtO4g6Pq5c29GTcWGDyd8itL8zTlipgECz3JesAiiOKotd8JU6otB3PACgG6xkJUyVhboMS+bje/jA==}
     engines: {node: '>=6'}
-
-  escape-html@1.0.3:
-    resolution: {integrity: sha512-NiSupZ4OeuGwr68lGIeym/ksIZMJodUGOSCZ/FSnTxcrekbvqrgdUxlJOMpijaKZVjAJrWrGs/6Jy8OMuyj9ow==}
 
   escape-string-regexp@1.0.5:
     resolution: {integrity: sha512-vbRorB5FUQWvla16U8R/qgaFIya2qGzwDrNmCZuYKrbdSUMG6I1ZCGQRefkRVhuOkIGVne7BQ35DSfo1qvJqFg==}
@@ -3174,8 +3233,8 @@ packages:
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
 
-  satori@0.18.3:
-    resolution: {integrity: sha512-T3DzWNmnrfVmk2gCIlAxLRLbGkfp3K7TyRva+Byyojqu83BNvnMeqVeYRdmUw4TKCsyH4RiQ/KuF/I4yEzgR5A==}
+  satori@0.4.14:
+    resolution: {integrity: sha512-zzkxey12UY6T1rQUhbgPAxeSBL5AJM7aefM4jX3TijN0I8LOHDUX4mh2MXEuqMWUgzV32aR/0nwPka7Eu42wYA==}
     engines: {node: '>=16'}
 
   sax@1.4.1:
@@ -3505,8 +3564,8 @@ packages:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}
     engines: {node: '>=10'}
 
-  yoga-layout@3.2.1:
-    resolution: {integrity: sha512-0LPOt3AxKqMdFBZA3HBAt/t/8vIKq7VaQYbuA8WxCgung+p9TVyKRYdpvCb80HcdTN2NkbIKbhNwKUfm3tQywQ==}
+  yoga-wasm-web@0.3.3:
+    resolution: {integrity: sha512-N+d4UJSJbt/R3wqY7Coqs5pcV0aUj2j9IaQ3rNj9bVCLld8tTGKRa2USARjnvZJWVx1NDmQev8EknoczaOQDOA==}
 
   zod-validation-error@4.0.2:
     resolution: {integrity: sha512-Q6/nZLe6jxuU80qb/4uJ4t5v2VEZ44lzQjPDhYJNztRQ4wyWc6VF3D3Kb/fAuPetZQnhS3hnajCf9CsWesghLQ==}
@@ -4708,6 +4767,45 @@ snapshots:
       postcss: 8.5.6
       tailwindcss: 4.1.17
 
+  '@takumi-rs/core-darwin-arm64@0.57.3':
+    optional: true
+
+  '@takumi-rs/core-darwin-x64@0.57.3':
+    optional: true
+
+  '@takumi-rs/core-linux-arm64-gnu@0.57.3':
+    optional: true
+
+  '@takumi-rs/core-linux-arm64-musl@0.57.3':
+    optional: true
+
+  '@takumi-rs/core-linux-x64-gnu@0.57.3':
+    optional: true
+
+  '@takumi-rs/core-linux-x64-musl@0.57.3':
+    optional: true
+
+  '@takumi-rs/core-win32-arm64-msvc@0.57.3':
+    optional: true
+
+  '@takumi-rs/core-win32-x64-msvc@0.57.3':
+    optional: true
+
+  '@takumi-rs/core@0.57.3':
+    optionalDependencies:
+      '@takumi-rs/core-darwin-arm64': 0.57.3
+      '@takumi-rs/core-darwin-x64': 0.57.3
+      '@takumi-rs/core-linux-arm64-gnu': 0.57.3
+      '@takumi-rs/core-linux-arm64-musl': 0.57.3
+      '@takumi-rs/core-linux-x64-gnu': 0.57.3
+      '@takumi-rs/core-linux-x64-musl': 0.57.3
+      '@takumi-rs/core-win32-arm64-msvc': 0.57.3
+      '@takumi-rs/core-win32-x64-msvc': 0.57.3
+
+  '@takumi-rs/helpers@0.57.3': {}
+
+  '@takumi-rs/wasm@0.57.3': {}
+
   '@tanstack/react-virtual@3.13.12(react-dom@19.2.1(react@19.2.1))(react@19.2.1)':
     dependencies:
       '@tanstack/virtual-core': 3.13.12
@@ -5264,8 +5362,6 @@ snapshots:
 
   css-color-keywords@1.0.0: {}
 
-  css-gradient-parser@0.0.17: {}
-
   css-to-react-native@3.2.0:
     dependencies:
       camelize: 1.0.1
@@ -5500,7 +5596,7 @@ snapshots:
 
   electron-to-chromium@1.5.260: {}
 
-  emoji-regex-xs@2.0.1: {}
+  emoji-regex@10.6.0: {}
 
   emoji-regex@9.2.2: {}
 
@@ -5617,8 +5713,6 @@ snapshots:
       is-symbol: 1.1.1
 
   escalade@3.2.0: {}
-
-  escape-html@1.0.3: {}
 
   escape-string-regexp@1.0.5: {}
 
@@ -6744,19 +6838,17 @@ snapshots:
 
   safer-buffer@2.1.2: {}
 
-  satori@0.18.3:
+  satori@0.4.14:
     dependencies:
       '@shuding/opentype.js': 1.4.0-beta.0
       css-background-parser: 0.1.0
       css-box-shadow: 1.0.0-3
-      css-gradient-parser: 0.0.17
       css-to-react-native: 3.2.0
-      emoji-regex-xs: 2.0.1
-      escape-html: 1.0.3
+      emoji-regex: 10.6.0
       linebreak: 1.1.0
       parse-css-color: 0.2.1
       postcss-value-parser: 4.2.0
-      yoga-layout: 3.2.1
+      yoga-wasm-web: 0.3.3
 
   sax@1.4.1: {}
 
@@ -7183,7 +7275,7 @@ snapshots:
 
   yocto-queue@0.1.0: {}
 
-  yoga-layout@3.2.1: {}
+  yoga-wasm-web@0.3.3: {}
 
   zod-validation-error@4.0.2(zod@4.1.13):
     dependencies:

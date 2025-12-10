@@ -21,10 +21,11 @@ export async function GET(
 		const bitmapPath = Array.isArray(slug) ? slug.join("/") : slug;
 		const recipeSlug = bitmapPath.replace(".bmp", "");
 
-		// Get width and height from query parameters
+		// Get width, height, and grayscale from query parameters
 		const { searchParams } = new URL(req.url);
 		const widthParam = searchParams.get("width");
 		const heightParam = searchParams.get("height");
+		const grayscaleParam = searchParams.get("grayscale");
 
 		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
 		const height = heightParam
@@ -34,9 +35,10 @@ export async function GET(
 		// Validate width and height are positive numbers
 		const validWidth = width > 0 ? width : DEFAULT_IMAGE_WIDTH;
 		const validHeight = height > 0 ? height : DEFAULT_IMAGE_HEIGHT;
+		const grayscaleLevels = grayscaleParam ? parseInt(grayscaleParam, 10) : 2;
 
 		logger.info(
-			`Bitmap request for: ${bitmapPath} in ${validWidth}x${validHeight}`,
+			`Bitmap request for: ${bitmapPath} in ${validWidth}x${validHeight} with ${grayscaleLevels} gray levels`,
 		);
 
 		const recipeId = screens[recipeSlug as keyof typeof screens]
@@ -47,6 +49,7 @@ export async function GET(
 			recipeId,
 			validWidth,
 			validHeight,
+			grayscaleLevels,
 		);
 
 		if (
@@ -76,7 +79,12 @@ export async function GET(
 }
 
 const renderRecipeBitmap = cache(
-	async (recipeId: string, width: number, height: number) => {
+	async (
+		recipeId: string,
+		width: number,
+		height: number,
+		grayscaleLevels: number = 2,
+	) => {
 		const { config, Component, props, element } = await buildRecipeElement({
 			slug: recipeId,
 		});
@@ -97,6 +105,7 @@ const renderRecipeBitmap = cache(
 			imageWidth: width,
 			imageHeight: height,
 			formats: ["bitmap"],
+			grayscale: grayscaleLevels,
 		});
 
 		return renders.bitmap ?? Buffer.from([]);
@@ -113,6 +122,7 @@ const renderFallbackBitmap = cache(async (slug: string = "not-found") => {
 			imageWidth: DEFAULT_IMAGE_WIDTH,
 			imageHeight: DEFAULT_IMAGE_HEIGHT,
 			formats: ["bitmap"],
+			grayscale: 2, // Default to 2 levels for fallback
 		});
 
 		if (!renders.bitmap) {

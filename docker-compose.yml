@@ -19,10 +19,8 @@ services:
       timeout: 5s
       retries: 5
 
-  next-app:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  byos-next:
+    image: ghcr.io/usetrmnl/byos_next:latest
     ports:
       - "3000:3000"
     environment:

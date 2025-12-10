@@ -14,6 +14,10 @@ interface PreSatoriProps {
 	height?: number;
 	children: React.ReactNode;
 }
+export const getRendererType = (): "takumi" | "satori" => {
+	const renderer = process.env.REACT_RENDERER?.toLowerCase();
+	return renderer === "satori" ? "satori" : "takumi";
+};
 
 export const PreSatori: React.FC<PreSatoriProps> = ({
 	useDoubling = false,
@@ -43,7 +47,7 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			};
 
 			// Special handling for display properties
-			if (child.type === "div") {
+			if (getRendererType() === "satori") {
 				if (
 					style?.display !== "flex" &&
 					style?.display !== "contents" &&
@@ -56,11 +60,18 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			// Process className for dither patterns, gap classes, and responsive breakpoints
 			const responsiveClass = processResponsive(className, width);
 			// Check if element should be hidden - don't render it at all
-			if (responsiveClass.includes("hidden")) {
+			if (
+				responsiveClass.includes("hidden") &&
+				getRendererType() === "satori"
+			) {
 				return null;
 			}
-			const { style: gapStyle, className: afterGapClass } =
-				processGap(responsiveClass);
+			let afterGapClass = responsiveClass;
+			let gapStyle = {};
+			if (getRendererType() === "satori") {
+				({ style: gapStyle, className: afterGapClass } =
+					processGap(responsiveClass));
+			}
 			const { style: ditherStyle, className: finalClass } =
 				processDither(afterGapClass);
 
@@ -73,8 +84,8 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 			const newProps: Record<string, unknown> = {
 				...restProps,
 				style: newStyle,
-				className: finalClass, // Keep for browser/React
-				// Pass Tailwind classes to 'tw' prop for Satori/ImageResponse
+				className: cn(resetStyles, finalClass), // Keep for browser/React
+				// Pass Tailwind classes to 'tw' prop for Takumi/Satori rendering
 				// We combine reset styles with user classes
 				tw: cn(resetStyles, finalClass),
 			};
@@ -95,17 +106,14 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 		<div
 			style={{
 				display: "flex",
-				flexDirection: "column",
 				width: `${width}px`,
 				height: `${height}px`,
-				color: "black",
-				backgroundColor: "#ffffff",
-				fontSize: "16px",
 				transformOrigin: "top left",
 				...(useDoubling ? { transform: "scale(2)" } : {}),
 			}}
 		>
 			{React.Children.map(children, (child) => transform(child))}
+			{/* {children} */}
 		</div>
 	);
 };

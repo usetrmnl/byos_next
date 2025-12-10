@@ -8,6 +8,7 @@
 		"componentPath": "./screens/simple-text",
 		"hasDataFetch": false,
 		"props": {},
+		"params": {},
 		"tags": ["bitmap", "text"],
 		"author": {
 			"name": "Mangle Kuo",
@@ -28,13 +29,22 @@
 		"componentPath": "./screens/album",
 		"hasDataFetch": false,
 		"props": {},
-		"tags": ["bitmap", "text"],
+		"params": {
+			"imageUrl": {
+				"type": "string",
+				"label": "Image URL",
+				"description": "URL of the image to display in the album",
+				"default": "https://byos-nextjs.vercel.app/album/london.png",
+				"placeholder": "https://example.com/image.png"
+			}
+		},
+		"tags": ["bitmap", "text", "configurable"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
 		},
 		"renderSettings": {},
-		"version": "0.1.0",
+		"version": "0.2.0",
 		"category": "display-components"
 	},
 	"bitmap-patterns": {
@@ -46,6 +56,7 @@
 		"componentPath": "./screens/bitmap-patterns",
 		"hasDataFetch": false,
 		"props": {},
+		"params": {},
 		"tags": ["bitmap", "patterns"],
 		"author": {
 			"name": "Mangle Kuo",
@@ -67,6 +78,7 @@
 			"title": "Wikipedia (Default)",
 			"extract": "Loading article..."
 		},
+		"params": {},
 		"tags": ["tailwind", "text", "api", "live-data", "advanced"],
 		"author": {
 			"name": "Mangle Kuo",
@@ -79,24 +91,33 @@
 		"category": "display-components"
 	},
 	"bitcoin-price": {
-		"title": "Bitcoin Price",
+		"title": "Crypto Price Tracker",
 		"published": true,
 		"createdAt": "2025-03-01T00:00:00Z",
 		"updatedAt": "2025-03-01T00:00:00Z",
-		"description": "A component that displays the current Bitcoin price and market data.",
+		"description": "A component that displays the current cryptocurrency price and market data. Supports any cryptocurrency available on CoinGecko.",
 		"componentPath": "./screens/bitcoin-price",
 		"hasDataFetch": true,
 		"props": {
 			"price": "Loading...",
 			"change24h": "0"
 		},
-		"tags": ["tailwind", "cryptocurrency", "api"],
+		"params": {
+			"cryptoSymbol": {
+				"type": "string",
+				"label": "Cryptocurrency Symbol",
+				"description": "The CoinGecko ID of the cryptocurrency (e.g., 'bitcoin', 'ethereum', 'cardano'). Defaults to 'bitcoin'.",
+				"default": "bitcoin",
+				"placeholder": "bitcoin"
+			}
+		},
+		"tags": ["tailwind", "cryptocurrency", "api", "configurable"],
 		"author": {
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
 		},
 		"renderSettings": {},
-		"version": "0.1.0",
+		"version": "0.2.0",
 		"category": "display-components"
 	},
 	"weather": {
@@ -111,6 +132,14 @@
 			"temperature": "Loading...",
 			"description": "Loading...",
 			"location": "Loading..."
+		},
+		"params": {
+			"location": {
+				"type": "string",
+				"label": "Location",
+				"description": "City or place name to fetch weather for",
+				"default": "San Francisco"
+			}
 		},
 		"tags": ["tailwind", "weather", "api", "live-data", "configurable"],
 		"author": {
@@ -130,6 +159,7 @@
 		"componentPath": "./screens/responsive-example",
 		"hasDataFetch": false,
 		"props": {},
+		"params": {},
 		"tags": ["bitmap", "responsive", "layout", "example"],
 		"author": {
 			"name": "rbouteiller",
@@ -150,6 +180,7 @@
 		"props": {
 			"slug": ""
 		},
+		"params": {},
 		"tags": ["system", "fallback", "error"],
 		"author": {
 			"name": "System",

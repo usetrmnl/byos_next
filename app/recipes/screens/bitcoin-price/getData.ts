@@ -3,7 +3,11 @@ import { unstable_cache } from "next/cache";
 // Export config to mark this component as dynamic
 export const dynamic = "force-dynamic";
 
-interface BitcoinData {
+interface CryptoParams {
+	cryptoSymbol?: string;
+}
+
+interface CryptoData {
 	price: string;
 	change24h: string;
 	marketCap: string;
@@ -12,19 +16,21 @@ interface BitcoinData {
 	high24h: string;
 	low24h: string;
 	historicalPrices: Array<{ timestamp: number; price: number }>;
+	cryptoName: string;
+	cryptoImage?: string;
 }
 
 /**
- * Internal function to fetch historical Bitcoin price data
+ * Internal function to fetch historical crypto price data
  */
-async function getBitcoinHistoricalData(): Promise<Array<{
+async function getCryptoHistoricalData(cryptoSymbol: string): Promise<Array<{
 	timestamp: number;
 	price: number;
 }> | null> {
 	try {
-		// Fetch historical Bitcoin data from CoinGecko API
+		// Fetch historical crypto data from CoinGecko API
 		const response = await fetch(
-			`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=1`,
+			`https://api.coingecko.com/api/v3/coins/${cryptoSymbol}/market_chart?vs_currency=usd&days=1`,
 			{
 				headers: {
 					Accept: "application/json",
@@ -48,20 +54,20 @@ async function getBitcoinHistoricalData(): Promise<Array<{
 			price,
 		}));
 	} catch (error) {
-		console.error("Error fetching Bitcoin historical data:", error);
+		console.error(`Error fetching ${cryptoSymbol} historical data:`, error);
 		return null;
 	}
 }
 
 /**
- * Internal function to fetch and process Bitcoin price data
+ * Internal function to fetch and process crypto price data
  */
-async function getBitcoinData(): Promise<BitcoinData | null> {
+async function getCryptoData(cryptoSymbol: string): Promise<CryptoData | null> {
 	try {
 		// Fetch both current and historical data in parallel
 		const [currentDataResponse, historicalPrices] = await Promise.all([
 			fetch(
-				"https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false",
+				`https://api.coingecko.com/api/v3/coins/${cryptoSymbol}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false`,
 				{
 					headers: {
 						Accept: "application/json",
@@ -70,7 +76,7 @@ async function getBitcoinData(): Promise<BitcoinData | null> {
 					next: { revalidate: 0 },
 				},
 			),
-			getBitcoinHistoricalData(),
+			getCryptoHistoricalData(cryptoSymbol),
 		]);
 
 		if (!currentDataResponse.ok) {
@@ -130,18 +136,22 @@ async function getBitcoinData(): Promise<BitcoinData | null> {
 			high24h: formatCurrency(data.market_data.high_24h.usd),
 			low24h: formatCurrency(data.market_data.low_24h.usd),
 			historicalPrices: historicalPrices || [],
+			cryptoName: data.name || cryptoSymbol,
+			cryptoImage: data.image?.small || data.image?.large,
 		};
 	} catch (error) {
-		console.error("Error fetching Bitcoin data:", error);
+		console.error(`Error fetching ${cryptoSymbol} data:`, error);
 		return null;
 	}
 }
 
 /**
- * Function that fetches Bitcoin data without caching
+ * Function that fetches crypto data without caching
  */
-async function fetchBitcoinDataNoCache(): Promise<BitcoinData> {
-	const data = await getBitcoinData();
+async function fetchCryptoDataNoCache(
+	cryptoSymbol: string,
+): Promise<CryptoData> {
+	const data = await getCryptoData(cryptoSymbol);
 
 	// If data is null or empty, return a default object
 	if (!data) {
@@ -154,6 +164,7 @@ async function fetchBitcoinDataNoCache(): Promise<BitcoinData> {
 			high24h: "N/A",
 			low24h: "N/A",
 			historicalPrices: [],
+			cryptoName: cryptoSymbol,
 		};
 	}
 
@@ -161,37 +172,44 @@ async function fetchBitcoinDataNoCache(): Promise<BitcoinData> {
 }
 
 /**
- * Cached function that serves as the entry point for fetching Bitcoin data
- * Only caches valid responses
+ * Helper function to create a cached function for a specific crypto symbol
+ * This ensures each crypto has its own cache entry
  */
-const getCachedBitcoinData = unstable_cache(
-	async (): Promise<BitcoinData> => {
-		const data = await getBitcoinData();
+function createCachedCryptoData(cryptoSymbol: string) {
+	return unstable_cache(
+		async (): Promise<CryptoData> => {
+			const data = await getCryptoData(cryptoSymbol);
 
-		// If data is null or empty, throw an error to prevent caching
-		if (!data) {
-			throw new Error("Empty or invalid data - skip caching");
-		}
+			// If data is null or empty, throw an error to prevent caching
+			if (!data) {
+				throw new Error("Empty or invalid data - skip caching");
+			}
 
-		return data;
-	},
-	["bitcoin-price-data"],
-	{
-		tags: ["bitcoin", "cryptocurrency"],
-		revalidate: 300, // Cache for 5 minutes
-	},
-);
+			return data;
+		},
+		["crypto-price-data", cryptoSymbol],
+		{
+			tags: ["cryptocurrency", cryptoSymbol],
+			revalidate: 300, // Cache for 5 minutes
+		},
+	);
+}
 
 /**
  * Main export function that tries to use cached data but falls back to non-cached data if needed
  */
-export default async function getData(): Promise<BitcoinData> {
+export default async function getData(
+	params?: CryptoParams,
+): Promise<CryptoData> {
+	const cryptoSymbol = params?.cryptoSymbol || "bitcoin";
+
 	try {
 		// Try to get cached data first
-		return await getCachedBitcoinData();
+		const cachedFunction = createCachedCryptoData(cryptoSymbol);
+		return await cachedFunction();
 	} catch (error) {
 		console.log("Cache skipped or error:", error);
 		// Fall back to non-cached data
-		return fetchBitcoinDataNoCache();
+		return fetchCryptoDataNoCache(cryptoSymbol);
 	}
 }

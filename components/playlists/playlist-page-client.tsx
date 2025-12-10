@@ -16,11 +16,15 @@ interface PlaylistPageClientProps {
 
 export function PlaylistPageClient({
 	initialPlaylists,
+	initialPlaylistItems,
 }: PlaylistPageClientProps) {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	const [playlists, _setPlaylists] = useState(initialPlaylists);
+	const [playlistItems] = useState(initialPlaylistItems);
 	const [showEditor, setShowEditor] = useState(false);
-	const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+	const [editingPlaylist, setEditingPlaylist] = useState<
+		(Playlist & { items?: PlaylistItem[] }) | null
+	>(null);
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleCreatePlaylist = () => {
@@ -29,7 +33,24 @@ export function PlaylistPageClient({
 	};
 
 	const handleEditPlaylist = (playlist: Playlist) => {
-		setEditingPlaylist(playlist);
+		const itemsForPlaylist = playlistItems
+			.filter((item) => item.playlist_id === playlist.id)
+			.sort(
+				(a, b) =>
+					(a.order_index ?? Number.MAX_SAFE_INTEGER) -
+					(b.order_index ?? Number.MAX_SAFE_INTEGER),
+			)
+			.map((item) => ({
+				...item,
+				start_time: item.start_time ?? undefined,
+				end_time: item.end_time ?? undefined,
+				days_of_week: item.days_of_week ?? undefined,
+			}));
+
+		setEditingPlaylist({
+			...playlist,
+			items: itemsForPlaylist,
+		});
 		setShowEditor(true);
 	};
 
@@ -119,7 +140,7 @@ export function PlaylistPageClient({
 							? {
 									id: editingPlaylist.id,
 									name: editingPlaylist.name,
-									items: [],
+									items: editingPlaylist.items,
 								}
 							: undefined
 					}
@@ -141,6 +162,7 @@ export function PlaylistPageClient({
 
 			<PlaylistList
 				playlists={playlists}
+				playlistItems={playlistItems}
 				onEditPlaylist={handleEditPlaylist}
 				onDeletePlaylist={handleDeletePlaylist}
 				isLoading={isLoading}

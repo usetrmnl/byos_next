@@ -140,6 +140,9 @@ Run the migration files from the `migrations/` directory in order:
 2. `0001_add_device_status_fields.sql` - Adds device status fields
 3. `0002_add_playlist_index_to_devices.sql` - Adds playlist index tracking
 4. `0003_add_playlists.sql` - Adds playlist support (if not already in initial schema)
+5. `0004_add_mixups.sql` - Adds mixup layouts and device display mode
+6. `0005_add_screen_size_settings.sql` - Adds screen size/orientation settings
+7. `0006_add_screen_configs.sql` - Adds per-screen parameter storage
 
 
 **Option B: Using Docker (Local PostgreSQL)**
@@ -280,9 +283,10 @@ Unlike the official Ruby/Python implementations, this Next.js implementation:
 
 #### Technical Specifications
 - **Image Format**: 800x480 pixel 1-bit bitmap (.bmp)
-- **Rendering**: Uses Satori for dynamic image generation
+- **Rendering**: Uses Takumi or Satori for dynamic image generation (PNG/bitmap)
+  - Set `REACT_RENDERER=takumi` (default) or `REACT_RENDERER=satori` to choose the renderer
 - **Rendering Pipeline**: 
-  JSX component → pre-satori wrapper → Satori (SVG) → Vercel ImageResponse (PNG) → Jimp (BMP) → fixed header to fit TRMNL display
+  JSX component → pre-satori wrapper → [Takumi/Satori] (PNG) → Sharp (BMP) → fixed header to fit TRMNL display
 - **Caching Strategy**: 
   - Development: 60-second memory cache with revalidation
   - Production: Next.js built-in caching with 60-second default revalidation
@@ -379,7 +383,7 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Supabase Documentation](https://supabase.com/docs)
 - [TRMNL Device Website](https://usetrmnl.com)
-- [Satori Documentation](https://github.com/vercel/satori) - For understanding the rendering pipeline
+- [Takumi Documentation](https://takumi.kane.tw/) - For understanding the rendering pipeline
 
 ## 🐳 Docker Support
 

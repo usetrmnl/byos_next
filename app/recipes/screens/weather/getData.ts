@@ -20,6 +20,12 @@ interface WeatherData {
 	longitude: number;
 }
 
+type WeatherParams = {
+	location?: string;
+	latitude?: number;
+	longitude?: number;
+};
+
 interface GeocodingResponse {
 	results: Array<{
 		name: string;
@@ -260,11 +266,13 @@ async function getWeatherData(
  * Function that fetches weather data without caching
  */
 async function fetchWeatherDataNoCache(
-	latitude?: number,
-	longitude?: number,
-	locationName?: string,
+	params?: WeatherParams,
 ): Promise<WeatherData> {
-	const data = await getWeatherData(latitude, longitude, locationName);
+	const data = await getWeatherData(
+		params?.latitude,
+		params?.longitude,
+		params?.location,
+	);
 
 	// If data is null or empty, return a default object
 	if (!data) {
@@ -281,8 +289,8 @@ async function fetchWeatherDataNoCache(
 			pressure: "N/A",
 			sunset: "N/A",
 			sunrise: "N/A",
-			latitude: latitude || 0,
-			longitude: longitude || 0,
+			latitude: params?.latitude || 0,
+			longitude: params?.longitude || 0,
 		};
 	}
 
@@ -294,12 +302,12 @@ async function fetchWeatherDataNoCache(
  * Only caches valid responses
  */
 const getCachedWeatherData = unstable_cache(
-	async (
-		latitude?: number,
-		longitude?: number,
-		locationName?: string,
-	): Promise<WeatherData> => {
-		const data = await getWeatherData(latitude, longitude, locationName);
+	async (params?: WeatherParams): Promise<WeatherData> => {
+		const data = await getWeatherData(
+			params?.latitude,
+			params?.longitude,
+			params?.location,
+		);
 
 		// If data is null or empty, throw an error to prevent caching
 		if (!data) {
@@ -318,10 +326,12 @@ const getCachedWeatherData = unstable_cache(
 /**
  * Main export function that tries to use cached data but falls back to non-cached data if needed
  */
-export default async function getData(): Promise<WeatherData> {
-	const locationName = "San Francisco";
-	const latitude = undefined;
-	const longitude = undefined;
+export default async function getData(
+	params?: WeatherParams,
+): Promise<WeatherData> {
+	const locationName = params?.location || "San Francisco";
+	const latitude = params?.latitude;
+	const longitude = params?.longitude;
 
 	let finalLatitude: number | undefined = latitude;
 	let finalLongitude: number | undefined = longitude;
@@ -339,11 +349,11 @@ export default async function getData(): Promise<WeatherData> {
 		}
 
 		// Try to get cached data first
-		return await getCachedWeatherData(
-			finalLatitude,
-			finalLongitude,
-			finalLocationName,
-		);
+		return await getCachedWeatherData({
+			latitude: finalLatitude,
+			longitude: finalLongitude,
+			location: finalLocationName,
+		});
 	} catch (error) {
 		console.log("Cache skipped or error:", error);
 		// Fall back to non-cached data
@@ -353,10 +363,10 @@ export default async function getData(): Promise<WeatherData> {
 			finalLongitude,
 			finalLocationName,
 		);
-		return fetchWeatherDataNoCache(
-			finalLatitude,
-			finalLongitude,
-			finalLocationName,
-		);
+		return fetchWeatherDataNoCache({
+			latitude: finalLatitude,
+			longitude: finalLongitude,
+			location: finalLocationName,
+		});
 	}
 }

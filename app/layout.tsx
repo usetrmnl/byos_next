@@ -14,7 +14,7 @@ const META_THEME_COLORS = {
 };
 
 export const metadata: Metadata = {
-	title: "trmnl-byos-nextjs",
+	title: "TRMNL Next.js",
 	description: "Device management dashboard",
 };
 

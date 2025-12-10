@@ -191,6 +191,41 @@ UPDATE devices SET display_mode = 'screen' WHERE use_playlist = FALSE OR use_pla
 -- Drop the old use_playlist column
 ALTER TABLE devices DROP COLUMN IF EXISTS use_playlist;`,
 	},
+	"0005_add_screen_size_settings": {
+		title: "Add Screen Size Settings",
+		description:
+			"Adds screen width, height, orientation, and grayscale level to devices table",
+		sql: `-- Add screen dimensions and settings columns
+ALTER TABLE devices
+ADD COLUMN IF NOT EXISTS screen_width INTEGER DEFAULT 800,
+ADD COLUMN IF NOT EXISTS screen_height INTEGER DEFAULT 480,
+ADD COLUMN IF NOT EXISTS screen_orientation VARCHAR(20) DEFAULT 'landscape',
+ADD COLUMN IF NOT EXISTS grayscale INTEGER DEFAULT 0;
+
+-- Add comments to the new columns
+COMMENT ON COLUMN devices.screen_width IS 'Screen width in pixels';
+COMMENT ON COLUMN devices.screen_height IS 'Screen height in pixels';
+COMMENT ON COLUMN devices.screen_orientation IS 'Screen orientation: portrait or landscape';
+COMMENT ON COLUMN devices.grayscale IS 'Grayscale level (0-255, where 0 is full color and 255 is full grayscale)';`,
+	},
+	"0006_add_screen_configs": {
+		title: "Add Screen Configs",
+		description: "Stores per-screen parameter configurations",
+		sql: `CREATE TABLE IF NOT EXISTS public.screen_configs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  screen_id TEXT NOT NULL UNIQUE,
+  params JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Index to speed up lookups by screen_id
+CREATE INDEX IF NOT EXISTS idx_screen_configs_screen_id ON public.screen_configs (screen_id);
+
+-- Comment for clarity
+COMMENT ON TABLE public.screen_configs IS 'Per-screen configuration parameters stored as JSONB';
+COMMENT ON COLUMN public.screen_configs.params IS 'JSON blob of screen parameters';`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:
@@ -199,7 +234,7 @@ ALTER TABLE devices DROP COLUMN IF EXISTS use_playlist;`,
 -- Returns empty result if all tables exist, or rows with missing table names if any are missing
 SELECT 
   expected_table as missing_table
-FROM unnest(ARRAY['devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'system_logs']::text[]) as expected_table
+FROM unnest(ARRAY['devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'screen_configs', 'system_logs']::text[]) as expected_table
 WHERE NOT EXISTS (
   SELECT 1 
   FROM information_schema.tables 

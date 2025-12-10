@@ -91,6 +91,7 @@ export function PlaylistItem({
 							type="number"
 							min="1"
 							value={item.duration}
+							className="w-24"
 							onChange={(e) =>
 								onUpdate(item.id, {
 									duration: parseInt(e.target.value, 10) || 30,
@@ -100,23 +101,24 @@ export function PlaylistItem({
 					</div>
 				</div>
 
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					<div className="space-y-3">
 						<Label>Days of Week (optional)</Label>
-						<div className="flex flex-wrap gap-2">
+						<div className="flex flex-wrap">
 							<ToggleGroup
 								type="multiple"
 								variant="outline"
+								size="sm"
 								value={item.days_of_week || []}
 								onValueChange={(value) =>
 									onUpdate(item.id, { days_of_week: value })
 								}
+								className="flex-wrap w-full sm:w-fit gap-y-1.5"
 							>
 								{daysOfWeek.map((day) => {
-									const isSelected = (item.days_of_week || []).includes(
+									const _isSelected = (item.days_of_week || []).includes(
 										day.value,
 									);
-									console.log(day.value, isSelected);
 									return (
 										<ToggleGroupItem
 											key={day.value}
@@ -130,28 +132,30 @@ export function PlaylistItem({
 							</ToggleGroup>
 						</div>
 					</div>
-					<div className="space-y-2 w-48">
-						<Label htmlFor={`start-${item.id}`}>Start Time (optional)</Label>
-						<Input
-							id={`start-${item.id}`}
-							type="time"
-							value={item.start_time || ""}
-							onChange={(e) =>
-								onUpdate(item.id, { start_time: e.target.value || undefined })
-							}
-						/>
-					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="space-y-2 w-48">
+							<Label htmlFor={`start-${item.id}`}>Start Time (optional)</Label>
+							<Input
+								id={`start-${item.id}`}
+								type="time"
+								value={item.start_time || ""}
+								onChange={(e) =>
+									onUpdate(item.id, { start_time: e.target.value || undefined })
+								}
+							/>
+						</div>
 
-					<div className="space-y-2 w-48">
-						<Label htmlFor={`end-${item.id}`}>End Time (optional)</Label>
-						<Input
-							id={`end-${item.id}`}
-							type="time"
-							value={item.end_time || ""}
-							onChange={(e) =>
-								onUpdate(item.id, { end_time: e.target.value || undefined })
-							}
-						/>
+						<div className="space-y-2 w-48">
+							<Label htmlFor={`end-${item.id}`}>End Time (optional)</Label>
+							<Input
+								id={`end-${item.id}`}
+								type="time"
+								value={item.end_time || ""}
+								onChange={(e) =>
+									onUpdate(item.id, { end_time: e.target.value || undefined })
+								}
+							/>
+						</div>
 					</div>
 				</div>
 			</CardContent>

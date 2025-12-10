@@ -1,6 +1,8 @@
 "use client";
 
+import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 import { ArrowRightIcon } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,6 +22,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import type { Device, SystemLog } from "@/lib/types";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
 
@@ -51,6 +57,17 @@ export const DashboardContent = ({
 				)[0]
 			: null;
 
+	const orientation = lastUpdatedDevice?.screen_orientation || "landscape";
+	const deviceWidth =
+		orientation === "landscape"
+			? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
+			: lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const deviceHeight =
+		orientation === "landscape"
+			? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
+			: lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
+
+	const maxPreviewWidth = orientation === "landscape" ? 500 : 300;
 	return (
 		<>
 			<div className="grid gap-2 md:gap-4 md:grid-cols-2">
@@ -65,25 +82,33 @@ export const DashboardContent = ({
 					</CardHeader>
 					<CardContent>
 						{lastUpdatedDevice ? (
-							<>
-								<div className="relative rounded-xs overflow-hidden bg-muted flex items-center justify-center border">
-									<picture>
-										<img
-											src={`/api/bitmap/${lastUpdatedDevice?.screen}.bmp`}
-											alt="Bitmap"
-											width={800}
-											height={480}
-											className="antialiased"
+							<div className="flex flex-col items-center">
+								<div
+									className="rounded-xs bg-muted border overflow-hidden w-full"
+									style={{
+										maxWidth: `${maxPreviewWidth}px`,
+										maxHeight: `${(maxPreviewWidth * deviceHeight) / deviceWidth}px`,
+									}}
+								>
+									<AspectRatio
+										ratio={deviceWidth / deviceHeight}
+										className="w-full"
+									>
+										<Image
+											src={`/api/bitmap/${lastUpdatedDevice?.screen}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+											alt="Device Screen"
+											fill
+											className="object-contain rounded-xs ring-2 ring-gray-200"
 											style={{ imageRendering: "pixelated" }}
-											suppressHydrationWarning
+											unoptimized
 										/>
-									</picture>
+									</AspectRatio>
 								</div>
 								<div className="text-xs text-amber-500 dark:text-amber-500/50 mt-2">
 									Warning: due to the passive nature of the device, the screen
 									shown here might be newer than the actual screen
 								</div>
-							</>
+							</div>
 						) : (
 							<div className="flex flex-col space-y-3">
 								<Skeleton className="h-[240px] w-full rounded-md" />

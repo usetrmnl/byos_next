@@ -104,7 +104,7 @@ export default async function Wikipedia({
 
 	return (
 		<PreSatori useDoubling={true} width={width} height={height}>
-			<div className="flex flex-col w-full h-full">
+			<div className="flex flex-col w-full h-full bg-white">
 				<div className="flex-none p-4 border-b border-black">
 					<h1 className={` ${isHalfScreen ? "text-4xl" : "text-5xl"}`}>
 						{safeTitle}
@@ -147,12 +147,11 @@ export default async function Wikipedia({
 						</span>
 					</div>
 
-					<div
-						className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-black p-2 rounded-xl dither-100"
-						style={{ WebkitTextStroke: "4px white" }}
-					>
+					<div className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500">
 						<span>Wikipedia • Random Article</span>
-						{formattedDate && <span>Generated: {formattedDate}</span>}
+						<span>
+							{formattedDate && <span>Generated: {formattedDate}</span>}
+						</span>
 					</div>
 				</div>
 			</div>

@@ -11,7 +11,7 @@ interface PlaylistEditorProps {
 	playlist?: {
 		id: string;
 		name: string;
-		items: Array<{
+		items?: Array<{
 			id: string;
 			screen_id: string;
 			duration: number;
@@ -51,10 +51,11 @@ export function PlaylistEditor({
 
 	// Fetch playlist items if editing an existing playlist
 	useEffect(() => {
-		if (playlist?.id && !playlist.items) {
-			setIsLoading(true);
-			fetchPlaylistWithItems(playlist.id)
-				.then((result) => {
+		const loadItems = async () => {
+			if (playlist?.id && (!playlist.items || playlist.items.length === 0)) {
+				setIsLoading(true);
+				try {
+					const result = await fetchPlaylistWithItems(playlist.id);
 					if (result.playlist) {
 						setName(result.playlist.name);
 					}
@@ -70,27 +71,31 @@ export function PlaylistEditor({
 							days_of_week: item.days_of_week ?? undefined,
 						})),
 					);
-				})
-				.catch((error) => {
+				} catch (error) {
 					console.error("Error fetching playlist items:", error);
-				})
-				.finally(() => {
+				} finally {
 					setIsLoading(false);
-				});
-			setScreenOptions(
-				Object.entries(screens).map(([id, config]) => ({
-					id,
-					name: config.title,
-				})),
-			);
-		} else {
-			setScreenOptions(
-				Object.entries(screens).map(([id, config]) => ({
-					id,
-					name: config.title,
-				})),
-			);
-		}
+				}
+			} else if (playlist?.items) {
+				setItems(
+					playlist.items.map((item) => ({
+						...item,
+						start_time: item.start_time ?? undefined,
+						end_time: item.end_time ?? undefined,
+						days_of_week: item.days_of_week ?? undefined,
+					})),
+				);
+			}
+		};
+
+		loadItems();
+
+		setScreenOptions(
+			Object.entries(screens).map(([id, config]) => ({
+				id,
+				name: config.title,
+			})),
+		);
 	}, [playlist?.id, playlist?.items]);
 
 	const handleSavePlaylist = (data: { name: string }) => {
@@ -159,7 +164,7 @@ export function PlaylistEditor({
 						</Button>
 					</div>
 				</CardHeader>
-				<CardContent>
+				<CardContent className="p-2 sm:p-6">
 					{isLoading ? (
 						<div className="text-center py-8 text-muted-foreground">
 							Loading playlist items...
