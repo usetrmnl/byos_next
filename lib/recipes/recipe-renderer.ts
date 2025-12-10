@@ -253,6 +253,7 @@ type RenderOptions = {
 	imageWidth: number;
 	imageHeight: number;
 	formats?: RenderFormats;
+	grayscale?: number; // Number of gray levels: 2, 4, or 16
 };
 
 type RenderResults = {
@@ -274,6 +275,7 @@ export const renderRecipeOutputs = cache(
 		imageWidth,
 		imageHeight,
 		formats = ["bitmap", "png"],
+		grayscale,
 	}: RenderOptions): Promise<RenderResults> => {
 		const results = getDefaultRenderResults();
 		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
@@ -301,9 +303,10 @@ export const renderRecipeOutputs = cache(
 										imageOptions.height,
 									);
 						const buffer = await renderBmp(png, {
-							ditheringMethod: DitheringMethod.ATKINSON,
+							ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
 							width: imageWidth,
 							height: imageHeight,
+							...(grayscale !== undefined && { grayscale }),
 						});
 						return { key: "bitmap", value: buffer };
 					} catch (error) {

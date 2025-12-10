@@ -21,6 +21,17 @@ import {
 export const DEFAULT_SCREEN = "album";
 export const DEFAULT_REFRESH_RATE = 180;
 
+/**
+ * Map grayscale value from database to number of gray levels
+ * Valid values: 2, 4, or 16. Defaults to 2 if invalid.
+ */
+function getGrayscaleLevels(grayscale: number | null | undefined): number {
+	if (grayscale === 2 || grayscale === 4 || grayscale === 16) {
+		return grayscale;
+	}
+	return 2; // Default to 2 levels (black/white)
+}
+
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
 
@@ -40,7 +51,7 @@ export async function GET(request: Request) {
 			metadata: { headers },
 		});
 		return buildDisplayResponse(
-			`${baseUrl}/${DEFAULT_SCREEN}.bmp`,
+			`${baseUrl}/${DEFAULT_SCREEN}.bmp?grayscale=2`,
 			`${DEFAULT_SCREEN}_${uniqueId}.bmp`,
 			DEFAULT_REFRESH_RATE,
 		);
@@ -72,6 +83,9 @@ export async function GET(request: Request) {
 			orientation === "landscape"
 				? device.screen_height || DEFAULT_IMAGE_HEIGHT
 				: device.screen_width || DEFAULT_IMAGE_WIDTH;
+		const grayscaleLevels = getGrayscaleLevels(
+			(device as { grayscale?: number | null }).grayscale ?? null,
+		);
 		let dynamicRefreshRate = 180;
 		let imageUrl: string;
 
@@ -102,12 +116,12 @@ export async function GET(request: Request) {
 						dynamicRefreshRate = 60;
 					}
 				}
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
+				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
 				break;
 
 			case DeviceDisplayMode.MIXUP:
 				if (device.mixup_id) {
-					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
+					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
 					const metadata = {
 						deviceId: device.friendly_id,
 						mixupId: device.mixup_id,
@@ -117,7 +131,7 @@ export async function GET(request: Request) {
 						metadata,
 					});
 				} else {
-					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
+					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
 				}
 				dynamicRefreshRate = calculateRefreshRate(
 					device.refresh_schedule as unknown as RefreshSchedule,
@@ -132,7 +146,7 @@ export async function GET(request: Request) {
 					180,
 					device.timezone || "UTC",
 				);
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}`;
+				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
 				break;
 		}
 

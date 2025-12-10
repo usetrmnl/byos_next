@@ -132,6 +132,17 @@ export default function DevicePageClient({
 			? editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT
 			: editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
 
+	// Map grayscale value to number of gray levels (2, 4, or 16)
+	const getGrayscaleLevels = (grayscale: number | null | undefined): number => {
+		if (grayscale === 2 || grayscale === 4 || grayscale === 16) {
+			return grayscale;
+		}
+		return 2; // Default to 2 levels (black/white)
+	};
+
+	const editedGrayscaleLevels = getGrayscaleLevels(editedDevice.grayscale);
+	const deviceGrayscaleLevels = getGrayscaleLevels(device.grayscale);
+
 	// Handle form input changes
 	const handleInputChange = (
 		e: React.ChangeEvent<
@@ -1041,7 +1052,7 @@ export default function DevicePageClient({
 									>
 										<AspectRatio ratio={deviceWidth / deviceHeight}>
 											<Image
-												src={`/api/bitmap/mixup/${editedDevice.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+												src={`/api/bitmap/mixup/${editedDevice.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${editedGrayscaleLevels}`}
 												alt="Mixup Preview"
 												fill
 												className="object-cover rounded-xs ring-2 ring-gray-200"
@@ -1059,7 +1070,7 @@ export default function DevicePageClient({
 									>
 										<AspectRatio ratio={deviceWidth / deviceHeight}>
 											<Image
-												src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+												src={`/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${editedGrayscaleLevels}`}
 												alt="Device Screen"
 												fill
 												className="object-cover rounded-xs ring-2 ring-gray-200"
@@ -1292,7 +1303,7 @@ export default function DevicePageClient({
 										>
 											<AspectRatio ratio={deviceWidth / deviceHeight}>
 												<Image
-													src={`/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+													src={`/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${deviceGrayscaleLevels}`}
 													alt="Mixup Preview"
 													fill
 													className="object-cover rounded-xs ring-2 ring-gray-200"
@@ -1311,7 +1322,7 @@ export default function DevicePageClient({
 									>
 										<AspectRatio ratio={deviceWidth / deviceHeight}>
 											<Image
-												src={`/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+												src={`/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${deviceGrayscaleLevels}`}
 												alt="Device Screen"
 												fill
 												className="object-cover rounded-xs ring-2 ring-gray-200"

@@ -21,15 +21,17 @@ export async function GET(
 		const { id } = await params;
 		const mixupId = id.replace(".bmp", "");
 
-		// Get width and height from query parameters
+		// Get width, height, and grayscale from query parameters
 		const { searchParams } = new URL(req.url);
 		const widthParam = searchParams.get("width");
 		const heightParam = searchParams.get("height");
+		const grayscaleParam = searchParams.get("grayscale");
 
 		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
 		const height = heightParam
 			? parseInt(heightParam, 10)
 			: DEFAULT_IMAGE_HEIGHT;
+		const grayscaleLevels = grayscaleParam ? parseInt(grayscaleParam, 10) : 2;
 
 		const { ready } = await checkDbConnection();
 		if (!ready) {
@@ -79,6 +81,7 @@ export async function GET(
 			assignments,
 			width,
 			height,
+			grayscaleLevels,
 		);
 
 		return new Response(new Uint8Array(compositeBuffer), {
@@ -140,6 +143,7 @@ async function renderMixupComposite(
 	assignments: Record<string, string | null>,
 	width: number,
 	height: number,
+	grayscaleLevels: number = 2,
 ): Promise<Buffer> {
 	// Render all slots in parallel
 	const slotRenders = await Promise.all(
@@ -194,6 +198,7 @@ async function renderMixupComposite(
 		ditheringMethod: DitheringMethod.ATKINSON,
 		width,
 		height,
+		grayscale: grayscaleLevels,
 	});
 
 	return bmpBuffer;
