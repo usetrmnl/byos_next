@@ -294,57 +294,30 @@ export default function DeviceEditForm({
 								<div className="rounded-lg border p-4 space-y-4">
 									<div className="space-y-2">
 										<Label>Display Mode</Label>
-										<div className="flex flex-wrap items-center gap-2">
-											<Button
-												type="button"
-												variant={
-													editedDevice.display_mode === DeviceDisplayMode.SCREEN
-														? "default"
-														: "outline"
-												}
-												onClick={() => {
+										<ToggleGroup
+											type="single"
+											variant="outline"
+											value={editedDevice.display_mode}
+											onValueChange={(value) => {
+												if (value) {
 													onSelectChange(
 														"display_mode",
-														DeviceDisplayMode.SCREEN,
+														value as DeviceDisplayMode,
 													);
-												}}
-											>
+												}
+											}}
+											className="flex flex-wrap items-center"
+										>
+											<ToggleGroupItem value={DeviceDisplayMode.SCREEN}>
 												Single Screen
-											</Button>
-											<Button
-												type="button"
-												variant={
-													editedDevice.display_mode ===
-													DeviceDisplayMode.PLAYLIST
-														? "default"
-														: "outline"
-												}
-												onClick={() => {
-													onSelectChange(
-														"display_mode",
-														DeviceDisplayMode.PLAYLIST,
-													);
-												}}
-											>
+											</ToggleGroupItem>
+											<ToggleGroupItem value={DeviceDisplayMode.PLAYLIST}>
 												Playlist
-											</Button>
-											<Button
-												type="button"
-												variant={
-													editedDevice.display_mode === DeviceDisplayMode.MIXUP
-														? "default"
-														: "outline"
-												}
-												onClick={() => {
-													onSelectChange(
-														"display_mode",
-														DeviceDisplayMode.MIXUP,
-													);
-												}}
-											>
+											</ToggleGroupItem>
+											<ToggleGroupItem value={DeviceDisplayMode.MIXUP}>
 												Mixup
-											</Button>
-										</div>
+											</ToggleGroupItem>
+										</ToggleGroup>
 										<p className="text-xs text-muted-foreground">
 											Choose what the device renders and connect it to
 											playlists, screens, or a mixup.
