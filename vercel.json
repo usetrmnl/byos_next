@@ -3,7 +3,7 @@
 	"crons": [
 		{
 			"path": "/api/bitmap/wikipedia.bmp",
-			"schedule": "*/5 * * * *"
+			"schedule": "0 0 * * *"
 		}
 	]
 }

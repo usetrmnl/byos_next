@@ -117,20 +117,10 @@ You can also use `max-` prefix for maximum width queries:
 </div>
 ```
 
-### Gap Utilities
-
-Gap utilities (`gap`, `gap-x`, `gap-y`) are automatically converted to CSS styles for better compatibility with Takumi/Satori rendering:
-
-```tsx
-<div className="flex flex-row gap-4 gap-y-2">
-  {/* gap-4 sets both row and column gap */}
-  {/* gap-y-2 sets only row gap */}
-</div>
-```
-
 ### Dither Patterns
 
 Special dither pattern classes are available for creating visual effects on e-ink displays:
+*Compatible only with Satori rendering.*
 
 ```tsx
 <div className="dither-100">
