@@ -9,7 +9,6 @@ import {
 	PanelsTopLeft,
 	PencilRuler,
 	Server,
-	Wrench,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -513,12 +512,12 @@ export function ClientSidebar({
 				label="System Log"
 			/>
 
-			<NavLink
+			{/* <NavLink
 				href="/maintenance"
 				currentPath={currentPath}
 				icon={<Wrench className="mr-2 size-4" />}
 				label="Maintenance"
-			/>
+			/> */}
 		</nav>
 	);
 }

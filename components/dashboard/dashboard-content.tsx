@@ -67,6 +67,7 @@ export const DashboardContent = ({
 			? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
 			: lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
 
+	const maxPreviewWidth = orientation === "landscape" ? 500 : 300;
 	return (
 		<>
 			<div className="grid gap-2 md:gap-4 md:grid-cols-2">
@@ -83,9 +84,10 @@ export const DashboardContent = ({
 						{lastUpdatedDevice ? (
 							<div className="flex flex-col items-center">
 								<div
-									className="rounded-xs bg-muted border overflow-hidden w-full max-w-[300px]"
+									className="rounded-xs bg-muted border overflow-hidden w-full"
 									style={{
-										maxHeight: `${(300 * deviceHeight) / deviceWidth}px`,
+										maxWidth: `${maxPreviewWidth}px`,
+										maxHeight: `${(maxPreviewWidth * deviceHeight) / deviceWidth}px`,
 									}}
 								>
 									<AspectRatio

@@ -156,7 +156,7 @@ export function ClientMainLayout({
 					<div className="flex items-center gap-2">
 						<h1 className="text-base md:text-lg font-semibold">byos-nextjs</h1>
 						<span className="text-red-500 font-mono font-bold text-xs -ml-2 -mt-4 align-text-top">
-							alpha
+							beta
 						</span>
 						<h1 className="text-base md:text-lg font-semibold">
 							for{" "}
@@ -220,7 +220,7 @@ export function ClientMainLayout({
 							byos-nextjs
 						</span>
 						<span className="text-red-500 font-mono font-bold text-xs -ml-2 -mt-4 align-text-top">
-							alpha
+							beta
 						</span>
 						<h1 className="text-base md:text-lg font-semibold">
 							for{" "}
