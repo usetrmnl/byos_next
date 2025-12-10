@@ -46,15 +46,18 @@ export default async function Wikipedia({
 		const baseLength = hasValidThumbnail
 			? isHalfScreen
 				? 325
-				: 650
+				: 600
 			: isHalfScreen
 				? 400
 				: 800;
 
 		if (safeExtract.length <= baseLength) return safeExtract;
 
+		console.log("baseLength", baseLength, "safeExtract", safeExtract.length);
+
 		// Find the last period within the limit to truncate at a natural break
 		const lastPeriodIndex = safeExtract.lastIndexOf(".", baseLength);
+		console.log("lastPeriodIndex", lastPeriodIndex);
 		if (lastPeriodIndex > baseLength * 0.8) {
 			return `${safeExtract.substring(0, lastPeriodIndex + 1)}`;
 		}
@@ -110,7 +113,7 @@ export default async function Wikipedia({
 						{safeTitle}
 					</h1>
 				</div>
-				<div className="flex flex-col flex-1 p-4 sm:flex-row">
+				<div className="flex flex-col flex-1 p-4 pb-0 sm:flex-row">
 					<div className="text-2xl flex flex-grow tracking-tight leading-none">
 						{truncatedExtract}
 					</div>
@@ -137,7 +140,7 @@ export default async function Wikipedia({
 						</div>
 					)}
 				</div>
-				<div className="flex-none p-4 flex flex-col">
+				<div className="flex-none p-4 pt-2 flex flex-col">
 					<div className="text-base font-geneva9 flex justify-between w-full ">
 						<span>{safeContentUrl}</span>
 						<span>
