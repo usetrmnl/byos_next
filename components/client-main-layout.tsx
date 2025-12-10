@@ -11,6 +11,7 @@ import { ClientSidebar } from "@/components/client-sidebar";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Device } from "@/lib/types";
+import packageJson from "@/package.json";
 
 // Main navigation skeleton for the entire sidebar
 const SidebarSkeletonFallback = () => (
@@ -189,9 +190,8 @@ export function ClientMainLayout({
 			<div className="flex flex-1">
 				<aside
 					ref={sidebarRef}
-					className={`${
-						isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-					} fixed inset-y-0 z-50 flex w-56 flex-col border-r bg-background transition-transform md:translate-x-0 md:relative`}
+					className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+						} fixed inset-y-0 z-50 flex w-56 flex-col border-r bg-background transition-transform md:translate-x-0 md:relative`}
 				>
 					<div className="md:hidden flex justify-end p-2">
 						<Button variant="ghost" size="icon" onClick={handleSidebarClose}>
@@ -219,9 +219,6 @@ export function ClientMainLayout({
 						<span className="text-base md:text-lg font-semibold">
 							byos-nextjs
 						</span>
-						<span className="text-red-500 font-mono font-bold text-xs -ml-2 -mt-4 align-text-top">
-							beta
-						</span>
 						<h1 className="text-base md:text-lg font-semibold">
 							for{" "}
 							<Link
@@ -233,6 +230,13 @@ export function ClientMainLayout({
 								TRMNL
 							</Link>
 						</h1>
+
+						<span className="text-muted-foreground font-mono text-base md:text-lg">
+							v{packageJson.version}
+						</span>
+						<span className="text-red-500 font-mono font-bold text-sm md:text-base -ml-2 -mt-4 align-text-top">
+							beta
+						</span>
 					</div>
 					<div className="text-xs md:text-sm">
 						<span>Found an issue? </span>
@@ -248,7 +252,7 @@ export function ClientMainLayout({
 							{" "}
 							or{" "}
 							<Link
-								href="mailto:manglekuo@gmail.com?subject=BYOS%20Next.js%20v0.1.0%20Feedback"
+								href={`mailto:manglekuo@gmail.com?subject=BYOS%20Next.js%20v${packageJson.version}%20Feedback`}
 								className="underline hover:text-foreground"
 							>
 								email with screenshots
