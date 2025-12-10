@@ -36,16 +36,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from "@/components/ui/tabs";
-import {
-	ToggleGroup,
-	ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -53,14 +45,7 @@ import {
 } from "@/lib/recipes/constants";
 import type { Device, Mixup, Playlist } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import {
-	formatTimezone,
-	generateApiKey,
-	generateFriendlyId,
-	isValidApiKey,
-	isValidFriendlyId,
-	timezones,
-} from "@/utils/helpers";
+import { formatTimezone, timezones } from "@/utils/helpers";
 
 // Device size presets
 const DEVICE_SIZE_PRESETS = {
@@ -154,7 +139,8 @@ export default function DeviceEditForm({
 								<div>
 									<p className="text-sm font-medium">Device setup</p>
 									<p className="text-xs text-muted-foreground">
-										Group controls by focus area and move faster with quick tabs.
+										Group controls by focus area and move faster with quick
+										tabs.
 									</p>
 								</div>
 								<TabsList>
@@ -328,7 +314,8 @@ export default function DeviceEditForm({
 											<Button
 												type="button"
 												variant={
-													editedDevice.display_mode === DeviceDisplayMode.PLAYLIST
+													editedDevice.display_mode ===
+													DeviceDisplayMode.PLAYLIST
 														? "default"
 														: "outline"
 												}
@@ -359,8 +346,8 @@ export default function DeviceEditForm({
 											</Button>
 										</div>
 										<p className="text-xs text-muted-foreground">
-											Choose what the device renders and connect it to playlists,
-											screens, or a mixup.
+											Choose what the device renders and connect it to
+											playlists, screens, or a mixup.
 										</p>
 									</div>
 
@@ -446,8 +433,8 @@ export default function DeviceEditForm({
 												</SelectContent>
 											</Select>
 											<p className="text-sm text-muted-foreground">
-												The screen component to display on this device. If not set,
-												the default screen will be used.
+												The screen component to display on this device. If not
+												set, the default screen will be used.
 											</p>
 										</div>
 									)}
@@ -491,7 +478,7 @@ export default function DeviceEditForm({
 														onCustomSizeChange(
 															"width",
 															Number.parseInt(e.target.value, 10) ||
-															DEFAULT_IMAGE_WIDTH,
+																DEFAULT_IMAGE_WIDTH,
 														)
 													}
 												/>
@@ -504,14 +491,13 @@ export default function DeviceEditForm({
 													type="number"
 													min="1"
 													value={
-														editedDevice?.screen_height ||
-														DEFAULT_IMAGE_HEIGHT
+														editedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
 													}
 													onChange={(e) =>
 														onCustomSizeChange(
 															"height",
 															Number.parseInt(e.target.value, 10) ||
-															DEFAULT_IMAGE_HEIGHT,
+																DEFAULT_IMAGE_HEIGHT,
 														)
 													}
 												/>
@@ -581,8 +567,8 @@ export default function DeviceEditForm({
 												name="refresh_schedule.default_refresh_rate"
 												type="number"
 												value={
-													editedDevice?.refresh_schedule?.default_refresh_rate ||
-													300
+													editedDevice?.refresh_schedule
+														?.default_refresh_rate || 300
 												}
 												onChange={onInputChange}
 											/>
@@ -685,11 +671,11 @@ export default function DeviceEditForm({
 
 										{(!editedDevice?.refresh_schedule?.time_ranges ||
 											editedDevice.refresh_schedule.time_ranges.length ===
-											0) && (
-												<p className="text-sm text-muted-foreground">
-													No custom time ranges configured.
-												</p>
-											)}
+												0) && (
+											<p className="text-sm text-muted-foreground">
+												No custom time ranges configured.
+											</p>
+										)}
 									</div>
 								</div>
 							</TabsContent>
@@ -712,7 +698,7 @@ export default function DeviceEditForm({
 							</div>
 							<div className="w-full">
 								{editedDevice.display_mode === DeviceDisplayMode.PLAYLIST &&
-									editedDevice.playlist_id ? (
+								editedDevice.playlist_id ? (
 									<p className="text-sm text-muted-foreground mt-2">
 										Playlist mode: Shows rotating screens based on playlist
 										configuration
@@ -774,7 +760,8 @@ export default function DeviceEditForm({
 								<div className="flex items-center justify-between">
 									<span>Default refresh</span>
 									<span className="font-medium">
-										{editedDevice?.refresh_schedule?.default_refresh_rate || 300}
+										{editedDevice?.refresh_schedule?.default_refresh_rate ||
+											300}
 										s
 									</span>
 								</div>

@@ -5,9 +5,9 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { fetchDeviceByFriendlyId, updateDevice } from "@/app/actions/device";
-import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
 import DeviceEditForm from "@/components/device/device-edit-form";
 import DeviceView from "@/components/device/device-view";
+import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

@@ -8,7 +8,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import type { Device, PlaylistItem } from "@/lib/types";
+import type { Device } from "@/lib/types";
 import {
 	estimateBatteryLife,
 	formatDate,
@@ -45,9 +45,7 @@ const calculateRefreshPerDay = (
 		// This is a simplified calculation - a more accurate one would account for overlapping ranges
 		for (const range of deviceData.refresh_schedule.time_ranges) {
 			// Parse start and end times
-			const [startHour, startMinute] = range.start_time
-				.split(":")
-				.map(Number);
+			const [startHour, startMinute] = range.start_time.split(":").map(Number);
 			const [endHour, endMinute] = range.end_time.split(":").map(Number);
 
 			// Calculate duration in hours
