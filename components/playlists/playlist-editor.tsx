@@ -164,7 +164,7 @@ export function PlaylistEditor({
 						</Button>
 					</div>
 				</CardHeader>
-				<CardContent>
+				<CardContent className="p-2 sm:p-6">
 					{isLoading ? (
 						<div className="text-center py-8 text-muted-foreground">
 							Loading playlist items...
