@@ -74,7 +74,8 @@ jobs:
         if: steps.version.outputs.should_bump == 'true'
         run: |
           pnpm version patch --no-git-tag-version
-          echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Configure Git
         if: steps.version.outputs.should_bump == 'true'
