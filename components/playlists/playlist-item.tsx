@@ -116,7 +116,7 @@ export function PlaylistItem({
 								className="flex-wrap w-full sm:w-fit gap-y-1.5"
 							>
 								{daysOfWeek.map((day) => {
-									const isSelected = (item.days_of_week || []).includes(
+									const _isSelected = (item.days_of_week || []).includes(
 										day.value,
 									);
 									return (
@@ -159,6 +159,6 @@ export function PlaylistItem({
 					</div>
 				</div>
 			</CardContent>
-		</Card >
+		</Card>
 	);
 }

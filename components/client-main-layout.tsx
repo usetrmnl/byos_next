@@ -190,8 +190,9 @@ export function ClientMainLayout({
 			<div className="flex flex-1">
 				<aside
 					ref={sidebarRef}
-					className={`${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-						} fixed inset-y-0 z-50 flex w-56 flex-col border-r bg-background transition-transform md:translate-x-0 md:relative`}
+					className={`${
+						isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+					} fixed inset-y-0 z-50 flex w-56 flex-col border-r bg-background transition-transform md:translate-x-0 md:relative`}
 				>
 					<div className="md:hidden flex justify-end p-2">
 						<Button variant="ghost" size="icon" onClick={handleSidebarClose}>
