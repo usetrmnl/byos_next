@@ -75,7 +75,6 @@ export const loadFont = cache(() => {
 		return Object.entries(fontPaths).reduce(
 			(acc, [fontName, fontPath]) => {
 				acc[fontName] = Buffer.from(fs.readFileSync(fontPath));
-				console.log("Font loaded successfully:", fontName);
 				return acc;
 			},
 			{} as Record<string, Buffer>,

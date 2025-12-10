@@ -129,7 +129,7 @@ const RenderComponent = ({
 	// Now we have valid config and component
 	const config = configResult;
 	const Component = componentResult;
-	console.log("Component", Component, typeof Component);
+
 	const propsResult = use(Promise.resolve(fetchRecipeProps(slug, config)));
 	const propsWithDimensions = addDimensionsToProps(
 		propsResult,
