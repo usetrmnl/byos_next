@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     # allow tag pushes (head_commit == null) and skip if [skip release] on main
     if: github.event.head_commit == null || !contains(github.event.head_commit.message, '[skip release]')
+    outputs:
+      release_version: ${{ steps.bump.outputs.version || steps.version.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -128,6 +130,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      RELEASE_VERSION: ${{ needs.release.outputs.release_version }}
 
     steps:
       - name: Checkout repository
@@ -146,12 +150,14 @@ jobs:
           images: |
             ${{ env.REGISTRY_GITHUB }}/${{ env.IMAGE_NAME }}
           tags: |
+            # Explicit version from the release job
+            type=raw,value=${{ env.RELEASE_VERSION }}
+            # Optional: also tag as latest
+            type=raw,value=latest
+            # Keep other helpful tags
             type=schedule
             type=ref,event=branch
             type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
             type=sha
 
       - name: Log in to GitHub Container Registry
