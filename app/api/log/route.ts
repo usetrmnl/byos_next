@@ -846,7 +846,9 @@ export async function POST(request: Request) {
 					};
 				}
 				// For simple string logs or other types
+				const now = Math.floor(Date.now() / 1000);
 				return {
+					creation_timestamp: now,
 					message: String(log),
 					timestamp: new Date().toISOString(),
 				};
