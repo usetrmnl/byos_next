@@ -3,7 +3,7 @@ import { proxyToTRMNL } from "@/lib/api/proxy";
 /**
  * DELETE /api/plugin_settings/{id}
  * Delete a plugin setting
- * 
+ *
  * Proxies to TRMNL API
  */
 export async function DELETE(

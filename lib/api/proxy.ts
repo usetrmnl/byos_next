@@ -58,7 +58,10 @@ export async function proxyToTRMNL(
 	};
 
 	// Add body for POST/PATCH/PUT requests
-	if (options.body && (method === "POST" || method === "PATCH" || method === "PUT")) {
+	if (
+		options.body &&
+		(method === "POST" || method === "PATCH" || method === "PUT")
+	) {
 		fetchOptions.body = JSON.stringify(options.body);
 	}
 

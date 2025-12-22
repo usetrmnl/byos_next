@@ -6,10 +6,10 @@ import { logError, logInfo } from "@/lib/logger";
 /**
  * PATCH /api/playlists/items/{id}
  * Update a playlist item
- * 
+ *
  * Body:
  * - visible: boolean
- * 
+ *
  * Note: BYOS doesn't currently track visibility, but we'll store it for compatibility
  */
 export async function PATCH(

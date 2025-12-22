@@ -7,7 +7,7 @@ import type { PlaylistItem } from "@/lib/types";
 /**
  * GET /api/playlists/items
  * List all playlist items
- * 
+ *
  * Note: In TRMNL API, this requires bearer auth, but for BYOS we'll return all items
  * since there's no user authentication system yet.
  */

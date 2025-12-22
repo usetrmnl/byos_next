@@ -23,10 +23,9 @@ interface LogData {
 }
 
 // Define a type for the expected request body
+// TRMNL API format: { "logs": [] }
 interface LogRequestBody {
-	log: {
-		logs_array: LogEntry[];
-	};
+	logs: unknown[]; // TRMNL API format - required
 }
 
 // Function to generate a consistent mock MAC address from an API key
@@ -81,6 +80,17 @@ export async function POST(request: Request) {
 	try {
 		const macAddress = request.headers.get("ID")?.toUpperCase();
 		const apiKey = request.headers.get("Access-Token");
+
+		// TRMNL API requires Access-Token header
+		if (!apiKey) {
+			return NextResponse.json(
+				{
+					error: "Access-Token header is required",
+				},
+				{ status: 401 },
+			);
+		}
+
 		const refreshRate = request.headers.get("Refresh-Rate");
 		const batteryVoltage = request.headers.get("Battery-Voltage");
 		const fwVersion = request.headers.get("FW-Version");
@@ -792,10 +802,23 @@ export async function POST(request: Request) {
 		}
 
 		const requestBody: LogRequestBody = await request.json();
+
+		// TRMNL API format: { "logs": [] }
+		if (!requestBody.logs || !Array.isArray(requestBody.logs)) {
+			return NextResponse.json(
+				{
+					error: "Invalid request body. Expected { 'logs': [] }",
+				},
+				{ status: 422 },
+			);
+		}
+
+		const logsArray = requestBody.logs;
+
 		logInfo("Processing logs array", {
 			source: "api/log",
 			metadata: {
-				logs: requestBody.log.logs_array,
+				logs_count: logsArray.length,
 				refresh_rate: refreshRate,
 				battery_voltage: batteryVoltage,
 				fw_version: fwVersion,
@@ -806,14 +829,28 @@ export async function POST(request: Request) {
 			},
 		});
 
-		// Process log data
+		// Process log data - convert to internal format
 		const logData: LogData = {
-			logs_array: requestBody.log.logs_array.map((log: LogEntry) => ({
-				...log,
-				timestamp: log.creation_timestamp
-					? new Date(log.creation_timestamp * 1000).toISOString()
-					: new Date().toISOString(),
-			})),
+			logs_array: logsArray.map((log: unknown) => {
+				if (
+					typeof log === "object" &&
+					log !== null &&
+					"creation_timestamp" in log
+				) {
+					const logEntry = log as LogEntry;
+					return {
+						...logEntry,
+						timestamp: logEntry.creation_timestamp
+							? new Date(logEntry.creation_timestamp * 1000).toISOString()
+							: new Date().toISOString(),
+					};
+				}
+				// For simple string logs or other types
+				return {
+					message: String(log),
+					timestamp: new Date().toISOString(),
+				};
+			}),
 		};
 
 		console.log("📦 Processed log data:", JSON.stringify(logData, null, 2));
@@ -860,7 +897,7 @@ export async function POST(request: Request) {
 			source: "api/log",
 			metadata: {
 				device_id: deviceId,
-				log_data: logData,
+				logs_count: logsArray.length,
 				refresh_rate: refreshRate,
 				battery_voltage: batteryVoltage,
 				fw_version: fwVersion,
@@ -870,13 +907,8 @@ export async function POST(request: Request) {
 			},
 		});
 
-		return NextResponse.json(
-			{
-				status: 200,
-				message: "Log received",
-			},
-			{ status: 200 },
-		);
+		// TRMNL API returns 204 No Content on success
+		return new NextResponse(null, { status: 204 });
 	} catch (error) {
 		// The error object already contains the stack trace
 		logError(error as Error, {

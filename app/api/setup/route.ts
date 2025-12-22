@@ -9,6 +9,7 @@ export async function GET(request: Request) {
 	try {
 		const macAddress = request.headers.get("ID")?.toUpperCase();
 		const apiKey = request.headers.get("Access-Token");
+		const model = request.headers.get("Model");
 		const { ready } = await checkDbConnection();
 
 		if (!ready) {
@@ -35,7 +36,11 @@ export async function GET(request: Request) {
 			const error = new Error("Missing ID header");
 			logError(error, {
 				source: "api/setup",
-				metadata: { macAddress: macAddress || null, apiKey: apiKey || null },
+				metadata: {
+					macAddress: macAddress || null,
+					apiKey: apiKey || null,
+					model: model || null,
+				},
 			});
 			return NextResponse.json(
 				{
@@ -44,6 +49,20 @@ export async function GET(request: Request) {
 					friendly_id: null,
 					image_url: null,
 					message: "ID header is required",
+				},
+				{ status: 200 },
+			); // Status 200 for device compatibility
+		}
+
+		// TRMNL API requires Model header
+		if (!model) {
+			return NextResponse.json(
+				{
+					status: 400,
+					api_key: null,
+					friendly_id: null,
+					image_url: null,
+					message: "Model header is required",
 				},
 				{ status: 200 },
 			); // Status 200 for device compatibility

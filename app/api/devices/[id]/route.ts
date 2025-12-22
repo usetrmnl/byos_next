@@ -7,7 +7,7 @@ import type { Device } from "@/lib/types";
 /**
  * GET /api/devices/{id}
  * Get the data of a specific device
- * 
+ *
  * @param id - Device ID (can be numeric ID or friendly_id)
  */
 export async function GET(
@@ -35,10 +35,10 @@ export async function GET(
 		const numericId = Number.parseInt(id, 10);
 		let device = !Number.isNaN(numericId)
 			? await db
-				.selectFrom("devices")
-				.selectAll()
-				.where("id", "=", numericId.toString())
-				.executeTakeFirst()
+					.selectFrom("devices")
+					.selectAll()
+					.where("id", "=", numericId.toString())
+					.executeTakeFirst()
 			: null;
 
 		// If not found by ID, try friendly_id
@@ -73,14 +73,14 @@ export async function GET(
 			rssi: deviceObj.rssi,
 			percent_charged: deviceObj.battery_voltage
 				? Math.min(
-					100,
-					Math.max(
-						0,
-						((Number.parseFloat(deviceObj.battery_voltage.toString()) - 3.0) /
-							(4.2 - 3.0)) *
 						100,
-					),
-				)
+						Math.max(
+							0,
+							((Number.parseFloat(deviceObj.battery_voltage.toString()) - 3.0) /
+								(4.2 - 3.0)) *
+								100,
+						),
+					)
 				: null,
 			wifi_strength: deviceObj.rssi
 				? Math.min(100, Math.max(0, ((deviceObj.rssi + 100) / 70) * 100))

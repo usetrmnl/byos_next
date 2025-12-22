@@ -7,7 +7,7 @@ import type { Device } from "@/lib/types";
 /**
  * GET /api/devices
  * List all devices
- * 
+ *
  * Note: In TRMNL API, this requires bearer auth, but for BYOS we'll return all devices
  * since there's no user authentication system yet. This can be enhanced later.
  */
@@ -47,14 +47,15 @@ export async function GET(request: Request) {
 				rssi: deviceObj.rssi,
 				percent_charged: deviceObj.battery_voltage
 					? Math.min(
-						100,
-						Math.max(
-							0,
-							((Number.parseFloat(deviceObj.battery_voltage.toString()) - 3.0) /
-								(4.2 - 3.0)) *
 							100,
-						),
-					)
+							Math.max(
+								0,
+								((Number.parseFloat(deviceObj.battery_voltage.toString()) -
+									3.0) /
+									(4.2 - 3.0)) *
+									100,
+							),
+						)
 					: null,
 				wifi_strength: deviceObj.rssi
 					? Math.min(100, Math.max(0, ((deviceObj.rssi + 100) / 70) * 100))

@@ -4,7 +4,7 @@ import { proxyToTRMNL } from "@/lib/api/proxy";
 /**
  * GET /api/plugin_settings
  * List my plugin settings
- * 
+ *
  * Proxies to TRMNL API
  */
 export async function GET(request: Request) {
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
 /**
  * POST /api/plugin_settings
  * Create a new plugin setting
- * 
+ *
  * Proxies to TRMNL API
  */
 export async function POST(request: Request) {

@@ -12,7 +12,7 @@ import { parseRequestHeaders } from "../utils";
 /**
  * GET /api/display/current
  * Fetch the current screen for a device
- * 
+ *
  * Headers:
  * - Access-Token (required): Device API Key
  */
@@ -77,16 +77,18 @@ export async function GET(request: Request) {
 
 		// Get grayscale levels (default to 2 if not set)
 		const grayscaleLevels =
-			deviceData.grayscale === 2 || deviceData.grayscale === 4 || deviceData.grayscale === 16
+			deviceData.grayscale === 2 ||
+			deviceData.grayscale === 4 ||
+			deviceData.grayscale === 16
 				? deviceData.grayscale
 				: 2;
 
 		const imageUrl = `${baseUrl}/${screenToDisplay}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
 
 		// Calculate refresh rate from schedule or use default
-		const refreshSchedule = deviceData.refresh_schedule as
-			| { default_refresh_rate: number }
-			| null;
+		const refreshSchedule = deviceData.refresh_schedule as {
+			default_refresh_rate: number;
+		} | null;
 		const refreshRate = refreshSchedule?.default_refresh_rate || 180;
 
 		logInfo("Current display request successful", {

@@ -4,7 +4,7 @@ import { logInfo } from "@/lib/logger";
 /**
  * GET /api/me
  * Get current user data
- * 
+ *
  * Note: BYOS doesn't currently have user authentication.
  * This endpoint returns a stub response for compatibility.
  * In the future, this can be enhanced with actual user authentication.

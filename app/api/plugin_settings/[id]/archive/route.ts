@@ -3,7 +3,7 @@ import { proxyToTRMNL, proxyToTRMNLMultipart } from "@/lib/api/proxy";
 /**
  * GET /api/plugin_settings/{id}/archive
  * Download a plugin setting archive
- * 
+ *
  * Proxies to TRMNL API
  */
 export async function GET(
@@ -19,7 +19,7 @@ export async function GET(
 /**
  * POST /api/plugin_settings/{id}/archive
  * Upload a plugin setting archive
- * 
+ *
  * Proxies to TRMNL API
  */
 export async function POST(
