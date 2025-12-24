@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import screens from "@/app/recipes/screens.json";
+import screens from "@/app/(app)/recipes/screens.json";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import {

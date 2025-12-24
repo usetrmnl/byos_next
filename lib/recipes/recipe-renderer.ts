@@ -3,8 +3,8 @@ import { fromJsx } from "@takumi-rs/helpers/jsx";
 import { ImageResponse } from "next/og";
 import React, { cache, createElement } from "react";
 import { getScreenParams } from "@/app/actions/screens-params";
-import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
-import screens from "@/app/recipes/screens.json";
+import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
+import screens from "@/app/(app)/recipes/screens.json";
 import { getTakumiFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
@@ -151,7 +151,7 @@ export const fetchRecipeConfig = cache((slug: string): RecipeConfig | null => {
 export const fetchRecipeComponent = cache(async (slug: string) => {
 	try {
 		const { default: Component } = await import(
-			`@/app/recipes/screens/${slug}/${slug}.tsx`
+			`@/app/(app)/recipes/screens/${slug}/${slug}.tsx`
 		);
 		return Component;
 	} catch (error) {
@@ -189,7 +189,7 @@ export const fetchRecipeProps = cache(
 
 		try {
 			const { default: fetchDataFunction } = (await import(
-				`@/app/recipes/screens/${slug}/getData.ts`
+				`@/app/(app)/recipes/screens/${slug}/getData.ts`
 			)) as {
 				default: (params?: Record<string, unknown>) => Promise<ComponentProps>;
 			};

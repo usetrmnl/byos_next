@@ -1,5 +1,5 @@
 import { fetchMixups } from "@/app/actions/mixup";
-import screens from "@/app/recipes/screens.json";
+import screens from "@/app/(app)/recipes/screens.json";
 import { MixupPageClient } from "@/components/mixup/mixup-page-client";
 
 export const metadata = {

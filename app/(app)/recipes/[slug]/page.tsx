@@ -8,7 +8,7 @@ import {
 	getScreenParams,
 	updateScreenParams,
 } from "@/app/actions/screens-params";
-import screens from "@/app/recipes/screens.json";
+import screens from "@/app/(app)/recipes/screens.json";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";

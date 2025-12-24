@@ -1,5 +1,5 @@
 import { Edit, Trash2 } from "lucide-react";
-import screens from "@/app/recipes/screens.json";
+import screens from "@/app/(app)/recipes/screens.json";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

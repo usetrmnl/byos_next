@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import tools from "@/app/tools/tools.json";
+import tools from "@/app/(app)/tools/tools.json";
 import { Badge } from "@/components/ui/badge";
 
 // Tool configuration type

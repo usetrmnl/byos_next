@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import screens from "@/app/recipes/screens.json";
+import screens from "@/app/(app)/recipes/screens.json";
 import DevicePageClient from "@/components/device/device-page-client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitData } from "@/lib/getInitData";

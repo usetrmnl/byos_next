@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { cache, Suspense } from "react";
-import tools from "@/app/tools/tools.json";
+import tools from "@/app/(app)/tools/tools.json";
 
 export async function generateMetadata({
 	params,
@@ -32,10 +32,10 @@ const fetchComponent = cache(async (slug: string) => {
 	try {
 		// Use the componentPath from tools.json
 		console.log(
-			`Loading component: @/app/tools/tools-components/${slug}/${slug}.tsx`,
+			`Loading component: @/app/(app)/tools/tools-components/${slug}/${slug}.tsx`,
 		);
 		const { default: Component } = await import(
-			`@/app/tools/tools-components/${slug}/${slug}.tsx`
+			`@/app/(app)/tools/tools-components/${slug}/${slug}.tsx`
 		);
 		return Component;
 	} catch (error) {

@@ -1,5 +1,5 @@
-import screens from "@/app/recipes/screens.json";
-import tools from "@/app/tools/tools.json";
+import screens from "@/app/(app)/recipes/screens.json";
+import tools from "@/app/(app)/tools/tools.json";
 import { ClientMainLayout } from "@/components/client-main-layout";
 import {
 	getInitData,

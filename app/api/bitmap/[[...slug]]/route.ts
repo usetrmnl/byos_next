@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { cache } from "react";
-import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
-import screens from "@/app/recipes/screens.json";
+import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
+import screens from "@/app/(app)/recipes/screens.json";
 import {
 	addDimensionsToProps,
 	buildRecipeElement,
