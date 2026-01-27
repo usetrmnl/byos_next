@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/database/db";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
@@ -12,7 +11,7 @@ import type { Device } from "@/lib/types";
  * @param id - Device ID (can be numeric ID or friendly_id)
  */
 export async function GET(
-	request: Request,
+	_request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const { id } = await params;

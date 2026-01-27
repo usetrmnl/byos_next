@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
-import type { PlaylistItem } from "@/lib/types";
 
 /**
  * GET /api/playlists/items
@@ -11,7 +10,7 @@ import type { PlaylistItem } from "@/lib/types";
  * Note: In TRMNL API, this requires bearer auth, but for BYOS we'll return all items
  * since there's no user authentication system yet.
  */
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
 	const { ready } = await checkDbConnection();
 
 	if (!ready) {

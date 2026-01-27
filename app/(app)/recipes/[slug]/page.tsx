@@ -4,11 +4,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache, Suspense, use } from "react";
+import screens from "@/app/(app)/recipes/screens.json";
 import {
 	getScreenParams,
 	updateScreenParams,
 } from "@/app/actions/screens-params";
-import screens from "@/app/(app)/recipes/screens.json";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";

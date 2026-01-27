@@ -1,6 +1,8 @@
 "use client";
 
-import { authClient } from "@/lib/auth/auth-client";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -11,9 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { authClient } from "@/lib/auth/auth-client";
 
 export default function SignUpPage() {
 	const router = useRouter();
@@ -60,7 +60,7 @@ export default function SignUpPage() {
 				router.push("/");
 				router.refresh();
 			}
-		} catch (err) {
+		} catch (_err) {
 			setError("An unexpected error occurred. Please try again.");
 			setIsLoading(false);
 		}

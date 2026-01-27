@@ -2,9 +2,9 @@ import { Renderer } from "@takumi-rs/core";
 import { fromJsx } from "@takumi-rs/helpers/jsx";
 import { ImageResponse } from "next/og";
 import React, { cache, createElement } from "react";
-import { getScreenParams } from "@/app/actions/screens-params";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
 import screens from "@/app/(app)/recipes/screens.json";
+import { getScreenParams } from "@/app/actions/screens-params";
 import { getTakumiFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 

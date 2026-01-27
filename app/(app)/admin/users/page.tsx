@@ -1,47 +1,5 @@
 "use client";
 
-import { authClient } from "@/lib/auth/auth-client";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
 	Ban,
 	CheckCircle,
@@ -53,8 +11,50 @@ import {
 	Trash2,
 	UserX,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { authClient } from "@/lib/auth/auth-client";
 
 interface User {
 	id: string;
@@ -81,7 +81,7 @@ export default function AdminUsersPage() {
 		role: "user",
 	});
 
-	const fetchUsers = async () => {
+	const fetchUsers = useCallback(async () => {
 		setLoading(true);
 		try {
 			const response = await authClient.admin.listUsers({
@@ -92,16 +92,16 @@ export default function AdminUsersPage() {
 			if (response.data?.users) {
 				setUsers(response.data.users as User[]);
 			}
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to fetch users");
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, []);
 
 	useEffect(() => {
 		fetchUsers();
-	}, []);
+	}, [fetchUsers]);
 
 	const handleCreateUser = async () => {
 		try {
@@ -119,7 +119,7 @@ export default function AdminUsersPage() {
 			setCreateDialogOpen(false);
 			setNewUser({ name: "", email: "", password: "", role: "user" });
 			fetchUsers();
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to create user");
 		}
 	};
@@ -136,7 +136,7 @@ export default function AdminUsersPage() {
 			}
 			toast.success(`Role updated to ${role}`);
 			fetchUsers();
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to update role");
 		}
 	};
@@ -153,7 +153,7 @@ export default function AdminUsersPage() {
 			}
 			toast.success("User banned");
 			fetchUsers();
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to ban user");
 		}
 	};
@@ -169,7 +169,7 @@ export default function AdminUsersPage() {
 			}
 			toast.success("User unbanned");
 			fetchUsers();
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to unban user");
 		}
 	};
@@ -188,7 +188,7 @@ export default function AdminUsersPage() {
 			setDeleteDialogOpen(false);
 			setSelectedUser(null);
 			fetchUsers();
-		} catch (error) {
+		} catch (_error) {
 			toast.error("Failed to delete user");
 		}
 	};

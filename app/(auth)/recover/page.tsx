@@ -1,6 +1,8 @@
 "use client";
 
-import { authClient } from "@/lib/auth/auth-client";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -11,9 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { authClient } from "@/lib/auth/auth-client";
 
 export default function RecoverPage() {
 	const router = useRouter();
@@ -63,7 +63,7 @@ export default function RecoverPage() {
 				"If an account exists with this email, you will receive a password reset link shortly.",
 			);
 			setIsLoading(false);
-		} catch (err) {
+		} catch (_err) {
 			setErrorMessage("An unexpected error occurred. Please try again.");
 			setIsLoading(false);
 		}
@@ -113,7 +113,7 @@ export default function RecoverPage() {
 			setTimeout(() => {
 				router.push("/sign-in");
 			}, 2000);
-		} catch (err) {
+		} catch (_err) {
 			setErrorMessage("An unexpected error occurred. Please try again.");
 			setIsLoading(false);
 		}

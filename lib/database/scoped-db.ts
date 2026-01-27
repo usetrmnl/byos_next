@@ -1,6 +1,6 @@
 import { sql } from "kysely";
-import { db } from "./db";
 import { getCurrentUserId } from "@/lib/auth/get-user";
+import { db } from "./db";
 
 /**
  * The role used for application queries. This role must:

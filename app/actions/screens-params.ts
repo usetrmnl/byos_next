@@ -1,11 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { db } from "@/lib/database/db";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { JsonObject } from "@/lib/database/db.d";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
-import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { RecipeParamDefinitions } from "@/lib/recipes/recipe-renderer";
 
 /**

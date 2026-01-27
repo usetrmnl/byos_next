@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
-import type { Device } from "@/lib/types";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/recipe-renderer";
+import type { Device } from "@/lib/types";
 import { parseRequestHeaders } from "../utils";
 
 /**

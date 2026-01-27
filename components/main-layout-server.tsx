@@ -1,14 +1,14 @@
+import { headers } from "next/headers";
 import screens from "@/app/(app)/recipes/screens.json";
 import tools from "@/app/(app)/tools/tools.json";
 import { ClientMainLayout } from "@/components/client-main-layout";
+import { auth } from "@/lib/auth/auth";
 import {
 	getInitData,
 	preloadDashboard,
 	preloadDevices,
 	preloadSystemLogs,
 } from "@/lib/getInitData";
-import { auth } from "@/lib/auth/auth";
-import { headers } from "next/headers";
 
 const AUTH_ENABLED = process.env.AUTH_ENABLED !== "false";
 

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/database/db";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
@@ -12,7 +11,7 @@ import type { Device } from "@/lib/types";
  * Note: In TRMNL API, this requires bearer auth, but for BYOS we'll return all devices
  * since there's no user authentication system yet. This can be enhanced later.
  */
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
 	const { ready } = await checkDbConnection();
 
 	if (!ready) {

@@ -1,5 +1,4 @@
 import { cache } from "react";
-import { db } from "@/lib/database/db";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { getDbStatus } from "@/lib/database/utils";
 import type {

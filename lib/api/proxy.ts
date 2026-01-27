@@ -42,7 +42,7 @@ export async function proxyToTRMNL(
 	if (options.forwardAuth) {
 		const authHeader = request.headers.get("Authorization");
 		if (authHeader) {
-			headers["Authorization"] = authHeader;
+			headers.Authorization = authHeader;
 		}
 	}
 
@@ -108,7 +108,7 @@ export async function proxyToTRMNLMultipart(
 	if (options.forwardAuth) {
 		const authHeader = request.headers.get("Authorization");
 		if (authHeader) {
-			headers["Authorization"] = authHeader;
+			headers.Authorization = authHeader;
 		}
 	}
 

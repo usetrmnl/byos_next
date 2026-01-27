@@ -1,5 +1,6 @@
 "use server";
 
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import type { MixupLayoutId as DbMixupLayoutId } from "@/lib/database/db.d";
 import {
@@ -7,7 +8,6 @@ import {
 	withUserScopeTransaction,
 } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
-import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { Mixup, MixupSlot } from "@/lib/types";
 
 /**
