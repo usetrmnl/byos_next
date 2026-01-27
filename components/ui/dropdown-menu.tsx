@@ -21,13 +21,13 @@ function DropdownMenuPortal({
 }
 
 function DropdownMenuTrigger({
+	children,
 	...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Trigger>) {
 	return (
-		<DropdownMenuPrimitive.Trigger
-			data-slot="dropdown-menu-trigger"
-			{...props}
-		/>
+		<DropdownMenuPrimitive.Trigger data-slot="dropdown-menu-trigger" {...props}>
+			{children}
+		</DropdownMenuPrimitive.Trigger>
 	);
 }
 
@@ -63,6 +63,7 @@ function DropdownMenuItem({
 	className,
 	inset,
 	variant = "default",
+	children,
 	...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
 	inset?: boolean;
@@ -78,7 +79,9 @@ function DropdownMenuItem({
 				className,
 			)}
 			{...props}
-		/>
+		>
+			{children}
+		</DropdownMenuPrimitive.Item>
 	);
 }
 
@@ -146,6 +149,7 @@ function DropdownMenuRadioItem({
 function DropdownMenuLabel({
 	className,
 	inset,
+	children,
 	...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & {
 	inset?: boolean;
@@ -159,7 +163,9 @@ function DropdownMenuLabel({
 				className,
 			)}
 			{...props}
-		/>
+		>
+			{children}
+		</DropdownMenuPrimitive.Label>
 	);
 }
 

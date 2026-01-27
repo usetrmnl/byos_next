@@ -9,6 +9,7 @@ import {
 	getScreenParams,
 	updateScreenParams,
 } from "@/app/actions/screens-params";
+import { FormatToggle } from "@/components/recipes/format-toggle";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
@@ -257,19 +258,8 @@ export default async function RecipePage({
 								screens.json.
 							</p>
 						)}
-						<div className="mt-4 inline-flex rounded-md border p-1 gap-1">
-							<Link
-								href={`/recipes/${slug}`}
-								className={`px-3 py-1 text-sm rounded ${isPortrait ? "text-muted-foreground" : "bg-primary text-primary-foreground"}`}
-							>
-								Landscape
-							</Link>
-							<Link
-								href={`/recipes/${slug}?format=portrait`}
-								className={`px-3 py-1 text-sm rounded ${isPortrait ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-							>
-								Portrait
-							</Link>
+						<div className="mt-4">
+							<FormatToggle slug={slug} isPortrait={isPortrait} />
 						</div>
 					</Suspense>
 

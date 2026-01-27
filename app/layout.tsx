@@ -11,8 +11,12 @@ const META_THEME_COLORS = {
 };
 
 export const metadata: Metadata = {
-	title: "TRMNL Next.js",
+	title: "TRMNL BYOS",
 	description: "Device management dashboard",
+	icons: {
+		icon: "/trmnl-icons/trmnl-icon--black.svg",
+		apple: "/trmnl-icons/trmnl-icon--black.svg",
+	},
 };
 
 export const viewport: Viewport = {
