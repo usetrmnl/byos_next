@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -16,6 +16,14 @@ import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth/auth-client";
 
 export default function RecoverPage() {
+	return (
+		<Suspense>
+			<RecoverPageContent />
+		</Suspense>
+	);
+}
+
+function RecoverPageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const token = searchParams.get("token");
