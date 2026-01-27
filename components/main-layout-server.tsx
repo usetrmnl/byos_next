@@ -7,6 +7,10 @@ import {
 	preloadDevices,
 	preloadSystemLogs,
 } from "@/lib/getInitData";
+import { auth } from "@/lib/auth/auth";
+import { headers } from "next/headers";
+
+const AUTH_ENABLED = process.env.AUTH_ENABLED !== "false";
 
 /**
  * Server Component that handles all data fetching and passes it to client components.
@@ -25,6 +29,27 @@ export default async function MainLayout({
 	// Centralized data fetching using getInitData
 	// This is cached and shared across all components using React's cache() mechanism
 	const { devices, dbStatus } = await getInitData();
+
+	// Fetch session for user info (only if auth is enabled)
+	let user: {
+		name: string;
+		email: string;
+		image?: string | null;
+		role?: string;
+	} | null = null;
+	if (AUTH_ENABLED) {
+		const session = await auth.api.getSession({
+			headers: await headers(),
+		});
+		if (session?.user) {
+			user = {
+				name: session.user.name,
+				email: session.user.email,
+				image: session.user.image,
+				role: (session.user as { role?: string }).role,
+			};
+		}
+	}
 
 	// Start preloading other routes' data - this improves navigation performance
 	// The data will be cached and immediately available when the user navigates
@@ -53,6 +78,8 @@ export default async function MainLayout({
 			dbStatus={dbStatus}
 			recipesComponents={recipesComponents}
 			toolsComponents={toolsComponents}
+			user={user}
+			authEnabled={AUTH_ENABLED}
 		>
 			{children}
 		</ClientMainLayout>

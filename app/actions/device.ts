@@ -1,6 +1,7 @@
 "use server";
 
 import { db } from "@/lib/database/db";
+import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import type { Device, Log } from "@/lib/types";
 
@@ -17,11 +18,13 @@ export async function fetchDeviceByFriendlyId(
 		return null;
 	}
 
-	const device = await db
-		.selectFrom("devices")
-		.selectAll()
-		.where("friendly_id", "=", friendlyId)
-		.executeTakeFirst();
+	const device = await withUserScope((scopedDb) =>
+		scopedDb
+			.selectFrom("devices")
+			.selectAll()
+			.where("friendly_id", "=", friendlyId)
+			.executeTakeFirst(),
+	);
 
 	if (!device) {
 		return null;
@@ -199,11 +202,13 @@ export async function updateDevice(
 	updateData.updated_at = new Date().toISOString();
 
 	try {
-		await db
-			.updateTable("devices")
-			.set(updateData)
-			.where("id", "=", String(device.id))
-			.execute();
+		await withUserScope((scopedDb) =>
+			scopedDb
+				.updateTable("devices")
+				.set(updateData)
+				.where("id", "=", String(device.id))
+				.execute(),
+		);
 
 		return { success: true };
 	} catch (error) {

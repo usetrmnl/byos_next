@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
+import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
 import type { Device } from "@/lib/types";
@@ -27,11 +28,13 @@ export async function GET(request: Request) {
 	}
 
 	try {
-		const devices = await db
-			.selectFrom("devices")
-			.selectAll()
-			.orderBy("created_at", "desc")
-			.execute();
+		const devices = await withUserScope((scopedDb) =>
+			scopedDb
+				.selectFrom("devices")
+				.selectAll()
+				.orderBy("created_at", "desc")
+				.execute(),
+		);
 
 		// Transform devices to match TRMNL API format
 		const deviceData = devices.map((device) => {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
+import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
 import type { Device } from "@/lib/types";
@@ -31,24 +32,26 @@ export async function GET(
 	}
 
 	try {
-		// Try to find by numeric ID first
+		// Try to find by numeric ID first, then by friendly_id
+		// RLS handles user filtering automatically
 		const numericId = Number.parseInt(id, 10);
-		let device = !Number.isNaN(numericId)
-			? await db
+
+		const device = await withUserScope(async (scopedDb) => {
+			if (!Number.isNaN(numericId)) {
+				const byId = await scopedDb
 					.selectFrom("devices")
 					.selectAll()
 					.where("id", "=", numericId.toString())
-					.executeTakeFirst()
-			: null;
+					.executeTakeFirst();
+				if (byId) return byId;
+			}
 
-		// If not found by ID, try friendly_id
-		if (!device) {
-			device = await db
+			return scopedDb
 				.selectFrom("devices")
 				.selectAll()
 				.where("friendly_id", "=", id)
 				.executeTakeFirst();
-		}
+		});
 
 		if (!device) {
 			return NextResponse.json(

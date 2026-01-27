@@ -1,15 +1,33 @@
 "use client";
 
-import { Github, Menu, Moon, Sun, X } from "lucide-react";
+import {
+	Github,
+	LogOut,
+	Menu,
+	Moon,
+	Settings,
+	Sun,
+	User,
+	X,
+} from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import type React from "react";
 import { Suspense, useRef, useState } from "react";
 import type { ComponentConfig } from "@/components/client-sidebar";
 import { ClientSidebar } from "@/components/client-sidebar";
 import { Button } from "@/components/ui/button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
+import { authClient } from "@/lib/auth/auth-client";
 import type { Device } from "@/lib/types";
 import packageJson from "@/package.json";
 
@@ -113,6 +131,13 @@ interface ClientMainLayoutProps {
 	};
 	recipesComponents: [string, ComponentConfig][];
 	toolsComponents: [string, ComponentConfig][];
+	user: {
+		name: string;
+		email: string;
+		image?: string | null;
+		role?: string;
+	} | null;
+	authEnabled: boolean;
 }
 
 export function ClientMainLayout({
@@ -120,8 +145,11 @@ export function ClientMainLayout({
 	devices,
 	recipesComponents,
 	toolsComponents,
+	user,
+	authEnabled,
 }: ClientMainLayoutProps) {
 	const pathname = usePathname();
+	const router = useRouter();
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 	const sidebarRef = useRef<HTMLDivElement>(null);
 	const mainRef = useRef<HTMLDivElement>(null);
@@ -130,6 +158,13 @@ export function ClientMainLayout({
 	// Toggle theme
 	const toggleTheme = () => {
 		setTheme(theme === "dark" ? "light" : "dark");
+	};
+
+	// Handle sign out
+	const handleSignOut = async () => {
+		await authClient.signOut();
+		router.push("/sign-in");
+		router.refresh();
 	};
 
 	// Close sidebar when clicking outside
@@ -184,6 +219,41 @@ export function ClientMainLayout({
 								<Github className="size-5" />
 							</Link>
 						</Button>
+						{authEnabled && user && (
+							<DropdownMenu>
+								<DropdownMenuTrigger asChild>
+									<Button variant="ghost" size="icon">
+										<User className="size-5" />
+										<span className="sr-only">User menu</span>
+									</Button>
+								</DropdownMenuTrigger>
+								<DropdownMenuContent align="end" className="w-56">
+									<DropdownMenuLabel className="font-normal">
+										<div className="flex flex-col space-y-1">
+											<p className="text-sm font-medium leading-none">
+												{user.name}
+											</p>
+											<p className="text-xs leading-none text-muted-foreground">
+												{user.email}
+											</p>
+										</div>
+									</DropdownMenuLabel>
+									<DropdownMenuSeparator />
+									{user.role === "admin" && (
+										<DropdownMenuItem asChild>
+											<Link href="/admin/users">
+												<Settings className="mr-2 size-4" />
+												Manage users
+											</Link>
+										</DropdownMenuItem>
+									)}
+									<DropdownMenuItem onClick={handleSignOut}>
+										<LogOut className="mr-2 size-4" />
+										Sign out
+									</DropdownMenuItem>
+								</DropdownMenuContent>
+							</DropdownMenu>
+						)}
 					</div>
 				</div>
 			</header>

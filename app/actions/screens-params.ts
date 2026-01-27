@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/database/db";
 import type { JsonObject } from "@/lib/database/db.d";
+import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { RecipeParamDefinitions } from "@/lib/recipes/recipe-renderer";
 
 /**
@@ -37,23 +39,27 @@ export async function updateScreenParams(
 	}
 
 	const now = new Date().toISOString();
+	const userId = await getCurrentUserId();
 
 	try {
-		await db
-			.insertInto("screen_configs")
-			.values({
-				screen_id: slug,
-				params: sanitizedParams as JsonObject,
-				created_at: now,
-				updated_at: now,
-			})
-			.onConflict((oc) =>
-				oc.column("screen_id").doUpdateSet({
+		await withUserScope((scopedDb) =>
+			scopedDb
+				.insertInto("screen_configs")
+				.values({
+					screen_id: slug,
 					params: sanitizedParams as JsonObject,
+					created_at: now,
 					updated_at: now,
-				}),
-			)
-			.execute();
+					user_id: userId,
+				})
+				.onConflict((oc) =>
+					oc.column("screen_id").doUpdateSet({
+						params: sanitizedParams as JsonObject,
+						updated_at: now,
+					}),
+				)
+				.execute(),
+		);
 		revalidatePath(`/recipes/${slug}`);
 		revalidatePath(`/api/bitmap/${slug}.bmp`);
 		return { success: true };
@@ -89,11 +95,13 @@ export async function getScreenParams(
 		return params;
 	}
 
-	const row = await db
-		.selectFrom("screen_configs")
-		.select(["params"])
-		.where("screen_id", "=", slug)
-		.executeTakeFirst();
+	const row = await withUserScope((scopedDb) =>
+		scopedDb
+			.selectFrom("screen_configs")
+			.select(["params"])
+			.where("screen_id", "=", slug)
+			.executeTakeFirst(),
+	);
 
 	const rawParams = row?.params ?? {};
 	const parsedParams =

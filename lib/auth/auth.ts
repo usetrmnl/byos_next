@@ -1,11 +1,16 @@
 import { betterAuth } from "better-auth";
+import { admin } from "better-auth/plugins";
 import { Pool } from "pg";
 import { sendEmail } from "@/lib/email";
 
+const pool = new Pool({
+	connectionString: process.env.DATABASE_URL,
+});
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+
 export const auth = betterAuth({
-	database: new Pool({
-		connectionString: process.env.DATABASE_URL,
-	}),
+	database: pool,
 	emailAndPassword: {
 		enabled: true,
 		sendResetPassword: async ({ user, url }) => {
@@ -25,6 +30,30 @@ export const auth = betterAuth({
 					</div>
 				`,
 			});
+		},
+	},
+	plugins: [
+		admin({
+			defaultRole: "user",
+			adminRoles: ["admin"],
+		}),
+	],
+	databaseHooks: {
+		user: {
+			create: {
+				before: async (user) => {
+					// Auto-assign admin role if email matches ADMIN_EMAIL
+					if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
+						return {
+							data: {
+								...user,
+								role: "admin",
+							},
+						};
+					}
+					return { data: user };
+				},
+			},
 		},
 	},
 });
