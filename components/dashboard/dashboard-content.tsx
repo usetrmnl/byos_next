@@ -71,7 +71,7 @@ export const DashboardContent = ({
 	return (
 		<>
 			<div className="grid gap-2 md:gap-4 md:grid-cols-2">
-				<Card>
+				<Card className="transition-shadow hover:shadow-md hover:border-border/80">
 					<CardHeader>
 						<CardTitle>Latest Screen</CardTitle>
 						<CardDescription suppressHydrationWarning>
@@ -121,7 +121,7 @@ export const DashboardContent = ({
 				</Card>
 
 				<div className="grid grid-rows-2 gap-2 md:gap-4">
-					<Card>
+					<Card className="transition-shadow hover:shadow-md hover:border-border/80">
 						<CardHeader>
 							<CardTitle>System Information</CardTitle>
 						</CardHeader>
@@ -148,7 +148,7 @@ export const DashboardContent = ({
 							</div>
 						</CardContent>
 					</Card>
-					<Card>
+					<Card className="transition-shadow hover:shadow-md hover:border-border/80">
 						<CardHeader>
 							<CardTitle>System Status</CardTitle>
 							<CardDescription>
@@ -235,7 +235,7 @@ export const DashboardContent = ({
 				</div>
 			</div>
 
-			<Card className="mt-2 md:mt-4 gap-4">
+			<Card className="mt-2 md:mt-4 gap-4 transition-shadow hover:shadow-md hover:border-border/80">
 				<CardHeader>
 					<CardTitle>Recent System Logs</CardTitle>
 					<CardDescription>

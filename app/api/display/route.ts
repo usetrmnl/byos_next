@@ -1,3 +1,4 @@
+import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
@@ -34,6 +35,17 @@ function getGrayscaleLevels(grayscale: number | null | undefined): number {
 
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
+
+	// TRMNL API requires Access-Token header
+	if (!headers.apiKey) {
+		return NextResponse.json(
+			{
+				status: 401,
+				error: "Access-Token header is required",
+			},
+			{ status: 401 },
+		);
+	}
 
 	// log all headers in console for debugging
 	console.table(headers);

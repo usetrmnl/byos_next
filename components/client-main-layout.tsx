@@ -1,108 +1,37 @@
 "use client";
 
-import { Github, Menu, Moon, Sun, X } from "lucide-react";
+import { Github, Moon, Search, Sun } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import type React from "react";
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useState } from "react";
+import { AppSidebar } from "@/components/app-sidebar";
 import type { ComponentConfig } from "@/components/client-sidebar";
-import { ClientSidebar } from "@/components/client-sidebar";
+import { CommandPalette } from "@/components/command-palette";
 import { Button } from "@/components/ui/button";
+import {
+	SidebarInset,
+	SidebarProvider,
+	SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Device } from "@/lib/types";
-import packageJson from "@/package.json";
 
-// Main navigation skeleton for the entire sidebar
-const SidebarSkeletonFallback = () => (
-	<div className="p-2 space-y-2">
-		{/* Overview button */}
-		<div className="w-full h-9 flex items-center">
-			<Skeleton className="size-4 mr-2 rounded-md" />
-			<Skeleton className="h-5 w-24 rounded-md" />
-		</div>
-
-		{/* Devices section */}
-		<div className="w-full h-9 flex items-center justify-between">
-			<div className="flex items-center">
-				<Skeleton className="size-4 mr-2 rounded-md" />
-				<Skeleton className="h-5 w-20 rounded-md" />
-			</div>
-			<Skeleton className="size-4 rounded-md" />
-		</div>
-
-		{/* Recipes section */}
-		<div className="w-full h-9 flex items-center justify-between">
-			<div className="flex items-center">
-				<Skeleton className="size-4 mr-2 rounded-md" />
-				<Skeleton className="h-5 w-24 rounded-md" />
-			</div>
-			<Skeleton className="size-4 rounded-md" />
-		</div>
-
-		{/* System Log button */}
-		<div className="w-full h-9 flex items-center">
-			<Skeleton className="size-4 mr-2 rounded-md" />
-			<Skeleton className="h-5 w-28 rounded-md" />
-		</div>
-
-		{/* Maintenance button */}
-		<div className="w-full h-9 flex items-center">
-			<Skeleton className="size-4 mr-2 rounded-md" />
-			<Skeleton className="h-5 w-28 rounded-md" />
-		</div>
-	</div>
-);
-
-// Main Content Fallback
-const MainContentFallback = () => (
-	<div className="p-6 space-y-6">
-		{/* Header section */}
-		<div className="flex justify-between items-center">
-			<Skeleton className="h-8 w-64 rounded-md" />
-			<div className="flex space-x-3">
-				<Skeleton className="h-9 w-24 rounded-md" />
-				<Skeleton className="h-9 w-24 rounded-md" />
-			</div>
-		</div>
-
-		{/* Content cards */}
-		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-			{[1, 2, 3].map((i) => (
-				<div key={i} className="border rounded-lg p-4 space-y-3">
-					<div className="flex justify-between items-center">
-						<Skeleton className="h-6 w-32 rounded-md" />
-						<Skeleton className="h-4 w-4 rounded-full" />
-					</div>
-					<Skeleton className="h-4 w-full rounded-md" />
-					<Skeleton className="h-4 w-3/4 rounded-md" />
-					<Skeleton className="h-16 w-full rounded-md" />
-				</div>
-			))}
-		</div>
-
-		{/* Table or list section */}
-		<div className="border rounded-lg p-4 space-y-4">
-			<Skeleton className="h-7 w-48 rounded-md" />
-			<div className="space-y-3">
+// Loading skeleton for main content
+function MainContentSkeleton() {
+	return (
+		<div className="p-6 space-y-6">
+			<Skeleton className="h-8 w-64" />
+			<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 				{[1, 2, 3, 4].map((i) => (
-					<div key={i} className="flex items-center justify-between py-2">
-						<div className="flex items-center space-x-3">
-							<Skeleton className="h-10 w-10 rounded-full" />
-							<div className="space-y-2">
-								<Skeleton className="h-4 w-32 rounded-md" />
-								<Skeleton className="h-3 w-24 rounded-md" />
-							</div>
-						</div>
-						<Skeleton className="h-8 w-24 rounded-md" />
-					</div>
+					<Skeleton key={i} className="h-32 rounded-lg" />
 				))}
 			</div>
 		</div>
-	</div>
-);
+	);
+}
 
-// Define the props interface with direct data instead of promises
 interface ClientMainLayoutProps {
 	children: React.ReactNode;
 	devices: Device[];
@@ -113,6 +42,13 @@ interface ClientMainLayoutProps {
 	};
 	recipesComponents: [string, ComponentConfig][];
 	toolsComponents: [string, ComponentConfig][];
+	user: {
+		name: string;
+		email: string;
+		image?: string | null;
+		role?: string;
+	} | null;
+	authEnabled: boolean;
 }
 
 export function ClientMainLayout({
@@ -120,148 +56,81 @@ export function ClientMainLayout({
 	devices,
 	recipesComponents,
 	toolsComponents,
+	user,
+	authEnabled,
 }: ClientMainLayoutProps) {
 	const pathname = usePathname();
-	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-	const sidebarRef = useRef<HTMLDivElement>(null);
-	const mainRef = useRef<HTMLDivElement>(null);
+	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 	const { theme, setTheme } = useTheme();
 
-	// Toggle theme
-	const toggleTheme = () => {
-		setTheme(theme === "dark" ? "light" : "dark");
-	};
-
-	// Close sidebar when clicking outside
-	const handleSidebarToggle = () => {
-		setIsSidebarOpen(!isSidebarOpen);
-	};
-
-	const handleSidebarClose = () => {
-		setIsSidebarOpen(false);
-	};
+	const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
 	return (
-		<div className="min-h-screen flex flex-col">
-			<header className="border-b bg-background">
-				<div className="flex items-center px-0 md:px-5">
+		<SidebarProvider>
+			{/* Sidebar */}
+			<AppSidebar
+				devices={devices}
+				currentPath={pathname}
+				recipesComponents={recipesComponents}
+				toolsComponents={toolsComponents}
+				user={user}
+				authEnabled={authEnabled}
+			/>
+
+			{/* Main area */}
+			<SidebarInset>
+				{/* Header */}
+				<header className="flex h-14 items-center gap-2 border-b px-4">
+					<SidebarTrigger />
+
+					{/* Search */}
 					<Button
-						variant="ghost"
-						size="icon"
-						className="md:hidden"
-						onClick={handleSidebarToggle}
+						variant="outline"
+						size="sm"
+						className="ml-4 hidden md:flex gap-2 text-muted-foreground"
+						onClick={() => setCommandPaletteOpen(true)}
 					>
-						<Menu className="size-5" />
-						<span className="sr-only">Toggle Menu</span>
+						<Search className="h-4 w-4" />
+						<span>Search...</span>
+						<kbd className="rounded border bg-muted px-1.5 text-[10px] font-mono">
+							⌘K
+						</kbd>
 					</Button>
-					<div className="flex items-center gap-2">
-						<h1 className="text-base md:text-lg font-semibold">byos-nextjs</h1>
-						<span className="text-red-500 font-mono font-bold text-xs -ml-2 -mt-4 align-text-top">
-							beta
-						</span>
-						<h1 className="text-base md:text-lg font-semibold">
-							for{" "}
-							<Link
-								href="https://usetrmnl.com"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								TRMNL
-							</Link>
-						</h1>
-					</div>
-					<div className="ml-auto flex items-center space-x-0 md:space-x-2">
+
+					{/* Right actions */}
+					<div className="ml-auto flex items-center gap-1">
 						<Button variant="ghost" size="icon" onClick={toggleTheme}>
-							<Sun className="size-5 dark:hidden" />{" "}
-							<Moon className="size-5 hidden dark:block" />
+							<Sun className="size-5 dark:hidden" />
+							<Moon className="hidden size-5 dark:block" />
 						</Button>
+
 						<Button variant="ghost" size="icon" asChild>
 							<Link
 								href="https://github.com/usetrmnl/byos_next"
 								target="_blank"
-								rel="noopener noreferrer"
 							>
 								<Github className="size-5" />
 							</Link>
 						</Button>
 					</div>
-				</div>
-			</header>
-			<div className="flex flex-1">
-				<aside
-					ref={sidebarRef}
-					className={`${
-						isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-					} fixed inset-y-0 z-50 flex w-56 flex-col border-r bg-background transition-transform md:translate-x-0 md:relative`}
-				>
-					<div className="md:hidden flex justify-end p-2">
-						<Button variant="ghost" size="icon" onClick={handleSidebarClose}>
-							<X className="size-5" />
-						</Button>
-					</div>
-					<div className="flex-1">
-						<Suspense fallback={<SidebarSkeletonFallback />}>
-							<ClientSidebar
-								devices={devices}
-								currentPath={pathname}
-								recipesComponents={recipesComponents}
-								toolsComponents={toolsComponents}
-							/>
-						</Suspense>
-					</div>
-				</aside>
-				<main ref={mainRef} className="w-full max-w-6xl p-2 md:p-4 lg:p-6">
-					<Suspense fallback={<MainContentFallback />}>{children}</Suspense>
-				</main>
-			</div>
-			<footer className="border-t bg-background py-2 px-0 md:px-5 text-sm text-muted-foreground">
-				<div className="flex flex-col md:flex-row justify-between items-center">
-					<div className="flex items-center gap-2">
-						<span className="text-base md:text-lg font-semibold">
-							byos-nextjs
-						</span>
-						<h1 className="text-base md:text-lg font-semibold">
-							for{" "}
-							<Link
-								href="https://usetrmnl.com"
-								target="_blank"
-								rel="noopener noreferrer"
-								className="underline hover:text-foreground"
-							>
-								TRMNL
-							</Link>
-						</h1>
+				</header>
 
-						<span className="text-muted-foreground font-mono text-base md:text-lg">
-							v{packageJson.version}
-						</span>
-						<span className="text-red-500 font-mono font-bold text-sm md:text-base -ml-2 -mt-4 align-text-top">
-							beta
-						</span>
+				{/* Main content */}
+				<main className="flex-1 overflow-auto">
+					<div className="mx-auto max-w-6xl p-4 md:p-6">
+						<Suspense fallback={<MainContentSkeleton />}>{children}</Suspense>
 					</div>
-					<div className="text-xs md:text-sm">
-						<span>Found an issue? </span>
-						<Link
-							href="https://github.com/usetrmnl/byos_next/issues"
-							target="_blank"
-							rel="noopener noreferrer"
-							className="underline hover:text-foreground"
-						>
-							Open a GitHub issue
-						</Link>
-						<span>
-							{" "}
-							or{" "}
-							<Link
-								href={`mailto:manglekuo@gmail.com?subject=BYOS%20Next.js%20v${packageJson.version}%20Feedback`}
-								className="underline hover:text-foreground"
-							>
-								email with screenshots
-							</Link>
-						</span>
-					</div>
-				</div>
-			</footer>
-		</div>
+				</main>
+			</SidebarInset>
+
+			{/* Command palette */}
+			<CommandPalette
+				open={commandPaletteOpen}
+				onOpenChange={setCommandPaletteOpen}
+				devices={devices}
+				recipesComponents={recipesComponents}
+				toolsComponents={toolsComponents}
+			/>
+		</SidebarProvider>
 	);
 }

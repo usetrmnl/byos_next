@@ -13,15 +13,18 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, Suspense, useCallback, useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusIndicator } from "@/components/ui/status-indicator";
 import type { Device } from "@/lib/types";
+import packageJson from "@/package.json";
 import { getDeviceStatus } from "@/utils/helpers";
 
 // Define interfaces for screens and tools JSON
@@ -303,9 +306,14 @@ const DevicesSection = memo(
 						variant="ghost"
 						className="w-full justify-between text-sm h-9"
 					>
-						<div className="flex items-center">
+						<div className="flex items-center gap-2">
 							<Monitor className="mr-2 size-4" />
 							Devices
+							{devices.length > 0 && (
+								<Badge variant="secondary" className="h-5 px-1.5 text-xs">
+									{devices.length}
+								</Badge>
+							)}
 						</div>
 						{isOpen ? (
 							<ChevronDown className="size-4" />
@@ -465,59 +473,61 @@ export function ClientSidebar({
 	currentPath,
 }: ClientSidebarProps) {
 	return (
-		<nav className="p-2 space-y-1">
-			<NavLink
-				href="/"
-				currentPath={currentPath}
-				icon={<Server className="mr-2 size-4" />}
-				label="Overview"
-			/>
+		<div className="flex flex-col h-full">
+			<nav className="flex-1 p-2 space-y-1">
+				<NavLink
+					href="/"
+					currentPath={currentPath}
+					icon={<Server className="mr-2 size-4" />}
+					label="Overview"
+				/>
 
-			<DevicesSection
-				devices={devices}
-				currentPath={currentPath}
-				initialOpen={true}
-			/>
+				<DevicesSection
+					devices={devices}
+					currentPath={currentPath}
+					initialOpen={true}
+				/>
 
-			<RecipesSection
-				components={recipesComponents}
-				currentPath={currentPath}
-				initialOpen={currentPath.startsWith("/recipes/")}
-			/>
+				<RecipesSection
+					components={recipesComponents}
+					currentPath={currentPath}
+					initialOpen={currentPath.startsWith("/recipes/")}
+				/>
 
-			<NavLink
-				href="/playlists"
-				currentPath={currentPath}
-				icon={<ListRestart className="mr-2 size-4" />}
-				label="Playlists"
-			/>
+				<NavLink
+					href="/playlists"
+					currentPath={currentPath}
+					icon={<ListRestart className="mr-2 size-4" />}
+					label="Playlists"
+				/>
 
-			<NavLink
-				href="/mixup"
-				currentPath={currentPath}
-				icon={<PanelsTopLeft className="mr-2 size-4" />}
-				label="Mixup"
-			/>
+				<NavLink
+					href="/mixup"
+					currentPath={currentPath}
+					icon={<PanelsTopLeft className="mr-2 size-4" />}
+					label="Mixup"
+				/>
 
-			<ToolsSection
-				toolsComponents={toolsComponents}
-				currentPath={currentPath}
-				initialOpen={currentPath.startsWith("/tools/")}
-			/>
+				<ToolsSection
+					toolsComponents={toolsComponents}
+					currentPath={currentPath}
+					initialOpen={currentPath.startsWith("/tools/")}
+				/>
 
-			<NavLink
-				href="/system-logs"
-				currentPath={currentPath}
-				icon={<Server className="mr-2 size-4" />}
-				label="System Log"
-			/>
+				<NavLink
+					href="/system-logs"
+					currentPath={currentPath}
+					icon={<Server className="mr-2 size-4" />}
+					label="System Log"
+				/>
+			</nav>
 
-			{/* <NavLink
-				href="/maintenance"
-				currentPath={currentPath}
-				icon={<Wrench className="mr-2 size-4" />}
-				label="Maintenance"
-			/> */}
-		</nav>
+			<Separator />
+			<div className="p-3">
+				<p className="text-xs text-muted-foreground font-mono">
+					v{packageJson.version}
+				</p>
+			</div>
+		</div>
 	);
 }

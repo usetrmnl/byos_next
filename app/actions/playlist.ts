@@ -1,6 +1,11 @@
 "use server";
 
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
+import {
+	withUserScope,
+	withUserScopeTransaction,
+} from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import type { Playlist, PlaylistItem } from "@/lib/types";
 
@@ -15,11 +20,13 @@ export async function fetchPlaylists(): Promise<Playlist[]> {
 		return [];
 	}
 
-	const playlists = await db
-		.selectFrom("playlists")
-		.selectAll()
-		.orderBy("created_at", "desc")
-		.execute();
+	const playlists = await withUserScope((scopedDb) =>
+		scopedDb
+			.selectFrom("playlists")
+			.selectAll()
+			.orderBy("created_at", "desc")
+			.execute(),
+	);
 
 	return playlists as unknown as Playlist[];
 }
@@ -38,19 +45,21 @@ export async function fetchPlaylistWithItems(playlistId: string): Promise<{
 		return { playlist: null, items: [] };
 	}
 
-	const [playlist, items] = await Promise.all([
-		db
-			.selectFrom("playlists")
-			.selectAll()
-			.where("id", "=", playlistId)
-			.executeTakeFirst(),
-		db
-			.selectFrom("playlist_items")
-			.selectAll()
-			.where("playlist_id", "=", playlistId)
-			.orderBy("order_index", "asc")
-			.execute(),
-	]);
+	const [playlist, items] = await withUserScope((scopedDb) =>
+		Promise.all([
+			scopedDb
+				.selectFrom("playlists")
+				.selectAll()
+				.where("id", "=", playlistId)
+				.executeTakeFirst(),
+			scopedDb
+				.selectFrom("playlist_items")
+				.selectAll()
+				.where("playlist_id", "=", playlistId)
+				.orderBy("order_index", "asc")
+				.execute(),
+		]),
+	);
 
 	if (!playlist) {
 		return { playlist: null, items: [] };
@@ -77,10 +86,12 @@ export async function createPlaylist(name: string): Promise<{
 		return { success: false, error: "Database client not initialized" };
 	}
 
+	const userId = await getCurrentUserId();
+
 	try {
 		const playlist = await db
 			.insertInto("playlists")
-			.values({ name })
+			.values({ name, user_id: userId })
 			.returningAll()
 			.executeTakeFirst();
 
@@ -109,11 +120,13 @@ export async function updatePlaylist(
 	}
 
 	try {
-		await db
-			.updateTable("playlists")
-			.set({ name, updated_at: new Date().toISOString() })
-			.where("id", "=", playlistId)
-			.execute();
+		await withUserScope((scopedDb) =>
+			scopedDb
+				.updateTable("playlists")
+				.set({ name, updated_at: new Date().toISOString() })
+				.where("id", "=", playlistId)
+				.execute(),
+		);
 
 		return { success: true };
 	} catch (error) {
@@ -140,7 +153,9 @@ export async function deletePlaylist(playlistId: string): Promise<{
 	}
 
 	try {
-		await db.deleteFrom("playlists").where("id", "=", playlistId).execute();
+		await withUserScope((scopedDb) =>
+			scopedDb.deleteFrom("playlists").where("id", "=", playlistId).execute(),
+		);
 
 		return { success: true };
 	} catch (error) {
@@ -279,13 +294,15 @@ export async function savePlaylistWithItems(playlistData: {
 		return { success: false, error: "Database client not initialized" };
 	}
 
+	const userId = await getCurrentUserId();
+
 	try {
-		return await db.transaction().execute(async (trx) => {
+		return await withUserScopeTransaction(async (trx) => {
 			let playlistId: string;
 
 			// Create or update playlist
 			if (playlistData.id) {
-				// Update existing playlist
+				// Update existing playlist (RLS handles user check)
 				await trx
 					.updateTable("playlists")
 					.set({
@@ -303,10 +320,10 @@ export async function savePlaylistWithItems(playlistData: {
 					.where("playlist_id", "=", playlistId)
 					.execute();
 			} else {
-				// Create new playlist
+				// Create new playlist (include user_id for new records)
 				const newPlaylist = await trx
 					.insertInto("playlists")
-					.values({ name: playlistData.name })
+					.values({ name: playlistData.name, user_id: userId })
 					.returning("id")
 					.executeTakeFirstOrThrow();
 

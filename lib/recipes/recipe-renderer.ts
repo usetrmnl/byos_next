@@ -1,10 +1,11 @@
-import { Renderer } from "@takumi-rs/core";
+import { extractResourceUrls, Renderer } from "@takumi-rs/core";
+import { fetchResources } from "@takumi-rs/helpers";
 import { fromJsx } from "@takumi-rs/helpers/jsx";
 import { ImageResponse } from "next/og";
 import React, { cache, createElement } from "react";
+import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
+import screens from "@/app/(app)/recipes/screens.json";
 import { getScreenParams } from "@/app/actions/screens-params";
-import NotFoundScreen from "@/app/recipes/screens/not-found/not-found";
-import screens from "@/app/recipes/screens.json";
 import { getTakumiFonts } from "@/lib/fonts";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
@@ -94,15 +95,6 @@ const rendererFonts = getTakumiFonts();
 
 const takumiRenderer = new Renderer({ fonts: rendererFonts });
 
-async function localFetch(url: string) {
-	return {
-		arrayBuffer: () =>
-			fetch(url)
-				.then((res) => res.arrayBuffer())
-				.then((ab) => Buffer.from(ab)),
-	};
-}
-
 /**
  * Render React element using Takumi
  */
@@ -112,11 +104,16 @@ async function renderWithTakumi(
 	height: number,
 ): Promise<Buffer> {
 	const node = await fromJsx(element);
+
+	// Extract and fetch external image resources
+	const urls = extractResourceUrls(node);
+	const fetchedResources = urls.length > 0 ? await fetchResources(urls) : [];
+
 	const png = await takumiRenderer.render(node, {
 		width,
 		height,
 		format: "png",
-		fetch: localFetch,
+		fetchedResources,
 	});
 	return Buffer.from(png);
 }
@@ -151,7 +148,7 @@ export const fetchRecipeConfig = cache((slug: string): RecipeConfig | null => {
 export const fetchRecipeComponent = cache(async (slug: string) => {
 	try {
 		const { default: Component } = await import(
-			`@/app/recipes/screens/${slug}/${slug}.tsx`
+			`@/app/(app)/recipes/screens/${slug}/${slug}.tsx`
 		);
 		return Component;
 	} catch (error) {
@@ -189,7 +186,7 @@ export const fetchRecipeProps = cache(
 
 		try {
 			const { default: fetchDataFunction } = (await import(
-				`@/app/recipes/screens/${slug}/getData.ts`
+				`@/app/(app)/recipes/screens/${slug}/getData.ts`
 			)) as {
 				default: (params?: Record<string, unknown>) => Promise<ComponentProps>;
 			};

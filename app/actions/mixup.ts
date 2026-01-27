@@ -1,7 +1,12 @@
 "use server";
 
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import type { MixupLayoutId as DbMixupLayoutId } from "@/lib/database/db.d";
+import {
+	withUserScope,
+	withUserScopeTransaction,
+} from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import type { Mixup, MixupSlot } from "@/lib/types";
 
@@ -16,11 +21,13 @@ export async function fetchMixups(): Promise<Mixup[]> {
 		return [];
 	}
 
-	const mixups = await db
-		.selectFrom("mixups")
-		.selectAll()
-		.orderBy("created_at", "desc")
-		.execute();
+	const mixups = await withUserScope((scopedDb) =>
+		scopedDb
+			.selectFrom("mixups")
+			.selectAll()
+			.orderBy("created_at", "desc")
+			.execute(),
+	);
 
 	return mixups as unknown as Mixup[];
 }
@@ -39,19 +46,21 @@ export async function fetchMixupWithSlots(mixupId: string): Promise<{
 		return { mixup: null, slots: [] };
 	}
 
-	const [mixup, slots] = await Promise.all([
-		db
-			.selectFrom("mixups")
-			.selectAll()
-			.where("id", "=", mixupId)
-			.executeTakeFirst(),
-		db
-			.selectFrom("mixup_slots")
-			.selectAll()
-			.where("mixup_id", "=", mixupId)
-			.orderBy("order_index", "asc")
-			.execute(),
-	]);
+	const [mixup, slots] = await withUserScope((scopedDb) =>
+		Promise.all([
+			scopedDb
+				.selectFrom("mixups")
+				.selectAll()
+				.where("id", "=", mixupId)
+				.executeTakeFirst(),
+			scopedDb
+				.selectFrom("mixup_slots")
+				.selectAll()
+				.where("mixup_id", "=", mixupId)
+				.orderBy("order_index", "asc")
+				.execute(),
+		]),
+	);
 
 	if (!mixup) {
 		return { mixup: null, slots: [] };
@@ -81,10 +90,12 @@ export async function createMixup(
 		return { success: false, error: "Database client not initialized" };
 	}
 
+	const userId = await getCurrentUserId();
+
 	try {
 		const mixup = await db
 			.insertInto("mixups")
-			.values({ name, layout_id: layoutId as DbMixupLayoutId })
+			.values({ name, layout_id: layoutId as DbMixupLayoutId, user_id: userId })
 			.returningAll()
 			.executeTakeFirst();
 
@@ -114,15 +125,17 @@ export async function updateMixup(
 	}
 
 	try {
-		await db
-			.updateTable("mixups")
-			.set({
-				name,
-				layout_id: layoutId as DbMixupLayoutId,
-				updated_at: new Date().toISOString(),
-			})
-			.where("id", "=", mixupId)
-			.execute();
+		await withUserScope((scopedDb) =>
+			scopedDb
+				.updateTable("mixups")
+				.set({
+					name,
+					layout_id: layoutId as DbMixupLayoutId,
+					updated_at: new Date().toISOString(),
+				})
+				.where("id", "=", mixupId)
+				.execute(),
+		);
 
 		return { success: true };
 	} catch (error) {
@@ -149,7 +162,9 @@ export async function deleteMixup(mixupId: string): Promise<{
 	}
 
 	try {
-		await db.deleteFrom("mixups").where("id", "=", mixupId).execute();
+		await withUserScope((scopedDb) =>
+			scopedDb.deleteFrom("mixups").where("id", "=", mixupId).execute(),
+		);
 
 		return { success: true };
 	} catch (error) {
@@ -178,13 +193,15 @@ export async function saveMixupWithSlots(mixupData: {
 		return { success: false, error: "Database client not initialized" };
 	}
 
+	const userId = await getCurrentUserId();
+
 	try {
-		return await db.transaction().execute(async (trx) => {
+		return await withUserScopeTransaction(async (trx) => {
 			let mixupId: string;
 
 			// Create or update mixup
 			if (mixupData.id) {
-				// Update existing mixup
+				// Update existing mixup (RLS handles user check)
 				await trx
 					.updateTable("mixups")
 					.set({
@@ -203,12 +220,13 @@ export async function saveMixupWithSlots(mixupData: {
 					.where("mixup_id", "=", mixupId)
 					.execute();
 			} else {
-				// Create new mixup
+				// Create new mixup (include user_id for new records)
 				const newMixup = await trx
 					.insertInto("mixups")
 					.values({
 						name: mixupData.name,
 						layout_id: mixupData.layout_id as DbMixupLayoutId,
+						user_id: userId,
 					})
 					.returning("id")
 					.executeTakeFirstOrThrow();

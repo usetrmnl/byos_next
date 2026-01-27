@@ -8,7 +8,7 @@ import fontData from "@/components/bitmap-font/bitmap-font.json";
 import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
-// import simpleText from "@/app/recipes/screens/simple-text/simple-text";
+// import simpleText from "@/app/(app)/recipes/screens/simple-text/simple-text";
 
 // Constants for cache configuration
 const CACHE_STALE_TIME = 20; // seconds

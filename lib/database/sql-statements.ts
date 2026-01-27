@@ -226,6 +226,190 @@ CREATE INDEX IF NOT EXISTS idx_screen_configs_screen_id ON public.screen_configs
 COMMENT ON TABLE public.screen_configs IS 'Per-screen configuration parameters stored as JSONB';
 COMMENT ON COLUMN public.screen_configs.params IS 'JSON blob of screen parameters';`,
 	},
+	"0007_add_better_auth": {
+		title: "0007_add_better_auth",
+		description: "Migration: 0007_add_better_auth.sql",
+		sql: `create table "user" ("id" text not null primary key, "name" text not null, "email" text not null unique, "emailVerified" boolean not null, "image" text, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz default CURRENT_TIMESTAMP not null);
+
+create table "session" ("id" text not null primary key, "expiresAt" timestamptz not null, "token" text not null unique, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null, "ipAddress" text, "userAgent" text, "userId" text not null references "user" ("id") on delete cascade);
+
+create table "account" ("id" text not null primary key, "accountId" text not null, "providerId" text not null, "userId" text not null references "user" ("id") on delete cascade, "accessToken" text, "refreshToken" text, "idToken" text, "accessTokenExpiresAt" timestamptz, "refreshTokenExpiresAt" timestamptz, "scope" text, "password" text, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null);
+
+create table "verification" ("id" text not null primary key, "identifier" text not null, "value" text not null, "expiresAt" timestamptz not null, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz default CURRENT_TIMESTAMP not null);
+
+create index "session_userId_idx" on "session" ("userId");
+
+create index "account_userId_idx" on "account" ("userId");
+
+create index "verification_identifier_idx" on "verification" ("identifier");`,
+	},
+	"0008_add_admin_plugin": {
+		title: "Add Admin Plugin Fields",
+		description:
+			"Adds role, banned, banReason, banExpires to user table and impersonatedBy to session table for better-auth admin plugin",
+		sql: `-- Add admin fields to user table
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "role" text DEFAULT 'user';
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "banned" boolean DEFAULT false;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "banReason" text;
+ALTER TABLE "user" ADD COLUMN IF NOT EXISTS "banExpires" timestamptz;
+
+-- Add impersonation field to session table
+ALTER TABLE "session" ADD COLUMN IF NOT EXISTS "impersonatedBy" text;
+
+-- Create index for role lookups
+CREATE INDEX IF NOT EXISTS "user_role_idx" ON "user" ("role");`,
+	},
+	"0009_add_user_tenancy": {
+		title: "Add User Tenancy with Row Level Security",
+		description:
+			"Adds user_id to tables, implements PostgreSQL RLS, and creates app role for RLS enforcement",
+		sql: `-- =============================================================================
+-- Part 1: Add user_id columns
+-- =============================================================================
+
+-- Add user_id to devices table
+ALTER TABLE "devices" ADD COLUMN IF NOT EXISTS "user_id" text REFERENCES "user"("id") ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS "devices_user_id_idx" ON "devices" ("user_id");
+
+-- Add user_id to playlists table
+ALTER TABLE "playlists" ADD COLUMN IF NOT EXISTS "user_id" text REFERENCES "user"("id") ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS "playlists_user_id_idx" ON "playlists" ("user_id");
+
+-- Add user_id to mixups table
+ALTER TABLE "mixups" ADD COLUMN IF NOT EXISTS "user_id" text REFERENCES "user"("id") ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS "mixups_user_id_idx" ON "mixups" ("user_id");
+
+-- Add user_id to screen_configs table
+ALTER TABLE "screen_configs" ADD COLUMN IF NOT EXISTS "user_id" text REFERENCES "user"("id") ON DELETE CASCADE;
+CREATE INDEX IF NOT EXISTS "screen_configs_user_id_idx" ON "screen_configs" ("user_id");
+
+-- =============================================================================
+-- Part 2: Enable Row Level Security
+-- =============================================================================
+
+ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE playlists ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mixups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE screen_configs ENABLE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- Part 3: Create RLS Policies
+-- Users can access their own rows OR rows with NULL user_id (unclaimed/shared)
+-- =============================================================================
+
+-- Policies for devices
+CREATE POLICY devices_select_policy ON devices
+    FOR SELECT
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY devices_insert_policy ON devices
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY devices_update_policy ON devices
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY devices_delete_policy ON devices
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+-- Policies for playlists
+CREATE POLICY playlists_select_policy ON playlists
+    FOR SELECT
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY playlists_insert_policy ON playlists
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY playlists_update_policy ON playlists
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY playlists_delete_policy ON playlists
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+-- Policies for mixups
+CREATE POLICY mixups_select_policy ON mixups
+    FOR SELECT
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY mixups_insert_policy ON mixups
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY mixups_update_policy ON mixups
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY mixups_delete_policy ON mixups
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+-- Policies for screen_configs
+CREATE POLICY screen_configs_select_policy ON screen_configs
+    FOR SELECT
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY screen_configs_insert_policy ON screen_configs
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY screen_configs_update_policy ON screen_configs
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+CREATE POLICY screen_configs_delete_policy ON screen_configs
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+
+-- =============================================================================
+-- Part 4: Force RLS for table owners (important for dev with postgres superuser)
+-- =============================================================================
+
+ALTER TABLE devices FORCE ROW LEVEL SECURITY;
+ALTER TABLE playlists FORCE ROW LEVEL SECURITY;
+ALTER TABLE mixups FORCE ROW LEVEL SECURITY;
+ALTER TABLE screen_configs FORCE ROW LEVEL SECURITY;
+
+-- =============================================================================
+-- Part 5: Create application role for RLS enforcement
+-- The app connects as postgres but uses SET ROLE byos_app for queries
+-- This ensures RLS is enforced (superusers bypass RLS even with FORCE)
+-- =============================================================================
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'byos_app') THEN
+        CREATE ROLE byos_app WITH LOGIN PASSWORD 'byos_app_password';
+    END IF;
+END
+$$;
+
+-- Ensure the role does NOT have BYPASSRLS (default, but explicit for clarity)
+ALTER ROLE byos_app NOBYPASSRLS;
+
+-- Allow postgres to switch to this role via SET ROLE
+GRANT byos_app TO postgres;
+
+-- Grant connect to database
+GRANT CONNECT ON DATABASE byos_db TO byos_app;
+
+-- Grant usage on schema
+GRANT USAGE ON SCHEMA public TO byos_app;
+
+-- Grant permissions on all existing tables
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO byos_app;
+
+-- Grant permissions on all sequences (for serial/auto-increment columns)
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO byos_app;
+
+-- Ensure future tables also get these permissions
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO byos_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO byos_app;`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:

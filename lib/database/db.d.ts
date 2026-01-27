@@ -7,9 +7,10 @@ import type { ColumnType } from "kysely";
 
 export type DeviceDisplayMode = "mixup" | "playlist" | "screen";
 
-export type Generated<T> = T extends ColumnType<infer S, infer I, infer U>
-	? ColumnType<S, I | undefined, U>
-	: ColumnType<T, T | undefined, T>;
+export type Generated<T> =
+	T extends ColumnType<infer S, infer I, infer U>
+		? ColumnType<S, I | undefined, U>
+		: ColumnType<T, T | undefined, T>;
 
 export type Int8 = ColumnType<
 	string,
@@ -40,14 +41,40 @@ export type Numeric = ColumnType<string, number | string, number | string>;
 
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
+export interface Account {
+	accessToken: string | null;
+	accessTokenExpiresAt: Timestamp | null;
+	accountId: string;
+	createdAt: Generated<Timestamp>;
+	id: string;
+	idToken: string | null;
+	password: string | null;
+	providerId: string;
+	refreshToken: string | null;
+	refreshTokenExpiresAt: Timestamp | null;
+	scope: string | null;
+	updatedAt: Timestamp;
+	userId: string;
+}
+
 export interface Devices {
 	api_key: string;
+	/**
+	 * Battery voltage in volts
+	 */
 	battery_voltage: Numeric | null;
 	created_at: Generated<Timestamp | null>;
 	current_playlist_index: Generated<number | null>;
 	display_mode: Generated<DeviceDisplayMode | null>;
+	/**
+	 * Device firmware version
+	 */
 	firmware_version: string | null;
 	friendly_id: string;
+	/**
+	 * Grayscale level (0-255, where 0 is full color and 255 is full grayscale)
+	 */
+	grayscale: Generated<number | null>;
 	id: Generated<Int8>;
 	last_refresh_duration: number | null;
 	last_update_time: Timestamp | null;
@@ -57,10 +84,26 @@ export interface Devices {
 	next_expected_update: Timestamp | null;
 	playlist_id: string | null;
 	refresh_schedule: Json | null;
+	/**
+	 * WiFi signal strength in dBm
+	 */
 	rssi: number | null;
 	screen: string | null;
+	/**
+	 * Screen height in pixels
+	 */
+	screen_height: Generated<number | null>;
+	/**
+	 * Screen orientation: portrait or landscape
+	 */
+	screen_orientation: Generated<string | null>;
+	/**
+	 * Screen width in pixels
+	 */
+	screen_width: Generated<number | null>;
 	timezone: Generated<string>;
 	updated_at: Generated<Timestamp | null>;
+	user_id: string | null;
 }
 
 export interface Logs {
@@ -76,6 +119,7 @@ export interface Mixups {
 	layout_id: MixupLayoutId;
 	name: string;
 	updated_at: Generated<Timestamp | null>;
+	user_id: string | null;
 }
 
 export interface MixupSlots {
@@ -104,14 +148,31 @@ export interface Playlists {
 	id: Generated<string>;
 	name: string;
 	updated_at: Generated<Timestamp | null>;
+	user_id: string | null;
 }
 
 export interface ScreenConfigs {
 	created_at: Generated<Timestamp | null>;
 	id: Generated<string>;
-	params: Json;
+	/**
+	 * JSON blob of screen parameters
+	 */
+	params: Generated<Json>;
 	screen_id: string;
 	updated_at: Generated<Timestamp | null>;
+	user_id: string | null;
+}
+
+export interface Session {
+	createdAt: Generated<Timestamp>;
+	expiresAt: Timestamp;
+	id: string;
+	impersonatedBy: string | null;
+	ipAddress: string | null;
+	token: string;
+	updatedAt: Timestamp;
+	userAgent: string | null;
+	userId: string;
 }
 
 export interface SystemLogs {
@@ -124,7 +185,31 @@ export interface SystemLogs {
 	trace: string | null;
 }
 
+export interface User {
+	banExpires: Timestamp | null;
+	banned: Generated<boolean | null>;
+	banReason: string | null;
+	createdAt: Generated<Timestamp>;
+	email: string;
+	emailVerified: boolean;
+	id: string;
+	image: string | null;
+	name: string;
+	role: Generated<string | null>;
+	updatedAt: Generated<Timestamp>;
+}
+
+export interface Verification {
+	createdAt: Generated<Timestamp>;
+	expiresAt: Timestamp;
+	id: string;
+	identifier: string;
+	updatedAt: Generated<Timestamp>;
+	value: string;
+}
+
 export interface DB {
+	account: Account;
 	devices: Devices;
 	logs: Logs;
 	mixup_slots: MixupSlots;
@@ -132,5 +217,8 @@ export interface DB {
 	playlist_items: PlaylistItems;
 	playlists: Playlists;
 	screen_configs: ScreenConfigs;
+	session: Session;
 	system_logs: SystemLogs;
+	user: User;
+	verification: Verification;
 }

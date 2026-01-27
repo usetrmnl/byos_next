@@ -94,7 +94,36 @@ The server records the following fields on display requests to aid debugging and
 - Pipeline: JSX component → renderer (PNG) → Sharp (BMP) → TRMNL-specific header.
 - Caching: 60-second cache with background revalidation by Next.js (development uses in-memory cache).
 
+## Additional Endpoints
+
+### Device Management
+- `GET /api/display/current` - Get current screen for device (requires `Access-Token`)
+- `GET /api/devices` - List all devices
+- `GET /api/devices/{id}` - Get device by ID or friendly_id
+
+### Playlists
+- `GET /api/playlists/items` - List playlist items
+- `PATCH /api/playlists/items/{id}` - Update playlist item visibility
+
+### User
+- `GET /api/me` - Get user data (stub response)
+
+### Proxy Endpoints (forwarded to TRMNL API)
+- `GET /api/categories` - Plugin categories
+- `GET /api/ips` - TRMNL server IPs
+- `GET /api/models` - Device models
+- `GET /api/palettes` - Color palettes
+- `POST /api/markup` - Render Liquid templates
+- `GET /api/plugin_settings` - List plugin settings
+- `POST /api/plugin_settings` - Create plugin setting
+- `DELETE /api/plugin_settings/{id}` - Delete plugin setting
+- `GET /api/plugin_settings/{id}/data` - Get plugin data
+- `POST /api/plugin_settings/{id}/data` - Update plugin data
+- `GET /api/plugin_settings/{id}/archive` - Download archive
+- `POST /api/plugin_settings/{id}/archive` - Upload archive
+
 ## Authentication Notes
 - Devices can authenticate by MAC address only, API key only, or both.
 - Unknown devices with valid API keys auto-register.
+- Proxy endpoints forward `Authorization` and `Access-Token` headers to TRMNL API.
 - Production deployments should add middleware, rate limiting, and user management if required.

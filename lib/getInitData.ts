@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { db } from "@/lib/database/db";
+import { withUserScope } from "@/lib/database/scoped-db";
 import { getDbStatus } from "@/lib/database/utils";
 import type {
 	Device,
@@ -55,6 +55,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 	// Fetch data only if DB is ready
 	if (dbStatus.ready) {
 		try {
+			// Use withUserScope to set RLS context - database handles user filtering
 			const [
 				devicesResult,
 				playlistsResult,
@@ -63,48 +64,50 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 				logsResult,
 				sourcesResult,
 				logsCountResult,
-			] = await Promise.all([
-				// Fetch devices
-				db
-					.selectFrom("devices")
-					.selectAll()
-					.execute(),
-				// Fetch playlists
-				db
-					.selectFrom("playlists")
-					.selectAll()
-					.execute(),
-				// Fetch playlist items
-				db
-					.selectFrom("playlist_items")
-					.selectAll()
-					.execute(),
-				// Fetch mixups
-				db
-					.selectFrom("mixups")
-					.selectAll()
-					.orderBy("created_at", "desc")
-					.execute(),
-				// Fetch recent logs
-				db
-					.selectFrom("system_logs")
-					.selectAll()
-					.orderBy("created_at", "desc")
-					.limit(50)
-					.execute(),
-				// Fetch unique sources for filters
-				db
-					.selectFrom("system_logs")
-					.select("source")
-					.distinct()
-					.orderBy("source")
-					.execute(),
-				// Get total logs count
-				db
-					.selectFrom("system_logs")
-					.select((eb) => eb.fn.countAll().as("count"))
-					.executeTakeFirst(),
-			]);
+			] = await withUserScope((scopedDb) =>
+				Promise.all([
+					// Fetch devices (RLS filters by user)
+					scopedDb
+						.selectFrom("devices")
+						.selectAll()
+						.execute(),
+					// Fetch playlists (RLS filters by user)
+					scopedDb
+						.selectFrom("playlists")
+						.selectAll()
+						.execute(),
+					// Fetch playlist items
+					scopedDb
+						.selectFrom("playlist_items")
+						.selectAll()
+						.execute(),
+					// Fetch mixups (RLS filters by user)
+					scopedDb
+						.selectFrom("mixups")
+						.selectAll()
+						.orderBy("created_at", "desc")
+						.execute(),
+					// Fetch recent logs (no RLS - shared)
+					scopedDb
+						.selectFrom("system_logs")
+						.selectAll()
+						.orderBy("created_at", "desc")
+						.limit(50)
+						.execute(),
+					// Fetch unique sources for filters
+					scopedDb
+						.selectFrom("system_logs")
+						.select("source")
+						.distinct()
+						.orderBy("source")
+						.execute(),
+					// Get total logs count
+					scopedDb
+						.selectFrom("system_logs")
+						.select((eb) => eb.fn.countAll().as("count"))
+						.executeTakeFirst(),
+				]),
+			);
 
 			devices = devicesResult as unknown as Device[];
 			playlists = playlistsResult as unknown as Playlist[];
