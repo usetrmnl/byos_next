@@ -1,4 +1,4 @@
-import { Renderer, extractResourceUrls } from "@takumi-rs/core";
+import { extractResourceUrls, Renderer } from "@takumi-rs/core";
 import { fetchResources } from "@takumi-rs/helpers";
 import { fromJsx } from "@takumi-rs/helpers/jsx";
 import { ImageResponse } from "next/og";
