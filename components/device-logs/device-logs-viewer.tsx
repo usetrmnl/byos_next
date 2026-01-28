@@ -322,10 +322,10 @@ export default function DeviceLogsViewer({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
+													new Date(prevLog.created_at || "").getTime(),
 											) /
-											1000 >=
-											10);
+												1000 >=
+												10);
 									// Check if we should show type based on type difference with previous log or time difference
 									const shouldTypeBeShown =
 										index === 0 ||
@@ -333,10 +333,10 @@ export default function DeviceLogsViewer({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
+													new Date(prevLog.created_at || "").getTime(),
 											) /
-											1000 >=
-											10);
+												1000 >=
+												10);
 
 									// Determine log type
 									const logType = getLogType(log);
@@ -399,8 +399,8 @@ export default function DeviceLogsViewer({
 															timestamp,
 														}: {
 															deviceStatusStamp:
-															| subLogType["device_status_stamp"]
-															| undefined;
+																| subLogType["device_status_stamp"]
+																| undefined;
 															logMessage: string;
 															logCodeline: number;
 															logSourcefile: string;
@@ -432,8 +432,8 @@ export default function DeviceLogsViewer({
 																				{logMessage
 																					.toLowerCase()
 																					.includes("error") && (
-																						<AlertTriangle className="inline h-3.5 w-3.5 text-red-500 mr-1" />
-																					)}
+																					<AlertTriangle className="inline h-3.5 w-3.5 text-red-500 mr-1" />
+																				)}
 																				{logMessage}
 																			</span>
 																		</div>
@@ -542,16 +542,16 @@ export default function DeviceLogsViewer({
 																		{/* Time Since Last Sleep */}
 																		{time_since_last_sleep_start !==
 																			undefined && (
-																				<div
-																					className="flex items-center gap-1 bg-indigo-400/10 px-2 py-1 rounded-md"
-																					title="Time Since Last Sleep"
-																				>
-																					<Timer className="h-3.5 w-3.5 text-indigo-500" />
-																					<span>
-																						{time_since_last_sleep_start}s
-																					</span>
-																				</div>
-																			)}
+																			<div
+																				className="flex items-center gap-1 bg-indigo-400/10 px-2 py-1 rounded-md"
+																				title="Time Since Last Sleep"
+																			>
+																				<Timer className="h-3.5 w-3.5 text-indigo-500" />
+																				<span>
+																					{time_since_last_sleep_start}s
+																				</span>
+																			</div>
+																		)}
 																	</div>
 
 																	{/* Log Message with Prefix */}
