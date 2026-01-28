@@ -13,7 +13,7 @@
 ## 🚀 Overview
 **BYOS (Build Your Own Server) Next.js** is a Next.js implementation that powers device management, playlist-driven content scheduling, and on-demand BMP generation for e-ink displays.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fusetrmnl%2Fbyos_nextjs&demo-title=BYOS%20Next.js&demo-description=Bring-Your-Own-Server%20built%20with%20Next.js%20for%20the%20TRMNL%20iot%20device&demo-url=https%3A%2F%2Fbyos-nextjs.vercel.app%2F&demo-image=https%3A%2F%2Fbyos-nextjs.vercel.app%2Fbyos-nextjs-screenshot.png&project-name=byos-nextjs&stores=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22supabase%22%2C%22productSlug%22%3A%22supabase%22%7D%5D)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fusetrmnl%2Fbyos_next&env=AUTH_ENABLED&envDefaults=%7B%22AUTH_ENABLED%22%3A%22false%22%7D&envDescription=User%20authentication%20is%20disabled.&envLink=https%3A%2F%2Fgithub.com%2Fusetrmnl%2Fbyos_next%3Ftab%3Dreadme-ov-file&project-name=byos-next&repository-name=byos_next&demo-title=BYOS%20NextJS&demo-description=BYOS%20(Build%20Your%20Own%20Server)%20Next.js%2C%20TRMNL%20server%20with%20local%20recipe%20rendering%20and%20cloud%20proxy%20support.&demo-url=https%3A%2F%2Fbyos-next-demo.vercel.app&demo-image=https%3A%2F%2Fusetrmnl.com%2Fimages%2Fbrand%2Ficons%2Ficon--brand.svg&products=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%2C%22group%22%3A%22postgres%22%7D%5D)
 
 ### ✨ Features
 - Device management UI with MAC/API key registration, status tracking, and refresh scheduling.
@@ -54,7 +54,7 @@
 - Clean codebase with Biome linting and formatting.
 
 ## Demo & Screens
-- Live demo: https://byos-nextjs.vercel.app/
+- Live demo: [https://byos-next-demo.vercel.app](https://byos-next-demo.vercel.app)
 - Overview UI: `public/byos-nextjs-overview.png`
 - Device UI: `public/byos-nextjs-device.png`
 
@@ -130,9 +130,8 @@ See `docs/recipes.md` for more detail.
 - Contributing guide: `CONTRIBUTING.md`
 
 ## Roadmap
-- Current: device management, dynamic screen generation, Supabase integration, playlist scheduling, improved init and no-DB mode (2025-03-11).
-- Coming soon: more pixel fonts, more templates/recipes, demo mode for device-safe testing, MySQL/local file support.
-- Future: richer auth and user management, rate limiting and hardening, broader test coverage and CI polish, documentation depth.
+- Better recipe management system
+- Compatibility with TRMNL recipes
 
 ## Support & Feedback
 - GitHub Issues: https://github.com/usetrmnl/byos_next/issues

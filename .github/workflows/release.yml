@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "*.md"
+      - "docs/**"
     tags:
       - "v*.*.*"
 
