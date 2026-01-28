@@ -189,6 +189,17 @@ export function AppSidebar({
 									</CollapsibleTrigger>
 									<CollapsibleContent>
 										<SidebarMenuSub>
+											<SidebarMenuSubItem>
+												<SidebarMenuSubButton
+													asChild
+													isActive={currentPath === "/recipes"}
+													onMouseEnter={() => prefetch("/recipes")}
+												>
+													<Link href="/recipes">
+														<span>All Recipes</span>
+													</Link>
+												</SidebarMenuSubButton>
+											</SidebarMenuSubItem>
 											{recipesComponents.map(([slug, config]) => (
 												<SidebarMenuSubItem key={slug}>
 													<SidebarMenuSubButton
@@ -256,6 +267,17 @@ export function AppSidebar({
 									</CollapsibleTrigger>
 									<CollapsibleContent>
 										<SidebarMenuSub>
+											<SidebarMenuSubItem>
+												<SidebarMenuSubButton
+													asChild
+													isActive={currentPath === "/tools"}
+													onMouseEnter={() => prefetch("/tools")}
+												>
+													<Link href="/tools">
+														<span>All Tools</span>
+													</Link>
+												</SidebarMenuSubButton>
+											</SidebarMenuSubItem>
 											{toolsComponents.map(([slug, config]) => (
 												<SidebarMenuSubItem key={slug}>
 													<SidebarMenuSubButton
