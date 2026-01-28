@@ -8,6 +8,7 @@ import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -246,20 +247,16 @@ export default function DeviceView({
 									return (
 										<div className="flex flex-wrap items-center gap-2 text-sm">
 											<div className="flex items-center">
-												<div className="relative w-10 h-5 border-1 border-primary rounded-sm p-0.5 overflow-hidden shadow-inner shadow-background/20">
-													<div
-														className={`h-full rounded-[calc(var(--radius)-7px)] transition-all duration-300 ease-in-out ${batteryColor} flex items-center justify-center`}
-														style={{
-															width: `${batteryEstimate.batteryPercentage}%`,
-														}}
-													>
-														{batteryEstimate.isCharging && (
-															<span className="bg-green-400 text-transparent bg-clip-text">
-																⚡️
-															</span>
-														)}
-													</div>
-												</div>
+												<Progress
+													value={batteryEstimate.batteryPercentage}
+													className={`w-10 h-5 rounded-sm border border-primary ${
+														batteryEstimate.batteryPercentage < 20
+															? "[&>[data-slot=progress-indicator]]:bg-red-500"
+															: batteryEstimate.batteryPercentage < 50
+																? "[&>[data-slot=progress-indicator]]:bg-yellow-500"
+																: ""
+													}`}
+												/>
 												<div className="ml-[1px] h-2 w-0.5 bg-primary rounded-r-sm" />
 											</div>
 											<span className="font-medium">

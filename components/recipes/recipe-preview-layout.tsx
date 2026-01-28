@@ -2,10 +2,7 @@
 
 import { Columns2, Rows2, ZoomIn, ZoomOut } from "lucide-react";
 import * as React from "react";
-import {
-	SlideToggle,
-	type SlideToggleOption,
-} from "@/components/ui/slide-toggle";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 
 type RecipePreviewLayoutProps = {
@@ -45,37 +42,6 @@ const RecipePreviewLayout = ({
 	// Constants for width calculations
 	const singleColumnWidth = canvasWidth + 2; // adding 2px for the border
 	const spacing = 16; // This is equivalent to gap-4 in Tailwind (4 * 4px)
-
-	// Toggle options
-	const layoutOptions: SlideToggleOption<"columns" | "rows">[] = [
-		{
-			value: "columns",
-			icon: <Columns2 className="h-4 w-4" />,
-			label: "Columns",
-			ariaLabel: "Column layout",
-		},
-		{
-			value: "rows",
-			icon: <Rows2 className="h-4 w-4" />,
-			label: "Rows",
-			ariaLabel: "Row layout",
-		},
-	];
-
-	const scaleOptions: SlideToggleOption<"full" | "half">[] = [
-		{
-			value: "full",
-			icon: <ZoomIn className="h-4 w-4" />,
-			label: "Full",
-			ariaLabel: "Full scale (1x)",
-		},
-		{
-			value: "half",
-			icon: <ZoomOut className="h-4 w-4" />,
-			label: "Half",
-			ariaLabel: "Half scale (0.5x)",
-		},
-	];
 
 	// Load saved preferences from localStorage on component mount
 	React.useEffect(() => {
@@ -125,24 +91,23 @@ const RecipePreviewLayout = ({
 	}, []);
 
 	// Handle layout change
-	const handleLayoutChange = React.useCallback(
-		(newLayout: "columns" | "rows") => {
-			setLayout(newLayout);
-			// Defer localStorage update to not block rendering
-			setTimeout(() => {
-				try {
-					localStorage.setItem("recipePreviewLayout", newLayout);
-				} catch (error) {
-					console.error("Error saving layout preference:", error);
-				}
-			}, 0);
-		},
-		[],
-	);
+	const handleLayoutChange = React.useCallback((newLayout: string) => {
+		if (!newLayout) return; // Prevent deselection
+		setLayout(newLayout as "columns" | "rows");
+		// Defer localStorage update to not block rendering
+		setTimeout(() => {
+			try {
+				localStorage.setItem("recipePreviewLayout", newLayout);
+			} catch (error) {
+				console.error("Error saving layout preference:", error);
+			}
+		}, 0);
+	}, []);
 
 	// Handle scale change
-	const handleScaleChange = React.useCallback((newScale: "full" | "half") => {
-		setScale(newScale);
+	const handleScaleChange = React.useCallback((newScale: string) => {
+		if (!newScale) return; // Prevent deselection
+		setScale(newScale as "full" | "half");
 		// Defer localStorage update to not block rendering
 		setTimeout(() => {
 			try {
@@ -154,20 +119,18 @@ const RecipePreviewLayout = ({
 	}, []);
 
 	// Handle render type change
-	const handleRenderTypeChange = React.useCallback(
-		(newRenderType: "bmp" | "png") => {
-			setRenderType(newRenderType);
-			// Defer localStorage update to not block rendering
-			setTimeout(() => {
-				try {
-					localStorage.setItem("recipePreviewRenderType", newRenderType);
-				} catch (error) {
-					console.error("Error saving render type preference:", error);
-				}
-			}, 0);
-		},
-		[],
-	);
+	const handleRenderTypeChange = React.useCallback((newRenderType: string) => {
+		if (!newRenderType) return; // Prevent deselection
+		setRenderType(newRenderType as "bmp" | "png");
+		// Defer localStorage update to not block rendering
+		setTimeout(() => {
+			try {
+				localStorage.setItem("recipePreviewRenderType", newRenderType);
+			} catch (error) {
+				console.error("Error saving render type preference:", error);
+			}
+		}, 0);
+	}, []);
 
 	// Calculate width based on layout
 	const getContainerWidth = React.useCallback(
@@ -179,6 +142,9 @@ const RecipePreviewLayout = ({
 		},
 		[],
 	);
+
+	const toggleItemClassName =
+		"h-full rounded-sm px-3 py-1.5 text-sm font-bold font-mono data-[state=on]:bg-primary data-[state=on]:text-primary-foreground";
 
 	// If not initialized yet, render a placeholder with the same dimensions
 	// to prevent layout shifts when preferences load
@@ -248,49 +214,79 @@ const RecipePreviewLayout = ({
 	};
 
 	// Determine which render type options to show based on available components
-	const getRenderTypeOptions = () => {
-		const options: SlideToggleOption<"bmp" | "png">[] = [];
-
-		if (bmpComponent) {
-			options.push({
-				value: "bmp",
-				icon: undefined,
-				label: "BMP",
-				ariaLabel: "BMP rendering",
-			});
-		}
-
-		if (pngComponent) {
-			options.push({
-				value: "png",
-				icon: undefined,
-				label: "PNG",
-				ariaLabel: "PNG rendering",
-			});
-		}
-
-		return options;
-	};
+	const hasRenderTypeOptions = bmpComponent || pngComponent;
 
 	return (
 		<div className="flex flex-col gap-4 items-start">
 			<div className="flex flex-wrap gap-2">
-				<SlideToggle<"columns" | "rows">
-					options={layoutOptions}
+				<ToggleGroup
+					type="single"
 					value={layout}
-					onChange={handleLayoutChange}
-				/>
-				<SlideToggle<"full" | "half">
-					options={scaleOptions}
+					onValueChange={handleLayoutChange}
+					className="inline-flex items-center rounded-md border bg-muted p-1"
+				>
+					<ToggleGroupItem
+						value="columns"
+						aria-label="Column layout"
+						className={toggleItemClassName}
+					>
+						<Columns2 className="h-4 w-4" />
+					</ToggleGroupItem>
+					<ToggleGroupItem
+						value="rows"
+						aria-label="Row layout"
+						className={toggleItemClassName}
+					>
+						<Rows2 className="h-4 w-4" />
+					</ToggleGroupItem>
+				</ToggleGroup>
+				<ToggleGroup
+					type="single"
 					value={scale}
-					onChange={handleScaleChange}
-				/>
-				{(bmpComponent || pngComponent) && (
-					<SlideToggle<"bmp" | "png">
-						options={getRenderTypeOptions()}
+					onValueChange={handleScaleChange}
+					className="inline-flex items-center rounded-md border bg-muted p-1"
+				>
+					<ToggleGroupItem
+						value="full"
+						aria-label="Full scale (1x)"
+						className={toggleItemClassName}
+					>
+						<ZoomIn className="h-4 w-4" />
+					</ToggleGroupItem>
+					<ToggleGroupItem
+						value="half"
+						aria-label="Half scale (0.5x)"
+						className={toggleItemClassName}
+					>
+						<ZoomOut className="h-4 w-4" />
+					</ToggleGroupItem>
+				</ToggleGroup>
+				{hasRenderTypeOptions && (
+					<ToggleGroup
+						type="single"
 						value={renderType}
-						onChange={handleRenderTypeChange}
-					/>
+						onValueChange={handleRenderTypeChange}
+						className="inline-flex items-center rounded-md border bg-muted p-1"
+					>
+						{bmpComponent && (
+							<ToggleGroupItem
+								value="bmp"
+								aria-label="BMP rendering"
+								className={toggleItemClassName}
+							>
+								BMP
+							</ToggleGroupItem>
+						)}
+						{pngComponent && (
+							<ToggleGroupItem
+								value="png"
+								aria-label="PNG rendering"
+								className={toggleItemClassName}
+							>
+								PNG
+							</ToggleGroupItem>
+						)}
+					</ToggleGroup>
 				)}
 			</div>
 			<div
