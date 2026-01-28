@@ -1,8 +1,6 @@
 import { headers } from "next/headers";
 import { auth } from "./auth";
 
-const AUTH_ENABLED = process.env.AUTH_ENABLED !== "false";
-
 export type CurrentUser = {
 	id: string;
 	name: string;
@@ -15,7 +13,7 @@ export type CurrentUser = {
  * Returns null if auth is disabled or user is not authenticated.
  */
 export async function getCurrentUser(): Promise<CurrentUser> {
-	if (!AUTH_ENABLED) {
+	if (!auth) {
 		return null;
 	}
 

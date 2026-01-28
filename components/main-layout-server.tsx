@@ -37,7 +37,7 @@ export default async function MainLayout({
 		image?: string | null;
 		role?: string;
 	} | null = null;
-	if (AUTH_ENABLED) {
+	if (auth) {
 		const session = await auth.api.getSession({
 			headers: await headers(),
 		});

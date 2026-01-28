@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth/auth";
 
-const AUTH_ENABLED = process.env.AUTH_ENABLED !== "false";
-
 // Paths that don't require authentication
 const PUBLIC_PATHS = [
 	"/api",
@@ -23,7 +21,7 @@ export async function proxy(request: NextRequest) {
 	}
 
 	// Skip auth check if authentication is disabled (mono-user mode)
-	if (!AUTH_ENABLED) {
+	if (!auth) {
 		return NextResponse.next();
 	}
 
