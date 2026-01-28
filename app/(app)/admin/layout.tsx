@@ -8,6 +8,11 @@ export default async function AdminLayout({
 }: {
 	children: React.ReactNode;
 }) {
+	// If auth is disabled, redirect away from admin pages
+	if (!auth) {
+		redirect("/");
+	}
+
 	const session = await auth.api.getSession({
 		headers: await headers(),
 	});
