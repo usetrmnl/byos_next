@@ -193,7 +193,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 			case "idle":
 				return "text-gray-500";
 			case "loading":
-				return "text-blue-500";
+				return "text-primary";
 			case "success":
 				return "text-green-600";
 			case "warning":
@@ -237,7 +237,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 
 		if (loadingCount > 0) {
 			return (
-				<div className="flex items-center gap-1 text-blue-500">
+				<div className="flex items-center gap-1 text-primary">
 					<Loader2 className="h-3 w-3 animate-spin" />
 					<span>Executing statements...</span>
 				</div>
@@ -406,11 +406,10 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 												className={`flex items-center gap-1 ${getStatusColor(status)}`}
 											>
 												{getStatusIcon(status)}
-												<span>{`-- ${item.title}${
-													status !== "idle"
+												<span>{`-- ${item.title}${status !== "idle"
 														? ` (${status === "loading" ? "running..." : status === "success" ? "succeeded!" : status === "warning" ? "warning!" : "failed!"})`
 														: ""
-												}`}</span>
+													}`}</span>
 											</div>
 
 											{/* Description */}
@@ -423,13 +422,12 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 											{status !== "idle" && (
 												<div className={`my-2 ${getStatusColor(status)}`}>
 													<div className="flex items-center gap-1">
-														<span>{`-- Result${
-															execution?.executionTime && status === "success"
+														<span>{`-- Result${execution?.executionTime && status === "success"
 																? `: (${execution.executionTime}ms)`
 																: status === "loading"
 																	? ": Executing..."
 																	: ":"
-														}`}</span>
+															}`}</span>
 													</div>
 
 													{status !== "loading" && (
@@ -449,7 +447,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 															) : (
 																<div>
 																	{execution?.result &&
-																	execution.result.length > 0 ? (
+																		execution.result.length > 0 ? (
 																		JSON.stringify(execution.result, null, 2)
 																			.split("\n")
 																			.map((line, i) => (

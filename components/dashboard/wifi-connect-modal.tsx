@@ -64,7 +64,7 @@ export default function WifiConnectModal({
 									<div className="flex items-center">
 										<WifiIcon className="w-4 h-4 mr-2" /> <span>TRMNL</span>
 									</div>
-									<span className="text-blue-500">✓</span>
+									<span className="text-primary">✓</span>
 								</div>
 							</div>
 						</div>

@@ -51,10 +51,10 @@ export const DashboardContent = ({
 	const lastUpdatedDevice =
 		processedDevices.length > 0
 			? processedDevices.sort(
-					(a, b) =>
-						new Date(b.last_update_time || "").getTime() -
-						new Date(a.last_update_time || "").getTime(),
-				)[0]
+				(a, b) =>
+					new Date(b.last_update_time || "").getTime() -
+					new Date(a.last_update_time || "").getTime(),
+			)[0]
 			: null;
 
 	const orientation = lastUpdatedDevice?.screen_orientation || "landscape";
@@ -242,7 +242,7 @@ export const DashboardContent = ({
 						Latest system events and alerts. &nbsp;
 						<Link
 							href="/system-logs"
-							className="text-blue-500 hover:underline flex items-center gap-1"
+							className="text-primary hover:underline flex items-center gap-1"
 						>
 							<span>See all system logs</span>{" "}
 							<ArrowRightIcon className="w-4 h-4" />
@@ -270,10 +270,10 @@ export const DashboardContent = ({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-													new Date(prevLog.created_at || "").getTime(),
+												new Date(prevLog.created_at || "").getTime(),
 											) /
-												1000 >=
-												3);
+											1000 >=
+											3);
 									// Check if we should show level based on level difference with previous log or time difference
 									const shouldLevelBeShown =
 										index === 0 ||
@@ -281,10 +281,10 @@ export const DashboardContent = ({
 										(prevLog &&
 											Math.abs(
 												new Date(log.created_at || "").getTime() -
-													new Date(prevLog.created_at || "").getTime(),
+												new Date(prevLog.created_at || "").getTime(),
 											) /
-												1000 >=
-												3);
+											1000 >=
+											3);
 
 									return (
 										<TableRow key={log.id}>
@@ -331,7 +331,7 @@ export const DashboardContent = ({
 						Showing the latest {systemLogs.length} system logs. &nbsp;
 						<Link
 							href="/system-logs"
-							className="text-blue-500 hover:underline flex items-center gap-1"
+							className="text-primary hover:underline flex items-center gap-1"
 						>
 							<span>See all system logs</span>{" "}
 							<ArrowRightIcon className="w-4 h-4" />
