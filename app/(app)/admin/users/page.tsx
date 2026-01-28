@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageTemplate } from "@/components/ui/page-template";
 import {
 	Select,
 	SelectContent,
@@ -194,14 +195,10 @@ export default function AdminUsersPage() {
 	};
 
 	return (
-		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-2xl font-bold">User Management</h1>
-					<p className="text-muted-foreground">
-						Manage users, roles, and permissions
-					</p>
-				</div>
+		<PageTemplate
+			title="User Management"
+			subtitle="Manage users, roles, and permissions"
+			left={
 				<div className="flex gap-2">
 					<Button variant="outline" size="icon" onClick={fetchUsers}>
 						<RefreshCw className={`size-4 ${loading ? "animate-spin" : ""}`} />
@@ -211,8 +208,8 @@ export default function AdminUsersPage() {
 						Add User
 					</Button>
 				</div>
-			</div>
-
+			}
+		>
 			<Card>
 				<CardHeader>
 					<CardTitle>Users</CardTitle>
@@ -433,6 +430,6 @@ export default function AdminUsersPage() {
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-		</div>
+		</PageTemplate>
 	);
 }

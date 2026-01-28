@@ -9,6 +9,7 @@ import {
 	saveMixupWithSlots,
 } from "@/app/actions/mixup";
 import { Button } from "@/components/ui/button";
+import { PageTemplate } from "@/components/ui/page-template";
 import { slotsToAssignments } from "@/lib/mixup/constants";
 import type { Mixup } from "@/lib/types";
 import { MixupBuilder, type MixupBuilderData } from "./mixup-builder";
@@ -119,18 +120,16 @@ export function MixupPageClient({
 
 	if (showEditor) {
 		return (
-			<div className="space-y-6">
-				<div className="space-y-2">
-					<h1 className="text-3xl font-bold">
-						{editingData?.id ? "Edit Mixup" : "New Mixup"}
-					</h1>
+			<PageTemplate
+				title={editingData?.id ? "Edit Mixup" : "New Mixup"}
+				subtitle={
 					<p className="text-muted-foreground max-w-2xl">
 						{editingData?.id
 							? "Modify your mixup layout and recipe assignments."
 							: "Blend up to four recipes on the same screen. Choose a layout, drop recipes into each quarter, and preview how they will share space."}
 					</p>
-				</div>
-
+				}
+			>
 				<MixupBuilder
 					recipes={recipes}
 					initialData={editingData}
@@ -138,20 +137,20 @@ export function MixupPageClient({
 					onCancel={handleCancel}
 					isSaving={isLoading}
 				/>
-			</div>
+			</PageTemplate>
 		);
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="space-y-2">
-				<h1 className="text-3xl font-bold">Mixup</h1>
+		<PageTemplate
+			title="Mixup"
+			subtitle={
 				<p className="text-muted-foreground max-w-2xl">
 					Blend up to four recipes on the same screen. Choose a layout, drop
 					recipes into each quarter, and preview how they will share space.
 				</p>
-			</div>
-
+			}
+		>
 			<div className="flex justify-between items-center">
 				<Button onClick={handleCreateMixup} disabled={isLoading}>
 					<Plus className="h-4 w-4 mr-2" />
@@ -165,6 +164,6 @@ export function MixupPageClient({
 				onDeleteMixup={handleDeleteMixup}
 				isLoading={isLoading}
 			/>
-		</div>
+		</PageTemplate>
 	);
 }

@@ -14,6 +14,7 @@ import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout"
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { PageTemplate } from "@/components/ui/page-template";
 import {
 	addDimensionsToProps,
 	ComponentProps,
@@ -245,11 +246,13 @@ export default async function RecipePage({
 
 	return (
 		<div className="@container">
-			<div className="flex flex-col">
-				<div className="border-b pb-4 mb-4">
-					<Suspense fallback={<div>Loading recipe details...</div>}>
-						<h1 className="text-3xl font-semibold">{config.title}</h1>
-						<p className="mt-2 max-w-prose">{config.description}</p>
+			<PageTemplate
+				title={config.title}
+				subtitle={
+					<>
+						<p className="text-muted-foreground max-w-prose">
+							{config.description}
+						</p>
 						{config.renderSettings?.doubleSizeForSharperText && (
 							<p className="text-sm text-gray-500 max-w-prose">
 								This screen is rendering at double size for sharper text, but it
@@ -258,20 +261,19 @@ export default async function RecipePage({
 								screens.json.
 							</p>
 						)}
-						<div className="mt-4">
-							<FormatToggle slug={slug} isPortrait={isPortrait} />
-						</div>
-					</Suspense>
+					</>
+				}
+			>
+				<FormatToggle slug={slug} isPortrait={isPortrait} />
 
-					{config.params && Object.keys(config.params).length > 0 && (
-						<ScreenParamsForm
-							slug={slug}
-							paramsSchema={config.params}
-							initialValues={screenParams}
-							updateAction={updateScreenParams}
-						/>
-					)}
-				</div>
+				{config.params && Object.keys(config.params).length > 0 && (
+					<ScreenParamsForm
+						slug={slug}
+						paramsSchema={config.params}
+						initialValues={screenParams}
+						updateAction={updateScreenParams}
+					/>
+				)}
 
 				<RecipePreviewLayout
 					canvasWidth={imageWidth}
@@ -395,7 +397,7 @@ export default async function RecipePage({
 						<PropsDisplay slug={slug} config={config} />
 					</Suspense>
 				)}
-			</div>
+			</PageTemplate>
 		</div>
 	);
 }

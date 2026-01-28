@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { cache, Suspense } from "react";
 import tools from "@/app/(app)/tools/tools.json";
+import { PageTemplate } from "@/components/ui/page-template";
 
 export async function generateMetadata({
 	params,
@@ -74,14 +75,10 @@ export default async function ToolPage({
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="space-y-2">
-				<h1 className="text-3xl font-bold">{config.title}</h1>
-				<p className="text-muted-foreground">{config.description}</p>
-			</div>
+		<PageTemplate title={config.title} subtitle={config.description}>
 			<Suspense fallback={<div>Loading tool...</div>}>
 				<ToolComponent slug={slug} />
 			</Suspense>
-		</div>
+		</PageTemplate>
 	);
 }

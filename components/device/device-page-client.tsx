@@ -10,6 +10,7 @@ import DeviceView from "@/components/device/device-view";
 import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageTemplate } from "@/components/ui/page-template";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -388,18 +389,18 @@ export default function DevicePageClient({
 	}, [editedDevice.playlist_id, playlistItems]);
 
 	return (
-		<>
-			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-				<div className="flex items-center gap-2">
-					<h2 className="mt-10 scroll-m-20 pb-0 text-3xl font-semibold tracking-tight transition-colors first:mt-0 text-box">
-						{device.name}
-					</h2>
+		<PageTemplate
+			title={
+				<h1 className="text-3xl font-bold flex items-center gap-2">
+					{device.name}
 					<Badge
 						className={`text-xs h-[1lh] px-1 py-0 text-white overflow-hidden ${device.status === "online" ? "bg-green-500" : "bg-red-500"}`}
 					>
 						{device.status}
 					</Badge>
-				</div>
+				</h1>
+			}
+			left={
 				<div className="flex items-center gap-2">
 					{isEditing ? (
 						<>
@@ -436,8 +437,8 @@ export default function DevicePageClient({
 						</Button>
 					)}
 				</div>
-			</div>
-
+			}
+		>
 			{isEditing ? (
 				<DeviceEditForm
 					editedDevice={editedDevice}
@@ -468,6 +469,6 @@ export default function DevicePageClient({
 			<div className="w-full">
 				<DeviceLogsContainer device={device} />
 			</div>
-		</>
+		</PageTemplate>
 	);
 }

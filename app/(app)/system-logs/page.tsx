@@ -5,6 +5,7 @@ import { fetchSystemLogs } from "@/app/actions/system";
 import SystemLogsViewer from "@/components/system-logs/system-logs-viewer";
 import SystemLogsViewerSkeleton from "@/components/system-logs/system-logs-viewer-skeleton";
 import { Button } from "@/components/ui/button";
+import { PageTemplate } from "@/components/ui/page-template";
 import { getDbStatus } from "@/lib/database/utils";
 
 export const metadata = {
@@ -61,19 +62,13 @@ const SystemLogsData = async () => {
 
 export default function SystemLogsPage() {
 	return (
-		<>
-			<div className="mb-6">
-				<h2 className="mt-10 scroll-m-20 pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0">
-					System Logs
-				</h2>
-				<p className="text-muted-foreground">
-					View, search, and filter system logs across your application.
-				</p>
-			</div>
-
+		<PageTemplate
+			title="System Logs"
+			subtitle="View, search, and filter system logs across your application."
+		>
 			<Suspense fallback={<SystemLogsViewerSkeleton />}>
 				<SystemLogsData />
 			</Suspense>
-		</>
+		</PageTemplate>
 	);
 }

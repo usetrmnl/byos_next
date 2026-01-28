@@ -223,6 +223,7 @@ export default function SystemLogsViewer({
 		sourceFilter,
 		customFetchFunction,
 		initialData,
+		perPage,
 	]);
 
 	// Maintain scroll position
@@ -412,10 +413,10 @@ export default function SystemLogsViewer({
 									(prevLog &&
 										Math.abs(
 											new Date(log.created_at || "").getTime() -
-											new Date(prevLog.created_at || "").getTime(),
+												new Date(prevLog.created_at || "").getTime(),
 										) /
-										1000 >=
-										3);
+											1000 >=
+											3);
 								// Check if we should show level based on level difference with previous log or time difference
 								const shouldLevelBeShown =
 									index === 0 ||
@@ -423,10 +424,10 @@ export default function SystemLogsViewer({
 									(prevLog &&
 										Math.abs(
 											new Date(log.created_at || "").getTime() -
-											new Date(prevLog.created_at || "").getTime(),
+												new Date(prevLog.created_at || "").getTime(),
 										) /
-										1000 >=
-										3);
+											1000 >=
+											3);
 
 								return (
 									<TableRow key={log.id}>

@@ -237,11 +237,11 @@ export default function DeviceView({
 										refreshPerDay,
 									);
 
-									let batteryColor = "bg-primary";
+									let _batteryColor = "bg-primary";
 									if (batteryEstimate.batteryPercentage < 20) {
-										batteryColor = "bg-red-500";
+										_batteryColor = "bg-red-500";
 									} else if (batteryEstimate.batteryPercentage < 50) {
-										batteryColor = "bg-yellow-500";
+										_batteryColor = "bg-yellow-500";
 									}
 
 									return (

@@ -115,7 +115,7 @@ export function ScreenParamsForm({
 	if (!hasParams) return null;
 
 	return (
-		<div className="mt-8 space-y-4">
+		<div className="space-y-4">
 			<div className="flex flex-row items-center gap-2">
 				<h2 className="text-xl font-semibold">Screen parameters</h2>
 				{formStatus === "success" && (

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import tools from "@/app/(app)/tools/tools.json";
 import { Badge } from "@/components/ui/badge";
+import { PageTemplate } from "@/components/ui/page-template";
 
 // Tool configuration type
 type ToolConfig = {
@@ -121,16 +122,13 @@ const ToolsGrid = () => {
 
 export default function ToolsIndex() {
 	return (
-		<div className="space-y-6">
-			<div className="space-y-2">
-				<h1 className="text-3xl font-bold">Tools</h1>
-				<p className="text-muted-foreground">
-					Explore and use helpful tools for your workflow and creative projects.
-				</p>
-			</div>
+		<PageTemplate
+			title="Tools"
+			subtitle="Explore and use helpful tools for your workflow and creative projects."
+		>
 			<Suspense fallback={<div>Loading tools...</div>}>
 				<ToolsGrid />
 			</Suspense>
-		</div>
+		</PageTemplate>
 	);
 }

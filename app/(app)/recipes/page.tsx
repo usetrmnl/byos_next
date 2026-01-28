@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import screens from "@/app/(app)/recipes/screens.json";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
+import { PageTemplate } from "@/components/ui/page-template";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -151,16 +152,13 @@ const RecipesGrid = () => {
 
 export default function RecipesIndex() {
 	return (
-		<div className="space-y-6">
-			<div className="space-y-2">
-				<h1 className="text-3xl font-bold">Recipes</h1>
-				<p className="text-muted-foreground">
-					Browse and customize ready-to-use recipes for your TRMNL device.
-				</p>
-			</div>
+		<PageTemplate
+			title="Recipes"
+			subtitle="Browse and customize ready-to-use recipes for your TRMNL device."
+		>
 			<Suspense fallback={<div>Loading recipes...</div>}>
 				<RecipesGrid />
 			</Suspense>
-		</div>
+		</PageTemplate>
 	);
 }
