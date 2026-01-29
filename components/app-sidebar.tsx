@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	BookOpen,
 	ChevronRight,
 	LayoutDashboard,
 	ListMusic,
@@ -245,6 +246,21 @@ export function AppSidebar({
 									<Link href="/mixup">
 										<Shuffle />
 										<span>Mixup</span>
+									</Link>
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+
+							{/* Catalog */}
+							<SidebarMenuItem>
+								<SidebarMenuButton
+									asChild
+									isActive={currentPath === "/catalog"}
+									onMouseEnter={() => prefetch("/catalog")}
+									tooltip="Catalog"
+								>
+									<Link href="/catalog">
+										<BookOpen />
+										<span>Catalog</span>
 									</Link>
 								</SidebarMenuButton>
 							</SidebarMenuItem>
