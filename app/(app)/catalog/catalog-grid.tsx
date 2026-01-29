@@ -1,22 +1,27 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import type { CatalogEntry, TrmnlRecipe } from "@/lib/catalog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTemplate } from "@/components/ui/page-template";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ExternalLink } from "lucide-react";
+import { toast } from "sonner";
+import { installCommunityRecipe } from "@/app/actions/catalog";
 
 // --- Shared recipe card ---
 
 interface CardProps {
-	href: string;
+	href?: string;
 	name: string;
 	screenshotUrl: string | null;
 	fallbackImageUrl: string | null;
 	author?: string;
 	description?: string;
 	badges: React.ReactNode;
+	action?: React.ReactNode;
 	className?: string;
 }
 
@@ -28,14 +33,12 @@ function RecipeCard({
 	author,
 	description,
 	badges,
+	action,
 	className,
 }: CardProps) {
 	return (
-		<a
-			href={href}
-			target="_blank"
-			rel="noopener noreferrer"
-			className={`border rounded-lg overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full ${className ?? ""}`}
+		<div
+			className={`border rounded-lg overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full ${className ?? ""}`}
 		>
 			<div className="aspect-video bg-muted overflow-hidden bg-neutral-100">
 				{screenshotUrl ? (
@@ -64,9 +67,21 @@ function RecipeCard({
 			</div>
 			<div className="p-4 flex flex-col flex-grow gap-3">
 				<div className="min-w-0">
-					<h4 className="text-base font-semibold tracking-tight group-hover:text-blue-600 transition-colors truncate">
-						{name}
-					</h4>
+					<div className="flex items-center gap-1.5">
+						<h4 className="text-base font-semibold tracking-tight truncate">
+							{name}
+						</h4>
+						{href && (
+							<a
+								href={href}
+								target="_blank"
+								rel="noopener noreferrer"
+								className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+							>
+								<ExternalLink className="w-3.5 h-3.5" />
+							</a>
+						)}
+					</div>
 					{author && (
 						<p className="text-xs text-muted-foreground">by {author}</p>
 					)}
@@ -79,8 +94,9 @@ function RecipeCard({
 				)}
 
 				<div className="flex flex-wrap gap-1.5 mt-auto">{badges}</div>
+				{action && <div className="mt-2">{action}</div>}
 			</div>
-		</a>
+		</div>
 	);
 }
 
@@ -119,6 +135,34 @@ function SearchBar({
 				{count} result{count !== 1 ? "s" : ""}
 			</span>
 		</div>
+	);
+}
+
+// --- Install button for community entries ---
+
+function InstallButton({ entry }: { entry: CatalogEntry }) {
+	const [isPending, startTransition] = useTransition();
+
+	function handleInstall() {
+		startTransition(async () => {
+			const result = await installCommunityRecipe(entry);
+			if (result.success) {
+				toast.success(`"${entry.name}" installed successfully`);
+			} else {
+				toast.error(result.error ?? "Installation failed");
+			}
+		});
+	}
+
+	return (
+		<Button
+			size="sm"
+			variant="outline"
+			disabled={isPending}
+			onClick={handleInstall}
+		>
+			{isPending ? "Installing…" : "Install"}
+		</Button>
 	);
 }
 
@@ -176,6 +220,7 @@ function CommunityTab({ entries }: { entries: CatalogEntry[] }) {
 							author={entry.author?.github}
 							description={entry.author_bio?.description}
 							className="bg-neutral-200"
+							action={entry.trmnlp?.zip_url ? <InstallButton entry={entry} /> : undefined}
 							badges={
 								<>
 									{byos?.compatibility ? (
