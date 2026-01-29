@@ -39,7 +39,7 @@ export async function GET(
 			return new Response("Database not available", { status: 503 });
 		}
 
-		// Fetch mixup and its slots
+		// Fetch mixup and its slots (join with recipes to get slug)
 		const [mixup, slots] = await Promise.all([
 			db
 				.selectFrom("mixups")
@@ -48,9 +48,18 @@ export async function GET(
 				.executeTakeFirst(),
 			db
 				.selectFrom("mixup_slots")
-				.selectAll()
-				.where("mixup_id", "=", mixupId)
-				.orderBy("order_index", "asc")
+				.leftJoin("recipes", "recipes.id", "mixup_slots.recipe_id")
+				.select([
+					"mixup_slots.id",
+					"mixup_slots.mixup_id",
+					"mixup_slots.slot_id",
+					"mixup_slots.recipe_slug",
+					"mixup_slots.recipe_id",
+					"mixup_slots.order_index",
+					"recipes.slug as resolved_slug",
+				])
+				.where("mixup_slots.mixup_id", "=", mixupId)
+				.orderBy("mixup_slots.order_index", "asc")
 				.execute(),
 		]);
 
@@ -65,10 +74,10 @@ export async function GET(
 			return new Response("Invalid layout", { status: 400 });
 		}
 
-		// Build slot assignments map
+		// Build slot assignments map — prefer resolved slug from recipes table, fall back to legacy recipe_slug
 		const assignments: Record<string, string | null> = {};
 		for (const slot of slots) {
-			assignments[slot.slot_id] = slot.recipe_slug;
+			assignments[slot.slot_id] = slot.resolved_slug ?? slot.recipe_slug;
 		}
 
 		logger.info(

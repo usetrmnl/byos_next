@@ -20,10 +20,10 @@ import { slotsToAssignments } from "@/lib/mixup/constants";
 import type { Mixup } from "@/lib/types";
 
 type MixupRecipe = {
+	id: string;
 	slug: string;
 	title: string;
 	description?: string;
-	tags?: string[];
 };
 
 interface MixupClientPageProps {

@@ -78,7 +78,35 @@ export type MixupSlot = {
 	mixup_id: string | null;
 	slot_id: string;
 	recipe_slug: string | null;
+	recipe_id: string | null;
 	order_index: number;
+	created_at: string | null;
+};
+
+export type Recipe = {
+	id: string;
+	slug: string;
+	type: "react" | "liquid";
+	name: string;
+	description: string | null;
+	repo: string | null;
+	screenshot_url: string | null;
+	logo_url: string | null;
+	author: string | null;
+	author_github: string | null;
+	author_email: string | null;
+	zip_url: string | null;
+	zip_entry_path: string | null;
+	user_id: string | null;
+	created_at: string | null;
+	updated_at: string | null;
+};
+
+export type RecipeFile = {
+	id: string;
+	recipe_id: string;
+	filename: string;
+	content: string;
 	created_at: string | null;
 };
 

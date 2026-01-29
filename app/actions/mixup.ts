@@ -9,7 +9,7 @@ import {
 	withUserScopeTransaction,
 } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
-import type { Mixup, MixupSlot } from "@/lib/types";
+import type { Mixup, MixupSlot, Recipe } from "@/lib/types";
 
 /**
  * Fetch all mixups
@@ -186,7 +186,7 @@ export async function saveMixupWithSlots(mixupData: {
 	id?: string;
 	name: string;
 	layout_id: string;
-	assignments: Record<string, string>; // slot_id -> recipe_slug
+	assignments: Record<string, string>; // slot_id -> recipe_id (UUID)
 }): Promise<{ success: boolean; mixupId?: string; error?: string }> {
 	const { ready } = await checkDbConnection();
 
@@ -240,10 +240,10 @@ export async function saveMixupWithSlots(mixupData: {
 			const slotEntries = Object.entries(mixupData.assignments);
 			if (slotEntries.length > 0) {
 				const slotsToInsert = slotEntries.map(
-					([slotId, recipeSlug], index) => ({
+					([slotId, recipeId], index) => ({
 						mixup_id: mixupId,
 						slot_id: slotId,
-						recipe_slug: recipeSlug || null,
+						recipe_id: recipeId || null,
 						order_index: index,
 					}),
 				);
@@ -261,4 +261,26 @@ export async function saveMixupWithSlots(mixupData: {
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
+}
+
+/**
+ * Fetch all recipes visible to the current user (own + shared)
+ */
+export async function fetchRecipes(): Promise<Recipe[]> {
+	const { ready } = await checkDbConnection();
+
+	if (!ready) {
+		console.warn("Database client not initialized");
+		return [];
+	}
+
+	const recipes = await withUserScope((scopedDb) =>
+		scopedDb
+			.selectFrom("recipes")
+			.selectAll()
+			.orderBy("name", "asc")
+			.execute(),
+	);
+
+	return recipes as unknown as Recipe[];
 }

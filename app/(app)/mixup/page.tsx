@@ -1,5 +1,5 @@
-import screens from "@/app/(app)/recipes/screens.json";
-import { fetchMixups } from "@/app/actions/mixup";
+import { fetchMixups, fetchRecipes } from "@/app/actions/mixup";
+import { syncReactRecipes } from "@/lib/recipes/sync-react-recipes";
 import MixupClientPage from "./client-page";
 
 export const metadata = {
@@ -8,19 +8,20 @@ export const metadata = {
 };
 
 export default async function MixupPage() {
-	const availableRecipes = Object.entries(screens)
-		.filter(
-			([, config]) => process.env.NODE_ENV !== "production" || config.published,
-		)
-		.map(([slug, config]) => ({
-			slug,
-			title: config.title,
-			description: config.description,
-			tags: config.tags,
-		}))
-		.sort((a, b) => a.title.localeCompare(b.title));
+	// Ensure react recipes are synced to DB
+	await syncReactRecipes();
 
-	const mixups = await fetchMixups();
+	const [mixups, recipes] = await Promise.all([
+		fetchMixups(),
+		fetchRecipes(),
+	]);
+
+	const availableRecipes = recipes.map((r) => ({
+		id: r.id,
+		slug: r.slug,
+		title: r.name,
+		description: r.description ?? undefined,
+	}));
 
 	return <MixupClientPage initialMixups={mixups} recipes={availableRecipes} />;
 }
