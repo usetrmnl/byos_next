@@ -1,13 +1,16 @@
-import { fetchCatalog } from "@/lib/catalog";
-import { CatalogGrid } from "./catalog-grid";
+import { fetchCatalog, fetchTrmnlRecipes } from "@/lib/catalog";
+import { CatalogPage as CatalogClient } from "./catalog-grid";
 
 export const metadata = {
 	title: "Catalog",
-	description: "Browse the TRMNL community recipe catalog.",
+	description: "Browse TRMNL official and community recipe catalogs.",
 };
 
 export default async function CatalogPage() {
-	const catalog = await fetchCatalog();
+	const [community, official] = await Promise.all([
+		fetchCatalog(),
+		fetchTrmnlRecipes(),
+	]);
 
-	return <CatalogGrid entries={catalog} />;
+	return <CatalogClient communityEntries={community} officialEntries={official} />;
 }
