@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import screens from "@/app/(app)/recipes/screens.json";
-import DevicePageClient from "@/components/device/device-page-client";
+import DeviceClientPage from "./client-page";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitData } from "@/lib/getInitData";
 import { getDeviceStatus } from "@/utils/helpers";
@@ -58,7 +58,7 @@ const DeviceData = async ({ friendlyId }: { friendlyId: string }) => {
 	}));
 
 	return (
-		<DevicePageClient
+		<DeviceClientPage
 			initialDevice={enhancedDevice}
 			availableScreens={availableScreens}
 			availablePlaylists={playlists}

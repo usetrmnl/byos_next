@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -8,12 +9,15 @@ import {
 	fetchMixupWithSlots,
 	saveMixupWithSlots,
 } from "@/app/actions/mixup";
+import {
+	MixupBuilder,
+	type MixupBuilderData,
+} from "@/components/mixup/mixup-builder";
+import { MixupList } from "@/components/mixup/mixup-list";
 import { Button } from "@/components/ui/button";
 import { PageTemplate } from "@/components/ui/page-template";
 import { slotsToAssignments } from "@/lib/mixup/constants";
 import type { Mixup } from "@/lib/types";
-import { MixupBuilder, type MixupBuilderData } from "./mixup-builder";
-import { MixupList } from "./mixup-list";
 
 type MixupRecipe = {
 	slug: string;
@@ -22,15 +26,16 @@ type MixupRecipe = {
 	tags?: string[];
 };
 
-interface MixupPageClientProps {
+interface MixupClientPageProps {
 	initialMixups: Mixup[];
 	recipes: MixupRecipe[];
 }
 
-export function MixupPageClient({
+export default function MixupClientPage({
 	initialMixups,
 	recipes,
-}: MixupPageClientProps) {
+}: MixupClientPageProps) {
+	const router = useRouter();
 	const [mixups, setMixups] = useState(initialMixups);
 	const [showEditor, setShowEditor] = useState(false);
 	const [editingData, setEditingData] = useState<MixupBuilderData | undefined>(
@@ -76,8 +81,9 @@ export function MixupPageClient({
 						: "Mixup created successfully!",
 				);
 
-				// Refresh the page to get updated data
-				window.location.reload();
+				setShowEditor(false);
+				setEditingData(undefined);
+				router.refresh();
 			} else {
 				toast.error(result.error || "Failed to save mixup");
 			}
@@ -100,7 +106,6 @@ export function MixupPageClient({
 
 			if (result.success) {
 				toast.success("Mixup deleted successfully!");
-				// Update local state
 				setMixups((prev) => prev.filter((m) => m.id !== mixupId));
 			} else {
 				toast.error(result.error || "Failed to delete mixup");

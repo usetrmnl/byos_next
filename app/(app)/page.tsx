@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import { DashboardContent } from "@/components/dashboard/dashboard-content";
+import DashboardClientPage from "./client-page";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
 import { Badge } from "@/components/ui/badge";
@@ -115,7 +115,7 @@ const DashboardData = async () => {
 		);
 	}
 
-	return <DashboardContent devices={devices} systemLogs={systemLogs} />;
+	return <DashboardClientPage devices={devices} systemLogs={systemLogs} />;
 };
 
 export default async function Dashboard() {

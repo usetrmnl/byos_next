@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { PlaylistPageClient } from "@/components/playlists/playlist-page-client";
+import PlaylistsClientPage from "./client-page";
 import { PageTemplate } from "@/components/ui/page-template";
 import { getInitData } from "@/lib/getInitData";
 
@@ -17,7 +17,7 @@ export default async function PlaylistsPage() {
 			subtitle="Create and manage playlists for your TRMNL devices."
 		>
 			<Suspense fallback={<div>Loading playlists...</div>}>
-				<PlaylistPageClient
+				<PlaylistsClientPage
 					initialPlaylists={playlists}
 					initialPlaylistItems={playlistItems}
 				/>

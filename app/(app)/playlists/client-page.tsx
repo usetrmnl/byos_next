@@ -1,26 +1,25 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { deletePlaylist, savePlaylistWithItems } from "@/app/actions/playlist";
+import { PlaylistEditor } from "@/components/playlists/playlist-editor";
+import { PlaylistList } from "@/components/playlists/playlist-list";
 import { Button } from "@/components/ui/button";
-import { Playlist, PlaylistItem } from "@/lib/types";
-import { PlaylistEditor } from "./playlist-editor";
-import { PlaylistList } from "./playlist-list";
+import type { Playlist, PlaylistItem } from "@/lib/types";
 
-interface PlaylistPageClientProps {
+interface PlaylistsClientPageProps {
 	initialPlaylists: Playlist[];
 	initialPlaylistItems: PlaylistItem[];
 }
 
-export function PlaylistPageClient({
+export default function PlaylistsClientPage({
 	initialPlaylists,
 	initialPlaylistItems,
-}: PlaylistPageClientProps) {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [playlists, _setPlaylists] = useState(initialPlaylists);
-	const [playlistItems] = useState(initialPlaylistItems);
+}: PlaylistsClientPageProps) {
+	const router = useRouter();
 	const [showEditor, setShowEditor] = useState(false);
 	const [editingPlaylist, setEditingPlaylist] = useState<
 		(Playlist & { items?: PlaylistItem[] }) | null
@@ -33,7 +32,7 @@ export function PlaylistPageClient({
 	};
 
 	const handleEditPlaylist = (playlist: Playlist) => {
-		const itemsForPlaylist = playlistItems
+		const itemsForPlaylist = initialPlaylistItems
 			.filter((item) => item.playlist_id === playlist.id)
 			.sort(
 				(a, b) =>
@@ -72,8 +71,9 @@ export function PlaylistPageClient({
 						: "Playlist created successfully!",
 				);
 
-				// Refresh the page to get updated data
-				window.location.reload();
+				setShowEditor(false);
+				setEditingPlaylist(null);
+				router.refresh();
 			} else {
 				toast.error(result.error || "Failed to save playlist");
 			}
@@ -96,8 +96,9 @@ export function PlaylistPageClient({
 
 			if (result.success) {
 				toast.success("Playlist deleted successfully!");
-				// Refresh the page to get updated data
-				window.location.reload();
+				setShowEditor(false);
+				setEditingPlaylist(null);
+				router.refresh();
 			} else {
 				toast.error(result.error || "Failed to delete playlist");
 			}
@@ -160,8 +161,8 @@ export function PlaylistPageClient({
 			</div>
 
 			<PlaylistList
-				playlists={playlists}
-				playlistItems={playlistItems}
+				playlists={initialPlaylists}
+				playlistItems={initialPlaylistItems}
 				onEditPlaylist={handleEditPlaylist}
 				onDeletePlaylist={handleDeletePlaylist}
 				isLoading={isLoading}

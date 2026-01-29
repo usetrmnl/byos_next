@@ -2,7 +2,7 @@ import { AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { fetchSystemLogs } from "@/app/actions/system";
-import SystemLogsViewer from "@/components/system-logs/system-logs-viewer";
+import { SystemLogsClientPage } from "./client-page";
 import SystemLogsViewerSkeleton from "@/components/system-logs/system-logs-viewer-skeleton";
 import { Button } from "@/components/ui/button";
 import { PageTemplate } from "@/components/ui/page-template";
@@ -48,7 +48,7 @@ const SystemLogsData = async () => {
 
 	return (
 		<div className="w-full overflow-hidden">
-			<SystemLogsViewer
+			<SystemLogsClientPage
 				perPage={INITIAL_PAGE_SIZE}
 				initialData={{
 					logs,

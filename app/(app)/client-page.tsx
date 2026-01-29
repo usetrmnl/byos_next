@@ -29,15 +29,15 @@ import {
 import type { Device, SystemLog } from "@/lib/types";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
 
-interface DashboardContentProps {
+interface DashboardClientPageProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
 }
 
-export const DashboardContent = ({
+export default function DashboardClientPage({
 	devices,
 	systemLogs,
-}: DashboardContentProps) => {
+}: DashboardClientPageProps) {
 	// Process devices data
 	const processedDevices = devices.map((device) => ({
 		...device,
@@ -341,4 +341,4 @@ export const DashboardContent = ({
 			</Card>
 		</>
 	);
-};
+}

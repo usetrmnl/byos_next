@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import type { MixupLayoutId as DbMixupLayoutId } from "@/lib/database/db.d";
@@ -166,6 +167,7 @@ export async function deleteMixup(mixupId: string): Promise<{
 			scopedDb.deleteFrom("mixups").where("id", "=", mixupId).execute(),
 		);
 
+		revalidatePath("/mixup");
 		return { success: true };
 	} catch (error) {
 		console.error("Error deleting mixup:", error);
@@ -249,6 +251,7 @@ export async function saveMixupWithSlots(mixupData: {
 				await trx.insertInto("mixup_slots").values(slotsToInsert).execute();
 			}
 
+			revalidatePath("/mixup");
 			return { success: true, mixupId };
 		});
 	} catch (error) {

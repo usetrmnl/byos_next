@@ -33,7 +33,7 @@ const DEVICE_SIZE_PRESETS = {
 
 type DeviceSizePreset = keyof typeof DEVICE_SIZE_PRESETS;
 
-interface DevicePageClientProps {
+interface DeviceClientPageProps {
 	initialDevice: Device & { status?: string; type?: string };
 	availableScreens: { id: string; title: string }[];
 	availablePlaylists: Playlist[];
@@ -41,13 +41,13 @@ interface DevicePageClientProps {
 	playlistItems: PlaylistItem[];
 }
 
-export default function DevicePageClient({
+export default function DeviceClientPage({
 	initialDevice,
 	availableScreens,
 	availablePlaylists,
 	availableMixups,
 	playlistItems,
-}: DevicePageClientProps) {
+}: DeviceClientPageProps) {
 	const [device, setDevice] = useState<
 		Device & { status?: string; type?: string }
 	>(initialDevice);

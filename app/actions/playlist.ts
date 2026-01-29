@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import {
@@ -157,6 +158,7 @@ export async function deletePlaylist(playlistId: string): Promise<{
 			scopedDb.deleteFrom("playlists").where("id", "=", playlistId).execute(),
 		);
 
+		revalidatePath("/playlists");
 		return { success: true };
 	} catch (error) {
 		console.error("Error deleting playlist:", error);
@@ -347,6 +349,7 @@ export async function savePlaylistWithItems(playlistData: {
 				await trx.insertInto("playlist_items").values(itemsToInsert).execute();
 			}
 
+			revalidatePath("/playlists");
 			return { success: true, playlistId };
 		});
 	} catch (error) {

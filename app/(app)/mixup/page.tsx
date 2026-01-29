@@ -1,6 +1,6 @@
 import screens from "@/app/(app)/recipes/screens.json";
 import { fetchMixups } from "@/app/actions/mixup";
-import { MixupPageClient } from "@/components/mixup/mixup-page-client";
+import MixupClientPage from "./client-page";
 
 export const metadata = {
 	title: "Mixup",
@@ -22,5 +22,5 @@ export default async function MixupPage() {
 
 	const mixups = await fetchMixups();
 
-	return <MixupPageClient initialMixups={mixups} recipes={availableRecipes} />;
+	return <MixupClientPage initialMixups={mixups} recipes={availableRecipes} />;
 }
