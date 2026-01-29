@@ -1,5 +1,4 @@
 import { fetchMixups, fetchRecipes } from "@/app/actions/mixup";
-import { syncReactRecipes } from "@/lib/recipes/sync-react-recipes";
 import MixupClientPage from "./client-page";
 
 export const metadata = {
@@ -8,9 +7,6 @@ export const metadata = {
 };
 
 export default async function MixupPage() {
-	// Ensure react recipes are synced to DB
-	await syncReactRecipes();
-
 	const [mixups, recipes] = await Promise.all([
 		fetchMixups(),
 		fetchRecipes(),

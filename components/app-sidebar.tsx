@@ -16,6 +16,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { ComponentConfig } from "@/components/client-sidebar";
 import { NavUser } from "@/components/nav-user";
+import type { RecipeSidebarItem } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import {
 	Collapsible,
@@ -43,7 +44,7 @@ import { getDeviceStatus } from "@/utils/helpers";
 
 interface AppSidebarProps {
 	devices: Device[];
-	recipesComponents: [string, ComponentConfig][];
+	recipeSidebarItems: RecipeSidebarItem[];
 	toolsComponents: [string, ComponentConfig][];
 	currentPath: string;
 	user: {
@@ -57,7 +58,7 @@ interface AppSidebarProps {
 
 export function AppSidebar({
 	devices,
-	recipesComponents,
+	recipeSidebarItems,
 	toolsComponents,
 	currentPath,
 	user,
@@ -200,15 +201,15 @@ export function AppSidebar({
 													</Link>
 												</SidebarMenuSubButton>
 											</SidebarMenuSubItem>
-											{recipesComponents.map(([slug, config]) => (
-												<SidebarMenuSubItem key={slug}>
+											{recipeSidebarItems.map((recipe) => (
+												<SidebarMenuSubItem key={recipe.slug}>
 													<SidebarMenuSubButton
 														asChild
-														isActive={currentPath === `/recipes/${slug}`}
-														onMouseEnter={() => prefetch(`/recipes/${slug}`)}
+														isActive={currentPath === `/recipes/${recipe.slug}`}
+														onMouseEnter={() => prefetch(`/recipes/${recipe.slug}`)}
 													>
-														<Link href={`/recipes/${slug}`}>
-															<span>{config.title}</span>
+														<Link href={`/recipes/${recipe.slug}`}>
+															<span>{recipe.name}</span>
 														</Link>
 													</SidebarMenuSubButton>
 												</SidebarMenuSubItem>

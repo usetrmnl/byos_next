@@ -1,42 +1,26 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import screens from "@/app/(app)/recipes/screens.json";
+import { fetchRecipes } from "@/app/actions/mixup";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { Badge } from "@/components/ui/badge";
 import { PageTemplate } from "@/components/ui/page-template";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-
-// Get published components
-const getPublishedComponents = () => {
-	const componentEntries = Object.entries(screens);
-
-	// Filter out unpublished components in production
-	return process.env.NODE_ENV === "production"
-		? componentEntries.filter(([, config]) => config.published)
-		: componentEntries;
-};
+import type { Recipe } from "@/lib/types";
 
 // Component to display a preview with Suspense
-const ComponentPreview = ({
-	slug,
-	config,
-}: {
-	slug: string;
-	config: (typeof screens)[keyof typeof screens];
-}) => {
+const ComponentPreview = ({ recipe }: { recipe: Recipe }) => {
 	return (
 		<AspectRatio
 			ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
 			className="bg-neutral-100 flex items-center justify-center p-0 border-b"
 		>
 			<picture>
-				<source srcSet={`/api/bitmap/${slug}.bmp`} type="image/bmp" />
+				<source srcSet={`/api/bitmap/${recipe.slug}.bmp`} type="image/bmp" />
 				<img
-					src={`/api/bitmap/${slug}.bmp`}
-					alt={`${config.title} preview`}
+					src={`/api/bitmap/${recipe.slug}.bmp`}
+					alt={`${recipe.name} preview`}
 					width={DEFAULT_IMAGE_WIDTH}
 					height={DEFAULT_IMAGE_HEIGHT}
 					className="object-cover"
@@ -50,42 +34,30 @@ const ComponentPreview = ({
 };
 
 // Component for a single card
-const RecipeCard = ({
-	slug,
-	config,
-}: {
-	slug: string;
-	config: (typeof screens)[keyof typeof screens];
-}) => {
+const RecipeCard = ({ recipe }: { recipe: Recipe }) => {
 	return (
 		<Link
-			key={slug}
-			href={`/recipes/${slug}`}
+			key={recipe.slug}
+			href={`/recipes/${recipe.slug}`}
 			className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full"
 		>
-			<ComponentPreview slug={slug} config={config} />
+			<ComponentPreview recipe={recipe} />
 
 			<div className="p-4 flex flex-col flex-grow">
 				<h4 className="scroll-m-20 text-xl font-semibold tracking-tight group-hover:text-blue-600 transition-colors">
-					{config.title}
+					{recipe.name}
 				</h4>
 				<p className="text-gray-600 text-sm mt-2 mb-4 flex-grow">
-					{config.description}
+					{recipe.description}
 				</p>
 
-				<div className="flex flex-wrap gap-2 mt-auto">
-					{config.tags.slice(0, 3).map((tag: string) => (
-						<Badge key={tag} variant="outline">
-							{tag}
-						</Badge>
-					))}
-					{config.tags.length > 3 && (
-						<Badge variant="outline">+{config.tags.length - 3} more</Badge>
-					)}
-				</div>
 				<div className="mt-4 text-xs text-gray-500 flex justify-between items-center">
-					<span>v{config.version}</span>
-					<span>{new Date(config.updatedAt).toLocaleDateString()}</span>
+					{recipe.version && <span>v{recipe.version}</span>}
+					{recipe.updated_at && (
+						<span>
+							{new Date(recipe.updated_at).toLocaleDateString()}
+						</span>
+					)}
 				</div>
 			</div>
 		</Link>
@@ -95,10 +67,10 @@ const RecipeCard = ({
 // Component for a category section
 const CategorySection = ({
 	category,
-	components,
+	recipes,
 }: {
 	category: string;
-	components: Array<[string, (typeof screens)[keyof typeof screens]]>;
+	recipes: Recipe[];
 }) => {
 	return (
 		<div key={category} className="mb-8">
@@ -106,8 +78,8 @@ const CategorySection = ({
 				{category.replace(/-/g, " ")}
 			</h3>
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{components.map(([slug, config]) => (
-					<RecipeCard key={slug} slug={slug} config={config} />
+				{recipes.map((recipe) => (
+					<RecipeCard key={recipe.slug} recipe={recipe} />
 				))}
 			</div>
 		</div>
@@ -115,27 +87,24 @@ const CategorySection = ({
 };
 
 // Main component that organizes recipes by category
-const RecipesGrid = () => {
-	const publishedComponents = getPublishedComponents();
+async function RecipesGrid() {
+	const allRecipes = await fetchRecipes();
 
-	// Group components by category
-	const componentsByCategory = publishedComponents.reduce(
-		(acc, [slug, config]) => {
-			const category = config.category || "uncategorized";
+	// Group recipes by category
+	const recipesByCategory = allRecipes.reduce(
+		(acc, recipe) => {
+			const category = recipe.category || "uncategorized";
 			if (!acc[category]) {
 				acc[category] = [];
 			}
-			acc[category].push([slug, config]);
+			acc[category].push(recipe);
 			return acc;
 		},
-		{} as Record<
-			string,
-			Array<[string, (typeof screens)[keyof typeof screens]]>
-		>,
+		{} as Record<string, Recipe[]>,
 	);
 
 	// Sort categories alphabetically
-	const sortedCategories = Object.keys(componentsByCategory).sort();
+	const sortedCategories = Object.keys(recipesByCategory).sort();
 
 	return (
 		<div className="flex flex-col">
@@ -143,12 +112,12 @@ const RecipesGrid = () => {
 				<CategorySection
 					key={category}
 					category={category}
-					components={componentsByCategory[category]}
+					recipes={recipesByCategory[category]}
 				/>
 			))}
 		</div>
 	);
-};
+}
 
 export default function RecipesIndex() {
 	return (

@@ -97,6 +97,8 @@ export type Recipe = {
 	author_email: string | null;
 	zip_url: string | null;
 	zip_entry_path: string | null;
+	category: string | null;
+	version: string | null;
 	user_id: string | null;
 	created_at: string | null;
 	updated_at: string | null;
@@ -125,6 +127,11 @@ export type SystemLog = {
 	source: string | null;
 	metadata: string | null;
 	trace: string | null;
+};
+
+export type RecipeSidebarItem = {
+	slug: string;
+	name: string;
 };
 
 // Re-export for convenience

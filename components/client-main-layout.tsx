@@ -9,6 +9,7 @@ import { Suspense, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import type { ComponentConfig } from "@/components/client-sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import type { RecipeSidebarItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
 	SidebarInset,
@@ -40,7 +41,7 @@ interface ClientMainLayoutProps {
 		error?: string;
 		PostgresUrl?: string;
 	};
-	recipesComponents: [string, ComponentConfig][];
+	recipeSidebarItems: RecipeSidebarItem[];
 	toolsComponents: [string, ComponentConfig][];
 	user: {
 		name: string;
@@ -54,7 +55,7 @@ interface ClientMainLayoutProps {
 export function ClientMainLayout({
 	children,
 	devices,
-	recipesComponents,
+	recipeSidebarItems,
 	toolsComponents,
 	user,
 	authEnabled,
@@ -71,7 +72,7 @@ export function ClientMainLayout({
 			<AppSidebar
 				devices={devices}
 				currentPath={pathname}
-				recipesComponents={recipesComponents}
+				recipeSidebarItems={recipeSidebarItems}
 				toolsComponents={toolsComponents}
 				user={user}
 				authEnabled={authEnabled}
@@ -128,7 +129,7 @@ export function ClientMainLayout({
 				open={commandPaletteOpen}
 				onOpenChange={setCommandPaletteOpen}
 				devices={devices}
-				recipesComponents={recipesComponents}
+				recipeSidebarItems={recipeSidebarItems}
 				toolsComponents={toolsComponents}
 			/>
 		</SidebarProvider>

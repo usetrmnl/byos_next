@@ -11,6 +11,8 @@ type ScreenConfig = {
 		name?: string;
 		github?: string;
 	};
+	category?: string;
+	version?: string;
 	[key: string]: unknown;
 };
 
@@ -43,6 +45,8 @@ export async function syncReactRecipes(): Promise<{
 				description: config.description ?? null,
 				author: config.author?.name ?? null,
 				author_github: config.author?.github ?? null,
+				category: config.category ?? null,
+				version: config.version ?? null,
 				user_id: null,
 			} as never)
 			.onConflict((oc) =>
@@ -51,6 +55,8 @@ export async function syncReactRecipes(): Promise<{
 					description: config.description ?? null,
 					author: config.author?.name ?? null,
 					author_github: config.author?.github ?? null,
+					category: config.category ?? null,
+					version: config.version ?? null,
 					updated_at: new Date().toISOString(),
 				} as never),
 			)

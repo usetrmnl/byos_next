@@ -432,6 +432,8 @@ CREATE TABLE IF NOT EXISTS recipes (
     author_email TEXT,
     zip_url TEXT,
     zip_entry_path TEXT,
+    category TEXT,
+    version TEXT,
     user_id TEXT REFERENCES "user"("id") ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

@@ -156,6 +156,7 @@ export interface Recipes {
   author: string | null;
   author_email: string | null;
   author_github: string | null;
+  category: string | null;
   created_at: Generated<Timestamp | null>;
   description: string | null;
   id: Generated<string>;
@@ -167,6 +168,7 @@ export interface Recipes {
   type: RecipeType;
   updated_at: Generated<Timestamp | null>;
   user_id: string | null;
+  version: string | null;
   zip_entry_path: string | null;
   zip_url: string | null;
 }

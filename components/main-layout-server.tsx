@@ -1,5 +1,5 @@
 import { headers } from "next/headers";
-import screens from "@/app/(app)/recipes/screens.json";
+import { fetchRecipes } from "@/app/actions/mixup";
 import tools from "@/app/(app)/tools/tools.json";
 import { ClientMainLayout } from "@/components/client-main-layout";
 import { auth } from "@/lib/auth/auth";
@@ -9,6 +9,7 @@ import {
 	preloadDevices,
 	preloadSystemLogs,
 } from "@/lib/getInitData";
+import { syncReactRecipes } from "@/lib/recipes/sync-react-recipes";
 
 const AUTH_ENABLED = process.env.AUTH_ENABLED !== "false";
 
@@ -57,12 +58,14 @@ export default async function MainLayout({
 	preloadSystemLogs();
 	preloadDevices();
 
-	// Process recipe and tool data on the server to reduce client-side computation
-	const recipesComponents = Object.entries(screens)
-		.filter(
-			([, config]) => process.env.NODE_ENV !== "production" || config.published,
-		)
-		.sort((a, b) => a[1].title.localeCompare(b[1].title));
+	// Sync react recipes from screens.json into the database
+	await syncReactRecipes();
+
+	// Fetch recipes from DB (filtered by published in production)
+	const allRecipes = await fetchRecipes();
+	const recipeSidebarItems = allRecipes
+		.sort((a, b) => a.name.localeCompare(b.name))
+		.map((r) => ({ slug: r.slug, name: r.name }));
 
 	const toolsComponents = Object.entries(tools)
 		.filter(
@@ -76,7 +79,7 @@ export default async function MainLayout({
 		<ClientMainLayout
 			devices={devices}
 			dbStatus={dbStatus}
-			recipesComponents={recipesComponents}
+			recipeSidebarItems={recipeSidebarItems}
 			toolsComponents={toolsComponents}
 			user={user}
 			authEnabled={AUTH_ENABLED}
