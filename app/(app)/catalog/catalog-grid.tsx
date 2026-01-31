@@ -220,11 +220,18 @@ function CommunityTab({ entries }: { entries: CatalogEntry[] }) {
 							author={entry.author?.github}
 							description={entry.author_bio?.description}
 							className="bg-neutral-200"
-							action={entry.trmnlp?.zip_url ? <InstallButton entry={entry} /> : undefined}
+							action={
+								entry.trmnlp?.zip_url ? (
+									<InstallButton entry={entry} />
+								) : undefined
+							}
 							badges={
 								<>
 									{byos?.compatibility ? (
-										<Badge variant="default" className="bg-green-600 hover:bg-green-700 text-xs">
+										<Badge
+											variant="default"
+											className="bg-green-600 hover:bg-green-700 text-xs"
+										>
 											BYOS
 										</Badge>
 									) : (
@@ -275,7 +282,11 @@ function OfficialTab({ recipes }: { recipes: TrmnlRecipe[] }) {
 
 	return (
 		<div className="space-y-4">
-			<SearchBar search={search} onSearchChange={setSearch} count={filtered.length} />
+			<SearchBar
+				search={search}
+				onSearchChange={setSearch}
+				count={filtered.length}
+			/>
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{filtered.map((recipe) => (
 					<RecipeCard
@@ -289,7 +300,8 @@ function OfficialTab({ recipes }: { recipes: TrmnlRecipe[] }) {
 						badges={
 							<>
 								<Badge variant="secondary" className="text-xs">
-									{recipe.stats.installs} install{recipe.stats.installs !== 1 ? "s" : ""}
+									{recipe.stats.installs} install
+									{recipe.stats.installs !== 1 ? "s" : ""}
 								</Badge>
 								<Badge variant="secondary" className="text-xs">
 									{recipe.stats.forks} fork{recipe.stats.forks !== 1 ? "s" : ""}

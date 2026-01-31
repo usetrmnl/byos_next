@@ -54,9 +54,7 @@ const RecipeCard = ({ recipe }: { recipe: Recipe }) => {
 				<div className="mt-4 text-xs text-gray-500 flex justify-between items-center">
 					{recipe.version && <span>v{recipe.version}</span>}
 					{recipe.updated_at && (
-						<span>
-							{new Date(recipe.updated_at).toLocaleDateString()}
-						</span>
+						<span>{new Date(recipe.updated_at).toLocaleDateString()}</span>
 					)}
 				</div>
 			</div>

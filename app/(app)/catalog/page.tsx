@@ -12,5 +12,7 @@ export default async function CatalogPage() {
 		fetchTrmnlRecipes(),
 	]);
 
-	return <CatalogClient communityEntries={community} officialEntries={official} />;
+	return (
+		<CatalogClient communityEntries={community} officialEntries={official} />
+	);
 }

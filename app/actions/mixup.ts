@@ -239,14 +239,12 @@ export async function saveMixupWithSlots(mixupData: {
 			// Insert new slots
 			const slotEntries = Object.entries(mixupData.assignments);
 			if (slotEntries.length > 0) {
-				const slotsToInsert = slotEntries.map(
-					([slotId, recipeId], index) => ({
-						mixup_id: mixupId,
-						slot_id: slotId,
-						recipe_id: recipeId || null,
-						order_index: index,
-					}),
-				);
+				const slotsToInsert = slotEntries.map(([slotId, recipeId], index) => ({
+					mixup_id: mixupId,
+					slot_id: slotId,
+					recipe_id: recipeId || null,
+					order_index: index,
+				}));
 
 				await trx.insertInto("mixup_slots").values(slotsToInsert).execute();
 			}
@@ -275,11 +273,7 @@ export async function fetchRecipes(): Promise<Recipe[]> {
 	}
 
 	const recipes = await withUserScope((scopedDb) =>
-		scopedDb
-			.selectFrom("recipes")
-			.selectAll()
-			.orderBy("name", "asc")
-			.execute(),
+		scopedDb.selectFrom("recipes").selectAll().orderBy("name", "asc").execute(),
 	);
 
 	return recipes as unknown as Recipe[];

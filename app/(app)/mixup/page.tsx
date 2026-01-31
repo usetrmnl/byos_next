@@ -7,10 +7,7 @@ export const metadata = {
 };
 
 export default async function MixupPage() {
-	const [mixups, recipes] = await Promise.all([
-		fetchMixups(),
-		fetchRecipes(),
-	]);
+	const [mixups, recipes] = await Promise.all([fetchMixups(), fetchRecipes()]);
 
 	const availableRecipes = recipes.map((r) => ({
 		id: r.id,

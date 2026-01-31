@@ -207,7 +207,9 @@ export function AppSidebar({
 													<SidebarMenuSubButton
 														asChild
 														isActive={currentPath === `/recipes/${recipe.slug}`}
-														onMouseEnter={() => prefetch(`/recipes/${recipe.slug}`)}
+														onMouseEnter={() =>
+															prefetch(`/recipes/${recipe.slug}`)
+														}
 													>
 														<Link href={`/recipes/${recipe.slug}`}>
 															<span>{recipe.name}</span>

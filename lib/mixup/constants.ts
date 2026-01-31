@@ -300,7 +300,11 @@ export const buildAssignments = (
  * Useful when loading a mixup back into the builder
  */
 export const slotsToAssignments = (
-	slots: Array<{ slot_id: string; recipe_id: string | null; recipe_slug: string | null }>,
+	slots: Array<{
+		slot_id: string;
+		recipe_id: string | null;
+		recipe_slug: string | null;
+	}>,
 ): Record<string, string> => {
 	const assignments: Record<string, string> = {};
 	for (const slot of slots) {

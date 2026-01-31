@@ -233,9 +233,7 @@ export function MixupBuilder({
 						>
 							{currentLayout.slots.map((slot, index) => {
 								const selectedId = assignments[slot.id];
-								const recipe = selectedId
-									? recipeMap[selectedId]
-									: undefined;
+								const recipe = selectedId ? recipeMap[selectedId] : undefined;
 								const gradient = SLOT_GRADIENTS[index % SLOT_GRADIENTS.length];
 
 								return (
