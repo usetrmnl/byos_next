@@ -1,11 +1,11 @@
-import { Liquid } from "liquidjs";
 import yaml from "js-yaml";
+import { Liquid } from "liquidjs";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logger, type RecipeParamDefinitions } from "./recipe-renderer";
 
-const TRMNL_CSS_URL = "https://trmnl.com/css/latest/plugins.css";
-const TRMNL_JS_URL = "https://trmnl.com/js/latest/plugins.js";
+const _TRMNL_CSS_URL = "https://trmnl.com/css/latest/plugins.css";
+const _TRMNL_JS_URL = "https://trmnl.com/js/latest/plugins.js";
 
 export type CustomField = {
 	keyname?: string;
@@ -182,8 +182,11 @@ function extractTemplateBlocks(content: string): Record<string, string> {
 	const blocks: Record<string, string> = {};
 	const regex =
 		/\{%[-\s]*template\s+(\w+)\s*[-]?%\}([\s\S]*?)\{%[-\s]*endtemplate\s*[-]?%\}/g;
-	let match: RegExpExecArray | null;
-	while ((match = regex.exec(content)) !== null) {
+	for (
+		let match = regex.exec(content);
+		match !== null;
+		match = regex.exec(content)
+	) {
 		blocks[match[1]] = match[2].trim();
 	}
 	return blocks;
@@ -205,8 +208,9 @@ function findTemplateFile(
 		`templates/${name}`,
 	];
 	for (const candidate of candidates) {
-		if (files.has(candidate)) {
-			return files.get(candidate)!;
+		const content = files.get(candidate);
+		if (content !== undefined) {
+			return content;
 		}
 	}
 	// Fallback: find any file ending with the name
@@ -306,8 +310,8 @@ export async function renderLiquidRecipe(
 	const sharedTemplate = findTemplateFile(files, "shared.liquid");
 	if (sharedTemplate) {
 		const stripped = stripTemplateBlocks(sharedTemplate);
-		templates["shared"] = stripped;
-		fullTemplate = stripped + "\n" + fullTemplate;
+		templates.shared = stripped;
+		fullTemplate = `${stripped}\n${fullTemplate}`;
 	}
 
 	// Set up liquidjs engine with in-memory templates for partials
@@ -321,7 +325,7 @@ export async function renderLiquidRecipe(
 	engine.registerFilter("l_date", (date: string, format?: string) => {
 		try {
 			const d = date ? new Date(date) : new Date();
-			if (isNaN(d.getTime())) return date;
+			if (Number.isNaN(d.getTime())) return date;
 			if (format === "%B %d, %Y") {
 				return d.toLocaleDateString("en-US", {
 					year: "numeric",

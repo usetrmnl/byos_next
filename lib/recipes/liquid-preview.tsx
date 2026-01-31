@@ -17,6 +17,12 @@ export default function LiquidPreview({
 	const h = height ?? 480;
 
 	return (
-		<iframe srcDoc={html} width={w} height={h} style={{ border: "none" }} />
+		<iframe
+			srcDoc={html}
+			width={w}
+			height={h}
+			title="Liquid recipe preview"
+			style={{ border: "none" }}
+		/>
 	);
 }
