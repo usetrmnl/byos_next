@@ -9,12 +9,19 @@ import {
 	getScreenParams,
 	updateScreenParams,
 } from "@/app/actions/screens-params";
+import { DeleteRecipeButton } from "@/components/recipes/delete-recipe-button";
 import { FormatToggle } from "@/components/recipes/format-toggle";
 import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { PageTemplate } from "@/components/ui/page-template";
+import LiquidPreview from "@/lib/recipes/liquid-preview";
+import {
+	customFieldsToParamDefinitions,
+	fetchLiquidRecipeSettings,
+	renderLiquidRecipe,
+} from "@/lib/recipes/liquid-renderer";
 import {
 	addDimensionsToProps,
 	ComponentProps,
@@ -29,6 +36,8 @@ import {
 	RecipeConfig,
 	renderRecipeOutputs,
 } from "@/lib/recipes/recipe-renderer";
+import { withUserScope } from "@/lib/database/scoped-db";
+import { checkDbConnection } from "@/lib/database/utils";
 
 export async function generateMetadata() {
 	// This empty function enables streaming for this route
@@ -45,6 +54,112 @@ async function refreshData(slug: string) {
 export async function generateStaticParams() {
 	return Object.keys(screens).map((slug) => ({ slug }));
 }
+
+// Fetch liquid recipe metadata from DB
+const fetchLiquidRecipeMeta = cache(async (slug: string) => {
+	const { ready } = await checkDbConnection();
+	if (!ready) return null;
+
+	const recipe = await withUserScope(async (scopedDb) => {
+		return scopedDb
+			.selectFrom("recipes")
+			.select(["name", "description"])
+			.where("slug", "=", slug)
+			.where("type", "=", "liquid")
+			.executeTakeFirst();
+	});
+
+	return recipe ?? null;
+});
+
+// Render component for liquid recipes using buildRecipeElement pipeline
+const LiquidRenderComponent = ({
+	slug,
+	format,
+	title,
+	imageWidth,
+	imageHeight,
+	customFieldOverrides,
+}: {
+	slug: string;
+	format: "bitmap" | "png" | "react";
+	title: string;
+	imageWidth: number;
+	imageHeight: number;
+	customFieldOverrides?: Record<string, unknown>;
+}) => {
+	const result = use(renderLiquidRecipe(slug, customFieldOverrides));
+
+	if (!result) {
+		return (
+			<div className="w-full h-full flex items-center justify-center">
+				Failed to render liquid template
+			</div>
+		);
+	}
+
+	if (format === "react") {
+		return (
+			<LiquidPreview
+				html={result.html}
+				width={imageWidth}
+				height={imageHeight}
+			/>
+		);
+	}
+
+	const renders = use(
+		renderRecipeOutputs({
+			slug,
+			html: result.html,
+			config: null,
+			imageWidth,
+			imageHeight,
+		}),
+	);
+
+	if (format === "bitmap") {
+		if (!renders.bitmap) {
+			return (
+				<div className="w-full h-full flex items-center justify-center">
+					Failed to generate bitmap
+				</div>
+			);
+		}
+		return (
+			<Image
+				width={imageWidth}
+				height={imageHeight}
+				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
+				style={{ imageRendering: "pixelated" }}
+				alt={`${title} BMP render`}
+				className="w-full object-cover"
+			/>
+		);
+	}
+
+	if (format === "png") {
+		if (!renders.png) {
+			return (
+				<div className="w-full h-full flex items-center justify-center">
+					Failed to generate PNG
+				</div>
+			);
+		}
+		return (
+			<Image
+				width={imageWidth}
+				height={imageHeight}
+				src={`data:image/png;base64,${renders.png.toString("base64")}`}
+				style={{ imageRendering: "pixelated" }}
+				alt={`${title} PNG render`}
+				className="w-full object-cover"
+			/>
+		);
+	}
+
+	return null;
+};
 
 // Combined render function for all formats (relies on Next.js cache)
 const renderAllFormats = cache(
@@ -236,8 +351,158 @@ export default async function RecipePage({
 	const imageWidth = isPortrait ? DEFAULT_IMAGE_HEIGHT : DEFAULT_IMAGE_WIDTH;
 	const imageHeight = isPortrait ? DEFAULT_IMAGE_WIDTH : DEFAULT_IMAGE_HEIGHT;
 
+	// If not a React recipe, check for a liquid recipe in the DB
 	if (!config) {
-		notFound();
+		const liquidMeta = await fetchLiquidRecipeMeta(slug);
+		if (!liquidMeta) {
+			notFound();
+		}
+
+		const title = liquidMeta.name;
+		const description = liquidMeta.description;
+
+		// Fetch settings and build param definitions from custom_fields
+		const liquidSettings = await fetchLiquidRecipeSettings(slug);
+		const customFields = liquidSettings?.custom_fields ?? [];
+		const paramDefinitions = customFieldsToParamDefinitions(customFields);
+		const hasParams = Object.keys(paramDefinitions).length > 0;
+		const storedValues = hasParams
+			? await getScreenParams(slug, paramDefinitions)
+			: {};
+
+		return (
+			<div className="@container">
+				<PageTemplate
+					title={title}
+					subtitle={
+						<p className="text-muted-foreground max-w-prose">{description}</p>
+					}
+				>
+					<div className="flex items-center gap-2">
+						<FormatToggle slug={slug} isPortrait={isPortrait} />
+						<DeleteRecipeButton slug={slug} />
+					</div>
+
+					{hasParams && (
+						<ScreenParamsForm
+							slug={slug}
+							paramsSchema={paramDefinitions}
+							initialValues={storedValues}
+							updateAction={updateScreenParams}
+						/>
+					)}
+
+					<RecipePreviewLayout
+						canvasWidth={imageWidth}
+						bmpComponent={
+							<div
+								style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+								className="border border-gray-200 overflow-hidden rounded-sm"
+							>
+								<AspectRatio ratio={imageWidth / imageHeight}>
+									<Suspense
+										fallback={
+											<div className="w-full h-full flex items-center justify-center">
+												Rendering bitmap...
+											</div>
+										}
+									>
+										<LiquidRenderComponent
+											slug={slug}
+											format="bitmap"
+											title={title}
+											imageWidth={imageWidth}
+											imageHeight={imageHeight}
+											customFieldOverrides={storedValues}
+										/>
+									</Suspense>
+								</AspectRatio>
+							</div>
+						}
+						pngComponent={
+							<div
+								style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+								className="border border-gray-200 overflow-hidden rounded-sm"
+							>
+								<AspectRatio ratio={imageWidth / imageHeight}>
+									<Suspense
+										fallback={
+											<div className="w-full h-full flex items-center justify-center">
+												Rendering PNG...
+											</div>
+										}
+									>
+										<LiquidRenderComponent
+											slug={slug}
+											format="png"
+											title={title}
+											imageWidth={imageWidth}
+											imageHeight={imageHeight}
+											customFieldOverrides={storedValues}
+										/>
+									</Suspense>
+								</AspectRatio>
+							</div>
+						}
+						reactComponent={
+							<div
+								style={{ width: `${imageWidth}px`, height: `${imageHeight}px` }}
+								className="border border-gray-200 overflow-hidden rounded-sm"
+							>
+								<AspectRatio
+									ratio={imageWidth / imageHeight}
+									style={{
+										width: `${imageWidth}px`,
+										height: `${imageHeight}px`,
+									}}
+								>
+									<Suspense
+										fallback={
+											<div className="w-full h-full flex items-center justify-center">
+												Rendering recipe...
+											</div>
+										}
+									>
+										<LiquidRenderComponent
+											slug={slug}
+											format="react"
+											title={title}
+											imageWidth={imageWidth}
+											imageHeight={imageHeight}
+											customFieldOverrides={storedValues}
+										/>
+									</Suspense>
+								</AspectRatio>
+							</div>
+						}
+						bmpLinkComponent={
+							<p className="leading-7 text-xs">
+								Liquid → liquidjs → HTML → Puppeteer PNG → utils/render-bmp.ts →
+								<Link
+									href={`/api/bitmap/${slug}.bmp`}
+									className="hover:underline text-blue-600 dark:text-blue-400"
+								>
+									/api/bitmap/{slug}.bmp
+								</Link>
+							</p>
+						}
+						pngLinkComponent={
+							<p className="leading-7 text-xs">
+								Liquid → liquidjs → HTML →{" "}
+								<span className="text-blue-600 dark:text-blue-400">
+									Puppeteer PNG
+								</span>
+							</p>
+						}
+						reactLinkComponent={
+							<p className="leading-7 text-xs">
+								Liquid → liquidjs → HTML → Browser preview (exec JS)
+							</p>
+						}
+					/>
+				</PageTemplate>
+			</div>
+		);
 	}
 
 	const screenParams = config.params

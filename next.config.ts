@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
 	serverExternalPackages: [
 		"@takumi-rs/core",
 		"@takumi-rs/helpers",
+		"@sparticuz/chromium-min",
+		"puppeteer-core",
 	],
 };
 

@@ -4,12 +4,10 @@ import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
 import {
-	addDimensionsToProps,
-	buildRecipeElement,
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 	logger,
-	renderRecipeOutputs,
+	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
@@ -113,27 +111,12 @@ async function renderSlot(
 	recipeSlug: string,
 ): Promise<Buffer | null> {
 	try {
-		const { config, Component, props, element } = await buildRecipeElement({
+		const renders = await renderRecipeToImage({
 			slug: recipeSlug,
-		});
-
-		const ComponentToRender = Component ?? (() => element);
-		const propsWithDimensions = addDimensionsToProps(
-			props,
-			slot.width,
-			slot.height,
-		);
-
-		const renders = await renderRecipeOutputs({
-			slug: recipeSlug,
-			Component: ComponentToRender,
-			props: propsWithDimensions,
-			config: config ?? null,
 			imageWidth: slot.width,
 			imageHeight: slot.height,
 			formats: ["png"],
 		});
-
 		return renders.png;
 	} catch (error) {
 		logger.error(
