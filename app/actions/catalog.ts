@@ -1,10 +1,12 @@
 "use server";
 
 import JSZip from "jszip";
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { CatalogEntry } from "@/lib/catalog";
-import { withUserScopeTransaction } from "@/lib/database/scoped-db";
+import { withUserScope, withUserScopeTransaction } from "@/lib/database/scoped-db";
+import { checkDbConnection } from "@/lib/database/utils";
 
 function toSlug(name: string): string {
 	return name
@@ -38,7 +40,11 @@ export async function installCommunityRecipe(
 		// Extract files
 		const zip = await JSZip.loadAsync(buffer);
 		const entryPath = entry.trmnlp.zip_entry_path ?? "";
-		const prefix = entryPath ? (entryPath.endsWith("/") ? entryPath : `${entryPath}/`) : "";
+		const prefix = entryPath
+			? entryPath.endsWith("/")
+				? entryPath
+				: `${entryPath}/`
+			: "";
 
 		const files: { filename: string; content: string }[] = [];
 		const filePromises: Promise<void>[] = [];
@@ -47,18 +53,25 @@ export async function installCommunityRecipe(
 			if (file.dir) return;
 			if (prefix && !relativePath.startsWith(prefix)) return;
 
-			const filename = prefix ? relativePath.slice(prefix.length) : relativePath;
+			const filename = prefix
+				? relativePath.slice(prefix.length)
+				: relativePath;
 			if (!filename) return;
 
 			filePromises.push(
-				file.async("uint8array").then((data) => {
-					// Skip binary files (files containing null bytes)
-					if (data.includes(0)) return;
-					const content = new TextDecoder("utf-8", { fatal: true }).decode(data);
-					files.push({ filename, content });
-				}).catch(() => {
-					// Skip files that aren't valid UTF-8
-				}),
+				file
+					.async("uint8array")
+					.then((data) => {
+						// Skip binary files (files containing null bytes)
+						if (data.includes(0)) return;
+						const content = new TextDecoder("utf-8", { fatal: true }).decode(
+							data,
+						);
+						files.push({ filename, content });
+					})
+					.catch(() => {
+						// Skip files that aren't valid UTF-8
+					}),
 			);
 		});
 
@@ -133,4 +146,18 @@ export async function installCommunityRecipe(
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
+}
+
+export async function deleteRecipe(slug: string): Promise<void> {
+	const { ready } = await checkDbConnection();
+	if (!ready) {
+		throw new Error("Database client not initialized");
+	}
+
+	await withUserScope((scopedDb) =>
+		scopedDb.deleteFrom("recipes").where("slug", "=", slug).execute(),
+	);
+
+	revalidatePath("/recipes");
+	redirect("/recipes");
 }
