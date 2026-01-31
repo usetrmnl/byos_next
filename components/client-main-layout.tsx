@@ -9,7 +9,6 @@ import { Suspense, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import type { ComponentConfig } from "@/components/client-sidebar";
 import { CommandPalette } from "@/components/command-palette";
-import type { RecipeSidebarItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import {
 	SidebarInset,
@@ -17,7 +16,7 @@ import {
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Device } from "@/lib/types";
+import type { Device, RecipeSidebarItem } from "@/lib/types";
 
 // Loading skeleton for main content
 function MainContentSkeleton() {

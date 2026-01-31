@@ -2,11 +2,11 @@ import { AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { fetchSystemLogs } from "@/app/actions/system";
-import { SystemLogsClientPage } from "./client-page";
 import SystemLogsViewerSkeleton from "@/components/system-logs/system-logs-viewer-skeleton";
 import { Button } from "@/components/ui/button";
 import { PageTemplate } from "@/components/ui/page-template";
 import { getDbStatus } from "@/lib/database/utils";
+import { SystemLogsClientPage } from "./client-page";
 
 export const metadata = {
 	title: "System Logs",

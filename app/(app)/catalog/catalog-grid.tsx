@@ -1,15 +1,15 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
-import type { CatalogEntry, TrmnlRecipe } from "@/lib/catalog";
+import { toast } from "sonner";
+import { installCommunityRecipe } from "@/app/actions/catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageTemplate } from "@/components/ui/page-template";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ExternalLink } from "lucide-react";
-import { toast } from "sonner";
-import { installCommunityRecipe } from "@/app/actions/catalog";
+import type { CatalogEntry, TrmnlRecipe } from "@/lib/catalog";
 
 // --- Shared recipe card ---
 

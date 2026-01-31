@@ -17,7 +17,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { ComponentConfig } from "@/components/client-sidebar";
 import { NavUser } from "@/components/nav-user";
-import type { RecipeSidebarItem } from "@/lib/types";
 import { Badge } from "@/components/ui/badge";
 import {
 	Collapsible,
@@ -39,7 +38,7 @@ import {
 	SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { StatusIndicator } from "@/components/ui/status-indicator";
-import type { Device } from "@/lib/types";
+import type { Device, RecipeSidebarItem } from "@/lib/types";
 import packageJson from "@/package.json";
 import { getDeviceStatus } from "@/utils/helpers";
 

@@ -44,7 +44,10 @@ export async function renderHtmlToImage(
 	const page = await b.newPage();
 	try {
 		await page.setViewport({ width, height });
-		await page.setContent(html, { waitUntil: "domcontentloaded", timeout: 15000 });
+		await page.setContent(html, {
+			waitUntil: "domcontentloaded",
+			timeout: 15000,
+		});
 		// Allow linked CSS/JS/fonts to load and execute before taking the screenshot
 		await new Promise((r) => setTimeout(r, 1500));
 		const screenshot = await page.screenshot({

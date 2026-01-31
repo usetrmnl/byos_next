@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import screens from "@/app/(app)/recipes/screens.json";
-import DeviceClientPage from "./client-page";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitData } from "@/lib/getInitData";
 import { getDeviceStatus } from "@/utils/helpers";
+import DeviceClientPage from "./client-page";
 
 // Loading fallback for the device page
 const DevicePageSkeleton = () => (

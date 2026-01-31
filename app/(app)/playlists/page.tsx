@@ -1,7 +1,7 @@
 import { Suspense } from "react";
-import PlaylistsClientPage from "./client-page";
 import { PageTemplate } from "@/components/ui/page-template";
 import { getInitData } from "@/lib/getInitData";
+import PlaylistsClientPage from "./client-page";
 
 export const metadata = {
 	title: "Playlists",

@@ -1,11 +1,14 @@
 "use server";
 
 import JSZip from "jszip";
-import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { CatalogEntry } from "@/lib/catalog";
-import { withUserScope, withUserScopeTransaction } from "@/lib/database/scoped-db";
+import {
+	withUserScope,
+	withUserScopeTransaction,
+} from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 
 function toSlug(name: string): string {

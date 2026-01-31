@@ -16,6 +16,8 @@ import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { PageTemplate } from "@/components/ui/page-template";
+import { withUserScope } from "@/lib/database/scoped-db";
+import { checkDbConnection } from "@/lib/database/utils";
 import LiquidPreview from "@/lib/recipes/liquid-preview";
 import {
 	customFieldsToParamDefinitions,
@@ -36,8 +38,6 @@ import {
 	RecipeConfig,
 	renderRecipeOutputs,
 } from "@/lib/recipes/recipe-renderer";
-import { withUserScope } from "@/lib/database/scoped-db";
-import { checkDbConnection } from "@/lib/database/utils";
 
 export async function generateMetadata() {
 	// This empty function enables streaming for this route

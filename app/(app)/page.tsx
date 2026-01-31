@@ -1,11 +1,11 @@
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import DashboardClientPage from "./client-page";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
 import { Badge } from "@/components/ui/badge";
 import { PageTemplate } from "@/components/ui/page-template";
 import { getInitData } from "@/lib/getInitData";
+import DashboardClientPage from "./client-page";
 
 // Dashboard data component that uses the cached data
 const DashboardData = async () => {
