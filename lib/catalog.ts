@@ -39,7 +39,7 @@ const CATALOG_URL =
 	"https://raw.githubusercontent.com/bnussbau/trmnl-recipe-catalog/refs/heads/main/catalog.yaml";
 
 export async function fetchCatalog(): Promise<CatalogEntry[]> {
-	const res = await fetch(CATALOG_URL, { next: { revalidate: 3600 } });
+	const res = await fetch(CATALOG_URL, { next: { revalidate: 300 } });
 
 	if (!res.ok) {
 		throw new Error(`Failed to fetch catalog: ${res.status}`);
@@ -89,7 +89,7 @@ export async function fetchTrmnlRecipes(): Promise<TrmnlRecipe[]> {
 	while (true) {
 		const res = await fetch(
 			`${TRMNL_API_BASE}/recipes.json?sort-by=install&page=${page}`,
-			{ next: { revalidate: 3600 } },
+			{ next: { revalidate: 300 } },
 		);
 
 		if (!res.ok) {
