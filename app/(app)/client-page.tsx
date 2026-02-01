@@ -84,7 +84,7 @@ export default function DashboardClientPage({
 						{lastUpdatedDevice ? (
 							<div className="flex flex-col items-center">
 								<div
-									className="rounded-xs bg-muted border overflow-hidden w-full"
+									className="rounded-sm bg-muted border overflow-hidden w-full"
 									style={{
 										maxWidth: `${maxPreviewWidth}px`,
 										maxHeight: `${(maxPreviewWidth * deviceHeight) / deviceWidth}px`,

@@ -8,16 +8,18 @@ import { deletePlaylist, savePlaylistWithItems } from "@/app/actions/playlist";
 import { PlaylistEditor } from "@/components/playlists/playlist-editor";
 import { PlaylistList } from "@/components/playlists/playlist-list";
 import { Button } from "@/components/ui/button";
-import type { Playlist, PlaylistItem } from "@/lib/types";
+import type { Playlist, PlaylistItem, Recipe } from "@/lib/types";
 
 interface PlaylistsClientPageProps {
 	initialPlaylists: Playlist[];
 	initialPlaylistItems: PlaylistItem[];
+	recipes: Recipe[];
 }
 
 export default function PlaylistsClientPage({
 	initialPlaylists,
 	initialPlaylistItems,
+	recipes,
 }: PlaylistsClientPageProps) {
 	const router = useRouter();
 	const [showEditor, setShowEditor] = useState(false);
@@ -144,6 +146,7 @@ export default function PlaylistsClientPage({
 								}
 							: undefined
 					}
+					recipes={recipes}
 					onSave={handleSavePlaylist}
 					onCancel={handleCancel}
 				/>
@@ -163,6 +166,7 @@ export default function PlaylistsClientPage({
 			<PlaylistList
 				playlists={initialPlaylists}
 				playlistItems={initialPlaylistItems}
+				recipes={recipes}
 				onEditPlaylist={handleEditPlaylist}
 				onDeletePlaylist={handleDeletePlaylist}
 				isLoading={isLoading}

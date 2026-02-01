@@ -1,5 +1,4 @@
 import { Edit, Trash2 } from "lucide-react";
-import screens from "@/app/(app)/recipes/screens.json";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,11 +7,12 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { Playlist, PlaylistItem } from "@/lib/types";
+import type { Playlist, PlaylistItem, Recipe } from "@/lib/types";
 
 interface PlaylistListProps {
 	playlists: Playlist[];
 	playlistItems: PlaylistItem[];
+	recipes: Recipe[];
 	onEditPlaylist?: (playlist: Playlist) => void;
 	onDeletePlaylist?: (playlistId: string) => void;
 	isLoading?: boolean;
@@ -21,6 +21,7 @@ interface PlaylistListProps {
 export function PlaylistList({
 	playlists,
 	playlistItems,
+	recipes,
 	onEditPlaylist,
 	onDeletePlaylist,
 	isLoading = false,
@@ -45,8 +46,10 @@ export function PlaylistList({
 		{},
 	);
 
-	const getScreenTitle = (screenId: string) =>
-		screens[screenId as keyof typeof screens]?.title || screenId;
+	const getRecipeName = (screenId: string) => {
+		const recipe = recipes.find((r) => r.slug === screenId);
+		return recipe?.name || screenId;
+	};
 
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -63,7 +66,7 @@ export function PlaylistList({
 				const firstItem = items[0];
 				const firstScreenId = firstItem?.screen_id;
 				const firstDuration = firstItem?.duration;
-				const firstTitle = firstScreenId ? getScreenTitle(firstScreenId) : null;
+				const firstName = firstScreenId ? getRecipeName(firstScreenId) : null;
 				const remainingCount = items.length > 3 ? items.length - 3 : 0;
 
 				return (
@@ -94,7 +97,7 @@ export function PlaylistList({
 												/>
 												<img
 													src={`/api/bitmap/${item.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-													alt={`${getScreenTitle(item.screen_id)} preview`}
+													alt={`${getRecipeName(item.screen_id)} preview`}
 													width={DEFAULT_IMAGE_WIDTH}
 													height={DEFAULT_IMAGE_HEIGHT}
 													className="object-cover w-full h-full"
@@ -123,10 +126,10 @@ export function PlaylistList({
 							<h4 className="scroll-m-20 text-xl font-semibold tracking-tight group-hover:text-blue-600 transition-colors">
 								{playlist.name}
 							</h4>
-							<p className="text-gray-600 text-sm mt-2 mb-4 flex-grow">
+							<p className="text-muted-foreground text-sm mt-2 mb-4 flex-grow">
 								{items.length > 0
 									? `Rotates ${items.length} screen${items.length === 1 ? "" : "s"} in order. First up: ${
-											firstTitle || "Unknown screen"
+											firstName || "Unknown screen"
 										} (${firstDuration ?? "?"}s).`
 									: "Add screens to this playlist to start rotating content."}
 							</p>
@@ -134,7 +137,7 @@ export function PlaylistList({
 							<div className="flex flex-wrap gap-2 mt-auto">
 								{previewItems.map((item) => (
 									<Badge key={item.id} variant="outline">
-										{getScreenTitle(item.screen_id)} · {item.duration}s
+										{getRecipeName(item.screen_id)} · {item.duration}s
 									</Badge>
 								))}
 								{remainingCount > 0 && (
@@ -142,7 +145,7 @@ export function PlaylistList({
 								)}
 							</div>
 
-							<div className="mt-4 text-xs text-gray-500 flex justify-between items-center">
+							<div className="mt-4 text-xs text-muted-foreground flex justify-between items-center">
 								<span>
 									{items.length > 0
 										? `${items.length} item${items.length === 1 ? "" : "s"}`

@@ -166,7 +166,7 @@ async function RecipesGrid() {
 	// Group recipes by category
 	const recipesByCategory = allRecipes.reduce(
 		(acc, recipe) => {
-			const category = (recipe.category || "uncategorized").split(',')[0];
+			const category = (recipe.category || "uncategorized").split(",")[0];
 			if (!acc[category]) {
 				acc[category] = [];
 			}
