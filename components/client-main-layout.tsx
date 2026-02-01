@@ -16,7 +16,7 @@ import {
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Device } from "@/lib/types";
+import type { Device, RecipeSidebarItem } from "@/lib/types";
 
 // Loading skeleton for main content
 function MainContentSkeleton() {
@@ -40,7 +40,7 @@ interface ClientMainLayoutProps {
 		error?: string;
 		PostgresUrl?: string;
 	};
-	recipesComponents: [string, ComponentConfig][];
+	recipeSidebarItems: RecipeSidebarItem[];
 	toolsComponents: [string, ComponentConfig][];
 	user: {
 		name: string;
@@ -54,12 +54,12 @@ interface ClientMainLayoutProps {
 export function ClientMainLayout({
 	children,
 	devices,
-	recipesComponents,
+	recipeSidebarItems,
 	toolsComponents,
 	user,
 	authEnabled,
 }: ClientMainLayoutProps) {
-	const pathname = usePathname();
+	const pathname = usePathname() ?? "/";
 	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 	const { theme, setTheme } = useTheme();
 
@@ -71,7 +71,7 @@ export function ClientMainLayout({
 			<AppSidebar
 				devices={devices}
 				currentPath={pathname}
-				recipesComponents={recipesComponents}
+				recipeSidebarItems={recipeSidebarItems}
 				toolsComponents={toolsComponents}
 				user={user}
 				authEnabled={authEnabled}
@@ -128,7 +128,7 @@ export function ClientMainLayout({
 				open={commandPaletteOpen}
 				onOpenChange={setCommandPaletteOpen}
 				devices={devices}
-				recipesComponents={recipesComponents}
+				recipeSidebarItems={recipeSidebarItems}
 				toolsComponents={toolsComponents}
 			/>
 		</SidebarProvider>

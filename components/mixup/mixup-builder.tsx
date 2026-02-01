@@ -24,10 +24,10 @@ import {
 import { cn } from "@/lib/utils";
 
 type MixupRecipe = {
+	id: string;
 	slug: string;
 	title: string;
 	description?: string;
-	tags?: string[];
 };
 
 export type MixupBuilderData = {
@@ -95,7 +95,7 @@ export function MixupBuilder({
 	const recipeMap = useMemo(
 		() =>
 			recipes.reduce<Record<string, MixupRecipe>>((acc, recipe) => {
-				acc[recipe.slug] = recipe;
+				acc[recipe.id] = recipe;
 				return acc;
 			}, {}),
 		[recipes],
@@ -132,11 +132,11 @@ export function MixupBuilder({
 		setAssignments((prev) => buildAssignments(nextLayout, recipes, prev));
 	};
 
-	const handleRecipeChange = (slotId: string, slug: string | null) => {
+	const handleRecipeChange = (slotId: string, recipeId: string | null) => {
 		setAssignments((prev) => {
 			const next = { ...prev };
-			if (slug) {
-				next[slotId] = slug;
+			if (recipeId) {
+				next[slotId] = recipeId;
 			} else {
 				delete next[slotId];
 			}
@@ -232,10 +232,8 @@ export function MixupBuilder({
 							}}
 						>
 							{currentLayout.slots.map((slot, index) => {
-								const selectedSlug = assignments[slot.id];
-								const recipe = selectedSlug
-									? recipeMap[selectedSlug]
-									: undefined;
+								const selectedId = assignments[slot.id];
+								const recipe = selectedId ? recipeMap[selectedId] : undefined;
 								const gradient = SLOT_GRADIENTS[index % SLOT_GRADIENTS.length];
 
 								return (
@@ -277,7 +275,7 @@ export function MixupBuilder({
 
 										<div className="absolute right-2 top-2 z-10">
 											<Select
-												value={selectedSlug ?? "none"}
+												value={selectedId ?? "none"}
 												onValueChange={(value) =>
 													handleRecipeChange(
 														slot.id,
@@ -292,8 +290,8 @@ export function MixupBuilder({
 													<SelectItem value="none">No recipe</SelectItem>
 													{recipes.map((recipeOption) => (
 														<SelectItem
-															key={recipeOption.slug}
-															value={recipeOption.slug}
+															key={recipeOption.id}
+															value={recipeOption.id}
 														>
 															{recipeOption.title}
 														</SelectItem>
@@ -315,8 +313,7 @@ export function MixupBuilder({
 												</p>
 												<p className="text-xs text-white/85">
 													{recipe
-														? (recipe.tags || []).slice(0, 3).join(" / ") ||
-															recipe.slug
+														? recipe.description || recipe.slug
 														: "Unassigned slot"}
 												</p>
 											</div>

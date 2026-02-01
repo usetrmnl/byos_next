@@ -5,6 +5,7 @@
 // import { AlertCircle } from "lucide-react";
 // import Link from "next/link";
 // import { Suspense } from "react";
+import { PageTemplate } from "@/components/ui/page-template";
 
 export const metadata = {
 	title: "Maintenance",
@@ -15,17 +16,10 @@ export default async function Page() {
 	// const { dbStatus } = await createClient();
 
 	return (
-		<>
-			<div className="mb-6">
-				<h2 className="mt-10 scroll-m-20 pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0">
-					Maintenance
-				</h2>
-				<p className="text-muted-foreground">
-					This page is coming soon. Please check back later for maintenance
-					tools.
-				</p>
-			</div>
-
+		<PageTemplate
+			title="Maintenance"
+			subtitle="This page is coming soon. Please check back later for maintenance tools."
+		>
 			{/* <div className="space-y-8">
 				{!dbStatus.ready ? (
 					<>
@@ -52,6 +46,6 @@ export default async function Page() {
 					</Suspense>
 				)}
 			</div> */}
-		</>
+		</PageTemplate>
 	);
 }

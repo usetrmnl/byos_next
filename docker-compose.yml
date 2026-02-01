@@ -20,11 +20,14 @@ services:
       retries: 5
 
   byos-next:
-    image: ghcr.io/usetrmnl/byos_next:latest
+    # image: ghcr.io/usetrmnl/byos_next:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
-    environment:
-      - DATABASE_URL=postgres://postgres:${POSTGRES_PASSWORD}@postgres:5432/byos_db?sslmode=disable
+    env_file:
+      - .env
     depends_on:
       postgres:
         condition: service_healthy

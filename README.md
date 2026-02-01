@@ -55,8 +55,8 @@
 
 ## Demo & Screens
 - Live demo: [https://byos-next-demo.vercel.app](https://byos-next-demo.vercel.app)
-- Overview UI: `public/byos-nextjs-overview.png`
-- Device UI: `public/byos-nextjs-device.png`
+
+![Dashboard](docs/screenshots/dashboard.png)
 
 ## Quickstart
 

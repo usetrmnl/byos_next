@@ -1,9 +1,9 @@
 import { Plus } from "lucide-react";
 import { useEffect, useState } from "react";
-import screens from "@/app/(app)/recipes/screens.json";
 import { fetchPlaylistWithItems } from "@/app/actions/playlist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { Recipe } from "@/lib/types";
 import { PlaylistForm } from "./playlist-form";
 import { PlaylistItem } from "./playlist-item";
 
@@ -21,6 +21,7 @@ interface PlaylistEditorProps {
 			days_of_week?: string[];
 		}>;
 	};
+	recipes: Recipe[];
 	onSave: (data: {
 		id?: string;
 		name: string;
@@ -39,15 +40,18 @@ interface PlaylistEditorProps {
 
 export function PlaylistEditor({
 	playlist,
+	recipes,
 	onSave,
 	onCancel,
 }: PlaylistEditorProps) {
 	const [name, setName] = useState(playlist?.name || "");
 	const [items, setItems] = useState(playlist?.items || []);
-	const [screenOptions, setScreenOptions] = useState<
-		{ id: string; name: string }[]
-	>([]);
 	const [isLoading, setIsLoading] = useState(false);
+
+	const screenOptions = recipes.map((recipe) => ({
+		id: recipe.slug,
+		name: recipe.name,
+	}));
 
 	// Fetch playlist items if editing an existing playlist
 	useEffect(() => {
@@ -89,13 +93,6 @@ export function PlaylistEditor({
 		};
 
 		loadItems();
-
-		setScreenOptions(
-			Object.entries(screens).map(([id, config]) => ({
-				id,
-				name: config.title,
-			})),
-		);
 	}, [playlist?.id, playlist?.items]);
 
 	const handleSavePlaylist = (data: { name: string }) => {
@@ -103,9 +100,10 @@ export function PlaylistEditor({
 	};
 
 	const handleAddItem = () => {
+		const defaultSlug = recipes[0]?.slug || "simple-text";
 		const newItem = {
 			id: `temp-${Date.now()}`,
-			screen_id: "simple-text",
+			screen_id: defaultSlug,
 			duration: 30,
 			order_index: items.length,
 			start_time: undefined,

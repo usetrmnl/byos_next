@@ -92,7 +92,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 						.selectFrom("system_logs")
 						.selectAll()
 						.orderBy("created_at", "desc")
-						.limit(50)
+						.limit(5)
 						.execute(),
 					// Fetch unique sources for filters
 					scopedDb

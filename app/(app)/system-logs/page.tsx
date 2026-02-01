@@ -1,21 +1,23 @@
 import { AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import SystemLogsViewer from "@/components/system-logs/system-logs-viewer";
+import { fetchSystemLogs } from "@/app/actions/system";
 import SystemLogsViewerSkeleton from "@/components/system-logs/system-logs-viewer-skeleton";
 import { Button } from "@/components/ui/button";
-import { getInitData } from "@/lib/getInitData";
+import { PageTemplate } from "@/components/ui/page-template";
+import { getDbStatus } from "@/lib/database/utils";
+import { SystemLogsClientPage } from "./client-page";
 
 export const metadata = {
 	title: "System Logs",
 	description: "View and search system logs",
 };
 
-// SystemLogs data component that uses cached data
+const INITIAL_PAGE_SIZE = 15;
+
+// SystemLogs data component that fetches its own data
 const SystemLogsData = async () => {
-	// Get data from the centralized getInitData (cached)
-	const { systemLogs, uniqueSources, totalLogs, dbStatus } =
-		await getInitData();
+	const dbStatus = await getDbStatus();
 
 	if (!dbStatus.ready) {
 		return (
@@ -39,13 +41,19 @@ const SystemLogsData = async () => {
 		);
 	}
 
+	const { logs, total, uniqueSources } = await fetchSystemLogs({
+		page: 1,
+		perPage: INITIAL_PAGE_SIZE,
+	});
+
 	return (
 		<div className="w-full overflow-hidden">
-			<SystemLogsViewer
+			<SystemLogsClientPage
+				perPage={INITIAL_PAGE_SIZE}
 				initialData={{
-					logs: systemLogs,
-					total: totalLogs,
-					uniqueSources: uniqueSources,
+					logs,
+					total,
+					uniqueSources,
 				}}
 			/>
 		</div>
@@ -54,19 +62,13 @@ const SystemLogsData = async () => {
 
 export default function SystemLogsPage() {
 	return (
-		<>
-			<div className="mb-6">
-				<h2 className="mt-10 scroll-m-20 pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0">
-					System Logs
-				</h2>
-				<p className="text-muted-foreground">
-					View, search, and filter system logs across your application.
-				</p>
-			</div>
-
+		<PageTemplate
+			title="System Logs"
+			subtitle="View, search, and filter system logs across your application."
+		>
 			<Suspense fallback={<SystemLogsViewerSkeleton />}>
 				<SystemLogsData />
 			</Suspense>
-		</>
+		</PageTemplate>
 	);
 }

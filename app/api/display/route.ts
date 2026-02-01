@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import { getLatestFirmware, isUpdateAvailable } from "@/lib/firmware";
 import { logError, logInfo } from "@/lib/logger";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
@@ -62,8 +63,13 @@ export async function GET(request: Request) {
 			source: "api/display",
 			metadata: { headers },
 		});
+		// Use header dimensions if provided
+		const width = headers.width || DEFAULT_IMAGE_WIDTH;
+		const height = headers.height || DEFAULT_IMAGE_HEIGHT;
+		const noDbQueryParams = `width=${width}&height=${height}&grayscale=2${headers.base64 ? "&base64=true" : ""}`;
+
 		return buildDisplayResponse(
-			`${baseUrl}/${DEFAULT_SCREEN}.bmp?grayscale=2`,
+			`${baseUrl}/${DEFAULT_SCREEN}.bmp?${noDbQueryParams}`,
 			`${DEFAULT_SCREEN}_${uniqueId}.bmp`,
 			DEFAULT_REFRESH_RATE,
 		);
@@ -87,17 +93,26 @@ export async function GET(request: Request) {
 
 		let screenToDisplay = device.screen;
 		const orientation = device.screen_orientation || "landscape";
-		const deviceWidth =
+
+		// Use dimensions from headers if provided, otherwise fall back to device settings
+		const storedWidth =
 			orientation === "landscape"
 				? device.screen_width || DEFAULT_IMAGE_WIDTH
 				: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-		const deviceHeight =
+		const storedHeight =
 			orientation === "landscape"
 				? device.screen_height || DEFAULT_IMAGE_HEIGHT
 				: device.screen_width || DEFAULT_IMAGE_WIDTH;
+
+		const deviceWidth = headers.width || storedWidth;
+		const deviceHeight = headers.height || storedHeight;
 		const grayscaleLevels = getGrayscaleLevels(
 			(device as { grayscale?: number | null }).grayscale ?? null,
 		);
+
+		// Build common query params for image URLs
+		const baseQueryParams = `width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}${headers.base64 ? "&base64=true" : ""}`;
+
 		let dynamicRefreshRate = 180;
 		let imageUrl: string;
 
@@ -128,12 +143,12 @@ export async function GET(request: Request) {
 						dynamicRefreshRate = 60;
 					}
 				}
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
+				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
 				break;
 
 			case DeviceDisplayMode.MIXUP:
 				if (device.mixup_id) {
-					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
+					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?${baseQueryParams}`;
 					const metadata = {
 						deviceId: device.friendly_id,
 						mixupId: device.mixup_id,
@@ -143,7 +158,7 @@ export async function GET(request: Request) {
 						metadata,
 					});
 				} else {
-					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
+					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
 				}
 				dynamicRefreshRate = calculateRefreshRate(
 					device.refresh_schedule as unknown as RefreshSchedule,
@@ -158,7 +173,7 @@ export async function GET(request: Request) {
 					180,
 					device.timezone || "UTC",
 				);
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
+				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
 				break;
 		}
 
@@ -174,10 +189,31 @@ export async function GET(request: Request) {
 		};
 		logInfo("Display request successful", { source: "api/display", metadata });
 
+		// Check for firmware updates
+		const latestFirmware = await getLatestFirmware();
+		const firmwareExtra: Record<string, unknown> = {};
+
+		if (
+			latestFirmware &&
+			isUpdateAvailable(device.firmware_version, latestFirmware.version)
+		) {
+			firmwareExtra.update_firmware = true;
+			firmwareExtra.firmware_url = latestFirmware.downloadUrl;
+			logInfo("Firmware update available", {
+				source: "api/display",
+				metadata: {
+					deviceId: device.friendly_id,
+					currentVersion: device.firmware_version,
+					latestVersion: latestFirmware.version,
+				},
+			});
+		}
+
 		return buildDisplayResponse(
 			imageUrl,
 			`${screenToDisplay || "not-found"}_${uniqueId}.bmp`,
 			dynamicRefreshRate,
+			firmwareExtra,
 		);
 	} catch (_error) {
 		logError("Internal server error", {

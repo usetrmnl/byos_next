@@ -1,8 +1,14 @@
 "use client";
 
+import { ExternalLink } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -10,10 +16,16 @@ import {
 } from "@/lib/recipes/constants";
 import type { Device } from "@/lib/types";
 import {
+	compareVersions,
 	estimateBatteryLife,
 	formatDate,
 	formatTimezone,
 } from "@/utils/helpers";
+
+interface FirmwareInfo {
+	version: string;
+	isUpdateAvailable: boolean;
+}
 
 // Helper function to convert RSSI to signal quality description
 const getSignalQuality = (rssi: number): string => {
@@ -84,6 +96,41 @@ export default function DeviceView({
 	device,
 	playlistScreens,
 }: DeviceViewProps) {
+	const [firmwareInfo, setFirmwareInfo] = useState<FirmwareInfo | null>(null);
+
+	// Fetch latest firmware version on mount
+	useEffect(() => {
+		const fetchLatestFirmware = async () => {
+			try {
+				const response = await fetch(
+					"https://api.github.com/repos/usetrmnl/trmnl-firmware/releases/latest",
+					{
+						headers: {
+							Accept: "application/vnd.github.v3+json",
+						},
+					},
+				);
+
+				if (!response.ok) return;
+
+				const data = await response.json();
+				const latestVersion = (data.tag_name || "").replace(/^v/i, "");
+
+				if (latestVersion && device.firmware_version) {
+					setFirmwareInfo({
+						version: latestVersion,
+						isUpdateAvailable:
+							compareVersions(device.firmware_version, latestVersion) < 0,
+					});
+				}
+			} catch (error) {
+				console.error("Failed to fetch firmware info:", error);
+			}
+		};
+
+		fetchLatestFirmware();
+	}, [device.firmware_version]);
+
 	const orientation = device.screen_orientation || "landscape";
 	const deviceWidth =
 		orientation === "landscape"
@@ -138,7 +185,33 @@ export default function DeviceView({
 							</div>
 							<div className="flex flex-col gap-1">
 								<span className="text-muted-foreground">Firmware</span>
-								<span>{device.firmware_version || "Unknown"}</span>
+								<div className="flex items-center gap-2 flex-wrap">
+									<span>{device.firmware_version || "Unknown"}</span>
+									{firmwareInfo?.isUpdateAvailable && (
+										<>
+											<Badge
+												variant="outline"
+												className="text-yellow-600 border-yellow-600"
+											>
+												Update Available (v{firmwareInfo.version})
+											</Badge>
+											<Link
+												href="https://usetrmnl.com/flash"
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												<Button
+													variant="link"
+													size="sm"
+													className="h-auto p-0 text-xs"
+												>
+													Update
+													<ExternalLink className="ml-1 h-3 w-3" />
+												</Button>
+											</Link>
+										</>
+									)}
+								</div>
 							</div>
 						</div>
 					</div>
@@ -164,30 +237,26 @@ export default function DeviceView({
 										refreshPerDay,
 									);
 
-									let batteryColor = "bg-primary";
+									let _batteryColor = "bg-primary";
 									if (batteryEstimate.batteryPercentage < 20) {
-										batteryColor = "bg-red-500";
+										_batteryColor = "bg-red-500";
 									} else if (batteryEstimate.batteryPercentage < 50) {
-										batteryColor = "bg-yellow-500";
+										_batteryColor = "bg-yellow-500";
 									}
 
 									return (
 										<div className="flex flex-wrap items-center gap-2 text-sm">
 											<div className="flex items-center">
-												<div className="relative w-10 h-5 border-1 border-primary rounded-sm p-0.5 overflow-hidden shadow-inner shadow-background/20">
-													<div
-														className={`h-full rounded-[calc(var(--radius)-7px)] transition-all duration-300 ease-in-out ${batteryColor} flex items-center justify-center`}
-														style={{
-															width: `${batteryEstimate.batteryPercentage}%`,
-														}}
-													>
-														{batteryEstimate.isCharging && (
-															<span className="bg-green-400 text-transparent bg-clip-text">
-																⚡️
-															</span>
-														)}
-													</div>
-												</div>
+												<Progress
+													value={batteryEstimate.batteryPercentage}
+													className={`w-10 h-5 rounded-sm border border-primary ${
+														batteryEstimate.batteryPercentage < 20
+															? "[&>[data-slot=progress-indicator]]:bg-red-500"
+															: batteryEstimate.batteryPercentage < 50
+																? "[&>[data-slot=progress-indicator]]:bg-yellow-500"
+																: ""
+													}`}
+												/>
 												<div className="ml-[1px] h-2 w-0.5 bg-primary rounded-r-sm" />
 											</div>
 											<span className="font-medium">

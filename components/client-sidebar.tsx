@@ -23,7 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusIndicator } from "@/components/ui/status-indicator";
-import type { Device } from "@/lib/types";
+import type { Device, RecipeSidebarItem } from "@/lib/types";
 import packageJson from "@/package.json";
 import { getDeviceStatus } from "@/utils/helpers";
 
@@ -182,33 +182,31 @@ DeviceItem.displayName = "DeviceItem";
 // Recipe item component
 const RecipeItem = memo(
 	({
-		slug,
-		config,
+		recipe,
 		currentPath,
 	}: {
-		slug: string;
-		config: ComponentConfig;
+		recipe: RecipeSidebarItem;
 		currentPath: string;
 	}) => {
-		const isActive = currentPath === `/recipes/${slug}`;
+		const isActive = currentPath === `/recipes/${recipe.slug}`;
 		const router = useRouter();
 
 		// Prefetch on hover
 		const handleMouseEnter = useCallback(() => {
-			router.prefetch(`/recipes/${slug}`);
-		}, [router, slug]);
+			router.prefetch(`/recipes/${recipe.slug}`);
+		}, [router, recipe.slug]);
 
 		return (
 			<Button
-				key={slug}
+				key={recipe.slug}
 				variant="ghost"
 				size="sm"
 				className={`w-full justify-start space-x-0 text-sm h-8 ${isActive ? "bg-muted" : ""}`}
 				asChild
 				onMouseEnter={handleMouseEnter}
 			>
-				<Link href={`/recipes/${slug}`}>
-					<span className="truncate text-xs">{config.title}</span>
+				<Link href={`/recipes/${recipe.slug}`}>
+					<span className="truncate text-xs">{recipe.name}</span>
 				</Link>
 			</Button>
 		);
@@ -243,10 +241,10 @@ DeviceList.displayName = "DeviceList";
 // Recipes list component
 const RecipesList = memo(
 	({
-		components,
+		recipes,
 		currentPath,
 	}: {
-		components: [string, ComponentConfig][];
+		recipes: RecipeSidebarItem[];
 		currentPath: string;
 	}) => {
 		const isAllRecipesActive = currentPath === "/recipes";
@@ -264,11 +262,10 @@ const RecipesList = memo(
 					</Link>
 				</Button>
 
-				{components.map(([slug, config]) => (
+				{recipes.map((recipe) => (
 					<RecipeItem
-						key={slug}
-						slug={slug}
-						config={config}
+						key={recipe.slug}
+						recipe={recipe}
 						currentPath={currentPath}
 					/>
 				))}
@@ -337,11 +334,11 @@ DevicesSection.displayName = "DevicesSection";
 // Recipes section component
 const RecipesSection = memo(
 	({
-		components,
+		recipes,
 		currentPath,
 		initialOpen = false,
 	}: {
-		components: [string, ComponentConfig][];
+		recipes: RecipeSidebarItem[];
 		currentPath: string;
 		initialOpen?: boolean;
 	}) => {
@@ -376,7 +373,7 @@ const RecipesSection = memo(
 				</CollapsibleTrigger>
 				<CollapsibleContent className="pl-6 space-y-1">
 					<Suspense fallback={<RecipesListFallback />}>
-						<RecipesList components={components} currentPath={currentPath} />
+						<RecipesList recipes={recipes} currentPath={currentPath} />
 					</Suspense>
 				</CollapsibleContent>
 			</Collapsible>
@@ -461,14 +458,14 @@ ToolsSection.displayName = "ToolsSection";
 // Main ClientSidebar component
 interface ClientSidebarProps {
 	devices: Device[];
-	recipesComponents: [string, ComponentConfig][];
+	recipeSidebarItems: RecipeSidebarItem[];
 	toolsComponents: [string, ComponentConfig][];
 	currentPath: string;
 }
 
 export function ClientSidebar({
 	devices,
-	recipesComponents,
+	recipeSidebarItems,
 	toolsComponents,
 	currentPath,
 }: ClientSidebarProps) {
@@ -489,7 +486,7 @@ export function ClientSidebar({
 				/>
 
 				<RecipesSection
-					components={recipesComponents}
+					recipes={recipeSidebarItems}
 					currentPath={currentPath}
 					initialOpen={currentPath.startsWith("/recipes/")}
 				/>

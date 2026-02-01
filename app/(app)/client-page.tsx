@@ -29,15 +29,15 @@ import {
 import type { Device, SystemLog } from "@/lib/types";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
 
-interface DashboardContentProps {
+interface DashboardClientPageProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
 }
 
-export const DashboardContent = ({
+export default function DashboardClientPage({
 	devices,
 	systemLogs,
-}: DashboardContentProps) => {
+}: DashboardClientPageProps) {
 	// Process devices data
 	const processedDevices = devices.map((device) => ({
 		...device,
@@ -84,7 +84,7 @@ export const DashboardContent = ({
 						{lastUpdatedDevice ? (
 							<div className="flex flex-col items-center">
 								<div
-									className="rounded-xs bg-muted border overflow-hidden w-full"
+									className="rounded-sm bg-muted border overflow-hidden w-full"
 									style={{
 										maxWidth: `${maxPreviewWidth}px`,
 										maxHeight: `${(maxPreviewWidth * deviceHeight) / deviceWidth}px`,
@@ -242,7 +242,7 @@ export const DashboardContent = ({
 						Latest system events and alerts. &nbsp;
 						<Link
 							href="/system-logs"
-							className="text-blue-500 hover:underline flex items-center gap-1"
+							className="text-primary hover:underline flex items-center gap-1"
 						>
 							<span>See all system logs</span>{" "}
 							<ArrowRightIcon className="w-4 h-4" />
@@ -331,7 +331,7 @@ export const DashboardContent = ({
 						Showing the latest {systemLogs.length} system logs. &nbsp;
 						<Link
 							href="/system-logs"
-							className="text-blue-500 hover:underline flex items-center gap-1"
+							className="text-primary hover:underline flex items-center gap-1"
 						>
 							<span>See all system logs</span>{" "}
 							<ArrowRightIcon className="w-4 h-4" />
@@ -341,4 +341,4 @@ export const DashboardContent = ({
 			</Card>
 		</>
 	);
-};
+}

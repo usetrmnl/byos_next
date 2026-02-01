@@ -26,8 +26,8 @@ export default function RecoverPage() {
 function RecoverPageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const token = searchParams.get("token");
-	const error = searchParams.get("error");
+	const token = searchParams?.get("token") ?? null;
+	const error = searchParams?.get("error") ?? null;
 
 	const [email, setEmail] = useState("");
 	const [newPassword, setNewPassword] = useState("");

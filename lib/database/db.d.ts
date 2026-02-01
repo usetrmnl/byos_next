@@ -39,6 +39,8 @@ export type MixupLayoutId =
 
 export type Numeric = ColumnType<string, number | string, number | string>;
 
+export type RecipeType = "liquid" | "react";
+
 export type Timestamp = ColumnType<Date, Date | string, Date | string>;
 
 export interface Account {
@@ -127,6 +129,7 @@ export interface MixupSlots {
 	id: Generated<string>;
 	mixup_id: string | null;
 	order_index: number;
+	recipe_id: string | null;
 	recipe_slug: string | null;
 	slot_id: string;
 }
@@ -149,6 +152,35 @@ export interface Playlists {
 	name: string;
 	updated_at: Generated<Timestamp | null>;
 	user_id: string | null;
+}
+
+export interface RecipeFiles {
+	content: string;
+	created_at: Generated<Timestamp | null>;
+	filename: string;
+	id: Generated<string>;
+	recipe_id: string;
+}
+
+export interface Recipes {
+	author: string | null;
+	author_email: string | null;
+	author_github: string | null;
+	category: string | null;
+	created_at: Generated<Timestamp | null>;
+	description: string | null;
+	id: Generated<string>;
+	logo_url: string | null;
+	name: string;
+	repo: string | null;
+	screenshot_url: string | null;
+	slug: string;
+	type: RecipeType;
+	updated_at: Generated<Timestamp | null>;
+	user_id: string | null;
+	version: string | null;
+	zip_entry_path: string | null;
+	zip_url: string | null;
 }
 
 export interface ScreenConfigs {
@@ -216,6 +248,8 @@ export interface DB {
 	mixups: Mixups;
 	playlist_items: PlaylistItems;
 	playlists: Playlists;
+	recipe_files: RecipeFiles;
+	recipes: Recipes;
 	screen_configs: ScreenConfigs;
 	session: Session;
 	system_logs: SystemLogs;

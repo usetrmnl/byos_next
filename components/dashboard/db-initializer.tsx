@@ -193,7 +193,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 			case "idle":
 				return "text-gray-500";
 			case "loading":
-				return "text-blue-500";
+				return "text-primary";
 			case "success":
 				return "text-green-600";
 			case "warning":
@@ -237,7 +237,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 
 		if (loadingCount > 0) {
 			return (
-				<div className="flex items-center gap-1 text-blue-500">
+				<div className="flex items-center gap-1 text-primary">
 					<Loader2 className="h-3 w-3 animate-spin" />
 					<span>Executing statements...</span>
 				</div>

@@ -22,15 +22,15 @@ export default function DeviceLogsContainer({
 	device,
 }: DeviceLogsContainerProps) {
 	const router = useRouter();
-	const pathname = usePathname();
+	const pathname = usePathname() ?? "/";
 	const searchParams = useSearchParams();
 
 	// Get the active tab from URL or default to device-logs
-	const activeTab = searchParams.get("activeTab") || "device-logs";
+	const activeTab = searchParams?.get("activeTab") || "device-logs";
 
 	// Handle tab change
 	const handleTabChange = (value: string) => {
-		const newSearchParams = new URLSearchParams(searchParams.toString());
+		const newSearchParams = new URLSearchParams(searchParams?.toString());
 		newSearchParams.set("activeTab", value);
 		router.push(`${pathname}?${newSearchParams.toString()}`, { scroll: false });
 	};

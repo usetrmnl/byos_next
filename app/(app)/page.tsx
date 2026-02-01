@@ -1,10 +1,11 @@
 import { headers } from "next/headers";
 import { Suspense } from "react";
-import { DashboardContent } from "@/components/dashboard/dashboard-content";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
 import { Badge } from "@/components/ui/badge";
+import { PageTemplate } from "@/components/ui/page-template";
 import { getInitData } from "@/lib/getInitData";
+import DashboardClientPage from "./client-page";
 
 // Dashboard data component that uses the cached data
 const DashboardData = async () => {
@@ -114,7 +115,7 @@ const DashboardData = async () => {
 		);
 	}
 
-	return <DashboardContent devices={devices} systemLogs={systemLogs} />;
+	return <DashboardClientPage devices={devices} systemLogs={systemLogs} />;
 };
 
 export default async function Dashboard() {
@@ -137,21 +138,21 @@ export default async function Dashboard() {
 				: "evening 🌙";
 
 	return (
-		<>
-			<div className="mb-6">
-				<h2 className="mt-10 scroll-m-20 pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0 flex items-center">
+		<PageTemplate
+			title={
+				<h1 className="text-3xl font-bold flex items-center">
 					Good {greeting}
 					{!dbStatus.ready && (
 						<Badge className="ml-2 bg-blue-100 text-blue-700 border-blue-200">
 							noDB mode
 						</Badge>
 					)}
-				</h2>
-			</div>
-
+				</h1>
+			}
+		>
 			<Suspense fallback={<DashboardSkeleton />}>
 				<DashboardData />
 			</Suspense>
-		</>
+		</PageTemplate>
 	);
 }

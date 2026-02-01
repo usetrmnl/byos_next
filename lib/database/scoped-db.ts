@@ -45,7 +45,27 @@ export async function withUserScope<T>(
 			conn,
 		);
 
-		return callback(conn);
+		return await callback(conn);
+	});
+}
+
+/**
+ * Execute a database operation scoped to a specific user ID for RLS.
+ *
+ * Use this when the user ID is known from context other than the HTTP session
+ * (e.g. resolved from a device access token).
+ */
+export async function withExplicitUserScope<T>(
+	userId: string,
+	callback: (scopedDb: typeof db) => Promise<T>,
+): Promise<T> {
+	return db.connection().execute(async (conn) => {
+		await sql`SET ROLE ${sql.ref(APP_ROLE)}`.execute(conn);
+		await sql`SELECT set_config('app.current_user_id', ${userId}, false)`.execute(
+			conn,
+		);
+
+		return await callback(conn);
 	});
 }
 
@@ -77,6 +97,6 @@ export async function withUserScopeTransaction<T>(
 			trx,
 		);
 
-		return callback(trx);
+		return await callback(trx);
 	});
 }

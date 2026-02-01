@@ -1,20 +1,20 @@
 import type { NextRequest } from "next/server";
 import { cache } from "react";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
-import screens from "@/app/(app)/recipes/screens.json";
 import {
-	addDimensionsToProps,
-	buildRecipeElement,
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 	logger,
 	renderRecipeOutputs,
+	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
+import { parseRequestHeaders, resolveUserIdFromApiKey } from "../../display/utils";
 
 export async function GET(
 	req: NextRequest,
 	{ params }: { params: Promise<{ slug?: string[] }> },
 ) {
+	const headers = parseRequestHeaders(req);
 	try {
 		// Always await params as required by Next.js 14/15
 		const { slug = ["not-found"] } = await params;
@@ -41,15 +41,17 @@ export async function GET(
 			`Bitmap request for: ${bitmapPath} in ${validWidth}x${validHeight} with ${grayscaleLevels} gray levels`,
 		);
 
-		const recipeId = screens[recipeSlug as keyof typeof screens]
-			? recipeSlug
-			: "simple-text";
+		// Resolve the device owner so DB queries are scoped to the right user
+		const userId = headers.apiKey
+			? await resolveUserIdFromApiKey(headers.apiKey)
+			: null;
 
 		const recipeBuffer = await renderRecipeBitmap(
-			recipeId,
+			recipeSlug,
 			validWidth,
 			validHeight,
 			grayscaleLevels,
+			userId,
 		);
 
 		if (
@@ -58,7 +60,7 @@ export async function GET(
 			recipeBuffer.length === 0
 		) {
 			logger.warn(
-				`Failed to generate bitmap for ${recipeId}, returning fallback`,
+				`Failed to generate bitmap for ${recipeSlug}, returning fallback`,
 			);
 			const fallback = await renderFallbackBitmap();
 			return fallback;
@@ -84,30 +86,16 @@ const renderRecipeBitmap = cache(
 		width: number,
 		height: number,
 		grayscaleLevels: number = 2,
+		userId: string | null = null,
 	) => {
-		const { config, Component, props, element } = await buildRecipeElement({
+		const renders = await renderRecipeToImage({
 			slug: recipeId,
-		});
-
-		const ComponentToRender =
-			Component ??
-			(() => {
-				return element;
-			});
-
-		const propsWithDimensions = addDimensionsToProps(props, width, height);
-
-		const renders = await renderRecipeOutputs({
-			slug: recipeId,
-			Component: ComponentToRender,
-			props: propsWithDimensions,
-			config: config ?? null,
 			imageWidth: width,
 			imageHeight: height,
 			formats: ["bitmap"],
 			grayscale: grayscaleLevels,
+			userId,
 		});
-
 		return renders.bitmap ?? Buffer.from([]);
 	},
 );

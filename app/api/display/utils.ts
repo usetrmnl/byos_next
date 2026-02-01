@@ -22,6 +22,10 @@ export interface RequestHeaders {
 	batteryVoltage: string | null;
 	fwVersion: string | null;
 	rssi: string | null;
+	width: number | null;
+	height: number | null;
+	specialFunction: boolean;
+	base64: boolean;
 	hostUrl: string;
 }
 
@@ -29,6 +33,9 @@ export interface RequestHeaders {
 
 export const parseRequestHeaders = (request: Request): RequestHeaders => {
 	const headers = request.headers;
+	const widthStr = headers.get("Width");
+	const heightStr = headers.get("Height");
+
 	return {
 		apiKey: headers.get("Access-Token"),
 		macAddress: headers.get("ID")?.toUpperCase() || null,
@@ -36,6 +43,10 @@ export const parseRequestHeaders = (request: Request): RequestHeaders => {
 		batteryVoltage: headers.get("Battery-Voltage"),
 		fwVersion: headers.get("FW-Version"),
 		rssi: headers.get("RSSI"),
+		width: widthStr ? Number.parseInt(widthStr, 10) : null,
+		height: heightStr ? Number.parseInt(heightStr, 10) : null,
+		specialFunction: headers.get("Special-Function") === "true",
+		base64: headers.get("BASE64") === "true",
 		hostUrl:
 			(headers.get("x-forwarded-proto") || "http") +
 			"://" +
@@ -195,6 +206,27 @@ export const getActivePlaylistItem = async (
 	}
 
 	return null;
+};
+
+// --- User Resolution ---
+
+/**
+ * Resolve the user_id that owns a device identified by API key.
+ * Returns null if no device or no owner is found.
+ */
+export const resolveUserIdFromApiKey = async (
+	apiKey: string,
+): Promise<string | null> => {
+	const { ready } = await checkDbConnection();
+	if (!ready) return null;
+
+	const device = await db
+		.selectFrom("devices")
+		.select("user_id")
+		.where("api_key", "=", apiKey)
+		.executeTakeFirst();
+
+	return device?.user_id ?? null;
 };
 
 // --- Device Management ---
@@ -382,9 +414,9 @@ export const findOrCreateDevice = async (
 		const new_api_key = macAddress
 			? apiKey
 			: generateApiKey(
-					mockMacAddress,
-					new Date().toISOString().replace(/[-:Z]/g, ""),
-				);
+				mockMacAddress,
+				new Date().toISOString().replace(/[-:Z]/g, ""),
+			);
 
 		try {
 			const newDevice = await db

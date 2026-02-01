@@ -1,6 +1,8 @@
 import { Suspense } from "react";
-import { PlaylistPageClient } from "@/components/playlists/playlist-page-client";
+import { fetchRecipes } from "@/app/actions/mixup";
+import { PageTemplate } from "@/components/ui/page-template";
 import { getInitData } from "@/lib/getInitData";
+import PlaylistsClientPage from "./client-page";
 
 export const metadata = {
 	title: "Playlists",
@@ -8,25 +10,23 @@ export const metadata = {
 };
 
 export default async function PlaylistsPage() {
-	const { playlists, playlistItems } = await getInitData();
+	const [{ playlists, playlistItems }, recipes] = await Promise.all([
+		getInitData(),
+		fetchRecipes(),
+	]);
 
 	return (
-		<div className="space-y-6">
-			<div className="flex justify-between items-center">
-				<div className="space-y-2">
-					<h1 className="text-3xl font-bold">Playlists</h1>
-					<p className="text-muted-foreground">
-						Create and manage playlists for your TRMNL devices.
-					</p>
-				</div>
-			</div>
-
+		<PageTemplate
+			title="Playlists"
+			subtitle="Create and manage playlists for your TRMNL devices."
+		>
 			<Suspense fallback={<div>Loading playlists...</div>}>
-				<PlaylistPageClient
+				<PlaylistsClientPage
 					initialPlaylists={playlists}
 					initialPlaylistItems={playlistItems}
+					recipes={recipes}
 				/>
 			</Suspense>
-		</div>
+		</PageTemplate>
 	);
 }
