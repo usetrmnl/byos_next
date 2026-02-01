@@ -311,15 +311,15 @@ export const renderRecipeOutputs = cache(
 				pngBuffer =
 					rendererType === "satori"
 						? await renderWithSatori(
-								element,
-								imageOptions.width,
-								imageOptions.height,
-							)
+							element,
+							imageOptions.width,
+							imageOptions.height,
+						)
 						: await renderWithTakumi(
-								element,
-								imageOptions.width,
-								imageOptions.height,
-							);
+							element,
+							imageOptions.width,
+							imageOptions.height,
+						);
 			} else {
 				logger.error(`No Component or html provided for ${slug}`);
 			}
@@ -363,16 +363,17 @@ type BuildRecipeResult = {
  */
 async function buildLiquidRecipeElement(
 	slug: string,
+	userId?: string,
 ): Promise<BuildRecipeResult> {
 	// Load stored custom field overrides from screen_configs
 	let customFieldOverrides: Record<string, unknown> | undefined;
-	const settings = await fetchLiquidRecipeSettings(slug);
+	const settings = await fetchLiquidRecipeSettings(slug, userId);
 	if (settings?.custom_fields?.length) {
 		const definitions = customFieldsToParamDefinitions(settings.custom_fields);
-		customFieldOverrides = await getScreenParams(slug, definitions);
+		customFieldOverrides = await getScreenParams(slug, definitions, userId);
 	}
 
-	const result = await renderLiquidRecipe(slug, customFieldOverrides);
+	const result = await renderLiquidRecipe(slug, customFieldOverrides, userId);
 
 	if (!result) {
 		return {
@@ -394,9 +395,11 @@ async function buildLiquidRecipeElement(
 
 export const buildRecipeElement = async ({
 	slug,
+	userId,
 	validateProps,
 }: {
 	slug: string;
+	userId?: string | null;
 	validateProps?: (slug: string, props: ComponentProps) => boolean;
 }): Promise<BuildRecipeResult> => {
 	// First try React recipe from screens.json
@@ -407,12 +410,12 @@ export const buildRecipeElement = async ({
 		const props = await fetchRecipeProps(slug, config, {
 			validateFetchedData: validateProps
 				? (slug: string, data: unknown) => {
-						return (
-							typeof data === "object" &&
-							data !== null &&
-							validateProps(slug, data as ComponentProps)
-						);
-					}
+					return (
+						typeof data === "object" &&
+						data !== null &&
+						validateProps(slug, data as ComponentProps)
+					);
+				}
 				: undefined,
 		});
 
@@ -434,8 +437,8 @@ export const buildRecipeElement = async ({
 	}
 
 	// Try liquid recipe from DB
-	if (await isLiquidRecipe(slug)) {
-		return buildLiquidRecipeElement(slug);
+	if (await isLiquidRecipe(slug, userId ?? undefined)) {
+		return buildLiquidRecipeElement(slug, userId ?? undefined);
 	}
 
 	// Not found
@@ -458,14 +461,16 @@ export async function renderRecipeToImage({
 	imageHeight,
 	formats = ["bitmap", "png"],
 	grayscale,
+	userId,
 }: {
 	slug: string;
 	imageWidth: number;
 	imageHeight: number;
 	formats?: RenderFormats;
 	grayscale?: number;
+	userId?: string | null;
 }): Promise<RenderResults> {
-	const result = await buildRecipeElement({ slug });
+	const result = await buildRecipeElement({ slug, userId });
 
 	if (result.html) {
 		return renderRecipeOutputs({

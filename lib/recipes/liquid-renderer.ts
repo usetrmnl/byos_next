@@ -9,7 +9,8 @@ import {
 	type Template,
 	type TopLevelToken,
 } from "liquidjs";
-import { withUserScope } from "@/lib/database/scoped-db";
+import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logger, type RecipeParamDefinitions } from "./recipe-renderer";
 
@@ -77,6 +78,7 @@ class TemplateTag extends Tag {
  */
 async function fetchRecipeFiles(
 	slug: string,
+	userId?: string,
 ): Promise<Map<string, string> | null> {
 	const { ready } = await checkDbConnection();
 	if (!ready) {
@@ -84,15 +86,18 @@ async function fetchRecipeFiles(
 		return null;
 	}
 
-	const files = await withUserScope(async (scopedDb) => {
-		return scopedDb
+	const runQuery = (conn: typeof db) =>
+		conn
 			.selectFrom("recipe_files")
 			.innerJoin("recipes", "recipes.id", "recipe_files.recipe_id")
 			.select(["recipe_files.filename", "recipe_files.content"])
 			.where("recipes.slug", "=", slug)
 			.where("recipes.type", "=", "liquid")
 			.execute();
-	});
+
+	const files = userId
+		? await withExplicitUserScope(userId, runQuery)
+		: await runQuery(db);
 
 	if (!files || files.length === 0) {
 		return null;
@@ -267,8 +272,9 @@ function findTemplateFile(
  */
 export async function fetchLiquidRecipeSettings(
 	slug: string,
+	userId?: string,
 ): Promise<SettingsYml | null> {
-	const files = await fetchRecipeFiles(slug);
+	const files = await fetchRecipeFiles(slug, userId);
 	if (!files) return null;
 
 	const settingsContent = findTemplateFile(files, "settings.yml");
@@ -354,8 +360,9 @@ function registerCustomFilters(engine: Liquid): void {
 export async function renderLiquidRecipe(
 	slug: string,
 	customFieldOverrides?: Record<string, unknown>,
+	userId?: string,
 ): Promise<LiquidRenderResult | null> {
-	const files = await fetchRecipeFiles(slug);
+	const files = await fetchRecipeFiles(slug, userId);
 	if (!files) {
 		logger.warn(`No liquid recipe files found for slug: ${slug}`);
 		return null;
@@ -514,18 +521,24 @@ export function customFieldsToParamDefinitions(
 /**
  * Check if a recipe slug exists in the DB as a liquid recipe.
  */
-export async function isLiquidRecipe(slug: string): Promise<boolean> {
+export async function isLiquidRecipe(
+	slug: string,
+	userId?: string,
+): Promise<boolean> {
 	const { ready } = await checkDbConnection();
 	if (!ready) return false;
 
-	const recipe = await withUserScope(async (scopedDb) => {
-		return scopedDb
+	const runQuery = (conn: typeof db) =>
+		conn
 			.selectFrom("recipes")
 			.select("id")
 			.where("slug", "=", slug)
 			.where("type", "=", "liquid")
 			.executeTakeFirst();
-	});
+
+	const recipe = userId
+		? await withExplicitUserScope(userId, runQuery)
+		: await runQuery(db);
 
 	return !!recipe;
 }

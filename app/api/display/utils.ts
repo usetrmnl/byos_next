@@ -33,7 +33,6 @@ export interface RequestHeaders {
 
 export const parseRequestHeaders = (request: Request): RequestHeaders => {
 	const headers = request.headers;
-	console.log(headers);
 	const widthStr = headers.get("Width");
 	const heightStr = headers.get("Height");
 
@@ -207,6 +206,27 @@ export const getActivePlaylistItem = async (
 	}
 
 	return null;
+};
+
+// --- User Resolution ---
+
+/**
+ * Resolve the user_id that owns a device identified by API key.
+ * Returns null if no device or no owner is found.
+ */
+export const resolveUserIdFromApiKey = async (
+	apiKey: string,
+): Promise<string | null> => {
+	const { ready } = await checkDbConnection();
+	if (!ready) return null;
+
+	const device = await db
+		.selectFrom("devices")
+		.select("user_id")
+		.where("api_key", "=", apiKey)
+		.executeTakeFirst();
+
+	return device?.user_id ?? null;
 };
 
 // --- Device Management ---
@@ -394,9 +414,9 @@ export const findOrCreateDevice = async (
 		const new_api_key = macAddress
 			? apiKey
 			: generateApiKey(
-					mockMacAddress,
-					new Date().toISOString().replace(/[-:Z]/g, ""),
-				);
+				mockMacAddress,
+				new Date().toISOString().replace(/[-:Z]/g, ""),
+			);
 
 		try {
 			const newDevice = await db

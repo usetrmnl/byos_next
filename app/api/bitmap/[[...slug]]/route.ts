@@ -8,11 +8,13 @@ import {
 	renderRecipeOutputs,
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
+import { parseRequestHeaders, resolveUserIdFromApiKey } from "../../display/utils";
 
 export async function GET(
 	req: NextRequest,
 	{ params }: { params: Promise<{ slug?: string[] }> },
 ) {
+	const headers = parseRequestHeaders(req);
 	try {
 		// Always await params as required by Next.js 14/15
 		const { slug = ["not-found"] } = await params;
@@ -39,11 +41,17 @@ export async function GET(
 			`Bitmap request for: ${bitmapPath} in ${validWidth}x${validHeight} with ${grayscaleLevels} gray levels`,
 		);
 
+		// Resolve the device owner so DB queries are scoped to the right user
+		const userId = headers.apiKey
+			? await resolveUserIdFromApiKey(headers.apiKey)
+			: null;
+
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeSlug,
 			validWidth,
 			validHeight,
 			grayscaleLevels,
+			userId,
 		);
 
 		if (
@@ -78,6 +86,7 @@ const renderRecipeBitmap = cache(
 		width: number,
 		height: number,
 		grayscaleLevels: number = 2,
+		userId: string | null = null,
 	) => {
 		const renders = await renderRecipeToImage({
 			slug: recipeId,
@@ -85,6 +94,7 @@ const renderRecipeBitmap = cache(
 			imageHeight: height,
 			formats: ["bitmap"],
 			grayscale: grayscaleLevels,
+			userId,
 		});
 		return renders.bitmap ?? Buffer.from([]);
 	},

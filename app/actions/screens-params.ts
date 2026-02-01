@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { JsonObject } from "@/lib/database/db.d";
-import { withUserScope } from "@/lib/database/scoped-db";
+import {
+	withExplicitUserScope,
+	withUserScope,
+} from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import type { RecipeParamDefinitions } from "@/lib/recipes/recipe-renderer";
 
@@ -80,6 +83,7 @@ export async function updateScreenParams(
 export async function getScreenParams(
 	slug: string,
 	definitions?: RecipeParamDefinitions,
+	userId?: string,
 ): Promise<Record<string, unknown>> {
 	const { ready } = await checkDbConnection();
 	if (!ready) {
@@ -94,13 +98,16 @@ export async function getScreenParams(
 		return params;
 	}
 
-	const row = await withUserScope((scopedDb) =>
+	const query = (scopedDb: Parameters<Parameters<typeof withUserScope>[0]>[0]) =>
 		scopedDb
 			.selectFrom("screen_configs")
 			.select(["params"])
 			.where("screen_id", "=", slug)
-			.executeTakeFirst(),
-	);
+			.executeTakeFirst();
+
+	const row = userId
+		? await withExplicitUserScope(userId, query)
+		: await withUserScope(query);
 
 	const rawParams = row?.params ?? {};
 	const parsedParams =

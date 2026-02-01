@@ -1,9 +1,12 @@
 "use server";
 
+import crypto from "crypto";
 import { db } from "@/lib/database/db";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import type { Device, Log } from "@/lib/types";
+import { generateFriendlyId } from "@/utils/helpers";
 
 /**
  * Fetch a single device by friendly_id
@@ -213,6 +216,106 @@ export async function updateDevice(
 		return { success: true };
 	} catch (error) {
 		console.error("Error updating device:", error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+/**
+ * Add a new device for the current user.
+ * Creates a device record with a placeholder MAC address that will be
+ * replaced when the physical device connects via /api/setup.
+ */
+export async function addUserDevice(input: {
+	apiKey: string;
+	name?: string;
+}): Promise<{
+	success: boolean;
+	apiKey?: string;
+	friendlyId?: string;
+	error?: string;
+}> {
+	const { ready } = await checkDbConnection();
+	if (!ready) {
+		return { success: false, error: "Database not available" };
+	}
+
+	const userId = await getCurrentUserId();
+	if (!userId) {
+		return { success: false, error: "You must be signed in to add a device" };
+	}
+
+	const apiKey = input.apiKey.trim();
+	if (!apiKey || apiKey.length < 8) {
+		return {
+			success: false,
+			error: "API key must be at least 8 characters",
+		};
+	}
+
+	try {
+		// Check uniqueness of API key (bypass RLS to check across all users)
+		const existing = await db
+			.selectFrom("devices")
+			.select("id")
+			.where("api_key", "=", apiKey)
+			.executeTakeFirst();
+
+		if (existing) {
+			return { success: false, error: "A device with this API key already exists" };
+		}
+
+		// Generate a placeholder MAC from the API key (will be replaced on /api/setup)
+		const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
+		const mockMac = [
+			hash.slice(0, 2),
+			hash.slice(2, 4),
+			hash.slice(4, 6),
+			hash.slice(6, 8),
+			hash.slice(8, 10),
+			hash.slice(10, 12),
+		]
+			.join(":")
+			.toUpperCase();
+
+		const timestamp = new Date().toISOString().replace(/[-:Z]/g, "");
+		const friendlyId = generateFriendlyId(mockMac, timestamp);
+		const deviceName =
+			input.name?.trim() || `TRMNL Device ${friendlyId}`;
+
+		await withUserScope((scopedDb) =>
+			scopedDb
+				.insertInto("devices")
+				.values({
+					mac_address: mockMac,
+					name: deviceName,
+					friendly_id: friendlyId,
+					api_key: apiKey,
+					user_id: userId,
+					refresh_schedule: JSON.stringify({
+						default_refresh_rate: 60,
+						time_ranges: [
+							{
+								start_time: "00:00",
+								end_time: "07:00",
+								refresh_rate: 3600,
+							},
+						],
+					}),
+					last_update_time: new Date().toISOString(),
+					next_expected_update: new Date(
+						Date.now() + 3600 * 1000,
+					).toISOString(),
+					timezone: "Europe/London",
+				})
+				.execute(),
+		);
+
+		return { success: true, apiKey, friendlyId };
+	} catch (error) {
+		console.error("Error adding device:", error);
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
