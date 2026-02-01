@@ -2,7 +2,18 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { fetchRecipes } from "@/app/actions/mixup";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { Badge } from "@/components/ui/badge";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@/components/ui/card";
 import { PageTemplate } from "@/components/ui/page-template";
+import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -14,7 +25,7 @@ const ComponentPreview = ({ recipe }: { recipe: Recipe }) => {
 	return (
 		<AspectRatio
 			ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
-			className="bg-neutral-100 flex items-center justify-center p-0 border-b"
+			className="bg-red-100 flex items-center justify-center p-0 border-b"
 		>
 			<picture>
 				<source srcSet={`/api/bitmap/${recipe.slug}.bmp`} type="image/bmp" />
@@ -39,26 +50,90 @@ const RecipeCard = ({ recipe }: { recipe: Recipe }) => {
 		<Link
 			key={recipe.slug}
 			href={`/recipes/${recipe.slug}`}
-			className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full"
+			className="group flex flex-col h-full"
 		>
-			<ComponentPreview recipe={recipe} />
+			<Card className="pt-0 overflow-hidden h-full flex flex-col transition-shadow group-hover:shadow-md">
+				<ComponentPreview recipe={recipe} />
 
-			<div className="p-4 flex flex-col flex-grow">
-				<h4 className="scroll-m-20 text-xl font-semibold tracking-tight group-hover:text-blue-600 transition-colors">
-					{recipe.name}
-				</h4>
-				<p className="text-gray-600 text-sm mt-2 mb-4 flex-grow">
-					{recipe.description}
-				</p>
+				<CardHeader>
+					<div className="flex items-center gap-2">
+						<Badge variant="outline">
+							{recipe.type.charAt(0).toUpperCase() + recipe.type.slice(1)}
+						</Badge>
+						{recipe.version && (
+							<Badge variant="secondary">v{recipe.version}</Badge>
+						)}
+					</div>
+					<CardTitle className="text-xl group-hover:text-blue-600 transition-colors">
+						{recipe.name}
+					</CardTitle>
+					{recipe.description && (
+						<CardDescription>{recipe.description}</CardDescription>
+					)}
+				</CardHeader>
 
-				<div className="mt-4 text-xs text-gray-500 flex justify-between items-center">
-					{recipe.version && <span>v{recipe.version}</span>}
+				<CardContent className="flex-grow" />
+
+				<Separator />
+
+				<CardFooter className="text-xs text-muted-foreground flex justify-between items-center">
+					{recipe.category && (
+						<span className="capitalize">
+							{recipe.category.replace(/-/g, " ")}
+						</span>
+					)}
 					{recipe.updated_at && (
 						<span>{new Date(recipe.updated_at).toLocaleDateString()}</span>
 					)}
+				</CardFooter>
+			</Card>
+		</Link>
+	);
+};
+
+// Skeleton card for loading state
+const RecipeCardSkeleton = () => {
+	return (
+		<Card className="overflow-hidden h-full flex flex-col">
+			<AspectRatio
+				ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
+				className="border-b"
+			>
+				<Skeleton className="h-full w-full" />
+			</AspectRatio>
+			<CardHeader className="pb-2">
+				<div className="flex items-center gap-2">
+					<Skeleton className="h-5 w-14 rounded-full" />
+					<Skeleton className="h-5 w-10 rounded-full" />
+				</div>
+				<Skeleton className="h-6 w-3/4" />
+				<Skeleton className="h-4 w-full" />
+				<Skeleton className="h-4 w-2/3" />
+			</CardHeader>
+			<CardContent className="flex-grow" />
+			<Separator />
+			<CardFooter className="py-3">
+				<div className="flex justify-between items-center w-full">
+					<Skeleton className="h-3 w-16" />
+					<Skeleton className="h-3 w-20" />
+				</div>
+			</CardFooter>
+		</Card>
+	);
+};
+
+const RecipesGridSkeleton = () => {
+	return (
+		<div className="flex flex-col">
+			<div className="mb-8">
+				<Skeleton className="h-8 w-40 mb-4" />
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					{Array.from({ length: 6 }).map((_, i) => (
+						<RecipeCardSkeleton key={i} />
+					))}
 				</div>
 			</div>
-		</Link>
+		</div>
 	);
 };
 
@@ -72,7 +147,7 @@ const CategorySection = ({
 }) => {
 	return (
 		<div key={category} className="mb-8">
-			<h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mb-4">
+			<h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mb-4 capitalize">
 				{category.replace(/-/g, " ")}
 			</h3>
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -91,7 +166,7 @@ async function RecipesGrid() {
 	// Group recipes by category
 	const recipesByCategory = allRecipes.reduce(
 		(acc, recipe) => {
-			const category = recipe.category || "uncategorized";
+			const category = (recipe.category || "uncategorized").split(',')[0];
 			if (!acc[category]) {
 				acc[category] = [];
 			}
@@ -123,7 +198,7 @@ export default function RecipesIndex() {
 			title="Recipes"
 			subtitle="Browse and customize ready-to-use recipes for your TRMNL device."
 		>
-			<Suspense fallback={<div>Loading recipes...</div>}>
+			<Suspense fallback={<RecipesGridSkeleton />}>
 				<RecipesGrid />
 			</Suspense>
 		</PageTemplate>
