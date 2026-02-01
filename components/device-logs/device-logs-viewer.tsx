@@ -59,15 +59,15 @@ export default function DeviceLogsViewer({
 	paramPrefix = "",
 }: DeviceLogsViewerProps) {
 	const router = useRouter();
-	const pathname = usePathname();
+	const pathname = usePathname() ?? "/";
 	const searchParams = useSearchParams();
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	// Get URL params with defaults
-	const page = Number(searchParams.get(`${paramPrefix}page`) || "1");
-	const searchQuery = searchParams.get(`${paramPrefix}search`) || "";
-	const typeFilter = searchParams.get(`${paramPrefix}type`) || "all";
+	const page = Number(searchParams?.get(`${paramPrefix}page`) || "1");
+	const searchQuery = searchParams?.get(`${paramPrefix}search`) || "";
+	const typeFilter = searchParams?.get(`${paramPrefix}type`) || "all";
 
 	// State
 	const [logs, setLogs] = useState<(Log & { type?: string })[]>([]);
@@ -79,7 +79,7 @@ export default function DeviceLogsViewer({
 	// Create a memoized function to update URL params
 	const createQueryString = useCallback(
 		(params: Record<string, string | number | null>) => {
-			const newSearchParams = new URLSearchParams(searchParams.toString());
+			const newSearchParams = new URLSearchParams(searchParams?.toString());
 
 			// Preserve the activeTab parameter
 			const activeTab = newSearchParams.get("activeTab");

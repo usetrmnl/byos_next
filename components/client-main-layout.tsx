@@ -59,7 +59,7 @@ export function ClientMainLayout({
 	user,
 	authEnabled,
 }: ClientMainLayoutProps) {
-	const pathname = usePathname();
+	const pathname = usePathname() ?? "/";
 	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 	const { theme, setTheme } = useTheme();
 

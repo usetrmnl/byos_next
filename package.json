@@ -37,7 +37,7 @@
 		"@radix-ui/react-toggle-group": "^1.1.11",
 		"@radix-ui/react-tooltip": "^1.2.8",
 		"@redux-devtools/extension": "^3.3.0",
-		"@sparticuz/chromium": "^143.0.4",
+		"@sparticuz/chromium-min": "^143.0.4",
 		"@takumi-rs/core": "^0.66.5",
 		"@takumi-rs/helpers": "^0.66.5",
 		"@takumi-rs/wasm": "^0.66.5",
@@ -92,7 +92,6 @@
 		"onlyBuiltDependencies": [
 			"@biomejs/biome",
 			"@tailwindcss/oxide",
-			"@sparticuz/chromium-min",
 			"unrs-resolver"
 		]
 	}

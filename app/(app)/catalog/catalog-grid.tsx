@@ -1,6 +1,7 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
+import Image from "next/image";
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { installCommunityRecipe } from "@/app/actions/catalog";
@@ -40,23 +41,27 @@ function RecipeCard({
 		<div
 			className={`border rounded-lg overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full ${className ?? ""}`}
 		>
-			<div className="aspect-video bg-muted overflow-hidden bg-neutral-100">
+			<div className="aspect-video bg-muted overflow-hidden bg-neutral-100 relative">
 				{screenshotUrl ? (
-					<img
+					<Image
 						src={screenshotUrl}
 						alt={`${name} screenshot`}
-						className="w-full h-full object-cover"
-						loading="lazy"
+						fill
+						className="object-cover"
+						sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
 					/>
 				) : (
 					<div className="w-full h-full flex items-center justify-center text-muted-foreground">
 						{fallbackImageUrl ? (
-							<img
-								src={fallbackImageUrl}
-								alt=""
-								className="w-24 h-24 object-contain opacity-50"
-								loading="lazy"
-							/>
+							<div className="relative w-24 h-24">
+								<Image
+									src={fallbackImageUrl}
+									alt=""
+									fill
+									className="object-contain opacity-50"
+									sizes="96px"
+								/>
+							</div>
 						) : (
 							<span className="text-3xl font-bold opacity-30">
 								{name.charAt(0)}

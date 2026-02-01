@@ -1,11 +1,20 @@
 import yaml from "js-yaml";
-import { Liquid } from "liquidjs";
+import {
+	type Context,
+	type Emitter,
+	Liquid,
+	type Parser,
+	Tag,
+	type TagToken,
+	type Template,
+	type TopLevelToken,
+} from "liquidjs";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logger, type RecipeParamDefinitions } from "./recipe-renderer";
 
-const _TRMNL_CSS_URL = "https://trmnl.com/css/latest/plugins.css";
-const _TRMNL_JS_URL = "https://trmnl.com/js/latest/plugins.js";
+const TRMNL_CSS_URL = "https://trmnl.com/css/latest/plugins.css";
+const TRMNL_JS_URL = "https://trmnl.com/js/latest/plugins.js";
 
 export type CustomField = {
 	keyname?: string;
@@ -26,6 +35,41 @@ type LiquidRenderResult = {
 	html: string;
 	settings: SettingsYml;
 };
+
+/**
+ * Custom liquidjs block tag for TRMNL's {% template name %}...{% endtemplate %}.
+ * Simply renders its body content — the tag is organizational in TRMNL.
+ */
+class TemplateTag extends Tag {
+	private templates: Template[] = [];
+
+	constructor(
+		token: TagToken,
+		remainTokens: TopLevelToken[],
+		liquid: Liquid,
+		parser: Parser,
+	) {
+		super(token, remainTokens, liquid);
+		const stream = parser
+			.parseStream(remainTokens)
+			.on("tag:endtemplate", () => {
+				stream.stop();
+			})
+			.on("template", (tpl: Template) => {
+				this.templates.push(tpl);
+			})
+			.on("end", () => {
+				throw new Error("{% template %} block missing {% endtemplate %}");
+			});
+		stream.start();
+	}
+
+	*render(ctx: Context, emitter: Emitter): Generator<unknown> {
+		for (const tpl of this.templates) {
+			yield this.liquid.renderer.renderTemplates([tpl], ctx, emitter);
+		}
+	}
+}
 
 /**
  * Fetch recipe files from the database for a given recipe slug.
@@ -54,9 +98,24 @@ async function fetchRecipeFiles(
 		return null;
 	}
 
+	// Detect and strip GitHub archive root prefix (e.g. "repo-main/")
+	// when all filenames share a common directory prefix
+	const filenames = files.map((f) => f.filename);
+	const firstSlash = filenames[0]?.indexOf("/") ?? -1;
+	let stripPrefix = "";
+	if (firstSlash > 0) {
+		const candidate = filenames[0].slice(0, firstSlash + 1);
+		if (filenames.every((f) => f.startsWith(candidate))) {
+			stripPrefix = candidate;
+		}
+	}
+
 	const fileMap = new Map<string, string>();
 	for (const file of files) {
-		fileMap.set(file.filename, file.content);
+		const normalized = stripPrefix
+			? file.filename.slice(stripPrefix.length)
+			: file.filename;
+		fileMap.set(normalized, file.content);
 	}
 	return fileMap;
 }
@@ -113,7 +172,10 @@ async function fetchPollingData(
 			const controller = new AbortController();
 			const timeout = setTimeout(() => controller.abort(), 10000);
 			try {
-				const response = await fetch(url, { signal: controller.signal });
+				const response = await fetch(url, {
+					signal: controller.signal,
+					headers: { "User-Agent": "BYOS/1.0" },
+				});
 				if (!response.ok) {
 					logger.warn(`Polling URL ${url} returned ${response.status}`);
 					return { index, result: null };
@@ -139,24 +201,23 @@ async function fetchPollingData(
 }
 
 /**
- * Strip TRMNL-specific {% template name %}...{% endtemplate %} wrappers,
- * keeping their inner content so liquidjs doesn't choke on unknown tags.
- */
-function stripTemplateBlocks(content: string): string {
-	return content
-		.replace(/\{%[-\s]*template\s+\w+\s*[-]?%\}/g, "")
-		.replace(/\{%[-\s]*endtemplate\s*[-]?%\}/g, "");
-}
-
-/**
  * Wrap inline <script>...</script> content in {% raw %}...{% endraw %}
  * so liquidjs doesn't try to parse JS syntax (e.g. spread `...` as range `..`).
  * Only targets inline scripts (skips <script src="..."></script>).
+ * Scripts that contain Liquid expressions ({{ }} or {% %}) are left unprotected
+ * so that template variables are resolved by the Liquid engine.
  */
-function protectScriptBlocks(content: string): string {
+function wrapNonLiquidScripts(content: string): string {
 	return content.replace(
 		/(<script(?![^>]*\bsrc\s*=)[^>]*>)([\s\S]*?)(<\/script>)/gi,
-		(_, open, body, close) => `${open}{% raw %}${body}{% endraw %}${close}`,
+		(_, open, body, close) => {
+			const hasLiquidExpressions =
+				/\{\{[\s\S]*?\}\}/.test(body) || /\{%[\s\S]*?%\}/.test(body);
+			if (hasLiquidExpressions) {
+				return `${open}${body}${close}`;
+			}
+			return `${open}{% raw %}${body}{% endraw %}${close}`;
+		},
 	);
 }
 
@@ -166,30 +227,11 @@ function protectScriptBlocks(content: string): string {
  * it misreads `(name` as the start of a range expression like `(1..5)`.
  * Liquid evaluates and/or left-to-right, so parens can be safely removed.
  */
-function stripConditionalParens(content: string): string {
+function removeCosmeticParens(content: string): string {
 	return content.replace(
 		/\{%[-\s]*(if|elsif|unless)\s+([\s\S]*?)[-]?%\}/g,
 		(match) => match.replace(/[()]/g, ""),
 	);
-}
-
-/**
- * Extract named template blocks defined with TRMNL's custom syntax:
- *   {% template name %}...{% endtemplate %}
- * Returns a map of template name -> content (with tags stripped).
- */
-function extractTemplateBlocks(content: string): Record<string, string> {
-	const blocks: Record<string, string> = {};
-	const regex =
-		/\{%[-\s]*template\s+(\w+)\s*[-]?%\}([\s\S]*?)\{%[-\s]*endtemplate\s*[-]?%\}/g;
-	for (
-		let match = regex.exec(content);
-		match !== null;
-		match = regex.exec(content)
-	) {
-		blocks[match[1]] = match[2].trim();
-	}
-	return blocks;
 }
 
 /**
@@ -200,7 +242,6 @@ function findTemplateFile(
 	files: Map<string, string>,
 	name: string,
 ): string | null {
-	// Try common paths in order of specificity
 	const candidates = [
 		`src/${name}`,
 		name,
@@ -213,7 +254,6 @@ function findTemplateFile(
 			return content;
 		}
 	}
-	// Fallback: find any file ending with the name
 	for (const [filename, content] of files) {
 		if (filename.endsWith(`/${name}`) || filename === name) {
 			return content;
@@ -233,6 +273,71 @@ export async function fetchLiquidRecipeSettings(
 
 	const settingsContent = findTemplateFile(files, "settings.yml");
 	return settingsContent ? parseSettings(settingsContent) : null;
+}
+
+/**
+ * Register custom filters matching TRMNL/Laravel's Liquid extensions.
+ */
+function registerCustomFilters(engine: Liquid): void {
+	engine.registerFilter("l_date", (date: string, format?: string) => {
+		try {
+			const d = date ? new Date(date) : new Date();
+			if (Number.isNaN(d.getTime())) return date;
+			if (format === "%B %d, %Y") {
+				return d.toLocaleDateString("en-US", {
+					year: "numeric",
+					month: "long",
+					day: "numeric",
+				});
+			}
+			if (format === "%m/%d/%Y") {
+				return d.toLocaleDateString("en-US", {
+					year: "numeric",
+					month: "2-digit",
+					day: "2-digit",
+				});
+			}
+			return d.toLocaleDateString();
+		} catch {
+			return date;
+		}
+	});
+
+	engine.registerFilter(
+		"find_by",
+		(arr: unknown[], key: string, value: unknown) => {
+			if (!Array.isArray(arr)) return null;
+			return (
+				arr.find((item) => {
+					if (item && typeof item === "object") {
+						return (item as Record<string, unknown>)[key] === value;
+					}
+					return false;
+				}) ?? null
+			);
+		},
+	);
+
+	engine.registerFilter("group_by", (arr: unknown[], key: string) => {
+		if (!Array.isArray(arr)) return {};
+		const groups: Record<string, unknown[]> = {};
+		for (const item of arr) {
+			const groupKey =
+				item && typeof item === "object"
+					? String((item as Record<string, unknown>)[key] ?? "")
+					: "";
+			if (!groups[groupKey]) groups[groupKey] = [];
+			groups[groupKey].push(item);
+		}
+		return groups;
+	});
+
+	engine.registerFilter(
+		"pluralize",
+		(count: number, singular: string, plural: string) => {
+			return count === 1 ? singular : plural;
+		},
+	);
 }
 
 /**
@@ -266,18 +371,23 @@ export async function renderLiquidRecipe(
 		...customFieldOverrides,
 	};
 
-	// Fetch polling data, substituting {{placeholder}} values in the URL
-	// Handles both {{key}} and {{ key }} (with optional spaces)
+	// Resolve polling URL through Liquid so templates with {% for %} / {% assign %}
+	// are expanded into actual URLs before fetching
 	let pollingData: Record<string, unknown> = {};
 	if (settings.polling_url) {
-		let resolvedUrl = settings.polling_url;
-		for (const [key, value] of Object.entries(customFieldValues)) {
-			resolvedUrl = resolvedUrl.replace(
-				new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, "g"),
-				String(value),
+		try {
+			const urlEngine = new Liquid({
+				strictFilters: false,
+				strictVariables: false,
+			});
+			const resolvedUrl = await urlEngine.parseAndRender(
+				settings.polling_url,
+				customFieldValues,
 			);
+			pollingData = await fetchPollingData(resolvedUrl);
+		} catch (error) {
+			logger.warn(`Error resolving polling URL template: `, error);
 		}
-		pollingData = await fetchPollingData(resolvedUrl);
 	}
 
 	// Find the main template
@@ -291,27 +401,38 @@ export async function renderLiquidRecipe(
 	const templates: Record<string, string> = {};
 	for (const [filename, content] of files) {
 		if (filename.endsWith(".liquid") && !filename.endsWith("full.liquid")) {
-			// Register under multiple names for flexible {% render %} / {% include %} usage
 			const baseName = filename
 				.replace(/^src\//, "")
 				.replace(/^views\//, "")
 				.replace(/^templates\//, "")
 				.replace(/\.liquid$/, "");
-			templates[baseName] = stripTemplateBlocks(content);
-			templates[filename] = stripTemplateBlocks(content);
+			templates[baseName] = content;
+			templates[filename] = content;
 
-			// Register {% template name %}...{% endtemplate %} blocks as named partials
-			const blocks = extractTemplateBlocks(content);
-			for (const [blockName, blockContent] of Object.entries(blocks)) {
-				templates[blockName] = blockContent;
+			// Extract {% template name %}...{% endtemplate %} blocks as named partials
+			// so they can be referenced via {% render 'name' %}
+			const blockRegex =
+				/\{%[-\s]*template\s+(\w+)\s*[-]?%\}([\s\S]*?)\{%[-\s]*endtemplate\s*[-]?%\}/g;
+			let blockMatch = blockRegex.exec(content);
+			while (blockMatch !== null) {
+				templates[blockMatch[1]] = blockMatch[2].trim();
+				blockMatch = blockRegex.exec(content);
 			}
 		}
 	}
 	const sharedTemplate = findTemplateFile(files, "shared.liquid");
 	if (sharedTemplate) {
-		const stripped = stripTemplateBlocks(sharedTemplate);
-		templates.shared = stripped;
-		fullTemplate = `${stripped}\n${fullTemplate}`;
+		templates.shared = sharedTemplate;
+		fullTemplate = `${sharedTemplate}\n${fullTemplate}`;
+
+		// Extract named template blocks from shared.liquid as partials
+		const blockRegex =
+			/\{%[-\s]*template\s+(\w+)\s*[-]?%\}([\s\S]*?)\{%[-\s]*endtemplate\s*[-]?%\}/g;
+		let blockMatch = blockRegex.exec(sharedTemplate);
+		while (blockMatch !== null) {
+			templates[blockMatch[1]] = blockMatch[2].trim();
+			blockMatch = blockRegex.exec(sharedTemplate);
+		}
 	}
 
 	// Set up liquidjs engine with in-memory templates for partials
@@ -321,30 +442,11 @@ export async function renderLiquidRecipe(
 		templates,
 	});
 
-	// Register custom filters used by TRMNL templates
-	engine.registerFilter("l_date", (date: string, format?: string) => {
-		try {
-			const d = date ? new Date(date) : new Date();
-			if (Number.isNaN(d.getTime())) return date;
-			if (format === "%B %d, %Y") {
-				return d.toLocaleDateString("en-US", {
-					year: "numeric",
-					month: "long",
-					day: "numeric",
-				});
-			}
-			if (format === "%m/%d/%Y") {
-				return d.toLocaleDateString("en-US", {
-					year: "numeric",
-					month: "2-digit",
-					day: "2-digit",
-				});
-			}
-			return d.toLocaleDateString();
-		} catch {
-			return date;
-		}
-	});
+	// Register the custom {% template %}...{% endtemplate %} block tag
+	engine.registerTag("template", TemplateTag);
+
+	// Register custom filters
+	registerCustomFilters(engine);
 
 	// Build template context
 	const context: Record<string, unknown> = {
@@ -352,19 +454,27 @@ export async function renderLiquidRecipe(
 			plugin_settings: {
 				custom_fields_values: customFieldValues,
 			},
+			env: {
+				firmware_version: "1.0.0",
+				time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+			},
+			user: {
+				name: "BYOS User",
+				locale: "en",
+			},
 		},
 		...pollingData,
 	};
 
 	try {
-		const prepared = stripConditionalParens(protectScriptBlocks(fullTemplate));
+		const prepared = removeCosmeticParens(wrapNonLiquidScripts(fullTemplate));
 		const body = await engine.parseAndRender(prepared, context);
 		const html = `
 <!DOCTYPE html>
 <html>
   <head>
-    <link rel="stylesheet" href="https://trmnl.com/css/latest/plugins.css">
-    <script src="https://trmnl.com/js/latest/plugins.js"></script>
+    <link rel="stylesheet" href="${TRMNL_CSS_URL}">
+    <script src="${TRMNL_JS_URL}"></script>
   </head>
   <body class="environment trmnl">
     <div class="screen">

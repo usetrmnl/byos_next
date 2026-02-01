@@ -297,61 +297,53 @@ export const renderRecipeOutputs = cache(
 		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
 		const rendererType = getRendererType();
 
-		// Produce a PNG buffer from either HTML (Puppeteer) or React (Takumi/Satori)
-		async function toPng(): Promise<Buffer> {
+		// Generate the PNG once and reuse for both output formats
+		let pngBuffer: Buffer | null = null;
+		try {
 			if (html) {
-				return renderHtmlToImage(html, imageOptions.width, imageOptions.height);
+				pngBuffer = await renderHtmlToImage(
+					html,
+					imageOptions.width,
+					imageOptions.height,
+				);
+			} else if (Component && props) {
+				const element = createElement(Component, props);
+				pngBuffer =
+					rendererType === "satori"
+						? await renderWithSatori(
+								element,
+								imageOptions.width,
+								imageOptions.height,
+							)
+						: await renderWithTakumi(
+								element,
+								imageOptions.width,
+								imageOptions.height,
+							);
+			} else {
+				logger.error(`No Component or html provided for ${slug}`);
 			}
-			if (!Component || !props) {
-				throw new Error(`No Component or html provided for ${slug}`);
+		} catch (error) {
+			logger.error(`Error generating PNG for ${slug}:`, error);
+		}
+
+		if (pngBuffer) {
+			if (formats.includes("png")) {
+				results.png = pngBuffer;
 			}
-			const element = createElement(Component, props);
-			return rendererType === "satori"
-				? renderWithSatori(element, imageOptions.width, imageOptions.height)
-				: renderWithTakumi(element, imageOptions.width, imageOptions.height);
-		}
 
-		const tasks: Array<
-			Promise<{ key: keyof RenderResults; value: Buffer | null }>
-		> = [];
-
-		if (formats.includes("bitmap")) {
-			tasks.push(
-				(async () => {
-					try {
-						const png = await toPng();
-						const buffer = await renderBmp(png, {
-							ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
-							width: imageWidth,
-							height: imageHeight,
-							...(grayscale !== undefined && { grayscale }),
-						});
-						return { key: "bitmap", value: buffer };
-					} catch (error) {
-						logger.error(`Error generating bitmap for ${slug}:`, error);
-						return { key: "bitmap", value: null };
-					}
-				})(),
-			);
-		}
-
-		if (formats.includes("png")) {
-			tasks.push(
-				(async () => {
-					try {
-						const pngBuffer = await toPng();
-						return { key: "png", value: pngBuffer };
-					} catch (error) {
-						logger.error(`Error generating PNG for ${slug}:`, error);
-						return { key: "png", value: null };
-					}
-				})(),
-			);
-		}
-
-		const completed = await Promise.all(tasks);
-		for (const { key, value } of completed) {
-			results[key] = value as never;
+			if (formats.includes("bitmap")) {
+				try {
+					results.bitmap = await renderBmp(pngBuffer, {
+						ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
+						width: imageWidth,
+						height: imageHeight,
+						...(grayscale !== undefined && { grayscale }),
+					});
+				} catch (error) {
+					logger.error(`Error generating bitmap for ${slug}:`, error);
+				}
+			}
 		}
 
 		return results;

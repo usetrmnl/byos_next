@@ -92,3 +92,10 @@ temp/
 # Backup files
 *.bak
 *.backup 
+
+# Github
+.github/
+
+# Docs
+/docs
+*.md

@@ -77,16 +77,16 @@ export default function SystemLogsViewer({
 	initialData,
 }: SystemLogsViewerProps) {
 	const router = useRouter();
-	const pathname = usePathname();
+	const pathname = usePathname() ?? "/";
 	const searchParams = useSearchParams();
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	// Get URL params with defaults
-	const page = Number(searchParams.get(`${paramPrefix}page`) || "1");
-	const searchQuery = searchParams.get(`${paramPrefix}search`) || "";
-	const levelFilter = searchParams.get(`${paramPrefix}level`) || "all";
-	const sourceFilter = searchParams.get(`${paramPrefix}source`) || "all";
+	const page = Number(searchParams?.get(`${paramPrefix}page`) || "1");
+	const searchQuery = searchParams?.get(`${paramPrefix}search`) || "";
+	const levelFilter = searchParams?.get(`${paramPrefix}level`) || "all";
+	const sourceFilter = searchParams?.get(`${paramPrefix}source`) || "all";
 
 	// State
 	const [logs, setLogs] = useState<SystemLog[]>(initialData?.logs || []);
@@ -101,7 +101,7 @@ export default function SystemLogsViewer({
 	// Create a memoized function to update URL params
 	const createQueryString = useCallback(
 		(params: Record<string, string | number | null>) => {
-			const newSearchParams = new URLSearchParams(searchParams.toString());
+			const newSearchParams = new URLSearchParams(searchParams?.toString());
 
 			// Add prefix to all parameters
 			for (const [key, value] of Object.entries(params)) {
