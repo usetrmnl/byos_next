@@ -119,15 +119,15 @@ export default async function Wikipedia({
 						<RichText gap="large">
 							<RichText.Content size="large">{safeTitle}</RichText.Content>
 							<RichText.Content>{truncatedExtract}</RichText.Content>
-            </RichText>
-            {hasValidThumbnail && thumbnail?.source && (
-              <Image
-                src={thumbnail.source}
-                width={thumbnail.width || 240}
-                height={thumbnail.height || 200}
-                bitDepth={2}
-              />
-            )}
+						</RichText>
+						{hasValidThumbnail && thumbnail?.source && (
+							<Image
+								src={thumbnail.source}
+								width={thumbnail.width || 240}
+								height={thumbnail.height || 200}
+								bitDepth={2}
+							/>
+						)}
 					</Layout>
 					<TitleBar>
 						<TitleBar.Title>Wikipedia • Random Article</TitleBar.Title>

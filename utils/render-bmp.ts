@@ -512,3 +512,193 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 
 	return buffer;
 }
+
+export interface ToBitDepthOptions {
+	width?: number;
+	height?: number;
+	grayscale?: number; // Number of gray levels: 2 (black/white), 4, or 16
+	palette?: string[]; // Custom palette as hex colors (e.g., ["#fff", "#aaa", "#555", "#000"])
+}
+
+/**
+ * Parse hex color string to RGB values
+ */
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+	const clean = hex.replace("#", "");
+	const bigint = Number.parseInt(clean, 16);
+	// Handle shorthand hex (#fff -> #ffffff)
+	if (clean.length === 3) {
+		const r = ((bigint >> 8) & 0xf) * 17;
+		const g = ((bigint >> 4) & 0xf) * 17;
+		const b = (bigint & 0xf) * 17;
+		return { r, g, b };
+	}
+	const r = (bigint >> 16) & 255;
+	const g = (bigint >> 8) & 255;
+	const b = bigint & 255;
+	return { r, g, b };
+}
+
+/**
+ * Calculate luminance of an RGB color (0-255)
+ */
+function getLuminance(r: number, g: number, b: number): number {
+	// Standard luminance formula: 0.299*R + 0.587*G + 0.114*B
+	return Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+}
+
+/**
+ * Convert a PNG buffer to a simple BMP with the specified bit depth.
+ * No dithering, no edge detection - just simple quantization to nearest gray level.
+ * Supports custom palette - provide hex colors from lightest to darkest.
+ */
+export async function toBitDepth(
+	png: Buffer,
+	options: ToBitDepthOptions = {},
+): Promise<Buffer> {
+	const { grayscale = 2, palette: customPalette } = options;
+
+	// Validate grayscale levels
+	const validLevels = [2, 4, 16];
+	if (!validLevels.includes(grayscale)) {
+		throw new Error(
+			`Invalid grayscale value: ${grayscale}. Must be one of: ${validLevels.join(", ")}`,
+		);
+	}
+
+	// Validate custom palette if provided
+	if (customPalette && customPalette.length !== grayscale) {
+		throw new Error(
+			`Custom palette must have exactly ${grayscale} colors, got ${customPalette.length}`,
+		);
+	}
+
+	const targetWidth = options.width ?? 800;
+	const targetHeight = options.height ?? 480;
+
+	// Convert PNG to grayscale raw pixels (no resize - input should already be correct size)
+	const { data } = await sharp(png)
+		.grayscale()
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+
+	// Calculate BMP parameters
+	const bitsPerPixel = grayscale === 2 ? 1 : grayscale === 4 ? 2 : 4;
+	const numColors = grayscale;
+	const paletteSize = numColors * 4;
+	const fileHeaderSize = 14;
+	const infoHeaderSize = 40;
+	const rowSize = Math.floor((targetWidth * bitsPerPixel + 31) / 32) * 4;
+	const headerSize = fileHeaderSize + infoHeaderSize + paletteSize;
+	const fileSize = headerSize + rowSize * targetHeight;
+
+	// Create output buffer
+	const buffer = Buffer.alloc(fileSize);
+
+	// BMP File Header
+	buffer.write("BM", 0);
+	buffer.writeUInt32LE(fileSize, 2);
+	buffer.writeUInt32LE(0, 6);
+	buffer.writeUInt32LE(headerSize, 10);
+
+	// BMP Info Header
+	buffer.writeUInt32LE(infoHeaderSize, 14);
+	buffer.writeInt32LE(targetWidth, 18);
+	buffer.writeInt32LE(targetHeight, 22);
+	buffer.writeUInt16LE(1, 26);
+	buffer.writeUInt16LE(bitsPerPixel, 28);
+	buffer.writeUInt32LE(0, 30);
+	buffer.writeUInt32LE(rowSize * targetHeight, 34);
+	buffer.writeInt32LE(0, 38);
+	buffer.writeInt32LE(0, 42);
+	buffer.writeUInt32LE(numColors, 46);
+	buffer.writeUInt32LE(numColors, 50);
+
+	// Parse palette - use custom if provided, otherwise generate grayscale
+	const paletteColors: { r: number; g: number; b: number }[] = [];
+	if (customPalette) {
+		for (const hex of customPalette) {
+			paletteColors.push(hexToRgb(hex));
+		}
+	} else {
+		// Generate default grayscale palette (white to black)
+		const paletteStep = 255 / (grayscale - 1);
+		for (let i = 0; i < grayscale; i++) {
+			const grayValue = Math.round(255 - i * paletteStep);
+			paletteColors.push({ r: grayValue, g: grayValue, b: grayValue });
+		}
+	}
+
+	// Write Color Palette (BGR format)
+	const paletteOffset = fileHeaderSize + infoHeaderSize;
+	for (let i = 0; i < grayscale; i++) {
+		const { r, g, b } = paletteColors[i];
+		// BMP palette format: BGR + reserved byte (0x00)
+		const paletteEntry = (b << 16) | (g << 8) | r;
+		buffer.writeUInt32LE(paletteEntry, paletteOffset + i * 4);
+	}
+
+	// Map gray value to palette index based on luminance
+	const paletteLuminances = paletteColors.map((c) =>
+		getLuminance(c.r, c.g, c.b),
+	);
+	const valueToIndex = (value: number): number => {
+		// Find closest palette color by luminance
+		let closestIndex = 0;
+		let closestDiff = Math.abs(value - paletteLuminances[0]);
+		for (let i = 1; i < paletteLuminances.length; i++) {
+			const diff = Math.abs(value - paletteLuminances[i]);
+			if (diff < closestDiff) {
+				closestDiff = diff;
+				closestIndex = i;
+			}
+		}
+		return closestIndex;
+	};
+
+	// Write pixel data (bottom-up)
+	const dataOffset = headerSize;
+	for (let y = 0; y < targetHeight; y++) {
+		const targetY = targetHeight - 1 - y;
+		const destRowOffset = dataOffset + y * rowSize;
+
+		if (bitsPerPixel === 1) {
+			for (let x = 0; x < targetWidth; x += 8) {
+				let byte = 0;
+				const remaining = Math.min(8, targetWidth - x);
+				for (let bit = 0; bit < remaining; bit++) {
+					const idx = targetY * targetWidth + x + bit;
+					const paletteIndex = valueToIndex(data[idx]);
+					if (paletteIndex === grayscale - 1) {
+						byte |= 1 << (7 - bit);
+					}
+				}
+				buffer[destRowOffset + (x >> 3)] = byte;
+			}
+		} else if (bitsPerPixel === 2) {
+			for (let x = 0; x < targetWidth; x += 4) {
+				let byte = 0;
+				const remaining = Math.min(4, targetWidth - x);
+				for (let bit = 0; bit < remaining; bit++) {
+					const idx = targetY * targetWidth + x + bit;
+					const paletteIndex = valueToIndex(data[idx]);
+					byte |= paletteIndex << (6 - bit * 2);
+				}
+				buffer[destRowOffset + (x >> 2)] = byte;
+			}
+		} else if (bitsPerPixel === 4) {
+			for (let x = 0; x < targetWidth; x += 2) {
+				let byte = 0;
+				const remaining = Math.min(2, targetWidth - x);
+				for (let bit = 0; bit < remaining; bit++) {
+					const idx = targetY * targetWidth + x + bit;
+					const paletteIndex = valueToIndex(data[idx]);
+					byte |= paletteIndex << (4 - bit * 4);
+				}
+				buffer[destRowOffset + (x >> 1)] = byte;
+			}
+		}
+	}
+
+	return buffer;
+}

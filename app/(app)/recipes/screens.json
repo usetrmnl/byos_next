@@ -190,27 +190,27 @@
 		"category": "system-components"
 	},
 	"framework-example": {
-    "title": "Framework Example",
-    "published": true,
-    "createdAt": "2025-03-01T00:00:00Z",
-    "updatedAt": "2025-03-13T00:00:00Z",
-    "description": "A component that displays random Wikipedia articles.",
-    "componentPath": "./screens/framework-example",
-    "hasDataFetch": true,
-    "props": {
-      "title": "Wikipedia (Default)",
-      "extract": "Loading article..."
-    },
-    "params": {},
-    "tags": ["framework", "text", "api", "live-data", "advanced"],
-    "author": {
-      "name": "Gustaf",
-      "github": "GU5TAF"
-    },
-    "renderSettings": {
-      "doubleSizeForSharperText": false
-    },
-    "version": "0.0.1",
-    "category": "display-components"
-  }
+		"title": "Framework Example",
+		"published": true,
+		"createdAt": "2025-03-01T00:00:00Z",
+		"updatedAt": "2025-03-13T00:00:00Z",
+		"description": "A component that displays random Wikipedia articles.",
+		"componentPath": "./screens/framework-example",
+		"hasDataFetch": true,
+		"props": {
+			"title": "Wikipedia (Default)",
+			"extract": "Loading article..."
+		},
+		"params": {},
+		"tags": ["framework", "text", "api", "live-data", "advanced"],
+		"author": {
+			"name": "Gustaf",
+			"github": "GU5TAF"
+		},
+		"renderSettings": {
+			"doubleSizeForSharperText": false
+		},
+		"version": "0.0.1",
+		"category": "display-components"
+	}
 }

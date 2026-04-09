@@ -181,11 +181,17 @@ const RenderComponent = ({
 			);
 		}
 
+		const isBrowser = process.env.REACT_RENDERER?.toLowerCase() === "browser";
+
 		return (
 			<Image
 				width={imageWidth}
 				height={imageHeight}
-				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
+				src={
+					isBrowser
+						? `/api/bitmap/${slug}.bmp`
+						: `data:image/bmp;base64,${renders.bitmap.toString("base64")}`
+				}
 				style={{ imageRendering: "pixelated" }}
 				alt={`${title} BMP render`}
 				className="w-full object-cover"

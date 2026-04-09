@@ -6,6 +6,11 @@ export default function RecipePreviewLayout({
 	children: ReactNode;
 }) {
 	return (
-		<Suspense fallback={<span>Rendering recipe...</span>}>{children}</Suspense>
+		<>
+			<style>{"nextjs-portal{display:none}"}</style>
+			<Suspense fallback={<span>Rendering recipe...</span>}>
+				{children}
+			</Suspense>
+		</>
 	);
 }

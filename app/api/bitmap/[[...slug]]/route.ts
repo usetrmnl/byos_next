@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { cache } from "react";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
 import screens from "@/app/(app)/recipes/screens.json";
+import { renderWithBrowser } from "@/lib/recipes/browser-renderer";
 import {
 	addDimensionsToProps,
 	buildRecipeElement,
@@ -10,6 +11,14 @@ import {
 	logger,
 	renderRecipeOutputs,
 } from "@/lib/recipes/recipe-renderer";
+import { toBitDepth } from "@/utils/render-bmp";
+
+/**
+ * Check if browser-based rendering is enabled
+ */
+function isBrowserRenderer(): boolean {
+	return process.env.REACT_RENDERER?.toLowerCase() === "browser";
+}
 
 export async function GET(
 	req: NextRequest,
@@ -45,6 +54,38 @@ export async function GET(
 			? recipeSlug
 			: "simple-text";
 
+		// Short circuit: Use browser-based rendering if REACT_RENDERER=browser
+		if (false) {
+			logger.info(`[Browser] Rendering recipe: ${recipeId}`);
+
+			const pngBuffer = await renderWithBrowser({
+				slug: recipeId,
+				width: validWidth,
+				height: validHeight,
+			});
+
+			if (!pngBuffer) {
+				logger.error(`[Browser] Failed to render recipe: ${recipeId}`);
+				return await renderFallbackBitmap(recipeId);
+			}
+
+			// Convert PNG screenshot to BMP with desired bit depth (no dithering)
+			const bmpBuffer = await toBitDepth(pngBuffer, {
+				width: validWidth,
+				height: validHeight,
+				grayscale: 4,
+				palette: ["#fff", "#aaa", "#555", "#000"],
+			});
+
+			return new Response(new Uint8Array(bmpBuffer), {
+				headers: {
+					"Content-Type": "image/bmp",
+					"Content-Length": bmpBuffer.length.toString(),
+				},
+			});
+		}
+
+		// Fall back to server-side rendering (Takumi/Satori)
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeId,
 			validWidth,
@@ -84,7 +125,7 @@ const renderRecipeBitmap = cache(
 		width: number,
 		height: number,
 		grayscaleLevels: number = 2,
-	) => {
+	): Promise<Buffer> => {
 		const { config, Component, props, element } = await buildRecipeElement({
 			slug: recipeId,
 		});
