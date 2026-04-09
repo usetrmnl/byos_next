@@ -5,6 +5,7 @@
 	"scripts": {
 		"generate:sql": "node scripts/generate-sql-statements.js && pnpm format",
 		"generate:types": "kysely-codegen --dialect postgres --include-pattern='public.*' --out-file lib/database/db.d.ts",
+		"generate:framework-ui": "node scripts/generate-framework-ui.js",
 		"prebuild": "pnpm generate:sql",
 		"dev": "pnpm generate:sql && next dev --turbopack",
 		"build": "next build",
@@ -52,8 +53,10 @@
 		"next-themes": "^0.4.6",
 		"pg": "^8.17.2",
 		"postgres": "^3.4.8",
+		"puppeteer": "^24.40.0",
 		"react": "^19.2.4",
 		"react-dom": "^19.2.4",
+		"react-shadow": "^20.6.0",
 		"react-virtuoso": "^4.18.1",
 		"satori": "^0.19.1",
 		"sharp": "^0.34.5",
@@ -84,6 +87,7 @@
 		"onlyBuiltDependencies": [
 			"@biomejs/biome",
 			"@tailwindcss/oxide",
+			"puppeteer",
 			"unrs-resolver"
 		]
 	}
