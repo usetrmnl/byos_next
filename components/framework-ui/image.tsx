@@ -19,25 +19,14 @@ function Image({
 	alt,
 	width,
 	height,
-	bitDepth,
+	bitDepth = 2,
 	fit = "contain",
 	invert = false,
 	background = "white",
 	className,
+	style,
 	...imgProps
 }: ImageProps) {
-	// If no bitDepth is specified, render the image directly without processing
-	if (!bitDepth) {
-		return (
-			<img
-				src={src}
-				alt={alt}
-				className={clsx("image", className)}
-				{...imgProps}
-			/>
-		);
-	}
-
 	// Build the API URL for processed image
 	const params = new URLSearchParams();
 	params.set("url", src);
@@ -64,6 +53,7 @@ function Image({
 			width={width}
 			height={height}
 			className={clsx("image", className)}
+			style={{ imageRendering: "pixelated", ...style }}
 			{...imgProps}
 		/>
 	);

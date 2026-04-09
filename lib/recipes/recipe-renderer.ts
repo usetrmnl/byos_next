@@ -83,9 +83,10 @@ export const addDimensionsToProps = (
 });
 
 // Get renderer type from environment variable (defaults to "takumi")
-export const getRendererType = (): "takumi" | "satori" => {
+export const getRendererType = () => {
+	const renderers = ["takumi", "satori", "browser"] as const;
 	const renderer = process.env.REACT_RENDERER?.toLowerCase();
-	return renderer === "satori" ? "satori" : "takumi";
+	return renderers.find((r) => r === renderer) || "takumi";
 };
 
 // Cache the fonts at module initialization

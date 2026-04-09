@@ -517,59 +517,23 @@ export interface ToBitDepthOptions {
 	width?: number;
 	height?: number;
 	grayscale?: number; // Number of gray levels: 2 (black/white), 4, or 16
-	palette?: string[]; // Custom palette as hex colors (e.g., ["#fff", "#aaa", "#555", "#000"])
-}
-
-/**
- * Parse hex color string to RGB values
- */
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-	const clean = hex.replace("#", "");
-	const bigint = Number.parseInt(clean, 16);
-	// Handle shorthand hex (#fff -> #ffffff)
-	if (clean.length === 3) {
-		const r = ((bigint >> 8) & 0xf) * 17;
-		const g = ((bigint >> 4) & 0xf) * 17;
-		const b = (bigint & 0xf) * 17;
-		return { r, g, b };
-	}
-	const r = (bigint >> 16) & 255;
-	const g = (bigint >> 8) & 255;
-	const b = bigint & 255;
-	return { r, g, b };
-}
-
-/**
- * Calculate luminance of an RGB color (0-255)
- */
-function getLuminance(r: number, g: number, b: number): number {
-	// Standard luminance formula: 0.299*R + 0.587*G + 0.114*B
-	return Math.round(0.299 * r + 0.587 * g + 0.114 * b);
 }
 
 /**
  * Convert a PNG buffer to a simple BMP with the specified bit depth.
- * No dithering, no edge detection - just simple quantization to nearest gray level.
- * Supports custom palette - provide hex colors from lightest to darkest.
+ * Uses evenly spaced gray levels with simple quantization (no dithering).
  */
 export async function toBitDepth(
 	png: Buffer,
 	options: ToBitDepthOptions = {},
 ): Promise<Buffer> {
-	const { grayscale = 2, palette: customPalette } = options;
+	const { grayscale = 2 } = options;
 
 	// Validate grayscale levels
 	const validLevels = [2, 4, 16];
 	if (!validLevels.includes(grayscale)) {
 		throw new Error(
 			`Invalid grayscale value: ${grayscale}. Must be one of: ${validLevels.join(", ")}`,
-		);
-	}
-
-	// Validate custom palette if provided
-	if (customPalette && customPalette.length !== grayscale) {
-		throw new Error(
-			`Custom palette must have exactly ${grayscale} colors, got ${customPalette.length}`,
 		);
 	}
 
@@ -614,46 +578,20 @@ export async function toBitDepth(
 	buffer.writeUInt32LE(numColors, 46);
 	buffer.writeUInt32LE(numColors, 50);
 
-	// Parse palette - use custom if provided, otherwise generate grayscale
-	const paletteColors: { r: number; g: number; b: number }[] = [];
-	if (customPalette) {
-		for (const hex of customPalette) {
-			paletteColors.push(hexToRgb(hex));
-		}
-	} else {
-		// Generate default grayscale palette (white to black)
-		const paletteStep = 255 / (grayscale - 1);
-		for (let i = 0; i < grayscale; i++) {
-			const grayValue = Math.round(255 - i * paletteStep);
-			paletteColors.push({ r: grayValue, g: grayValue, b: grayValue });
-		}
-	}
-
-	// Write Color Palette (BGR format)
+	// Generate grayscale palette (evenly spaced, white to black)
 	const paletteOffset = fileHeaderSize + infoHeaderSize;
+	const paletteStep = 255 / (grayscale - 1);
 	for (let i = 0; i < grayscale; i++) {
-		const { r, g, b } = paletteColors[i];
+		const grayValue = Math.round(255 - i * paletteStep);
 		// BMP palette format: BGR + reserved byte (0x00)
-		const paletteEntry = (b << 16) | (g << 8) | r;
+		const paletteEntry = (grayValue << 16) | (grayValue << 8) | grayValue;
 		buffer.writeUInt32LE(paletteEntry, paletteOffset + i * 4);
 	}
 
-	// Map gray value to palette index based on luminance
-	const paletteLuminances = paletteColors.map((c) =>
-		getLuminance(c.r, c.g, c.b),
-	);
+	// Map gray value to palette index using evenly spaced levels
 	const valueToIndex = (value: number): number => {
-		// Find closest palette color by luminance
-		let closestIndex = 0;
-		let closestDiff = Math.abs(value - paletteLuminances[0]);
-		for (let i = 1; i < paletteLuminances.length; i++) {
-			const diff = Math.abs(value - paletteLuminances[i]);
-			if (diff < closestDiff) {
-				closestDiff = diff;
-				closestIndex = i;
-			}
-		}
-		return closestIndex;
+		// Map from 0-255 to palette index (0 = white, N-1 = black)
+		return grayscale - 1 - Math.round(value / paletteStep);
 	};
 
 	// Write pixel data (bottom-up)

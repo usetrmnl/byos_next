@@ -55,7 +55,7 @@ export async function GET(
 			: "simple-text";
 
 		// Short circuit: Use browser-based rendering if REACT_RENDERER=browser
-		if (false) {
+		if (isBrowserRenderer()) {
 			logger.info(`[Browser] Rendering recipe: ${recipeId}`);
 
 			const pngBuffer = await renderWithBrowser({

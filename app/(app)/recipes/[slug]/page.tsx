@@ -181,10 +181,10 @@ const RenderComponent = ({
 			);
 		}
 
-		const isBrowser = process.env.REACT_RENDERER?.toLowerCase() === "browser";
+		const isBrowser = true;
 
 		return (
-			<Image
+			<img
 				width={imageWidth}
 				height={imageHeight}
 				src={
@@ -358,8 +358,6 @@ export default async function RecipePage({
 					}
 					bmpLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx → {getRendererType()} PNG →
-							utils/render-bmp.ts →
 							<Link
 								href={`/api/bitmap/${slug}.bmp`}
 								className="hover:underline text-blue-600 dark:text-blue-400"
@@ -370,11 +368,6 @@ export default async function RecipePage({
 					}
 					pngLinkComponent={
 						<p className="leading-7 text-xs">
-							JSX → utils/pre-satori.tsx →{" "}
-							<span className="text-blue-600 dark:text-blue-400">
-								{getRendererType()} PNG
-							</span>{" "}
-							→ utils/render-bmp.ts →
 							<Link
 								href={`/api/bitmap/${slug}.bmp`}
 								className="hover:underline"
@@ -385,7 +378,12 @@ export default async function RecipePage({
 					}
 					reactLinkComponent={
 						<p className="leading-7 text-xs">
-							/recipes/screens/{slug}/{slug}.tsx
+							<Link
+								href={`/recipes/${slug}/preview`}
+								className="hover:underline"
+							>
+								/recipes/screens/{slug}/preview
+							</Link>
 						</p>
 					}
 				/>

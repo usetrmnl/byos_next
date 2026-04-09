@@ -13,7 +13,7 @@ export interface ProcessImageOptions {
 }
 
 /**
- * Apply Floyd-Steinberg dithering to grayscale image data
+ * Apply Floyd-Steinberg dithering to grayscale image data with evenly spaced levels
  */
 function applyFloydSteinbergDithering(
 	grayscale: Uint8Array,
@@ -117,8 +117,8 @@ export async function processImage(
 	// Calculate number of gray levels from bit depth
 	const levels = Math.pow(2, bitDepth);
 
-	// Apply Floyd-Steinberg dithering
-	const ditheredData = applyFloydSteinbergDithering(
+	// Apply Floyd-Steinberg dithering with evenly spaced levels
+	let processedData = applyFloydSteinbergDithering(
 		new Uint8Array(data),
 		imgWidth,
 		imgHeight,
@@ -127,13 +127,13 @@ export async function processImage(
 
 	// Apply inversion if requested
 	if (invert) {
-		for (let i = 0; i < ditheredData.length; i++) {
-			ditheredData[i] = 255 - ditheredData[i];
+		for (let i = 0; i < processedData.length; i++) {
+			processedData[i] = 255 - processedData[i];
 		}
 	}
 
 	// Convert back to PNG
-	return await sharp(ditheredData, {
+	return await sharp(processedData, {
 		raw: {
 			width: imgWidth,
 			height: imgHeight,

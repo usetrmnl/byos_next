@@ -83,34 +83,6 @@ export default async function Wikipedia({
 		hour12: true,
 	});
 
-	// Safe image dimensions calculation
-	const getImageDimensions = () => {
-		if (!hasValidThumbnail || !thumbnail)
-			return { width: "240px", height: "auto" };
-
-		try {
-			// At this point we've already validated that these values exist through hasValidThumbnail
-			// But to satisfy TypeScript, add additional safety checks
-			const width = typeof thumbnail.width === "number" ? thumbnail.width : 240;
-			const height =
-				typeof thumbnail.height === "number" ? thumbnail.height : 180;
-			const aspectRatio = height / width;
-			const displayWidth = 240;
-			const displayHeight = Math.round(displayWidth * aspectRatio);
-
-			// Impose reasonable limits
-			return {
-				width: `${displayWidth}px`,
-				height: `${Math.min(displayHeight, 400)}px`,
-			};
-		} catch (error) {
-			console.error("Error calculating image dimensions:", error);
-			return { width: "240px", height: "auto" };
-		}
-	};
-
-	const imageDimensions = getImageDimensions();
-
 	return (
 		<WithFramework>
 			<Screen device="ogv2" bitDepth={2}>
