@@ -1,10 +1,10 @@
 {
 	"image-ditherer": {
-		"title": "1-Bit Image Ditherer",
+		"title": "Image Ditherer",
 		"published": true,
 		"createdAt": "2025-03-18T00:00:00Z",
 		"updatedAt": "2025-03-18T00:00:00Z",
-		"description": "Convert your images to 1-bit dithered art with various algorithms. Adjust brightness, contrast, and other parameters to achieve the perfect retro look. Perfect for pixel art, e-ink displays, or nostalgic designs.",
+		"description": "Convert your images to dithered art with various algorithms and gray levels. Adjust brightness, contrast, and other parameters to achieve the perfect retro look. Perfect for pixel art, e-ink displays, or nostalgic designs.",
 		"tags": ["bitmap", "dithering", "image", "processing"],
 		"author": {
 			"name": "Mangle Kuo",

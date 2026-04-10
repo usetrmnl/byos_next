@@ -1,4 +1,5 @@
 import sharp from "sharp";
+import { ditheringFloydSteinberg } from "@/utils/dithering";
 
 export type FitMode = "cover" | "contain" | "fill";
 
@@ -10,51 +11,6 @@ export interface ProcessImageOptions {
 	fit?: FitMode;
 	invert?: boolean;
 	background?: string;
-}
-
-/**
- * Apply Floyd-Steinberg dithering to grayscale image data with evenly spaced levels
- */
-function applyFloydSteinbergDithering(
-	grayscale: Uint8Array,
-	width: number,
-	height: number,
-	levels: number,
-): Uint8Array {
-	const result = new Uint8Array(grayscale.length);
-	const buffer = new Float32Array(grayscale.length);
-
-	// Initialize buffer with grayscale values
-	for (let i = 0; i < grayscale.length; i++) {
-		buffer[i] = grayscale[i];
-	}
-
-	const step = 255 / (levels - 1);
-
-	// Apply Floyd-Steinberg dithering
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const index = y * width + x;
-			const oldPixel = buffer[index];
-
-			// Quantize to nearest level
-			const newPixel = Math.round(oldPixel / step) * step;
-			result[index] = Math.min(255, Math.max(0, newPixel));
-
-			// Calculate error
-			const error = oldPixel - newPixel;
-
-			// Distribute error to neighboring pixels
-			if (x + 1 < width) buffer[index + 1] += (error * 7) / 16;
-			if (y + 1 < height && x > 0)
-				buffer[index + width - 1] += (error * 3) / 16;
-			if (y + 1 < height) buffer[index + width] += (error * 5) / 16;
-			if (y + 1 < height && x + 1 < width)
-				buffer[index + width + 1] += (error * 1) / 16;
-		}
-	}
-
-	return result;
 }
 
 /**
@@ -119,7 +75,7 @@ export async function processImage(
 	const levels = Math.pow(2, bitDepth);
 
 	// Apply Floyd-Steinberg dithering with evenly spaced levels
-	let processedData = applyFloydSteinbergDithering(
+	let processedData = ditheringFloydSteinberg(
 		new Uint8Array(data),
 		imgWidth,
 		imgHeight,

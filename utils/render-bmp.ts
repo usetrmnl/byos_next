@@ -1,4 +1,10 @@
 import sharp from "sharp";
+import {
+	ditheringAtkinson,
+	ditheringBayer,
+	ditheringFloydSteinberg,
+	ditheringRandom,
+} from "@/utils/dithering";
 
 /** Dithering method options */
 export enum DitheringMethod {
@@ -8,191 +14,9 @@ export enum DitheringMethod {
 	RANDOM = "random",
 }
 
-/** Bayer matrix (8x8) for dithering */
-const BAYER_MATRIX_8x8: number[][] = [
-	[0, 32, 8, 40, 2, 34, 10, 42],
-	[48, 16, 56, 24, 50, 18, 58, 26],
-	[12, 44, 4, 36, 14, 46, 6, 38],
-	[60, 28, 52, 20, 62, 30, 54, 22],
-	[3, 35, 11, 43, 1, 33, 9, 41],
-	[51, 19, 59, 27, 49, 17, 57, 25],
-	[15, 47, 7, 39, 13, 45, 5, 37],
-	[63, 31, 55, 23, 61, 29, 53, 21],
-];
-
-/** Bayer matrices of different sizes */
-const BAYER_MATRICES: Record<number, number[][]> = {
-	2: [
-		[0, 2],
-		[3, 1],
-	],
-	4: [
-		[0, 8, 2, 10],
-		[12, 4, 14, 6],
-		[3, 11, 1, 9],
-		[15, 7, 13, 5],
-	],
-	8: BAYER_MATRIX_8x8,
-};
-
 /**
- * Quantize a value to the nearest available gray level
- */
-const quantizeToLevel = (value: number, levels: number): number => {
-	const step = 255 / (levels - 1);
-	const quantized = Math.round(value / step) * step;
-	return Math.min(255, Math.max(0, quantized));
-};
-
-/**
- * Apply Floyd-Steinberg dithering algorithm
- */
-const applyFloydSteinberg = (
-	grayscale: Uint8Array,
-	width: number,
-	height: number,
-	grayscaleLevels: number = 2,
-	inverted: boolean = false,
-): Uint8Array => {
-	// Create a copy of the grayscale array to avoid modifying the original
-	const result = new Uint8Array(grayscale.length);
-	const buffer = new Float32Array(grayscale.length);
-
-	// Initialize buffer with grayscale values
-	for (let i = 0; i < grayscale.length; i++) {
-		buffer[i] = grayscale[i];
-	}
-
-	// Apply Floyd-Steinberg dithering
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const index = y * width + x;
-			const oldPixel = buffer[index];
-			const newPixel = quantizeToLevel(oldPixel, grayscaleLevels);
-			const finalPixel = inverted ? 255 - newPixel : newPixel;
-			result[index] = finalPixel;
-			const error = oldPixel - newPixel;
-
-			if (x + 1 < width) buffer[index + 1] += (error * 7) / 16;
-			if (y + 1 < height && x > 0)
-				buffer[index + width - 1] += (error * 3) / 16;
-			if (y + 1 < height) buffer[index + width] += (error * 5) / 16;
-			if (y + 1 < height && x + 1 < width)
-				buffer[index + width + 1] += (error * 1) / 16;
-		}
-	}
-
-	return result;
-};
-
-/**
- * Apply Atkinson dithering algorithm
- */
-const applyAtkinson = (
-	grayscale: Uint8Array,
-	width: number,
-	height: number,
-	grayscaleLevels: number = 2,
-	inverted: boolean = false,
-): Uint8Array => {
-	// Create a copy of the grayscale array to avoid modifying the original
-	const result = new Uint8Array(grayscale.length);
-	const buffer = new Float32Array(grayscale.length);
-
-	// Initialize buffer with grayscale values
-	for (let i = 0; i < grayscale.length; i++) {
-		buffer[i] = grayscale[i];
-	}
-
-	// Apply Atkinson dithering
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const index = y * width + x;
-			const oldPixel = buffer[index];
-			const newPixel = quantizeToLevel(oldPixel, grayscaleLevels);
-			const finalPixel = inverted ? 255 - newPixel : newPixel;
-			result[index] = finalPixel;
-			const error = Math.floor((oldPixel - newPixel) / 8);
-
-			if (x + 1 < width) buffer[index + 1] += error;
-			if (x + 2 < width) buffer[index + 2] += error;
-			if (y + 1 < height && x - 1 >= 0) buffer[index + width - 1] += error;
-			if (y + 1 < height) buffer[index + width] += error;
-			if (y + 1 < height && x + 1 < width) buffer[index + width + 1] += error;
-			if (y + 2 < height) buffer[index + width * 2] += error;
-		}
-	}
-
-	return result;
-};
-
-/**
- * Apply Bayer dithering algorithm
- */
-const applyBayer = (
-	grayscale: Uint8Array,
-	width: number,
-	height: number,
-	grayscaleLevels: number = 2,
-	patternSize: number = 8,
-	inverted: boolean = false,
-): Uint8Array => {
-	const result = new Uint8Array(grayscale.length);
-
-	// Use the closest available matrix size
-	const matrixSize = patternSize <= 2 ? 2 : patternSize <= 4 ? 4 : 8;
-	const matrix = BAYER_MATRICES[matrixSize];
-	const matrixLength = matrix.length;
-
-	// Normalize the matrix values to 0-255 range
-	const normalizedMatrix = matrix.map((row) =>
-		row.map((val) => Math.floor((val * 255) / (matrixLength * matrixLength))),
-	);
-
-	// Apply Bayer dithering
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const index = y * width + x;
-			const gray = grayscale[index];
-			const matrixX = x % matrixLength;
-			const matrixY = y % matrixLength;
-			const threshold = normalizedMatrix[matrixY][matrixX];
-
-			// Apply threshold and quantize to nearest level
-			const adjustedValue = gray + (threshold - 128);
-			const quantizedValue = quantizeToLevel(adjustedValue, grayscaleLevels);
-			result[index] = inverted ? 255 - quantizedValue : quantizedValue;
-		}
-	}
-
-	return result;
-};
-
-/**
- * Apply random dithering
- */
-const applyRandom = (
-	grayscale: Uint8Array,
-	_width: number,
-	_height: number,
-	grayscaleLevels: number = 2,
-	inverted: boolean = false,
-): Uint8Array => {
-	const result = new Uint8Array(grayscale.length);
-
-	for (let i = 0; i < grayscale.length; i++) {
-		const gray = grayscale[i];
-		const randomThreshold = Math.random() * 255;
-		const adjustedValue = gray + (randomThreshold - 128);
-		const quantizedValue = quantizeToLevel(adjustedValue, grayscaleLevels);
-		result[i] = inverted ? 255 - quantizedValue : quantizedValue;
-	}
-
-	return result;
-};
-
-/**
- * Apply the specified dithering method to the grayscale image
+ * Apply the specified dithering method to the grayscale image.
+ * Inversion is not applied here — callers handle it as a post-pass.
  */
 const applyDithering = (
 	grayscale: Uint8Array,
@@ -200,31 +24,18 @@ const applyDithering = (
 	height: number,
 	method: DitheringMethod = DitheringMethod.FLOYD_STEINBERG,
 	grayscaleLevels: number = 2,
-	inverted: boolean = false,
 ): Uint8Array => {
 	switch (method) {
 		case DitheringMethod.FLOYD_STEINBERG:
-			return applyFloydSteinberg(
-				grayscale,
-				width,
-				height,
-				grayscaleLevels,
-				inverted,
-			);
+			return ditheringFloydSteinberg(grayscale, width, height, grayscaleLevels);
 		case DitheringMethod.ATKINSON:
-			return applyAtkinson(grayscale, width, height, grayscaleLevels, inverted);
+			return ditheringAtkinson(grayscale, width, height, grayscaleLevels);
 		case DitheringMethod.BAYER:
-			return applyBayer(grayscale, width, height, grayscaleLevels, 8, inverted);
+			return ditheringBayer(grayscale, width, height, 8, grayscaleLevels);
 		case DitheringMethod.RANDOM:
-			return applyRandom(grayscale, width, height, grayscaleLevels, inverted);
+			return ditheringRandom(grayscale, grayscaleLevels);
 		default:
-			return applyFloydSteinberg(
-				grayscale,
-				width,
-				height,
-				grayscaleLevels,
-				inverted,
-			);
+			return ditheringFloydSteinberg(grayscale, width, height, grayscaleLevels);
 	}
 };
 
@@ -324,7 +135,6 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 		targetHeight,
 		ditheringMethod,
 		grayscale,
-		inverted,
 	);
 
 	// Determine BMP format based on grayscale levels
