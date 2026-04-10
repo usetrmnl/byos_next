@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer";
+import puppeteer, { type Browser } from "puppeteer";
 
 // Browser launch options optimized for screenshotting
 // Inspired by Ferrum/Ruby implementation
@@ -13,8 +13,8 @@ const BROWSER_OPTIONS = [
 	"--disable-features=IsolateOrigins,site-per-process",
 ];
 
-const NAVIGATION_TIMEOUT = 10000; // 10 seconds
-const NETWORK_IDLE_DURATION = 1000; // 1 second
+const NAVIGATION_TIMEOUT = 10000;
+const NETWORK_IDLE_DURATION = 500;
 
 export interface BrowserRenderOptions {
 	slug: string;
@@ -23,12 +23,12 @@ export interface BrowserRenderOptions {
 }
 
 // Singleton browser instance
-let browserInstance: puppeteer.Browser | null = null;
+let browserInstance: Browser | null = null;
 
 /**
  * Get or create the shared browser instance
  */
-async function getBrowser(): Promise<puppeteer.Browser> {
+async function getBrowser(): Promise<Browser> {
 	if (!browserInstance) {
 		browserInstance = await puppeteer.launch({
 			headless: true,
