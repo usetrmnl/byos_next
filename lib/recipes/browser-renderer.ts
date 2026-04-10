@@ -1,17 +1,5 @@
-import puppeteer, { type Browser } from "puppeteer";
-
-// Browser launch options optimized for screenshotting
-// Inspired by Ferrum/Ruby implementation
-const BROWSER_OPTIONS = [
-	"--disable-dev-shm-usage",
-	"--disable-gpu",
-	"--hide-scrollbar",
-	"--no-sandbox",
-	"--disable-setuid-sandbox",
-	"--disable-accelerated-2d-canvas",
-	"--disable-web-security",
-	"--disable-features=IsolateOrigins,site-per-process",
-];
+import type { Page } from "puppeteer";
+import { getBrowser } from "@/lib/browser";
 
 const NAVIGATION_TIMEOUT = 10000;
 const NETWORK_IDLE_DURATION = 500;
@@ -20,50 +8,6 @@ export interface BrowserRenderOptions {
 	slug: string;
 	width: number;
 	height: number;
-}
-
-// Singleton browser instance
-let browserInstance: Browser | null = null;
-
-/**
- * Get or create the shared browser instance
- */
-async function getBrowser(): Promise<Browser> {
-	if (!browserInstance) {
-		browserInstance = await puppeteer.launch({
-			headless: true,
-			args: BROWSER_OPTIONS,
-		});
-
-		// Handle graceful shutdown
-		process.on("exit", closeBrowser);
-		process.on("SIGINT", async () => {
-			await closeBrowser();
-			process.exit(0);
-		});
-		process.on("SIGTERM", async () => {
-			await closeBrowser();
-			process.exit(0);
-		});
-	}
-
-	return browserInstance;
-}
-
-/**
- * Close the browser instance
- */
-async function closeBrowser(): Promise<void> {
-	if (browserInstance) {
-		try {
-			await browserInstance.close();
-			console.log("[BrowserRenderer] Browser closed");
-		} catch (error) {
-			console.error("[BrowserRenderer] Error closing browser:", error);
-		} finally {
-			browserInstance = null;
-		}
-	}
 }
 
 /**
@@ -84,7 +28,7 @@ export async function renderWithBrowser({
 	width,
 	height,
 }: BrowserRenderOptions): Promise<Buffer | null> {
-	let page: puppeteer.Page | null = null;
+	let page: Page | null = null;
 
 	try {
 		const baseUrl = getBaseUrl();

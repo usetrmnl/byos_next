@@ -23,6 +23,7 @@ import {
 	RecipeConfig,
 } from "@/lib/recipes/recipe-renderer";
 import { ScreenshotImage } from "./screenshot-image";
+import { DitheringMethod } from "@/utils/render-bmp";
 
 export async function generateMetadata() {
 	// This empty function enables streaming for this route
@@ -159,12 +160,16 @@ export default async function RecipePage({
 	searchParams,
 }: {
 	params: Promise<{ slug: string }>;
-	searchParams: Promise<{ format?: string }>;
+	searchParams: Promise<{
+		format?: string;
+		dither?: string;
+		bitdepth?: string;
+	}>;
 }) {
 	// Access headers to mark route as dynamic and allow time-based operations
 	headers();
 	const { slug } = await params;
-	const { format } = await searchParams;
+	const { format, dither, bitdepth } = await searchParams;
 	const config = await fetchRecipeConfig(slug);
 	const isPortrait = format === "portrait";
 	const imageWidth = isPortrait ? DEFAULT_IMAGE_HEIGHT : DEFAULT_IMAGE_WIDTH;
@@ -178,7 +183,19 @@ export default async function RecipePage({
 		? await getScreenParams(slug, config.params)
 		: {};
 
-	const bmpSrc = `/api/screenshot/${slug}.bmp?width=${imageWidth}&height=${imageHeight}&bitdepth=2`;
+	// Parse bitmap options
+	const rawBitDepth = bitdepth ? parseInt(bitdepth, 10) : 2;
+	const validBitDepth = ([1, 2, 4] as const).includes(rawBitDepth as 1 | 2 | 4)
+		? (rawBitDepth as 1 | 2 | 4)
+		: 2;
+	const validDitherMethods = Object.values(DitheringMethod);
+	const ditheringMethod = dither
+		? validDitherMethods.includes(dither as DitheringMethod)
+			? (dither as DitheringMethod)
+			: DitheringMethod.FLOYD_STEINBERG
+		: DitheringMethod.FLOYD_STEINBERG;
+
+	const bmpSrc = `/api/screenshot/${slug}.bmp?width=${imageWidth}&height=${imageHeight}&bitdepth=${validBitDepth}&dither=${ditheringMethod}`;
 	const pngSrc = `/api/screenshot/${slug}.png?width=${imageWidth}&height=${imageHeight}`;
 	const previewSrc = `/recipes/${slug}/preview`;
 
@@ -214,6 +231,10 @@ export default async function RecipePage({
 
 				<RecipePreviewLayout
 					canvasWidth={imageWidth}
+					slug={slug}
+					isPortrait={isPortrait}
+					currentDither={ditheringMethod}
+					currentBitDepth={validBitDepth}
 					bmpComponent={
 						<PreviewPanel
 							width={imageWidth}

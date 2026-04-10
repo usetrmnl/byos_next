@@ -166,7 +166,13 @@ export default function ImageDitherer() {
 				result = ditheringAtkinson(gray, width, height, levels);
 				break;
 			case "bayer":
-				result = ditheringBayer(gray, width, height, patternSize[0], levels);
+				result = ditheringBayer(
+					gray,
+					width,
+					height,
+					patternSize[0] as 2 | 4 | 8,
+					levels,
+				);
 				break;
 			case "random":
 				result = ditheringRandom(gray, levels);

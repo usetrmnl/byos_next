@@ -3,6 +3,10 @@
 import { Columns2, Rows2, ZoomIn, ZoomOut } from "lucide-react";
 import * as React from "react";
 import {
+	BitmapOptionsForm,
+	type DitheringMethodType,
+} from "@/components/recipes/bitmap-options-form";
+import {
 	SlideToggle,
 	type SlideToggleOption,
 } from "@/components/ui/slide-toggle";
@@ -20,6 +24,11 @@ type RecipePreviewLayoutProps = {
 	defaultScale?: "full" | "half";
 	defaultRenderType?: "bmp" | "png";
 	canvasWidth?: number;
+	// Bitmap options
+	slug?: string;
+	isPortrait?: boolean;
+	currentDither?: DitheringMethodType;
+	currentBitDepth?: 1 | 2 | 4;
 };
 
 const RecipePreviewLayout = ({
@@ -34,6 +43,10 @@ const RecipePreviewLayout = ({
 	defaultScale = "full",
 	defaultRenderType = "bmp",
 	canvasWidth = 800,
+	slug,
+	isPortrait = false,
+	currentDither,
+	currentBitDepth,
 }: RecipePreviewLayoutProps) => {
 	const [layout, setLayout] = React.useState<"columns" | "rows">(defaultLayout);
 	const [scale, setScale] = React.useState<"full" | "half">(defaultScale);
@@ -290,6 +303,14 @@ const RecipePreviewLayout = ({
 						options={getRenderTypeOptions()}
 						value={renderType}
 						onChange={handleRenderTypeChange}
+					/>
+				)}
+				{renderType === "bmp" && slug && currentDither && currentBitDepth && (
+					<BitmapOptionsForm
+						slug={slug}
+						isPortrait={isPortrait}
+						currentDither={currentDither}
+						currentBitDepth={currentBitDepth}
 					/>
 				)}
 			</div>

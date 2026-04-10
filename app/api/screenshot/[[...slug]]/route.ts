@@ -8,7 +8,7 @@ import {
 	fetchRecipeConfig,
 	logger,
 } from "@/lib/recipes/recipe-renderer";
-import { toBitDepth } from "@/utils/render-bmp";
+import { DitheringMethod, toBitDepth } from "@/utils/render-bmp";
 
 export async function GET(
 	req: NextRequest,
@@ -38,6 +38,15 @@ export async function GET(
 			? (rawBitDepth as 1 | 2 | 4)
 			: 2;
 
+		// Parse dithering method
+		const ditherParam = searchParams.get("dither")?.toLowerCase();
+		const validDitherMethods = Object.values(DitheringMethod);
+		const ditheringMethod = ditherParam
+			? validDitherMethods.includes(ditherParam as DitheringMethod)
+				? (ditherParam as DitheringMethod)
+				: DitheringMethod.FLOYD_STEINBERG
+			: DitheringMethod.FLOYD_STEINBERG;
+
 		const recipeId = screens[recipeSlug as keyof typeof screens]
 			? recipeSlug
 			: "simple-text";
@@ -49,7 +58,7 @@ export async function GET(
 		const renderHeight = useDoubling ? validHeight * 2 : validHeight;
 
 		logger.info(
-			`Screenshot request for: ${screenshotPath} in ${validWidth}x${validHeight}${useDoubling ? " (2x)" : ""} as ${isBmp ? `bmp (${bitDepth}-bit)` : "png"}`,
+			`Screenshot request for: ${screenshotPath} in ${validWidth}x${validHeight}${useDoubling ? " (2x)" : ""} as ${isBmp ? `bmp (${bitDepth}-bit, ${ditheringMethod})` : "png"}`,
 		);
 
 		let pngBuffer = await renderWithBrowser({
@@ -78,6 +87,7 @@ export async function GET(
 				width: validWidth,
 				height: validHeight,
 				grayscale: 1 << bitDepth,
+				ditheringMethod,
 			});
 
 			return new Response(new Uint8Array(bmpBuffer), {
