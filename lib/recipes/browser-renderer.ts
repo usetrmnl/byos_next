@@ -96,6 +96,11 @@ export async function renderWithBrowser({
 		// Create a new page from the shared browser
 		page = await browser.newPage();
 
+		// Force light mode — headless Chrome can default to dark, which breaks Tailwind v4 color tokens
+		await page.emulateMediaFeatures([
+			{ name: "prefers-color-scheme", value: "light" },
+		]);
+
 		// Set viewport to match desired output dimensions
 		await page.setViewport({
 			width,

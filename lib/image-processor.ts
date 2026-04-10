@@ -98,6 +98,7 @@ export async function processImage(
 	if (width || height) {
 		pipeline = pipeline.resize(width, height, {
 			fit,
+			background,
 			withoutEnlargement: false,
 		});
 	}

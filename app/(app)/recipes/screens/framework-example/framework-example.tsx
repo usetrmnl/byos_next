@@ -12,7 +12,6 @@ export default async function Wikipedia({
 	extract = "Article content is unavailable.",
 	thumbnail,
 	content_urls,
-	description,
 	fullurl,
 	displaytitle,
 	width = 800,
@@ -25,7 +24,6 @@ export default async function Wikipedia({
 		displaytitle?.replace(/<[^>]*>?/g, "").trim() ||
 		"Wikipedia Article"; // display title contains html, need to be stripped
 	const safeExtract = extract || "Article content is unavailable.";
-	const safeDescription = typeof description === "string" ? description : "";
 
 	const isHalfScreen = width === 400 && height === 480;
 
@@ -95,8 +93,9 @@ export default async function Wikipedia({
 						{hasValidThumbnail && thumbnail?.source && (
 							<Image
 								src={thumbnail.source}
-								width={thumbnail.width || 240}
-								height={thumbnail.height || 200}
+								width={240}
+								height={300}
+								fit="contain"
 								bitDepth={2}
 							/>
 						)}

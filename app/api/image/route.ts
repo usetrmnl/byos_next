@@ -60,27 +60,22 @@ export async function GET(request: NextRequest) {
 		}
 
 		// Parse optional parameters
-		const widthParam = searchParams.get("w");
-		const heightParam = searchParams.get("h");
-		const bitDepthParam = searchParams.get("bit");
+		const widthParam = searchParams.get("width");
+		const heightParam = searchParams.get("height");
+		const bitDepthParam = searchParams.get("bitdepth");
 		const fitParam = searchParams.get("fit") as FitMode | null;
 		const invertParam = searchParams.get("invert") === "true";
 		const backgroundParam = searchParams.get("bg") || "white";
 
 		const width = widthParam ? parseInt(widthParam, 10) : undefined;
 		const height = heightParam ? parseInt(heightParam, 10) : undefined;
-		const bitDepth = bitDepthParam
-			? (parseInt(bitDepthParam, 10) as 1 | 2 | 4)
-			: undefined;
+		const rawBitDepth = bitDepthParam ? parseInt(bitDepthParam, 10) : 2;
+		const bitDepth: 1 | 2 | 4 = ([1, 2, 4] as const).includes(
+			rawBitDepth as 1 | 2 | 4,
+		)
+			? (rawBitDepth as 1 | 2 | 4)
+			: 2;
 		const fit = fitParam || "cover";
-
-		// Validate bit depth
-		if (bitDepth && ![1, 2, 4].includes(bitDepth)) {
-			return NextResponse.json(
-				{ error: "Invalid bit depth. Must be 1, 2, or 4" },
-				{ status: 400 },
-			);
-		}
 
 		// Validate fit mode
 		if (!["cover", "contain", "fill"].includes(fit)) {
@@ -88,18 +83,6 @@ export async function GET(request: NextRequest) {
 				{ error: "Invalid fit mode. Must be cover, contain, or fill" },
 				{ status: 400 },
 			);
-		}
-
-		// If no processing requested, just proxy the original
-		if (!bitDepth) {
-			const originalBuffer = await fetchOriginalImage(url);
-			return new NextResponse(new Uint8Array(originalBuffer), {
-				status: 200,
-				headers: {
-					"Content-Type": "image/png",
-					"Cache-Control": "public, max-age=3600",
-				},
-			});
 		}
 
 		// Process the image

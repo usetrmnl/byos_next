@@ -27,17 +27,11 @@ function Image({
 	style,
 	...imgProps
 }: ImageProps) {
-	// Build the API URL for processed image
 	const params = new URLSearchParams();
 	params.set("url", src);
-
-	if (width) {
-		params.set("w", width.toString());
-	}
-	if (height) {
-		params.set("h", height.toString());
-	}
-	params.set("bit", bitDepth.toString());
+	if (width) params.set("width", width.toString());
+	if (height) params.set("height", height.toString());
+	params.set("bitdepth", bitDepth.toString());
 	params.set("fit", fit);
 	params.set("bg", background);
 	if (invert) {
@@ -53,7 +47,7 @@ function Image({
 			width={width}
 			height={height}
 			className={clsx("image", className)}
-			style={{ imageRendering: "pixelated", ...style }}
+			style={{ imageRendering: "pixelated", width, height, ...style }}
 			{...imgProps}
 		/>
 	);
