@@ -186,7 +186,11 @@ const RenderComponent = ({
 				width={imageWidth}
 				height={imageHeight}
 				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
-				style={{ imageRendering: "pixelated" }}
+				style={{
+					imageRendering: "pixelated",
+					width: imageWidth,
+					height: imageHeight,
+				}}
 				alt={`${title} BMP render`}
 				className="w-full object-cover"
 			/>
@@ -205,10 +209,14 @@ const RenderComponent = ({
 
 		return (
 			<Image
-				width={imageWidth * (useDoubling ? 2 : 1)}
-				height={imageHeight * (useDoubling ? 2 : 1)}
+				width={imageWidth}
+				height={imageHeight}
 				src={`data:image/png;base64,${renders.png.toString("base64")}`}
-				style={{ imageRendering: "pixelated" }}
+				style={{
+					imageRendering: "pixelated",
+					width: imageWidth,
+					height: imageHeight,
+				}}
 				alt={`${title} PNG render`}
 				className="w-full object-cover"
 			/>

@@ -9,6 +9,7 @@ export interface RenderBmpOptions {
 	width?: number;
 	height?: number;
 	grayscale?: number; // Number of gray levels: 2 (black/white), 4, or 16
+	applyEdgeSnap?: boolean;
 }
 
 export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
@@ -16,6 +17,7 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 		ditheringMethod = DitheringMethod.FLOYD_STEINBERG,
 		inverted = false,
 		grayscale = 2,
+		applyEdgeSnap = true,
 	} = options;
 
 	// Validate grayscale levels
@@ -62,7 +64,7 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 		width: targetWidth,
 		height: targetHeight,
 		levels: grayscale,
-		applyEdgeSnap: true,
+		applyEdgeSnap,
 	});
 
 	// Determine BMP format based on grayscale levels

@@ -141,8 +141,12 @@ export default function ImageDitherer() {
 			grayscaleData[i] = processedData[i * 4];
 		}
 
-		const bayerSize = (patternSize[0] <= 2 ? 2 : patternSize[0] <= 4 ? 4 : 8) as 2 | 4 | 8;
-		const method = METHOD_MAP[ditheringMethod] ?? DitheringMethod.FLOYD_STEINBERG;
+		const bayerSize = (patternSize[0] <= 2 ? 2 : patternSize[0] <= 4 ? 4 : 8) as
+			| 2
+			| 4
+			| 8;
+		const method =
+			METHOD_MAP[ditheringMethod] ?? DitheringMethod.FLOYD_STEINBERG;
 		const dithered = processDithering(method, grayscaleData, {
 			width,
 			height,
@@ -153,12 +157,23 @@ export default function ImageDitherer() {
 		// Write result back to ImageData with optional inversion
 		for (let i = 0; i < width * height; i++) {
 			const value = inverted ? 255 - dithered[i] : dithered[i];
-			processedData[i * 4] = processedData[i * 4 + 1] = processedData[i * 4 + 2] = value;
+			processedData[i * 4] =
+				processedData[i * 4 + 1] =
+				processedData[i * 4 + 2] =
+					value;
 		}
 
 		// Put the processed image data back
 		ctx.putImageData(processedImageData, 0, 0);
-	}, [originalImage, ditheringMethod, brightness, contrast, threshold, patternSize, inverted]);
+	}, [
+		originalImage,
+		ditheringMethod,
+		brightness,
+		contrast,
+		threshold,
+		patternSize,
+		inverted,
+	]);
 
 	// Function to convert canvas to BMP and download
 	const downloadAsBMP = () => {
