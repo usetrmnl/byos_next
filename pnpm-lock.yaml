@@ -113,9 +113,6 @@ importers:
       postgres:
         specifier: ^3.4.8
         version: 3.4.8
-      puppeteer:
-        specifier: ^24.40.0
-        version: 24.40.0(typescript@5.9.3)
       react:
         specifier: ^19.2.4
         version: 19.2.4
@@ -192,6 +189,13 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+    optionalDependencies:
+      puppeteer:
+        specifier: ^24.40.0
+        version: 24.40.0(typescript@5.9.3)
+      puppeteer-core:
+        specifier: ^24.40.0
+        version: 24.40.0
 
 packages:
 
@@ -5898,6 +5902,7 @@ snapshots:
       - bare-buffer
       - react-native-b4a
       - supports-color
+    optional: true
 
   '@radix-ui/number@1.1.1': {}
 
@@ -6569,7 +6574,8 @@ snapshots:
 
   '@tokenizer/token@0.3.0': {}
 
-  '@tootallnate/quickjs-emscripten@0.23.0': {}
+  '@tootallnate/quickjs-emscripten@0.23.0':
+    optional: true
 
   '@ts-morph/common@0.27.0':
     dependencies:
@@ -7018,6 +7024,7 @@ snapshots:
   ast-types@0.13.4:
     dependencies:
       tslib: 2.8.1
+    optional: true
 
   ast-types@0.16.1:
     dependencies:
@@ -7035,11 +7042,13 @@ snapshots:
 
   axobject-query@4.1.0: {}
 
-  b4a@1.8.0: {}
+  b4a@1.8.0:
+    optional: true
 
   balanced-match@1.0.2: {}
 
-  bare-events@2.8.2: {}
+  bare-events@2.8.2:
+    optional: true
 
   bare-fs@4.7.0:
     dependencies:
@@ -7051,12 +7060,15 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+    optional: true
 
-  bare-os@3.8.7: {}
+  bare-os@3.8.7:
+    optional: true
 
   bare-path@3.0.0:
     dependencies:
       bare-os: 3.8.7
+    optional: true
 
   bare-stream@2.13.0(bare-events@2.8.2):
     dependencies:
@@ -7066,10 +7078,12 @@ snapshots:
       bare-events: 2.8.2
     transitivePeerDependencies:
       - react-native-b4a
+    optional: true
 
   bare-url@2.4.0:
     dependencies:
       bare-path: 3.0.0
+    optional: true
 
   base64-js@0.0.8: {}
 
@@ -7077,7 +7091,8 @@ snapshots:
 
   baseline-browser-mapping@2.9.18: {}
 
-  basic-ftp@5.2.2: {}
+  basic-ftp@5.2.2:
+    optional: true
 
   better-auth@1.4.17(next@16.1.6(@babel/core@7.28.5)(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(pg@8.17.2)(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
@@ -7145,7 +7160,8 @@ snapshots:
       node-releases: 2.0.27
       update-browserslist-db: 1.1.4(browserslist@4.28.0)
 
-  buffer-crc32@0.2.13: {}
+  buffer-crc32@0.2.13:
+    optional: true
 
   buffer@6.0.3:
     dependencies:
@@ -7199,6 +7215,7 @@ snapshots:
       devtools-protocol: 0.0.1581282
       mitt: 3.0.1
       zod: 3.25.71
+    optional: true
 
   class-variance-authority@0.7.1:
     dependencies:
@@ -7462,7 +7479,8 @@ snapshots:
 
   data-uri-to-buffer@4.0.1: {}
 
-  data-uri-to-buffer@6.0.2: {}
+  data-uri-to-buffer@6.0.2:
+    optional: true
 
   data-view-buffer@1.0.2:
     dependencies:
@@ -7528,6 +7546,7 @@ snapshots:
       ast-types: 0.13.4
       escodegen: 2.1.0
       esprima: 4.0.1
+    optional: true
 
   delaunator@5.0.1:
     dependencies:
@@ -7539,7 +7558,8 @@ snapshots:
 
   detect-node-es@1.1.0: {}
 
-  devtools-protocol@0.0.1581282: {}
+  devtools-protocol@0.0.1581282:
+    optional: true
 
   diff@3.5.0: {}
 
@@ -7587,6 +7607,7 @@ snapshots:
   end-of-stream@1.4.5:
     dependencies:
       once: 1.4.0
+    optional: true
 
   enhanced-resolve@5.18.3:
     dependencies:
@@ -7715,6 +7736,7 @@ snapshots:
       esutils: 2.0.3
     optionalDependencies:
       source-map: 0.6.1
+    optional: true
 
   eslint-config-next@16.1.6(@typescript-eslint/parser@8.48.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3):
     dependencies:
@@ -7930,6 +7952,7 @@ snapshots:
       bare-events: 2.8.2
     transitivePeerDependencies:
       - bare-abort-controller
+    optional: true
 
   events@3.3.0: {}
 
@@ -7980,7 +8003,7 @@ snapshots:
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
-      debug: 4.4.1
+      debug: 4.4.3
       depd: 2.0.0
       encodeurl: 2.0.0
       escape-html: 1.0.3
@@ -8014,10 +8037,12 @@ snapshots:
       '@types/yauzl': 2.10.3
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   fast-deep-equal@3.1.3: {}
 
-  fast-fifo@1.3.2: {}
+  fast-fifo@1.3.2:
+    optional: true
 
   fast-glob@3.3.1:
     dependencies:
@@ -8048,6 +8073,7 @@ snapshots:
   fd-slicer@1.1.0:
     dependencies:
       pend: 1.2.0
+    optional: true
 
   fdir@6.5.0(picomatch@4.0.3):
     optionalDependencies:
@@ -8169,6 +8195,7 @@ snapshots:
   get-stream@5.2.0:
     dependencies:
       pump: 3.0.4
+    optional: true
 
   get-stream@6.0.1: {}
 
@@ -8194,6 +8221,7 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   gifwrap@0.10.1:
     dependencies:
@@ -8292,6 +8320,7 @@ snapshots:
       debug: 4.4.3
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   https-proxy-agent@7.0.6:
     dependencies:
@@ -8348,7 +8377,8 @@ snapshots:
 
   interpret@1.4.0: {}
 
-  ip-address@10.1.0: {}
+  ip-address@10.1.0:
+    optional: true
 
   ipaddr.js@1.9.1: {}
 
@@ -8708,7 +8738,8 @@ snapshots:
     dependencies:
       yallist: 3.1.1
 
-  lru-cache@7.18.3: {}
+  lru-cache@7.18.3:
+    optional: true
 
   lucide-react@0.563.0(react@19.2.4):
     dependencies:
@@ -8759,7 +8790,8 @@ snapshots:
 
   minimist@1.2.8: {}
 
-  mitt@3.0.1: {}
+  mitt@3.0.1:
+    optional: true
 
   ms@2.1.3: {}
 
@@ -8800,7 +8832,8 @@ snapshots:
 
   negotiator@1.0.0: {}
 
-  netmask@2.1.1: {}
+  netmask@2.1.1:
+    optional: true
 
   next-themes@0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
@@ -8970,11 +9003,13 @@ snapshots:
       socks-proxy-agent: 8.0.5
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   pac-resolver@7.0.1:
     dependencies:
       degenerator: 5.0.1
       netmask: 2.1.1
+    optional: true
 
   package-manager-detector@1.6.0: {}
 
@@ -9029,7 +9064,8 @@ snapshots:
 
   peek-readable@4.1.0: {}
 
-  pend@1.2.0: {}
+  pend@1.2.0:
+    optional: true
 
   pg-cloudflare@1.3.0:
     optional: true
@@ -9129,7 +9165,8 @@ snapshots:
 
   process@0.11.10: {}
 
-  progress@2.0.3: {}
+  progress@2.0.3:
+    optional: true
 
   prompts@2.4.2:
     dependencies:
@@ -9159,13 +9196,16 @@ snapshots:
       socks-proxy-agent: 8.0.5
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
-  proxy-from-env@1.1.0: {}
+  proxy-from-env@1.1.0:
+    optional: true
 
   pump@3.0.4:
     dependencies:
       end-of-stream: 1.4.5
       once: 1.4.0
+    optional: true
 
   punycode@2.3.1: {}
 
@@ -9185,6 +9225,7 @@ snapshots:
       - react-native-b4a
       - supports-color
       - utf-8-validate
+    optional: true
 
   puppeteer@24.40.0(typescript@5.9.3):
     dependencies:
@@ -9202,6 +9243,7 @@ snapshots:
       - supports-color
       - typescript
       - utf-8-validate
+    optional: true
 
   qs@6.14.1:
     dependencies:
@@ -9401,7 +9443,8 @@ snapshots:
 
   semver@7.7.3: {}
 
-  semver@7.7.4: {}
+  semver@7.7.4:
+    optional: true
 
   send@1.2.1:
     dependencies:
@@ -9579,7 +9622,8 @@ snapshots:
 
   sisteransi@1.0.5: {}
 
-  smart-buffer@4.2.0: {}
+  smart-buffer@4.2.0:
+    optional: true
 
   socks-proxy-agent@8.0.5:
     dependencies:
@@ -9588,11 +9632,13 @@ snapshots:
       socks: 2.8.7
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   socks@2.8.7:
     dependencies:
       ip-address: 10.1.0
       smart-buffer: 4.2.0
+    optional: true
 
   sonner@2.0.7(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
     dependencies:
@@ -9624,6 +9670,7 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+    optional: true
 
   strict-event-emitter@0.5.1: {}
 
@@ -9762,6 +9809,7 @@ snapshots:
       - bare-abort-controller
       - bare-buffer
       - react-native-b4a
+    optional: true
 
   tar-stream@3.1.8:
     dependencies:
@@ -9773,6 +9821,7 @@ snapshots:
       - bare-abort-controller
       - bare-buffer
       - react-native-b4a
+    optional: true
 
   teex@1.0.1:
     dependencies:
@@ -9780,12 +9829,14 @@ snapshots:
     transitivePeerDependencies:
       - bare-abort-controller
       - react-native-b4a
+    optional: true
 
   text-decoder@1.2.7:
     dependencies:
       b4a: 1.8.0
     transitivePeerDependencies:
       - react-native-b4a
+    optional: true
 
   tiny-inflate@1.0.3: {}
 
@@ -9892,7 +9943,8 @@ snapshots:
       possible-typed-array-names: 1.1.0
       reflect.getprototypeof: 1.0.10
 
-  typed-query-selector@2.12.1: {}
+  typed-query-selector@2.12.1:
+    optional: true
 
   typescript-eslint@8.48.0(eslint@9.39.2(jiti@2.6.1))(typescript@5.9.3):
     dependencies:
@@ -9994,7 +10046,8 @@ snapshots:
 
   web-streams-polyfill@3.3.3: {}
 
-  webdriver-bidi-protocol@0.4.1: {}
+  webdriver-bidi-protocol@0.4.1:
+    optional: true
 
   which-boxed-primitive@1.1.1:
     dependencies:
@@ -10061,7 +10114,8 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.20.0: {}
+  ws@8.20.0:
+    optional: true
 
   wsl-utils@0.3.1:
     dependencies:
@@ -10099,6 +10153,7 @@ snapshots:
     dependencies:
       buffer-crc32: 0.2.13
       fd-slicer: 1.1.0
+    optional: true
 
   yocto-queue@0.1.0: {}
 

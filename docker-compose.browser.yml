@@ -1,0 +1,28 @@
+services:
+  byos-next:
+    build:
+      context: .
+      args:
+        BROWSER: "true"
+    image: byos-next-browser
+    environment:
+      - BROWSER_URL=http://127.0.0.1:9222
+      - REACT_RENDERER=browser
+    networks:
+      - byos_network
+
+  chrome:
+    image: zenika/alpine-chrome
+    network_mode: "service:byos-next"
+    command:
+      - "--no-sandbox"
+      - "--disable-setuid-sandbox"
+      - "--disable-dev-shm-usage"
+      - "--disable-gpu"
+      - "--hide-scrollbar"
+      - "--disable-accelerated-2d-canvas"
+      - "--disable-web-security"
+      - "--disable-features=IsolateOrigins,site-per-process"
+      - "--remote-debugging-port=9222"
+      - "--remote-debugging-address=0.0.0.0"
+    restart: unless-stopped

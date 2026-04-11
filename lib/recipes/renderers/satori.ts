@@ -13,9 +13,6 @@ export async function renderWithSatori(
 		width,
 		height,
 		fonts,
-		shapeRendering: 1,
-		textRendering: 0,
-		imageRendering: 1,
 		debug: false,
 	});
 	const pngBuffer = await pngResponse.arrayBuffer();

@@ -17,11 +17,20 @@ RUN corepack enable pnpm
 # Install dependencies only when needed
 FROM base AS deps
 
+ARG BROWSER=false
+
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --no-optional
+
+# Skip optional deps (puppeteer/puppeteer-core) by default.
+# When BROWSER=true, also install puppeteer-core for CDP remote connections.
+# puppeteer-core does not download Chromium — that's only the full puppeteer package.
+RUN if [ "$BROWSER" = "true" ]; then \
+    pnpm add puppeteer-core; \
+fi
 RUN rm -rf ~/.npm ~/.pnpm-store
 
 # Build the application
@@ -61,4 +70,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"] 
+CMD ["node", "server.js"]

@@ -203,6 +203,7 @@ type RenderOptions = {
 	imageHeight: number;
 	formats?: RenderFormats;
 	grayscale?: number; // Number of gray levels: 2, 4, or 16
+	cookies?: string; // Cookie header to forward to browser renderer
 };
 
 type RenderResults = {
@@ -225,6 +226,7 @@ export const renderRecipeOutputs = cache(
 		imageHeight,
 		formats = ["bitmap", "png"],
 		grayscale,
+		cookies,
 	}: RenderOptions): Promise<RenderResults> => {
 		const results = getDefaultRenderResults();
 		const needsPng = formats.includes("png");
@@ -243,7 +245,7 @@ export const renderRecipeOutputs = cache(
 					() => {
 						throw new Error(
 							"Browser renderer requires one of: " +
-								"(1) BROWSER_WS_ENDPOINT for a remote Chrome container, " +
+								"(1) puppeteer-core + BROWSER_URL or BROWSER_WS_ENDPOINT for a remote Chrome container, " +
 								"(2) puppeteer-core + CHROME_EXECUTABLE_PATH for a local Chrome install, " +
 								"(3) puppeteer for bundled Chrome (pnpm add puppeteer).",
 						);
@@ -255,6 +257,7 @@ export const renderRecipeOutputs = cache(
 					imageWidth,
 					imageHeight,
 					scaleFactor,
+					cookies,
 				);
 			} else {
 				const element = createElement(Component, props);

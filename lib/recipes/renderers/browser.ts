@@ -2,11 +2,23 @@
 // Both are optional dependencies — importing their types directly would cause
 // TypeScript to fail in environments where neither package is installed.
 // We only describe the methods we actually use.
+
 interface Browser {
 	connected: boolean;
 	newPage(): Promise<Page>;
 	close(): Promise<void>;
 	disconnect(): void;
+}
+
+interface Cookie {
+	name: string;
+	value: string;
+	domain?: string;
+	path?: string;
+	expires?: number;
+	httpOnly?: boolean;
+	secure?: boolean;
+	sameSite?: "Strict" | "Lax" | "None";
 }
 
 interface Page {
@@ -18,6 +30,7 @@ interface Page {
 		height: number;
 		deviceScaleFactor: number;
 	}): Promise<void>;
+	setCookie(...cookies: Cookie[]): Promise<void>;
 	goto(url: string, options?: { waitUntil: string }): Promise<unknown>;
 	screenshot(options?: { type: string }): Promise<Uint8Array>;
 	close(): Promise<void>;
@@ -40,7 +53,7 @@ async function closeBrowser(): Promise<void> {
 	if (browser) {
 		try {
 			// disconnect() for remote browsers, close() for local ones
-			if (process.env.BROWSER_WS_ENDPOINT) {
+			if (process.env.BROWSER_URL || process.env.BROWSER_WS_ENDPOINT) {
 				browser.disconnect();
 			} else {
 				await browser.close();
@@ -55,29 +68,47 @@ async function closeBrowser(): Promise<void> {
 
 async function getBrowser(): Promise<Browser> {
 	if (!browser || !browser.connected) {
+		const browserUrl = process.env.BROWSER_URL;
 		const wsEndpoint = process.env.BROWSER_WS_ENDPOINT;
 		const executablePath = process.env.CHROME_EXECUTABLE_PATH;
 
-		// Use new Function to prevent the bundler from statically analyzing
-		// these imports — both packages are optional dependencies
-		// biome-ignore lint/security/noNewFunc: intentional bundler bypass for optional deps
-		const unbundledImport = new Function("m", "return import(m)") as
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			(m: string) => Promise<any>;
-
-		if (wsEndpoint) {
-			const { connect } = await unbundledImport("puppeteer-core");
-			browser = await connect({ browserWSEndpoint: wsEndpoint });
+		// puppeteer-core and puppeteer are optional dependencies — types may not
+		// be present in non-browser builds, hence the @ts-ignore comments.
+		// serverExternalPackages in next.config.ts prevents the bundler from
+		// trying to bundle or resolve these at build time.
+		if (browserUrl) {
+			// browserURL lets Puppeteer discover the WebSocket URL via /json/version,
+			// avoiding the need to know Chrome's UUID-based WS path upfront.
+			// biome-ignore lint/ts/noTsIgnoreComment: optional dependency, types absent in non-browser builds
+			// @ts-ignore
+			const { connect } = await import("puppeteer-core");
+			browser = (await connect({
+				browserURL: browserUrl,
+			})) as unknown as Browser;
+		} else if (wsEndpoint) {
+			// biome-ignore lint/ts/noTsIgnoreComment: optional dependency, types absent in non-browser builds
+			// @ts-ignore
+			const { connect } = await import("puppeteer-core");
+			browser = (await connect({
+				browserWSEndpoint: wsEndpoint,
+			})) as unknown as Browser;
 		} else if (executablePath) {
-			const { launch } = await unbundledImport("puppeteer-core");
-			browser = await launch({
+			// biome-ignore lint/ts/noTsIgnoreComment: optional dependency, types absent in non-browser builds
+			// @ts-ignore
+			const { launch } = await import("puppeteer-core");
+			browser = (await launch({
 				headless: true,
 				executablePath,
 				args: BROWSER_OPTIONS,
-			});
+			})) as unknown as Browser;
 		} else {
-			const { launch } = await unbundledImport("puppeteer");
-			browser = await launch({ headless: true, args: BROWSER_OPTIONS });
+			// biome-ignore lint/ts/noTsIgnoreComment: optional dependency, types absent in non-browser builds
+			// @ts-ignore
+			const { launch } = await import("puppeteer");
+			browser = (await launch({
+				headless: true,
+				args: BROWSER_OPTIONS,
+			})) as unknown as Browser;
 		}
 	}
 	// Handle graceful shutdown
@@ -94,11 +125,36 @@ async function getBrowser(): Promise<Browser> {
 	return browser!;
 }
 
+/**
+ * Parse a Cookie header string into individual cookie objects
+ */
+function parseCookies(
+	cookieHeader: string,
+): Array<{ name: string; value: string }> {
+	const cookies: Array<{ name: string; value: string }> = [];
+	const pairs = cookieHeader.split(";");
+
+	for (const pair of pairs) {
+		const trimmed = pair.trim();
+		if (!trimmed) continue;
+
+		const eqIndex = trimmed.indexOf("=");
+		if (eqIndex > 0) {
+			const name = trimmed.substring(0, eqIndex).trim();
+			const value = trimmed.substring(eqIndex + 1).trim();
+			cookies.push({ name, value });
+		}
+	}
+
+	return cookies;
+}
+
 export async function renderWithBrowser(
 	slug: string,
 	width: number,
 	height: number,
 	scale = 1,
+	cookies?: string,
 ): Promise<Buffer> {
 	const port = process.env.PORT || 3000;
 	const baseUrl =
@@ -110,6 +166,22 @@ export async function renderWithBrowser(
 	const page = await b.newPage();
 
 	try {
+		// Forward cookies to the page so it can authenticate
+		if (cookies) {
+			const parsedCookies = parseCookies(cookies);
+			const urlObj = new URL(url);
+			const domain = urlObj.hostname;
+
+			const cookiesToSet = parsedCookies.map((cookie) => ({
+				name: cookie.name,
+				value: cookie.value,
+				domain: domain,
+				path: "/",
+			}));
+
+			await page.setCookie(...cookiesToSet);
+		}
+
 		// Force light mode — headless Chrome can default to dark, which breaks Tailwind v4 color tokens
 		await page.emulateMediaFeatures([
 			{ name: "prefers-color-scheme", value: "light" },
