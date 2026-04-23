@@ -1,6 +1,6 @@
 {
 	"name": "byos-nextjs",
-	"version": "0.1.5",
+	"version": "0.1.6",
 	"private": true,
 	"scripts": {
 		"generate:sql": "node scripts/generate-sql-statements.js && pnpm format",
