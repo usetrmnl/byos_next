@@ -63,6 +63,10 @@
 		"zod": "^4.3.6",
 		"zustand": "^5.0.10"
 	},
+	"optionalDependencies": {
+		"puppeteer": "^24.40.0",
+		"puppeteer-core": "^24.40.0"
+	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.13",
 		"@eslint/eslintrc": "^3.3.3",
@@ -84,6 +88,7 @@
 		"onlyBuiltDependencies": [
 			"@biomejs/biome",
 			"@tailwindcss/oxide",
+			"puppeteer",
 			"unrs-resolver"
 		]
 	}

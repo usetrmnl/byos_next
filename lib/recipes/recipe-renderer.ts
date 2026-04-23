@@ -1,13 +1,11 @@
-import { extractResourceUrls, Renderer } from "@takumi-rs/core";
-import { fetchResources } from "@takumi-rs/helpers";
-import { fromJsx } from "@takumi-rs/helpers/jsx";
-import { ImageResponse } from "next/og";
 import React, { cache, createElement } from "react";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
 import screens from "@/app/(app)/recipes/screens.json";
 import { getScreenParams } from "@/app/actions/screens-params";
-import { getTakumiFonts } from "@/lib/fonts";
+import sharp from "sharp";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+import { renderWithTakumi } from "./renderers/takumi";
+import { renderWithSatori } from "./renderers/satori";
 
 // Logging utility shared between recipe renderers
 export const logger = {
@@ -59,6 +57,7 @@ export type RecipeParamDefinitions = Record<string, RecipeParamDefinition>;
 export type RecipeConfig = (typeof screens)[keyof typeof screens] & {
 	renderSettings?: {
 		doubleSizeForSharperText?: boolean;
+		applyEdgeSnap?: boolean;
 		[key: string]: boolean | string | number | undefined;
 	};
 	params?: RecipeParamDefinitions;
@@ -83,59 +82,12 @@ export const addDimensionsToProps = (
 });
 
 // Get renderer type from environment variable (defaults to "takumi")
-export const getRendererType = (): "takumi" | "satori" => {
+export const getRendererType = (): "takumi" | "satori" | "browser" => {
 	const renderer = process.env.REACT_RENDERER?.toLowerCase();
-	return renderer === "satori" ? "satori" : "takumi";
+	if (renderer === "satori") return "satori";
+	if (renderer === "browser") return "browser";
+	return "takumi";
 };
-
-// Cache the fonts at module initialization
-const rendererFonts = getTakumiFonts();
-
-// Initialize Takumi renderer
-
-const takumiRenderer = new Renderer({ fonts: rendererFonts });
-
-/**
- * Render React element using Takumi
- */
-async function renderWithTakumi(
-	element: React.ReactElement,
-	width: number,
-	height: number,
-): Promise<Buffer> {
-	const node = await fromJsx(element);
-
-	// Extract and fetch external image resources
-	const urls = extractResourceUrls(node);
-	const fetchedResources = urls.length > 0 ? await fetchResources(urls) : [];
-
-	const png = await takumiRenderer.render(node, {
-		width,
-		height,
-		format: "png",
-		fetchedResources,
-	});
-	return Buffer.from(png);
-}
-
-async function renderWithSatori(
-	element: React.ReactElement,
-	width: number,
-	height: number,
-): Promise<Buffer> {
-	const imageOptions = {
-		width: width,
-		height: height,
-		fonts: rendererFonts,
-		shapeRendering: 1,
-		textRendering: 0,
-		imageRendering: 1,
-		debug: false,
-	};
-	const pngResponse = await new ImageResponse(element, imageOptions);
-	const pngBuffer = await pngResponse.arrayBuffer();
-	return Buffer.from(pngBuffer);
-}
 
 export const fetchRecipeConfig = cache((slug: string): RecipeConfig | null => {
 	const config = screens[slug as keyof typeof screens];
@@ -251,6 +203,7 @@ type RenderOptions = {
 	imageHeight: number;
 	formats?: RenderFormats;
 	grayscale?: number; // Number of gray levels: 2, 4, or 16
+	cookies?: string; // Cookie header to forward to browser renderer
 };
 
 type RenderResults = {
@@ -273,76 +226,78 @@ export const renderRecipeOutputs = cache(
 		imageHeight,
 		formats = ["bitmap", "png"],
 		grayscale,
+		cookies,
 	}: RenderOptions): Promise<RenderResults> => {
 		const results = getDefaultRenderResults();
-		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
+		const needsPng = formats.includes("png");
+		const needsBitmap = formats.includes("bitmap");
+
+		if (!needsPng && !needsBitmap) return results;
+
 		const rendererType = getRendererType();
 
-		const tasks: Array<
-			Promise<{ key: keyof RenderResults; value: Buffer | null }>
-		> = [];
-
-		if (formats.includes("bitmap")) {
-			tasks.push(
-				(async () => {
-					try {
-						const element = createElement(Component, props);
-						const png =
-							rendererType === "satori"
-								? await renderWithSatori(
-										element,
-										imageOptions.width,
-										imageOptions.height,
-									)
-								: await renderWithTakumi(
-										element,
-										imageOptions.width,
-										imageOptions.height,
-									);
-						const buffer = await renderBmp(png, {
-							ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
-							width: imageWidth,
-							height: imageHeight,
-							...(grayscale !== undefined && { grayscale }),
-						});
-						return { key: "bitmap", value: buffer };
-					} catch (error) {
-						logger.error(`Error generating bitmap for ${slug}:`, error);
-						return { key: "bitmap", value: null };
-					}
-				})(),
-			);
+		// Render PNG once — reused for both png and bitmap outputs
+		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
+		let png: Buffer;
+		try {
+			if (rendererType === "browser") {
+				const { renderWithBrowser } = await import("./renderers/browser").catch(
+					() => {
+						throw new Error(
+							"Browser renderer requires one of: " +
+								"(1) puppeteer-core + BROWSER_URL or BROWSER_WS_ENDPOINT for a remote Chrome container, " +
+								"(2) puppeteer-core + CHROME_EXECUTABLE_PATH for a local Chrome install, " +
+								"(3) puppeteer for bundled Chrome (pnpm add puppeteer).",
+						);
+					},
+				);
+				const scaleFactor = imageOptions.width / imageWidth;
+				png = await renderWithBrowser(
+					slug,
+					imageWidth,
+					imageHeight,
+					scaleFactor,
+					cookies,
+				);
+			} else {
+				const element = createElement(Component, props);
+				png =
+					rendererType === "satori"
+						? await renderWithSatori(
+								element,
+								imageOptions.width,
+								imageOptions.height,
+							)
+						: await renderWithTakumi(
+								element,
+								imageOptions.width,
+								imageOptions.height,
+							);
+			}
+		} catch (error) {
+			logger.error(`Error rendering PNG for ${slug}:`, error);
+			return results;
 		}
 
-		if (formats.includes("png")) {
-			tasks.push(
-				(async () => {
-					try {
-						const element = createElement(Component, props);
-						const pngBuffer =
-							rendererType === "satori"
-								? await renderWithSatori(
-										element,
-										imageOptions.width,
-										imageOptions.height,
-									)
-								: await renderWithTakumi(
-										element,
-										imageOptions.width,
-										imageOptions.height,
-									);
-						return { key: "png", value: pngBuffer };
-					} catch (error) {
-						logger.error(`Error generating PNG for ${slug}:`, error);
-						return { key: "png", value: null };
-					}
-				})(),
-			);
+		if (needsPng) {
+			results.png =
+				imageOptions.width !== imageWidth
+					? await sharp(png).resize(imageWidth, imageHeight).png().toBuffer()
+					: png;
 		}
 
-		const completed = await Promise.all(tasks);
-		for (const { key, value } of completed) {
-			results[key] = value as never;
+		if (needsBitmap) {
+			try {
+				results.bitmap = await renderBmp(png, {
+					ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
+					width: imageWidth,
+					height: imageHeight,
+					applyEdgeSnap: config?.renderSettings?.applyEdgeSnap ?? true,
+					...(grayscale !== undefined && { grayscale }),
+				});
+			} catch (error) {
+				logger.error(`Error generating bitmap for ${slug}:`, error);
+			}
 		}
 
 		return results;

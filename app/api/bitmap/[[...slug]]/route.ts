@@ -45,11 +45,15 @@ export async function GET(
 			? recipeSlug
 			: "simple-text";
 
+		// Extract cookie header to forward to browser renderer
+		const cookieHeader = req.headers.get("cookie");
+
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeId,
 			validWidth,
 			validHeight,
 			grayscaleLevels,
+			cookieHeader || undefined,
 		);
 
 		if (
@@ -84,6 +88,7 @@ const renderRecipeBitmap = cache(
 		width: number,
 		height: number,
 		grayscaleLevels: number = 2,
+		cookies?: string,
 	) => {
 		const { config, Component, props, element } = await buildRecipeElement({
 			slug: recipeId,
@@ -106,6 +111,7 @@ const renderRecipeBitmap = cache(
 			imageHeight: height,
 			formats: ["bitmap"],
 			grayscale: grayscaleLevels,
+			cookies,
 		});
 
 		return renders.bitmap ?? Buffer.from([]);

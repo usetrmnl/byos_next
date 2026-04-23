@@ -107,7 +107,7 @@ export default async function Wikipedia({
 
 	return (
 		<PreSatori useDoubling={true} width={width} height={height}>
-			<div className="flex flex-col w-full h-full bg-white">
+			<div className="flex flex-col w-full h-full bg-white text-black">
 				<div className="flex-none p-4 border-b border-black">
 					<h1 className={` ${isHalfScreen ? "text-4xl" : "text-5xl"}`}>
 						{safeTitle}

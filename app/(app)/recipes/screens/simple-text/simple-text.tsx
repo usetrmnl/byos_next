@@ -11,7 +11,7 @@ export default function SimpleText({
 }) {
 	return (
 		<PreSatori useDoubling={true} width={width} height={height}>
-			<div className="w-full h-full p-4 bg-white flex flex-col items-center justify-center text-center">
+			<div className="w-full h-full p-4 bg-white flex flex-col items-center justify-center text-center text-black">
 				<div className="text-4xl font-blockkie">
 					Hello World - blockkie font
 				</div>

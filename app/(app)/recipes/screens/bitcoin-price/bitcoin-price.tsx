@@ -51,7 +51,7 @@ export default function CryptoPrice({
 
 	return (
 		<PreSatori width={width} height={height}>
-			<div className="flex h-full w-full flex-col bg-white justify-between p-4">
+			<div className="flex h-full w-full flex-col bg-white justify-between p-4 text-black">
 				<div className="flex flex-col">
 					<div className="flex flex-col">
 						<div className="flex items-center justify-between">
