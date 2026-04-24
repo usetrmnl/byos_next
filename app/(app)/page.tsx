@@ -139,12 +139,12 @@ export default async function Dashboard() {
 	return (
 		<PageTemplate
 			title={
-				<h1 className="text-3xl font-bold flex items-center">
+				<h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
 					Good {greeting}
 					{!dbStatus.ready && (
 						<Badge
 							variant="outline"
-							className="ml-2 border-primary/30 bg-primary/10 text-primary"
+							className="border-primary/30 bg-primary/10 text-primary"
 						>
 							noDB mode
 						</Badge>
