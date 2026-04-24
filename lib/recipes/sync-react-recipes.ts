@@ -55,16 +55,19 @@ export async function syncReactRecipes(): Promise<{
 				metadata,
 			} as never)
 			.onConflict((oc) =>
-				oc.constraint("recipes_slug_shared_key").doUpdateSet({
-					name: config.title,
-					description: config.description ?? null,
-					author: config.author?.name ?? null,
-					author_github: config.author?.github ?? null,
-					category: config.category ?? null,
-					version: config.version ?? null,
-					metadata,
-					updated_at: new Date().toISOString(),
-				} as never),
+				oc
+					.columns(["slug"])
+					.where("user_id", "is", null)
+					.doUpdateSet({
+						name: config.title,
+						description: config.description ?? null,
+						author: config.author?.name ?? null,
+						author_github: config.author?.github ?? null,
+						category: config.category ?? null,
+						version: config.version ?? null,
+						metadata,
+						updated_at: new Date().toISOString(),
+					} as never),
 			)
 			.execute();
 

@@ -185,19 +185,22 @@ export async function installCommunityRecipe(
 					user_id: userId,
 				})
 				.onConflict((oc) =>
-					oc.constraint("recipes_slug_user_key").doUpdateSet({
-						name: entry.name,
-						repo: entry.trmnlp.repo,
-						screenshot_url: entry.screenshot_url,
-						logo_url: entry.logo_url,
-						author: entry.author?.name ?? entry.author?.github,
-						author_github: entry.author?.github,
-						zip_url: zipUrl,
-						zip_entry_path: entry.trmnlp.zip_entry_path,
-						category: entry.author_bio?.category,
-						version: entry.trmnlp.version,
-						updated_at: new Date().toISOString(),
-					}),
+					oc
+						.columns(["slug", "user_id"])
+						.where("user_id", "is not", null)
+						.doUpdateSet({
+							name: entry.name,
+							repo: entry.trmnlp.repo,
+							screenshot_url: entry.screenshot_url,
+							logo_url: entry.logo_url,
+							author: entry.author?.name ?? entry.author?.github,
+							author_github: entry.author?.github,
+							zip_url: zipUrl,
+							zip_entry_path: entry.trmnlp.zip_entry_path,
+							category: entry.author_bio?.category,
+							version: entry.trmnlp.version,
+							updated_at: new Date().toISOString(),
+						}),
 				)
 				.returning("id")
 				.executeTakeFirstOrThrow();
