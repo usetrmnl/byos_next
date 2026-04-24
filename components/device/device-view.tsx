@@ -40,7 +40,7 @@ const getSignalQuality = (rssi: number): string => {
 const calculateRefreshPerDay = (
 	deviceData: Device & { status?: string; type?: string },
 ): number => {
-	if (!deviceData || !deviceData.refresh_schedule) return 0;
+	if (!deviceData?.refresh_schedule) return 0;
 
 	// Default refresh rate in seconds
 	const defaultRefreshRate =

@@ -362,7 +362,7 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
 			),
 		);
 
-		if (!data.query || !data.query.pages) {
+		if (!data.query?.pages) {
 			if (data.error) {
 				console.error(`MediaWiki API error details:`, data.error);
 				throw new Error(
@@ -465,7 +465,7 @@ async function fetchRandomArticles(count = 10): Promise<WikipediaData[]> {
  */
 function isArticleSuitable(article: WikipediaData): boolean {
 	// Basic validation
-	if (!article || !article.extract || article.extract.length < 200) {
+	if (!article?.extract || article.extract.length < 200) {
 		return false;
 	}
 
@@ -899,7 +899,7 @@ const getCachedWikipediaData = unstable_cache(
 			const data = await getWikipediaArticle();
 
 			// If data is null or empty, throw an error to prevent caching
-			if (!data || !data.title || !data.extract) {
+			if (!data?.title || !data.extract) {
 				throw new Error("Empty or invalid data - skip caching");
 			}
 

@@ -67,20 +67,11 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 			] = await withUserScope((scopedDb) =>
 				Promise.all([
 					// Fetch devices (RLS filters by user)
-					scopedDb
-						.selectFrom("devices")
-						.selectAll()
-						.execute(),
+					scopedDb.selectFrom("devices").selectAll().execute(),
 					// Fetch playlists (RLS filters by user)
-					scopedDb
-						.selectFrom("playlists")
-						.selectAll()
-						.execute(),
+					scopedDb.selectFrom("playlists").selectAll().execute(),
 					// Fetch playlist items
-					scopedDb
-						.selectFrom("playlist_items")
-						.selectAll()
-						.execute(),
+					scopedDb.selectFrom("playlist_items").selectAll().execute(),
 					// Fetch mixups (RLS filters by user)
 					scopedDb
 						.selectFrom("mixups")
