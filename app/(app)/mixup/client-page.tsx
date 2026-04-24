@@ -125,24 +125,13 @@ export default function MixupClientPage({
 
 	if (showEditor) {
 		return (
-			<PageTemplate
-				title={editingData?.id ? "Edit Mixup" : "New Mixup"}
-				subtitle={
-					<p className="text-muted-foreground max-w-2xl">
-						{editingData?.id
-							? "Modify your mixup layout and recipe assignments."
-							: "Blend up to four recipes on the same screen. Choose a layout, drop recipes into each quarter, and preview how they will share space."}
-					</p>
-				}
-			>
-				<MixupBuilder
-					recipes={recipes}
-					initialData={editingData}
-					onSave={handleSaveMixup}
-					onCancel={handleCancel}
-					isSaving={isLoading}
-				/>
-			</PageTemplate>
+			<MixupBuilder
+				recipes={recipes}
+				initialData={editingData}
+				onSave={handleSaveMixup}
+				onCancel={handleCancel}
+				isSaving={isLoading}
+			/>
 		);
 	}
 
@@ -150,23 +139,23 @@ export default function MixupClientPage({
 		<PageTemplate
 			title="Mixup"
 			subtitle={
-				<p className="text-muted-foreground max-w-2xl">
+				<p className="text-muted-foreground max-w-2xl text-sm">
 					Blend up to four recipes on the same screen. Choose a layout, drop
 					recipes into each quarter, and preview how they will share space.
 				</p>
 			}
-		>
-			<div className="flex justify-between items-center">
+			left={
 				<Button onClick={handleCreateMixup} disabled={isLoading}>
-					<Plus className="h-4 w-4 mr-2" />
-					New Mixup
+					<Plus className="mr-2 h-4 w-4" />
+					New mixup
 				</Button>
-			</div>
-
+			}
+		>
 			<MixupList
 				mixups={mixups}
 				onEditMixup={handleEditMixup}
 				onDeleteMixup={handleDeleteMixup}
+				onCreateMixup={handleCreateMixup}
 				isLoading={isLoading}
 			/>
 		</PageTemplate>
