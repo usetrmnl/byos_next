@@ -252,15 +252,21 @@ export function applyDithering(
 		throw new Error("bayerPatternSize must be 2, 4, or 8");
 	}
 
-	const resolvedWidth = width ?? 0;
-	const resolvedHeight = height ?? 0;
+	const requireDimensions = (): [number, number] => {
+		if (width === undefined || height === undefined) {
+			throw new Error(`width and height are required for ${method} dithering`);
+		}
+
+		return [width, height];
+	};
 
 	let result: Uint8Array;
 	switch (method) {
 		case DitheringMethod.THRESHOLD:
 			result = ditherThreshold(grayscale, threshold);
 			break;
-		case DitheringMethod.FLOYD_STEINBERG:
+		case DitheringMethod.FLOYD_STEINBERG: {
+			const [resolvedWidth, resolvedHeight] = requireDimensions();
 			result = ditherFloydSteinberg(
 				grayscale,
 				resolvedWidth,
@@ -268,10 +274,14 @@ export function applyDithering(
 				levels,
 			);
 			break;
-		case DitheringMethod.ATKINSON:
+		}
+		case DitheringMethod.ATKINSON: {
+			const [resolvedWidth, resolvedHeight] = requireDimensions();
 			result = ditherAtkinson(grayscale, resolvedWidth, resolvedHeight, levels);
 			break;
-		case DitheringMethod.BAYER:
+		}
+		case DitheringMethod.BAYER: {
+			const [resolvedWidth, resolvedHeight] = requireDimensions();
 			result = ditherBayer(
 				grayscale,
 				resolvedWidth,
@@ -280,6 +290,7 @@ export function applyDithering(
 				bayerPatternSize,
 			);
 			break;
+		}
 		case DitheringMethod.RANDOM:
 			result = ditherRandom(grayscale, levels);
 			break;
@@ -289,6 +300,7 @@ export function applyDithering(
 	}
 
 	if (edgeSnap) {
+		const [resolvedWidth, resolvedHeight] = requireDimensions();
 		const edges = detectEdges(
 			grayscale,
 			resolvedWidth,

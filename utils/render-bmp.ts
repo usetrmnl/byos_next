@@ -12,6 +12,28 @@ export interface RenderBmpOptions {
 	applyEdgeSnap?: boolean;
 }
 
+const createGrayscalePaletteEntries = (grayscale: number): number[] => {
+	const paletteStep = 255 / (grayscale - 1);
+
+	return Array.from({ length: grayscale }, (_, index) => {
+		const grayValue = Math.round(index * paletteStep);
+		return (grayValue << 16) | (grayValue << 8) | grayValue;
+	});
+};
+
+const mapGrayscaleValueToPaletteIndex = (
+	value: number,
+	grayscale: number,
+): number => {
+	const paletteStep = 255 / (grayscale - 1);
+	return Math.round(value / paletteStep);
+};
+
+const shouldSetMonochromeBit = (
+	paletteIndex: number,
+	grayscale: number,
+): boolean => paletteIndex === grayscale - 1;
+
 export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	const {
 		ditheringMethod = DitheringMethod.FLOYD_STEINBERG,
@@ -101,24 +123,19 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	buffer.writeUInt32LE(numColors, 46); // Total Colors
 	buffer.writeUInt32LE(numColors, 50); // Important Colors
 
-	// Color Palette - generate gray shades (lightest to darkest)
-	// Index 0 = white (lightest), Index N-1 = black (darkest)
+	// Color palette entries are ordered from black to white so monochrome BMPs
+	// match the device's expected pixel semantics.
 	const paletteOffset = fileHeaderSize + infoHeaderSize;
-	const paletteStep = 255 / (grayscale - 1);
-	for (let i = 0; i < grayscale; i++) {
-		const grayValue = Math.round(255 - i * paletteStep);
-		const paletteEntry = (grayValue << 16) | (grayValue << 8) | grayValue;
-		buffer.writeUInt32LE(paletteEntry, paletteOffset + i * 4);
+	const paletteEntries = createGrayscalePaletteEntries(grayscale);
+	for (const [index, paletteEntry] of paletteEntries.entries()) {
+		buffer.writeUInt32LE(paletteEntry, paletteOffset + index * 4);
 	}
 
-	// Map a quantized grayscale value (0-255) to a palette index
-	// Palette: index 0 = white (255), index N-1 = black (0)
 	const valueToIndex = (value: number): number =>
-		grayscale - 1 - Math.round(value / paletteStep);
+		mapGrayscaleValueToPaletteIndex(value, grayscale);
 
 	// Step 4: Generate the final bitmap
 	const dataOffset = fileHeaderSize + infoHeaderSize + paletteSize;
-
 	for (let y = 0; y < targetHeight; y++) {
 		// BMP is stored bottom-up
 		const targetY = targetHeight - 1 - y;
@@ -134,7 +151,9 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 					const idx = yOffset + x + bit;
 					let paletteIndex = valueToIndex(dithered[idx]);
 					if (inverted) paletteIndex = grayscale - 1 - paletteIndex;
-					if (paletteIndex === grayscale - 1) byte |= 1 << (7 - bit);
+					if (shouldSetMonochromeBit(paletteIndex, grayscale)) {
+						byte |= 1 << (7 - bit);
+					}
 				}
 				buffer[destRowOffset + (x >> 3)] = byte;
 			}
