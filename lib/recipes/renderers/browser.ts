@@ -1,146 +1,35 @@
-// Minimal local interfaces instead of importing from puppeteer or puppeteer-core.
-// Both are optional dependencies — importing their types directly would cause
-// TypeScript to fail in environments where neither package is installed.
-// We only describe the methods we actually use.
-
-interface Browser {
-	connected: boolean;
-	newPage(): Promise<Page>;
-	close(): Promise<void>;
-	disconnect(): void;
-}
-
-interface Cookie {
-	name: string;
-	value: string;
-	domain?: string;
-	path?: string;
-	expires?: number;
-	httpOnly?: boolean;
-	secure?: boolean;
-	sameSite?: "Strict" | "Lax" | "None";
-}
-
-interface Page {
-	emulateMediaFeatures(
-		features: Array<{ name: string; value: string }>,
-	): Promise<void>;
-	setViewport(viewport: {
-		width: number;
-		height: number;
-		deviceScaleFactor: number;
-	}): Promise<void>;
-	setCookie(...cookies: Cookie[]): Promise<void>;
-	goto(url: string, options?: { waitUntil: string }): Promise<unknown>;
-	screenshot(options?: { type: string }): Promise<Uint8Array>;
-	close(): Promise<void>;
-}
-
-const BROWSER_OPTIONS = [
-	"--disable-dev-shm-usage",
-	"--disable-gpu",
-	"--hide-scrollbar",
-	"--no-sandbox",
-	"--disable-setuid-sandbox",
-	"--disable-accelerated-2d-canvas",
-	"--disable-web-security",
-	"--disable-features=IsolateOrigins,site-per-process",
-];
-
-let browser: Browser | null = null;
-
-async function closeBrowser(): Promise<void> {
-	if (browser) {
-		try {
-			// disconnect() for remote browsers, close() for local ones
-			if (process.env.BROWSER_URL || process.env.BROWSER_WS_ENDPOINT) {
-				browser.disconnect();
-			} else {
-				await browser.close();
-			}
-		} catch (error) {
-			console.error("[Browser] Error closing browser:", error);
-		} finally {
-			browser = null;
-		}
-	}
-}
-
-async function getBrowser(): Promise<Browser> {
-	if (!browser || !browser.connected) {
-		const browserUrl = process.env.BROWSER_URL;
-		const wsEndpoint = process.env.BROWSER_WS_ENDPOINT;
-		const executablePath = process.env.CHROME_EXECUTABLE_PATH;
-
-		// puppeteer-core and puppeteer are optional dependencies — types may not
-		// be present in non-browser builds, hence the @ts-expect-error comments.
-		// serverExternalPackages in next.config.ts prevents the bundler from
-		// trying to bundle or resolve these at build time.
-		if (browserUrl) {
-			// browserURL lets Puppeteer discover the WebSocket URL via /json/version,
-			// avoiding the need to know Chrome's UUID-based WS path upfront.
-			const { connect } = await import("puppeteer-core");
-			browser = (await connect({
-				browserURL: browserUrl,
-			})) as unknown as Browser;
-		} else if (wsEndpoint) {
-			const { connect } = await import("puppeteer-core");
-			browser = (await connect({
-				browserWSEndpoint: wsEndpoint,
-			})) as unknown as Browser;
-		} else if (executablePath) {
-			const { launch } = await import("puppeteer-core");
-			browser = (await launch({
-				headless: true,
-				executablePath,
-				args: BROWSER_OPTIONS,
-			})) as unknown as Browser;
-		} else {
-			const { launch } = await import("puppeteer");
-			browser = (await launch({
-				headless: true,
-				args: BROWSER_OPTIONS,
-			})) as unknown as Browser;
-		}
-	}
-	// Handle graceful shutdown
-	process.on("exit", closeBrowser);
-	process.on("SIGINT", async () => {
-		await closeBrowser();
-		process.exit(0);
-	});
-	process.on("SIGTERM", async () => {
-		await closeBrowser();
-		process.exit(0);
-	});
-	// biome-ignore lint/style/noNonNullAssertion: guaranteed to be set above
-	return browser!;
-}
+import type { CookieData } from "puppeteer-core";
+import { getBrowser } from "@/lib/recipes/chrome-pool";
 
 /**
- * Parse a Cookie header string into individual cookie objects
+ * Parse a Cookie header string into individual cookie objects.
  */
 function parseCookies(
 	cookieHeader: string,
 ): Array<{ name: string; value: string }> {
 	const cookies: Array<{ name: string; value: string }> = [];
-	const pairs = cookieHeader.split(";");
-
-	for (const pair of pairs) {
+	for (const pair of cookieHeader.split(";")) {
 		const trimmed = pair.trim();
 		if (!trimmed) continue;
-
 		const eqIndex = trimmed.indexOf("=");
 		if (eqIndex > 0) {
-			const name = trimmed.substring(0, eqIndex).trim();
-			const value = trimmed.substring(eqIndex + 1).trim();
-			cookies.push({ name, value });
+			cookies.push({
+				name: trimmed.substring(0, eqIndex).trim(),
+				value: trimmed.substring(eqIndex + 1).trim(),
+			});
 		}
 	}
-
 	return cookies;
 }
 
+/**
+ * Render a React recipe by navigating to its preview URL on this Next.js
+ * server and capturing a PNG.
+ *
+ * Uses the "trusted" Chrome profile — web security is disabled so the preview
+ * page can freely reference cross-origin images. This is only safe because
+ * the page is our own same-origin Next.js route.
+ */
 export async function renderWithBrowser(
 	slug: string,
 	width: number,
@@ -151,34 +40,29 @@ export async function renderWithBrowser(
 	const port = process.env.PORT || 3000;
 	const baseUrl =
 		process.env.NEXT_PUBLIC_BASE_URL ?? `http://127.0.0.1:${port}`;
-	// Pass original dimensions to the component — it handles scaling internally
 	const url = `${baseUrl}/recipes/${slug}/preview?width=${width}&height=${height}`;
 
-	const b = await getBrowser();
-	const page = await b.newPage();
+	const browser = await getBrowser("trusted");
+	const page = await browser.newPage();
 
 	try {
-		// Forward cookies to the page so it can authenticate
 		if (cookies) {
-			const parsedCookies = parseCookies(cookies);
-			const urlObj = new URL(url);
-			const domain = urlObj.hostname;
-
-			const cookiesToSet = parsedCookies.map((cookie) => ({
-				name: cookie.name,
-				value: cookie.value,
-				domain: domain,
+			const parsed = parseCookies(cookies);
+			const domain = new URL(url).hostname;
+			const cookiesToSet: CookieData[] = parsed.map((c) => ({
+				name: c.name,
+				value: c.value,
+				domain,
 				path: "/",
 			}));
-
-			await page.setCookie(...cookiesToSet);
+			await browser.setCookie(...cookiesToSet);
 		}
 
-		// Force light mode — headless Chrome can default to dark, which breaks Tailwind v4 color tokens
+		// Force light mode — headless Chrome can default to dark, which breaks
+		// Tailwind v4 color tokens that rely on prefers-color-scheme.
 		await page.emulateMediaFeatures([
 			{ name: "prefers-color-scheme", value: "light" },
 		]);
-		// Viewport is scaled up so the browser captures the full doubled canvas
 		await page.setViewport({
 			width: width * scale,
 			height: height * scale,

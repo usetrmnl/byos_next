@@ -52,28 +52,39 @@ CREATE TABLE IF NOT EXISTS recipe_files (
 CREATE INDEX IF NOT EXISTS recipe_files_recipe_id_idx ON recipe_files (recipe_id);
 
 -- =============================================================================
--- Part 4: RLS on recipes (recipe_files skipped — access controlled via parent)
+-- Part 4: RLS on recipes and recipe_files
 -- =============================================================================
 
 ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes FORCE ROW LEVEL SECURITY;
 
--- Policies for recipes
+-- SELECT: user sees own + shared (user_id IS NULL)
 CREATE POLICY recipes_select_policy ON recipes
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
 
+-- INSERT: user can only insert rows they own (shared recipes are seeded by admin role)
 CREATE POLICY recipes_insert_policy ON recipes
     FOR INSERT
-    WITH CHECK (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
 
+-- UPDATE: user can only mutate their own rows (shared recipes are protected)
 CREATE POLICY recipes_update_policy ON recipes
     FOR UPDATE
-    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+    USING (user_id = current_setting('app.current_user_id', true));
 
+-- DELETE: user can only delete their own rows (shared recipes are protected)
 CREATE POLICY recipes_delete_policy ON recipes
     FOR DELETE
-    USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
+    USING (user_id = current_setting('app.current_user_id', true));
+
+-- recipe_files: RLS cascades through parent recipe's policy
+ALTER TABLE recipe_files ENABLE ROW LEVEL SECURITY;
+ALTER TABLE recipe_files FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY recipe_files_policy ON recipe_files
+    USING (EXISTS (SELECT 1 FROM recipes r WHERE r.id = recipe_files.recipe_id))
+    WITH CHECK (EXISTS (SELECT 1 FROM recipes r WHERE r.id = recipe_files.recipe_id));
 
 -- Grant permissions on new tables to byos_app role
 GRANT SELECT, INSERT, UPDATE, DELETE ON recipes TO byos_app;

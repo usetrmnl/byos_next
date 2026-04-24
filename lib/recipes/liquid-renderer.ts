@@ -159,6 +159,68 @@ function extractCustomFieldDefaults(
 }
 
 /**
+ * Block private/link-local/loopback ranges to prevent SSRF against
+ * internal services (cloud metadata, RDS proxies, localhost admin).
+ * Only http/https schemes allowed.
+ */
+function isSafePollingUrl(raw: string): boolean {
+	let parsed: URL;
+	try {
+		parsed = new URL(raw);
+	} catch {
+		return false;
+	}
+	if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+		return false;
+	}
+	const host = parsed.hostname.toLowerCase();
+	if (
+		host === "localhost" ||
+		host === "0.0.0.0" ||
+		host === "::" ||
+		host === "::1" ||
+		host.endsWith(".localhost") ||
+		host.endsWith(".internal") ||
+		host.endsWith(".local")
+	) {
+		return false;
+	}
+	// IPv4 literal checks
+	const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+	if (v4) {
+		const [a, b] = [Number(v4[1]), Number(v4[2])];
+		// 10.0.0.0/8, 127.0.0.0/8, 169.254.0.0/16, 172.16.0.0/12,
+		// 192.168.0.0/16, 100.64.0.0/10 (CGNAT), 0.0.0.0/8
+		if (
+			a === 0 ||
+			a === 10 ||
+			a === 127 ||
+			(a === 169 && b === 254) ||
+			(a === 172 && b >= 16 && b <= 31) ||
+			(a === 192 && b === 168) ||
+			(a === 100 && b >= 64 && b <= 127)
+		) {
+			return false;
+		}
+	}
+	// IPv6 unique-local (fc00::/7) and link-local (fe80::/10)
+	if (host.startsWith("[")) {
+		const v6 = host.slice(1, -1).toLowerCase();
+		if (
+			v6.startsWith("fc") ||
+			v6.startsWith("fd") ||
+			v6.startsWith("fe8") ||
+			v6.startsWith("fe9") ||
+			v6.startsWith("fea") ||
+			v6.startsWith("feb")
+		) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
  * Fetch data from polling URL(s). Multiple URLs can be newline-separated.
  * Each URL's data is assigned to IDX_0, IDX_1, etc.
  */
@@ -174,12 +236,17 @@ async function fetchPollingData(
 
 	const results = await Promise.allSettled(
 		urls.map(async (url, index) => {
+			if (!isSafePollingUrl(url)) {
+				logger.warn(`Polling URL ${url} blocked by SSRF guard`);
+				return { index, result: null };
+			}
 			const controller = new AbortController();
 			const timeout = setTimeout(() => controller.abort(), 10000);
 			try {
 				const response = await fetch(url, {
 					signal: controller.signal,
 					headers: { "User-Agent": "BYOS/1.0" },
+					redirect: "error",
 				});
 				if (!response.ok) {
 					logger.warn(`Polling URL ${url} returned ${response.status}`);

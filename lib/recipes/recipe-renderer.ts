@@ -292,16 +292,7 @@ export const renderRecipeOutputs = cache(
 				);
 			} else if (Component && props) {
 				if (rendererType === "browser") {
-					const { renderWithBrowser } = await import(
-						"./renderers/browser"
-					).catch(() => {
-						throw new Error(
-							"Browser renderer requires one of: " +
-								"(1) puppeteer-core + BROWSER_URL or BROWSER_WS_ENDPOINT for a remote Chrome container, " +
-								"(2) puppeteer-core + CHROME_EXECUTABLE_PATH for a local Chrome install, " +
-								"(3) puppeteer for bundled Chrome (pnpm add puppeteer).",
-						);
-					});
+					const { renderWithBrowser } = await import("./renderers/browser");
 					const scaleFactor = imageOptions.width / imageWidth;
 					pngBuffer = await renderWithBrowser(
 						slug,
