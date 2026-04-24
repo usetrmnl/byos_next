@@ -1,5 +1,15 @@
 import yaml from "js-yaml";
 
+/**
+ * External catalog fetching is opt-in. Set ENABLE_EXTERNAL_CATALOG=true to
+ * allow the server to reach out to bnussbau's community catalog and
+ * trmnl.com's official recipes API. Default off: the catalog page shows
+ * empty state, and installCommunityRecipe refuses to run.
+ */
+export function isExternalCatalogEnabled(): boolean {
+	return process.env.ENABLE_EXTERNAL_CATALOG === "true";
+}
+
 // --- Community catalog (GitHub YAML) ---
 
 export interface CatalogEntry {
@@ -39,6 +49,7 @@ const CATALOG_URL =
 	"https://raw.githubusercontent.com/bnussbau/trmnl-recipe-catalog/refs/heads/main/catalog.yaml";
 
 export async function fetchCatalog(): Promise<CatalogEntry[]> {
+	if (!isExternalCatalogEnabled()) return [];
 	const res = await fetch(CATALOG_URL, { cache: "no-store" });
 
 	if (!res.ok) {
@@ -83,6 +94,7 @@ interface TrmnlRecipesResponse {
 const TRMNL_API_BASE = "https://trmnl.com";
 
 export async function fetchTrmnlRecipes(): Promise<TrmnlRecipe[]> {
+	if (!isExternalCatalogEnabled()) return [];
 	const all: TrmnlRecipe[] = [];
 	let page = 1;
 

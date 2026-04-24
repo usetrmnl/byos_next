@@ -4,7 +4,11 @@ import JSZip from "jszip";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserId } from "@/lib/auth/get-user";
-import { type CatalogEntry, fetchCatalog } from "@/lib/catalog";
+import {
+	type CatalogEntry,
+	fetchCatalog,
+	isExternalCatalogEnabled,
+} from "@/lib/catalog";
 import {
 	withUserScope,
 	withUserScopeTransaction,
@@ -46,6 +50,12 @@ async function verifyCatalogEntry(
 export async function installCommunityRecipe(
 	clientEntry: CatalogEntry,
 ): Promise<{ success: boolean; error?: string; slug?: string }> {
+	if (!isExternalCatalogEnabled()) {
+		return {
+			success: false,
+			error: "External catalog is disabled on this server",
+		};
+	}
 	const entry = await verifyCatalogEntry(clientEntry);
 	if (!entry) {
 		return {
