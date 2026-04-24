@@ -191,7 +191,12 @@ export async function GET(request: Request) {
 
 		// Check for firmware updates
 		const latestFirmware = await getLatestFirmware();
-		const firmwareExtra: Record<string, unknown> = {};
+		const firmwareExtra: Record<string, unknown> = {
+			// Tell the firmware how to rotate the panel. The TRMNL panel is
+			// portrait-native, so a landscape orientation needs a 90° rotation.
+			// 0 = portrait (no rotation), 1 = landscape (90°).
+			image_rotate: orientation === "landscape" ? 1 : 0,
+		};
 
 		if (
 			latestFirmware &&
