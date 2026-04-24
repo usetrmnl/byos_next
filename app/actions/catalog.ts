@@ -4,12 +4,17 @@ import JSZip from "jszip";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getCurrentUserId } from "@/lib/auth/get-user";
-import type { CatalogEntry } from "@/lib/catalog";
+import { type CatalogEntry, fetchCatalog } from "@/lib/catalog";
 import {
 	withUserScope,
 	withUserScopeTransaction,
 } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
+
+// Hard limits to prevent resource abuse on hostile ZIPs.
+const MAX_ZIP_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_DECOMPRESSED_BYTES = 50 * 1024 * 1024; // 50 MB
+const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB per file
 
 function toSlug(name: string): string {
 	return name
@@ -18,9 +23,37 @@ function toSlug(name: string): string {
 		.replace(/^-|-$/g, "");
 }
 
-export async function installCommunityRecipe(
+/**
+ * Verify the client-supplied CatalogEntry against the authoritative catalog.
+ * Client-side server-action payloads are not trusted — without this check any
+ * signed-in user could make the server fetch arbitrary URLs (SSRF).
+ */
+async function verifyCatalogEntry(
 	entry: CatalogEntry,
+): Promise<CatalogEntry | null> {
+	const catalog = await fetchCatalog();
+	const match = catalog.find((e) => e.trmnlp.id === entry.trmnlp.id);
+	if (!match) return null;
+	if (
+		match.trmnlp.zip_url !== entry.trmnlp.zip_url ||
+		match.name !== entry.name
+	) {
+		return null;
+	}
+	return match;
+}
+
+export async function installCommunityRecipe(
+	clientEntry: CatalogEntry,
 ): Promise<{ success: boolean; error?: string; slug?: string }> {
+	const entry = await verifyCatalogEntry(clientEntry);
+	if (!entry) {
+		return {
+			success: false,
+			error: "Recipe not found in the trusted catalog",
+		};
+	}
+
 	const zipUrl = entry.trmnlp.zip_url;
 	if (!zipUrl) {
 		return { success: false, error: "No zip_url available for this recipe" };
@@ -30,15 +63,33 @@ export async function installCommunityRecipe(
 	const slug = toSlug(entry.name);
 
 	try {
-		// Download the ZIP
-		const res = await fetch(zipUrl);
+		// Download the ZIP with a size cap and no redirect chasing.
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 15000);
+		let res: Response;
+		try {
+			res = await fetch(zipUrl, {
+				signal: controller.signal,
+				redirect: "follow",
+			});
+		} finally {
+			clearTimeout(timeout);
+		}
 		if (!res.ok) {
 			return {
 				success: false,
 				error: `Failed to download ZIP: ${res.status}`,
 			};
 		}
+
+		const contentLength = Number(res.headers.get("content-length") ?? "0");
+		if (contentLength > MAX_ZIP_BYTES) {
+			return { success: false, error: "ZIP archive exceeds size limit" };
+		}
 		const buffer = await res.arrayBuffer();
+		if (buffer.byteLength > MAX_ZIP_BYTES) {
+			return { success: false, error: "ZIP archive exceeds size limit" };
+		}
 
 		// Extract files
 		const zip = await JSZip.loadAsync(buffer);
@@ -51,6 +102,8 @@ export async function installCommunityRecipe(
 
 		const files: { filename: string; content: string }[] = [];
 		const filePromises: Promise<void>[] = [];
+		let totalDecompressed = 0;
+		let bombDetected = false;
 
 		zip.forEach((relativePath, file) => {
 			if (file.dir) return;
@@ -65,6 +118,16 @@ export async function installCommunityRecipe(
 				file
 					.async("uint8array")
 					.then((data) => {
+						if (bombDetected) return;
+						if (data.byteLength > MAX_FILE_BYTES) {
+							bombDetected = true;
+							return;
+						}
+						totalDecompressed += data.byteLength;
+						if (totalDecompressed > MAX_DECOMPRESSED_BYTES) {
+							bombDetected = true;
+							return;
+						}
 						// Skip binary files (files containing null bytes)
 						if (data.includes(0)) return;
 						const content = new TextDecoder("utf-8", { fatal: true }).decode(
@@ -79,6 +142,13 @@ export async function installCommunityRecipe(
 		});
 
 		await Promise.all(filePromises);
+
+		if (bombDetected) {
+			return {
+				success: false,
+				error: "ZIP archive exceeds decompression size limit",
+			};
+		}
 
 		if (files.length === 0) {
 			return { success: false, error: "No files found in the ZIP archive" };
@@ -105,7 +175,7 @@ export async function installCommunityRecipe(
 					user_id: userId,
 				})
 				.onConflict((oc) =>
-					oc.column("slug").doUpdateSet({
+					oc.constraint("recipes_slug_user_key").doUpdateSet({
 						name: entry.name,
 						repo: entry.trmnlp.repo,
 						screenshot_url: entry.screenshot_url,

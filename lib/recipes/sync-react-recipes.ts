@@ -55,7 +55,7 @@ export async function syncReactRecipes(): Promise<{
 				metadata,
 			} as never)
 			.onConflict((oc) =>
-				oc.column("slug").doUpdateSet({
+				oc.constraint("recipes_slug_shared_key").doUpdateSet({
 					name: config.title,
 					description: config.description ?? null,
 					author: config.author?.name ?? null,

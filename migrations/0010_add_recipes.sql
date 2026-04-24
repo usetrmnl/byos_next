@@ -13,7 +13,7 @@ CREATE TYPE recipe_type AS ENUM ('react', 'liquid');
 
 CREATE TABLE IF NOT EXISTS recipes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    slug TEXT UNIQUE NOT NULL,
+    slug TEXT NOT NULL,
     type recipe_type NOT NULL,
     name TEXT NOT NULL,
     description TEXT,
@@ -27,13 +27,23 @@ CREATE TABLE IF NOT EXISTS recipes (
     zip_entry_path TEXT,
     category TEXT,
     version TEXT,
+    metadata JSONB DEFAULT '{}',
     user_id TEXT REFERENCES "user"("id") ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Uniqueness: each user owns their own namespace of slugs, and there is one
+-- global namespace for shared (system-seeded) recipes.
+-- Named so ON CONFLICT can target them explicitly.
+CREATE UNIQUE INDEX IF NOT EXISTS recipes_slug_user_key
+    ON recipes (slug, user_id)
+    WHERE user_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS recipes_slug_shared_key
+    ON recipes (slug)
+    WHERE user_id IS NULL;
+
 CREATE INDEX IF NOT EXISTS recipes_user_id_idx ON recipes (user_id);
-CREATE INDEX IF NOT EXISTS recipes_slug_idx ON recipes (slug);
 CREATE INDEX IF NOT EXISTS recipes_type_idx ON recipes (type);
 
 -- =============================================================================

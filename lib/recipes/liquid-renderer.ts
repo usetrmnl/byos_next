@@ -203,16 +203,16 @@ function isSafePollingUrl(raw: string): boolean {
 			return false;
 		}
 	}
-	// IPv6 unique-local (fc00::/7) and link-local (fe80::/10)
-	if (host.startsWith("[")) {
-		const v6 = host.slice(1, -1).toLowerCase();
+	// IPv6: URL.hostname strips brackets, so detect by presence of a colon.
+	// Block unique-local (fc00::/7) and link-local (fe80::/10).
+	if (host.includes(":")) {
 		if (
-			v6.startsWith("fc") ||
-			v6.startsWith("fd") ||
-			v6.startsWith("fe8") ||
-			v6.startsWith("fe9") ||
-			v6.startsWith("fea") ||
-			v6.startsWith("feb")
+			host.startsWith("fc") ||
+			host.startsWith("fd") ||
+			host.startsWith("fe8") ||
+			host.startsWith("fe9") ||
+			host.startsWith("fea") ||
+			host.startsWith("feb")
 		) {
 			return false;
 		}
