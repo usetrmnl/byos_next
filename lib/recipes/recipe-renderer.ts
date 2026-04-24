@@ -1,7 +1,3 @@
-import { extractResourceUrls, Renderer } from "@takumi-rs/core";
-import { fetchResources } from "@takumi-rs/helpers";
-import { fromJsx } from "@takumi-rs/helpers/jsx";
-import { ImageResponse } from "next/og";
 import React, { cache, createElement } from "react";
 import sharp from "sharp";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
@@ -9,7 +5,6 @@ import { getScreenParams } from "@/app/actions/screens-params";
 import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
-import { getTakumiFonts } from "@/lib/fonts";
 import { renderHtmlToImage } from "@/lib/recipes/html-screenshot";
 import {
 	customFieldsToParamDefinitions,
@@ -18,6 +13,8 @@ import {
 	renderLiquidRecipe,
 } from "@/lib/recipes/liquid-renderer";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+import { renderWithSatori } from "./renderers/satori";
+import { renderWithTakumi } from "./renderers/takumi";
 
 // Logging utility shared between recipe renderers
 export const logger = {
@@ -108,65 +105,6 @@ export const getRendererType = (): "takumi" | "satori" | "browser" => {
 	if (renderer === "browser") return "browser";
 	return "takumi";
 };
-
-// Cache the fonts at module initialization
-const rendererFonts = getTakumiFonts();
-
-// Initialize Takumi renderer
-
-const takumiRenderer = new Renderer({ fonts: rendererFonts });
-
-/**
- * Render React element using Takumi
- */
-async function renderWithTakumi(
-	element: React.ReactElement,
-	width: number,
-	height: number,
-): Promise<Buffer> {
-	const node = await fromJsx(element);
-
-	// Extract and fetch external image resources (gracefully handle failures)
-	const urls = extractResourceUrls(node);
-	let fetchedResources: Awaited<ReturnType<typeof fetchResources>> = [];
-	if (urls.length > 0) {
-		try {
-			fetchedResources = await fetchResources(urls);
-		} catch (error) {
-			logger.warn(
-				`Failed to fetch some external resources, rendering without them`,
-				error,
-			);
-		}
-	}
-
-	const png = await takumiRenderer.render(node, {
-		width,
-		height,
-		format: "png",
-		fetchedResources,
-	});
-	return Buffer.from(png);
-}
-
-async function renderWithSatori(
-	element: React.ReactElement,
-	width: number,
-	height: number,
-): Promise<Buffer> {
-	const imageOptions = {
-		width: width,
-		height: height,
-		fonts: rendererFonts,
-		shapeRendering: 1,
-		textRendering: 0,
-		imageRendering: 1,
-		debug: false,
-	};
-	const pngResponse = await new ImageResponse(element, imageOptions);
-	const pngBuffer = await pngResponse.arrayBuffer();
-	return Buffer.from(pngBuffer);
-}
 
 export const fetchRecipeConfig = cache(
 	async (slug: string, userId?: string): Promise<RecipeConfig | null> => {
