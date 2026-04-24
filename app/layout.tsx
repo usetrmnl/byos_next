@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { getAllFontVariables } from "@/lib/fonts";
 import { cn } from "@/lib/utils";
 
@@ -40,8 +41,10 @@ export default function RootLayout({
 				)}
 			>
 				<ThemeProvider>
-					{children}
-					<Toaster />
+					<TooltipProvider>
+						{children}
+						<Toaster />
+					</TooltipProvider>
 				</ThemeProvider>
 			</body>
 		</html>
