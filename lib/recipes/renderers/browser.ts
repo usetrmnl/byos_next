@@ -79,21 +79,18 @@ async function getBrowser(): Promise<Browser> {
 		if (browserUrl) {
 			// browserURL lets Puppeteer discover the WebSocket URL via /json/version,
 			// avoiding the need to know Chrome's UUID-based WS path upfront.
-			// biome-ignore lint: optional dependency, types absent in non-browser builds
 			// @ts-expect-error
 			const { connect } = await import("puppeteer-core");
 			browser = (await connect({
 				browserURL: browserUrl,
 			})) as unknown as Browser;
 		} else if (wsEndpoint) {
-			// biome-ignore lint: optional dependency, types absent in non-browser builds
 			// @ts-expect-error
 			const { connect } = await import("puppeteer-core");
 			browser = (await connect({
 				browserWSEndpoint: wsEndpoint,
 			})) as unknown as Browser;
 		} else if (executablePath) {
-			// biome-ignore lint: optional dependency, types absent in non-browser builds
 			// @ts-expect-error
 			const { launch } = await import("puppeteer-core");
 			browser = (await launch({
@@ -102,7 +99,6 @@ async function getBrowser(): Promise<Browser> {
 				args: BROWSER_OPTIONS,
 			})) as unknown as Browser;
 		} else {
-			// biome-ignore lint: optional dependency, types absent in non-browser builds
 			// @ts-expect-error
 			const { launch } = await import("puppeteer");
 			browser = (await launch({
