@@ -15,96 +15,95 @@ const DashboardData = async () => {
 	if (!dbStatus.ready) {
 		return (
 			<>
-				<div className="mt-4 rounded-lg p-4 border border-muted shadow">
+				<div className="mt-4 rounded-lg border bg-card shadow-sm">
 					{dbStatus.error === "ERROR_ENV_VAR_DATABASE_URL_NOT_SET" && (
-						<div className="p-4">
-							<h3 className="font-bold text-2xl mb-2">
-								🤔
-								<span className="bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
-									{" "}
-									Hmm, we are missing something...
-								</span>
+						<div className="p-6 border-b">
+							<h3 className="font-bold text-2xl mb-2 tracking-tight">
+								Database not configured
 							</h3>
-							<p className="mb-3">
-								We&apos;re missing the{" "}
-								<span className="font-mono bg-muted px-1 rounded">
+							<p className="mb-4 text-muted-foreground">
+								The{" "}
+								<span className="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded text-sm">
 									DATABASE_URL
 								</span>{" "}
-								in your environment variables (/.env file).
+								environment variable is not set. Add it to your{" "}
+								<span className="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded text-sm">
+									.env
+								</span>{" "}
+								file to continue.
 							</p>
 
-							<div className="mt-4 space-y-3">
-								<p className="font-medium">Here&apos;s how to fix this:</p>
+							<div className="mt-6 space-y-4">
+								<p className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+									How to fix
+								</p>
 
-								<div className="ml-2 pl-3 border-l-2 border-muted-foreground">
-									<p className="mb-1">
-										<span className="font-semibold">Option 1:</span> Check your
-										Vercel integration
+								<div className="pl-4 border-l-2 border-primary/40">
+									<p className="font-medium mb-1">
+										Option 1 — Vercel + Supabase integration
 									</p>
-									<p className="text-sm text-muted-foreground mb-2">
-										Go to your{" "}
+									<p className="text-sm text-muted-foreground">
+										Open{" "}
 										<a
 											href="https://app.supabase.com/project/_/settings/integrations"
-											className="text-blue-600 hover:underline"
+											className="text-primary hover:underline font-medium"
 										>
 											Supabase Dashboard Integrations
-										</a>{" "}
-										to verify your Vercel connection, remember to toggle on
-										&ldquo;Development&ldquo;, then
-										&ldquo;Manage&ldquo;/&ldquo;Resync enviroment
-										variables&ldquo;; finally from your local development
-										environment, run{" "}
-										<span className="font-mono bg-muted px-1 rounded">
+										</a>
+										, verify your Vercel connection, toggle
+										&ldquo;Development&rdquo; on, then &ldquo;Manage&rdquo;
+										&rarr; &ldquo;Resync environment variables&rdquo;. Locally,
+										run{" "}
+										<span className="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
 											vercel link
 										</span>{" "}
 										and{" "}
-										<span className="font-mono bg-muted px-1 rounded">
+										<span className="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
 											vercel env pull
 										</span>
 										.
 									</p>
 								</div>
 
-								<div className="ml-2 pl-3 border-l-2 border-muted-foreground">
-									<p className="mb-1">
-										<span className="font-semibold">Option 2:</span> Add them
-										manually
+								<div className="pl-4 border-l-2 border-primary/40">
+									<p className="font-medium mb-1">
+										Option 2 — Add credentials manually
 									</p>
-									<p className="text-sm text-muted-foreground mb-2">
-										Get your API credentials directly from the{" "}
+									<p className="text-sm text-muted-foreground">
+										Grab credentials from{" "}
 										<a
 											href="https://app.supabase.com/project/_/settings/api?showConnect=true"
-											className="text-blue-600 hover:underline"
+											className="text-primary hover:underline font-medium"
 										>
 											Supabase API Settings
 										</a>{" "}
-										page, under &ldquo;App Frameworks&ldquo;, save to your .env
-										file. Then, don&apos;t forget to run the database
-										initialization SQL script shown below using the{" "}
+										(under &ldquo;App Frameworks&rdquo;), save to{" "}
+										<span className="font-mono text-foreground bg-muted px-1.5 py-0.5 rounded text-xs">
+											.env
+										</span>
+										, then run the SQL below in the{" "}
 										<a
 											href="https://app.supabase.com/project/_/sql/new"
-											className="text-blue-600 hover:underline"
+											className="text-primary hover:underline font-medium"
 										>
-											SQL Editor
-										</a>{" "}
-										in your Supabase dashboard.
+											Supabase SQL Editor
+										</a>
+										.
 									</p>
 								</div>
 							</div>
 						</div>
 					)}
 					{dbStatus.error?.includes("Missing required tables") && (
-						<div className="p-4">
-							<h3 className="font-bold text-2xl mb-2">
-								🤔
-								<span className="bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
-									{" "}
-									Database schema is not valid...
-								</span>
+						<div className="p-6 border-b">
+							<h3 className="font-bold text-2xl mb-2 tracking-tight">
+								Database schema incomplete
 							</h3>
-							<p>
-								We are missing the following tables:{" "}
-								{dbStatus.error?.replace("Missing required tables: ", "")}
+							<p className="text-muted-foreground">
+								Missing tables:{" "}
+								<span className="font-mono text-foreground">
+									{dbStatus.error?.replace("Missing required tables: ", "")}
+								</span>
 							</p>
 						</div>
 					)}
@@ -143,7 +142,10 @@ export default async function Dashboard() {
 				<h1 className="text-3xl font-bold flex items-center">
 					Good {greeting}
 					{!dbStatus.ready && (
-						<Badge className="ml-2 bg-blue-100 text-blue-700 border-blue-200">
+						<Badge
+							variant="outline"
+							className="ml-2 border-primary/30 bg-primary/10 text-primary"
+						>
 							noDB mode
 						</Badge>
 					)}

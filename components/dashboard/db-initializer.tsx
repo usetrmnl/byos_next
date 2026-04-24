@@ -191,17 +191,17 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 	const getStatusColor = (status: SqlExecutionStatus) => {
 		switch (status) {
 			case "idle":
-				return "text-gray-500";
+				return "text-muted-foreground";
 			case "loading":
 				return "text-primary";
 			case "success":
-				return "text-green-600";
+				return "text-emerald-600 dark:text-emerald-400";
 			case "warning":
-				return "text-amber-500";
+				return "text-amber-600 dark:text-amber-400";
 			case "error":
-				return "text-red-600";
+				return "text-destructive";
 			default:
-				return "text-gray-500";
+				return "text-muted-foreground";
 		}
 	};
 
@@ -257,19 +257,19 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 			<div className="flex flex-col">
 				<div className="flex items-center gap-3">
 					{successCount > 0 && (
-						<div className="flex items-center gap-1 text-green-600">
+						<div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
 							<Check className="h-3 w-3" />
 							<span>{successCount} succeeded</span>
 						</div>
 					)}
 					{warningCount > 0 && (
-						<div className="flex items-center gap-1 text-amber-500">
+						<div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
 							<AlertCircle className="h-3 w-3" />
 							<span>{warningCount} warnings</span>
 						</div>
 					)}
 					{errorCount > 0 && (
-						<div className="flex items-center gap-1 text-red-600">
+						<div className="flex items-center gap-1 text-destructive">
 							<AlertCircle className="h-3 w-3" />
 							<span>{errorCount} failed</span>
 						</div>
@@ -278,7 +278,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 
 				{allCompleted && (
 					<div
-						className={`text-sm mt-1 ${allSucceeded ? "text-green-600" : "text-red-600"}`}
+						className={`text-sm mt-1 ${allSucceeded ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}
 					>
 						{allSucceeded
 							? "All database operations completed successfully. You can refresh the page to apply changes."
@@ -290,54 +290,61 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 	};
 
 	return (
-		<div className="container mx-auto p-4">
+		<div className="p-6">
 			{connectionUrl && (
-				<div className="flex items-center gap-3 mb-4">
+				<div className="flex flex-wrap items-center gap-3 mb-4">
 					<Button
 						type="button"
 						onClick={executeAll}
 						disabled={isPending || allStatementsSucceeded()}
-						className="bg-linear-to-r from-indigo-500 to-teal-400 text-white font-bold text-lg"
+						size="default"
 					>
 						{isPending ? (
-							<Loader2 className="h-3 w-3 animate-spin" />
+							<Loader2 className="h-4 w-4 animate-spin" />
 						) : (
-							<Play className="h-3 w-3" />
+							<Play className="h-4 w-4" />
 						)}
-						{isPending ? "Initializing..." : "Initialize my database for me"}
+						{isPending ? "Initializing…" : "Initialize database"}
 					</Button>
 
 					{allStatementsSucceeded() && (
 						<Button
 							type="button"
 							onClick={handleRefresh}
-							className="bg-green-600 hover:bg-green-700 text-white font-bold text-lg"
+							variant="outline"
+							className="border-emerald-600/40 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-600/10"
 						>
-							<RefreshCw className="h-3 w-3 mr-2" />
-							Refresh Page to Apply Changes
+							<RefreshCw className="h-4 w-4 mr-1" />
+							Refresh to apply
 						</Button>
 					)}
 				</div>
 			)}
-			<div className="font-mono text-sm relative border rounded">
-				<div className="flex items-center justify-between p-2 border-b bg-gray-50 dark:bg-gray-800">
-					<div className="flex items-center gap-2 px-2 py-1 rounded">
-						<Code className="h-4 w-4 text-gray-500" />
-						<span className="font-medium">
+			<div className="font-mono text-sm relative border rounded-md overflow-hidden bg-muted/30">
+				<div className="flex items-center justify-between p-2 border-b bg-muted/60">
+					<div className="flex items-center gap-2 px-2 py-1 rounded min-w-0 flex-1">
+						<Code className="h-4 w-4 text-muted-foreground shrink-0" />
+						<span className="font-medium min-w-0 flex-1">
 							{connectionUrl ? (
-								<Input className="w-2xl" value={connectionUrl} readOnly />
+								<Input
+									className="w-full max-w-2xl font-mono text-xs"
+									value={connectionUrl}
+									readOnly
+								/>
 							) : (
-								"Database Initialization SQL"
+								"Database initialization SQL"
 							)}
 						</span>
 						{getExecutionSummary()}
 					</div>
 
-					<div className="flex gap-2">
+					<div className="flex gap-2 shrink-0">
 						<Button
 							type="button"
+							variant="secondary"
+							size="sm"
 							onClick={() => copyToClipboard(allSql, "all")}
-							className={`bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 rounded px-2 py-1 text-xs flex items-center gap-1 min-h-[28px] min-w-[70px] justify-center shadow-sm ${copyAnimation === "all" ? "animate-pulse bg-green-100 dark:bg-green-800" : ""}`}
+							className={`h-7 px-2 text-xs ${copyAnimation === "all" ? "animate-pulse" : ""}`}
 							aria-label="Copy all SQL statements"
 						>
 							{copied === "all" ? (
@@ -345,14 +352,14 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 							) : (
 								<Copy className="h-3 w-3" />
 							)}
-							{copied === "all" ? "Copied" : "Copy All"}
+							{copied === "all" ? "Copied" : "Copy all"}
 						</Button>
 					</div>
 				</div>
 
 				{/* Copy error notification */}
 				{copyError && (
-					<div className="bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200 text-xs p-2 flex items-center justify-center">
+					<div className="bg-destructive/10 text-destructive text-xs p-2 flex items-center justify-center border-b border-destructive/20">
 						<AlertCircle className="h-3 w-3 mr-1" />
 						{copyError}
 					</div>
@@ -382,7 +389,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 												<button
 													type="button"
 													onClick={() => copyToClipboard(statementSql, key)}
-													className={`bg-gray-100 hover:bg-gray-200 text-gray-800 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200 rounded px-2 py-1 text-xs flex items-center gap-1 touch-action-manipulation min-h-[28px] min-w-[60px] justify-center shadow-sm ${copyAnimation === key ? "animate-pulse bg-green-100 dark:bg-green-800" : ""}`}
+													className={`bg-secondary hover:bg-secondary/80 text-secondary-foreground border rounded px-2 py-1 text-xs flex items-center gap-1 touch-action-manipulation min-h-[28px] min-w-[60px] justify-center shadow-sm ${copyAnimation === key ? "animate-pulse" : ""}`}
 													aria-label={`Copy ${item.title} SQL statement`}
 													tabIndex={0}
 													onKeyDown={(e) => {
@@ -414,7 +421,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 											</div>
 
 											{/* Description */}
-											<div className="text-gray-500">{`-- ${item.description}`}</div>
+											<div className="text-muted-foreground">{`-- ${item.description}`}</div>
 
 											{/* SQL code */}
 											<div className="my-2">{item.sql}</div>
@@ -437,14 +444,14 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 															{execution?.error ? (
 																status === "warning" ? (
 																	<div>
-																		<div className="text-amber-500">{`-- WARNING: ${execution.error}`}</div>
-																		<div className="text-amber-500">
+																		<div className="text-amber-600 dark:text-amber-400">{`-- WARNING: ${execution.error}`}</div>
+																		<div className="text-amber-600 dark:text-amber-400">
 																			-- (This warning was non-fatal and
 																			execution continued)
 																		</div>
 																	</div>
 																) : (
-																	<div className="text-red-600">{`-- ERROR: ${execution.error}`}</div>
+																	<div className="text-destructive">{`-- ERROR: ${execution.error}`}</div>
 																)
 															) : (
 																<div>
@@ -455,11 +462,11 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 																			.map((line, i) => (
 																				<div
 																					key={i}
-																					className="text-gray-700"
+																					className="text-foreground/70"
 																				>{`-- ${line}`}</div>
 																			))
 																	) : (
-																		<div className="text-gray-700">
+																		<div className="text-foreground/70">
 																			-- Empty result (query executed
 																			successfully but returned no data)
 																		</div>
@@ -481,7 +488,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 																		.map((line, i) => (
 																			<div
 																				key={i}
-																				className="text-gray-700 dark:text-gray-300"
+																				className="text-foreground/70"
 																			>{`-- ${line}`}</div>
 																		))}
 																</div>
@@ -491,7 +498,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 											)}
 
 											{index < Object.entries(SQL_STATEMENTS).length - 1 && (
-												<div className="border-b border-gray-200 dark:border-gray-700 my-4" />
+												<div className="border-b my-4" />
 											)}
 										</div>
 									);
@@ -505,12 +512,12 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 					className={`${!isExpanded ? "absolute inset-0 mt-0 mb-0" : "relative mt-2 mb-2"} flex justify-center transition-all duration-300 ease-in-out`}
 				>
 					{!isExpanded && (
-						<div className="w-full h-full bg-gradient-to-t from-white dark:from-gray-900 to-transparent pointer-events-none absolute" />
+						<div className="w-full h-full bg-gradient-to-t from-muted/40 to-transparent pointer-events-none absolute" />
 					)}
 					<button
 						type="button"
 						onClick={toggleExpand}
-						className={`${!isExpanded ? "absolute bottom-4 pointer-events-auto h-[1.5lh]" : ""} bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-600 dark:text-gray-200 rounded-full px-4 py-1 text-xs flex items-center gap-1 shadow-sm`}
+						className={`${!isExpanded ? "absolute bottom-4 pointer-events-auto h-[1.5lh]" : ""} bg-background hover:bg-accent text-foreground border rounded-full px-4 py-1 text-xs flex items-center gap-1 shadow-sm`}
 					>
 						<ChevronDown
 							className={`h-3 w-3 transform transition-transform ${isExpanded ? "rotate-180" : "rotate-0"}`}
