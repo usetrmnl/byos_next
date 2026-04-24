@@ -81,7 +81,7 @@ export function MixupList({
 						</AspectRatio>
 
 						<div className="p-4 flex flex-col flex-grow">
-							<h4 className="scroll-m-20 text-xl font-semibold tracking-tight group-hover:text-blue-600 transition-colors">
+							<h4 className="scroll-m-20 text-xl font-semibold tracking-tight group-hover:text-primary transition-colors">
 								{mixup.name}
 							</h4>
 							<p className="text-gray-600 text-sm mt-2 mb-4 flex-grow">

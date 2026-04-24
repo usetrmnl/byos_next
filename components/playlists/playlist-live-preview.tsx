@@ -2,6 +2,7 @@
 
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { DeviceFrame } from "@/components/common/device-frame";
 import { Button } from "@/components/ui/button";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -97,57 +98,48 @@ export function PlaylistLivePreview({
 	return (
 		<div className="flex flex-col gap-4">
 			<div className="relative mx-auto w-full max-w-[640px]">
-				<div className="relative rounded-[28px] bg-neutral-900 p-3 shadow-[0_20px_40px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/20 dark:ring-white/5">
-					<div className="relative overflow-hidden rounded-[16px] border border-black/40 bg-neutral-100">
-						<div
-							className="relative"
-							style={{
-								aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
-							}}
-						>
-							{isEmpty ? (
-								<div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500">
-									Add a frame to preview the playlist
-								</div>
-							) : (
-								<picture key={active.id}>
-									<source
-										srcSet={`/api/bitmap/${active.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-										type="image/bmp"
-									/>
-									<img
-										src={`/api/bitmap/${active.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-										alt={active.label}
-										width={DEFAULT_IMAGE_WIDTH}
-										height={DEFAULT_IMAGE_HEIGHT}
-										className="absolute inset-0 h-full w-full object-cover"
-										style={{ imageRendering: "pixelated" }}
-									/>
-								</picture>
-							)}
+				<DeviceFrame size="lg">
+					{isEmpty ? (
+						<div className="absolute inset-0 flex items-center justify-center text-sm text-neutral-500">
+							Add a frame to preview the playlist
 						</div>
-					</div>
-
-					<div className="mt-3 flex items-center gap-2 px-1">
-						<div
-							className={cn(
-								"h-2 w-2 rounded-full transition-colors",
-								isPlaying && !isEmpty ? "bg-emerald-400" : "bg-neutral-600",
-							)}
-							aria-hidden
-						/>
-						<div className="flex-1 overflow-hidden rounded-full bg-neutral-800">
-							<div
-								className="h-1.5 bg-neutral-100 transition-[width] duration-100 ease-linear"
-								style={{
-									width: `${Math.min(100, progress * 100)}%`,
-								}}
+					) : (
+						<picture key={active.id}>
+							<source
+								srcSet={`/api/bitmap/${active.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
+								type="image/bmp"
 							/>
-						</div>
-						<span className="text-xs tabular-nums text-neutral-400">
-							{Math.max(0, Math.ceil(duration * (1 - progress)))}s
-						</span>
+							<img
+								src={`/api/bitmap/${active.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
+								alt={active.label}
+								width={DEFAULT_IMAGE_WIDTH}
+								height={DEFAULT_IMAGE_HEIGHT}
+								className="absolute inset-0 h-full w-full object-cover"
+								style={{ imageRendering: "pixelated" }}
+							/>
+						</picture>
+					)}
+				</DeviceFrame>
+
+				<div className="mt-3 flex items-center gap-2 rounded-full bg-neutral-900 px-3 py-1.5 ring-1 ring-black/20 dark:ring-white/5">
+					<div
+						className={cn(
+							"h-2 w-2 rounded-full transition-colors",
+							isPlaying && !isEmpty ? "bg-primary" : "bg-neutral-600",
+						)}
+						aria-hidden
+					/>
+					<div className="flex-1 overflow-hidden rounded-full bg-neutral-800">
+						<div
+							className="h-1.5 bg-neutral-100 transition-[width] duration-100 ease-linear"
+							style={{
+								width: `${Math.min(100, progress * 100)}%`,
+							}}
+						/>
 					</div>
+					<span className="text-xs tabular-nums text-neutral-400">
+						{Math.max(0, Math.ceil(duration * (1 - progress)))}s
+					</span>
 				</div>
 			</div>
 
