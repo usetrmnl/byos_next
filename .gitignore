@@ -48,3 +48,6 @@ README-deploy.md
 
 # sync
 sync.sh
+
+# local git worktrees
+.worktrees/
