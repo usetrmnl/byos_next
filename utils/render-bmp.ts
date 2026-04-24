@@ -1,10 +1,5 @@
 import sharp from "sharp";
 import { applyDithering, DitheringMethod } from "./image-processing";
-import {
-	createGrayscalePaletteEntries,
-	mapGrayscaleValueToPaletteIndex,
-	shouldSetMonochromeBit,
-} from "./render-bmp-palette";
 
 export { DitheringMethod };
 
@@ -16,6 +11,28 @@ export interface RenderBmpOptions {
 	grayscale?: number; // Number of gray levels: 2 (black/white), 4, or 16
 	applyEdgeSnap?: boolean;
 }
+
+const createGrayscalePaletteEntries = (grayscale: number): number[] => {
+	const paletteStep = 255 / (grayscale - 1);
+
+	return Array.from({ length: grayscale }, (_, index) => {
+		const grayValue = Math.round(index * paletteStep);
+		return (grayValue << 16) | (grayValue << 8) | grayValue;
+	});
+};
+
+const mapGrayscaleValueToPaletteIndex = (
+	value: number,
+	grayscale: number,
+): number => {
+	const paletteStep = 255 / (grayscale - 1);
+	return Math.round(value / paletteStep);
+};
+
+const shouldSetMonochromeBit = (
+	paletteIndex: number,
+	grayscale: number,
+): boolean => paletteIndex === grayscale - 1;
 
 export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	const {

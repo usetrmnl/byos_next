@@ -1,11 +1,11 @@
 import React, { cache, createElement } from "react";
+import sharp from "sharp";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
 import screens from "@/app/(app)/recipes/screens.json";
 import { getScreenParams } from "@/app/actions/screens-params";
-import sharp from "sharp";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
-import { renderWithTakumi } from "./renderers/takumi";
 import { renderWithSatori } from "./renderers/satori";
+import { renderWithTakumi } from "./renderers/takumi";
 
 // Logging utility shared between recipe renderers
 export const logger = {
