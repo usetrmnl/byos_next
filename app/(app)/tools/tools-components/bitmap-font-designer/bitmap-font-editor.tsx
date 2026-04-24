@@ -853,7 +853,7 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Undo"
 					aria-label="Undo"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+					className="active:bg-accent active:scale-95"
 				>
 					<Undo className="w-4 h-4" />
 				</Button>
@@ -864,7 +864,7 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Redo"
 					aria-label="Redo"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+					className="active:bg-accent active:scale-95"
 				>
 					<Redo className="w-4 h-4" />
 				</Button>
@@ -874,7 +874,7 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Clear"
 					aria-label="Clear"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+					className="active:bg-accent active:scale-95"
 				>
 					<Trash className="w-4 h-4" />
 				</Button>
@@ -884,7 +884,7 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Flip Horizontal"
 					aria-label="Flip Horizontal"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+					className="active:bg-accent active:scale-95"
 				>
 					<FlipHorizontal className="w-4 h-4" />
 				</Button>
@@ -894,7 +894,7 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Flip Vertical"
 					aria-label="Flip Vertical"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+					className="active:bg-accent active:scale-95"
 				>
 					<FlipVertical className="w-4 h-4" />
 				</Button>
@@ -904,7 +904,7 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Rotate Clockwise"
 					aria-label="Rotate Clockwise"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+					className="active:bg-accent active:scale-95"
 				>
 					<RotateCw className="w-4 h-4" />
 				</Button>
@@ -914,7 +914,7 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Rotate Counter-clockwise"
 					aria-label="Rotate Counter-clockwise"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+					className="active:bg-accent active:scale-95"
 				>
 					<RotateCcw className="w-4 h-4" />
 				</Button>
@@ -927,7 +927,7 @@ export default function BitmapFontEditor({
 						size="icon"
 						title="Shift Up"
 						aria-label="Shift Up"
-						className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 rounded-r-none border-r-0"
+						className="active:bg-accent active:scale-95 rounded-r-none border-r-0"
 					>
 						<ArrowUp className="w-4 h-4" />
 					</Button>
@@ -937,7 +937,7 @@ export default function BitmapFontEditor({
 						size="icon"
 						title="Shift Down"
 						aria-label="Shift Down"
-						className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 rounded-none border-r-0"
+						className="active:bg-accent active:scale-95 rounded-none border-r-0"
 					>
 						<ArrowDown className="w-4 h-4" />
 					</Button>
@@ -947,7 +947,7 @@ export default function BitmapFontEditor({
 						size="icon"
 						title="Shift Left"
 						aria-label="Shift Left"
-						className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 rounded-none border-r-0"
+						className="active:bg-accent active:scale-95 rounded-none border-r-0"
 					>
 						<ArrowLeft className="w-4 h-4" />
 					</Button>
@@ -957,7 +957,7 @@ export default function BitmapFontEditor({
 						size="icon"
 						title="Shift Right"
 						aria-label="Shift Right"
-						className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 rounded-l-none"
+						className="active:bg-accent active:scale-95 rounded-l-none"
 					>
 						<ArrowRight className="w-4 h-4" />
 					</Button>
@@ -969,10 +969,10 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Copy"
 					aria-label="Copy"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700 relative"
+					className="active:bg-accent active:scale-95 relative"
 				>
 					{showCopySuccess ? (
-						<Check className="w-4 h-4 text-green-500" />
+						<Check className="w-4 h-4 text-primary" />
 					) : (
 						<ClipboardCopy className="w-4 h-4" />
 					)}
@@ -984,7 +984,7 @@ export default function BitmapFontEditor({
 					size="icon"
 					title="Paste"
 					aria-label="Paste"
-					className="active:bg-gray-200 active:scale-95 dark:active:bg-gray-700"
+					className="active:bg-accent active:scale-95"
 				>
 					<Paste className="w-4 h-4" />
 				</Button>
@@ -1002,7 +1002,7 @@ export default function BitmapFontEditor({
 					/>
 				</div>
 				<div className="flex flex-col items-center w-[100px]">
-					<div className="flex items-center justify-center p-2 bg-white dark:bg-gray-700 border mb-2 size-[100px]">
+					<div className="flex items-center justify-center p-2 bg-card border mb-2 size-[100px]">
 						<canvas
 							ref={previewRef}
 							className="dark:invert border-[0.25px] border-neutral-300"
@@ -1013,7 +1013,7 @@ export default function BitmapFontEditor({
 							}}
 						/>
 					</div>
-					<div className="text-lg font-mono p-2 rounded-md bg-white dark:bg-gray-700 border w-full">
+					<div className="text-lg font-mono p-2 rounded-md bg-card border w-full">
 						{String.fromCharCode(selectedCharCode)} {selectedCharCode}
 					</div>
 
@@ -1023,7 +1023,7 @@ export default function BitmapFontEditor({
 							className="flex items-center justify-between"
 						>
 							<span>X-Height</span>
-							<span className="text-xs text-gray-500">{xHeight}</span>
+							<span className="text-xs text-muted-foreground">{xHeight}</span>
 						</Label>
 						<Slider
 							id="x-height"
@@ -1042,7 +1042,7 @@ export default function BitmapFontEditor({
 							className="flex items-center justify-between"
 						>
 							<span>Baseline</span>
-							<span className="text-xs text-gray-500">{baseline}</span>
+							<span className="text-xs text-muted-foreground">{baseline}</span>
 						</Label>
 						<Slider
 							id="baseline"
