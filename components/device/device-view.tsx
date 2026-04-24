@@ -155,169 +155,22 @@ export default function DeviceView({
 		? estimateBatteryLife(device.battery_voltage, refreshPerDay)
 		: null;
 
+	const isPlaylist =
+		device.display_mode === DeviceDisplayMode.PLAYLIST &&
+		device.playlist_id &&
+		playlistScreens.length > 0;
+	const isMixup =
+		device.display_mode === DeviceDisplayMode.MIXUP && device.mixup_id;
+	const heroSrc = isPlaylist
+		? `/api/bitmap/${playlistScreens[0].screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`
+		: isMixup
+			? `/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`
+			: `/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
+
 	return (
-		<div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-			{/* Identity + health */}
+		<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
+			{/* Hero preview — left column, matches dashboard "Latest Screen" */}
 			<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
-				<PanelHeader
-					label="Identity"
-					right={
-						<span
-							className="text-[11px] text-muted-foreground tabular-nums"
-							suppressHydrationWarning
-						>
-							{device.last_update_time
-								? `Last seen ${formatDate(device.last_update_time)}`
-								: "—"}
-						</span>
-					}
-				/>
-				<div className="grid gap-3 p-4 sm:grid-cols-2">
-					<MetaPair label="Status">
-						<span className="inline-flex items-center gap-1.5 capitalize">
-							<StatusIndicator status={status} size="sm" />
-							{device.status}
-						</span>
-					</MetaPair>
-					<MetaPair label="Friendly ID" mono>
-						{device.friendly_id}
-					</MetaPair>
-					<MetaPair label="MAC" mono>
-						{device.mac_address}
-					</MetaPair>
-					<MetaPair label="Timezone">
-						{formatTimezone(device.timezone)}
-					</MetaPair>
-				</div>
-				<div className="border-t bg-muted/20 px-4 py-3">
-					<div className="flex flex-wrap items-center gap-2 text-sm">
-						<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-							Firmware
-						</span>
-						<span className="font-mono">
-							{device.firmware_version || "Unknown"}
-						</span>
-						{firmwareInfo?.isUpdateAvailable && (
-							<>
-								<Badge
-									variant="outline"
-									className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-								>
-									Update available · v{firmwareInfo.version}
-								</Badge>
-								<Link
-									href="https://usetrmnl.com/flash"
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									<Button
-										variant="link"
-										size="sm"
-										className="h-auto gap-1 p-0 text-xs"
-									>
-										Flash
-										<ExternalLink className="h-3 w-3" />
-									</Button>
-								</Link>
-							</>
-						)}
-					</div>
-				</div>
-			</section>
-
-			{/* Health: WiFi + battery */}
-			<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
-				<PanelHeader label="Health" />
-				<div className="space-y-3 p-4">
-					<div className="flex items-center justify-between text-sm">
-						<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-							WiFi
-						</span>
-						<span className="tabular-nums">
-							{device.rssi
-								? `${device.rssi} dBm · ${getSignalQuality(device.rssi)}`
-								: "Unknown"}
-						</span>
-					</div>
-					{batteryEstimate && (
-						<div className="space-y-2">
-							<div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-								Battery
-							</div>
-							<div className="flex flex-wrap items-center gap-3 text-sm">
-								<div className="flex items-center">
-									<Progress
-										value={batteryEstimate.batteryPercentage}
-										className={cn(
-											"h-5 w-12 rounded-sm border border-primary",
-											batteryEstimate.batteryPercentage < 20 &&
-												"[&>[data-slot=progress-indicator]]:bg-destructive",
-											batteryEstimate.batteryPercentage >= 20 &&
-												batteryEstimate.batteryPercentage < 50 &&
-												"[&>[data-slot=progress-indicator]]:bg-amber-500",
-										)}
-									/>
-									<div className="ml-[1px] h-2 w-0.5 rounded-r-sm bg-primary" />
-								</div>
-								<span className="font-medium tabular-nums">
-									{batteryEstimate.isCharging
-										? "Charging"
-										: `${batteryEstimate.batteryPercentage}%`}
-								</span>
-								<span className="text-muted-foreground tabular-nums">
-									{device.battery_voltage}V
-								</span>
-								<span className="text-xs text-muted-foreground">
-									{batteryEstimate.isCharging
-										? "Estimating while charging"
-										: `~${batteryEstimate.remainingDays} days at ${refreshPerDay} refreshes/day`}
-								</span>
-							</div>
-						</div>
-					)}
-				</div>
-			</section>
-
-			{/* Display + refresh */}
-			<section className="flex flex-col overflow-hidden rounded-2xl border bg-card lg:col-span-2">
-				<PanelHeader
-					label="Display"
-					right={
-						<span
-							className="text-[11px] text-muted-foreground tabular-nums"
-							suppressHydrationWarning
-						>
-							Next update:{" "}
-							{device.next_expected_update
-								? formatDate(device.next_expected_update)
-								: "Unknown"}
-						</span>
-					}
-				/>
-				<div className="grid gap-3 p-4 sm:grid-cols-3">
-					<MetaPair label="Mode">
-						<span className="capitalize">{device.display_mode}</span>
-					</MetaPair>
-					<MetaPair label="Last refresh">
-						{device.last_refresh_duration
-							? `${device.last_refresh_duration}s`
-							: "Unknown"}
-					</MetaPair>
-					<MetaPair label="Default refresh">
-						{device?.refresh_schedule?.default_refresh_rate || 300}s
-					</MetaPair>
-				</div>
-				<p className="border-t bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
-					{device.display_mode === DeviceDisplayMode.PLAYLIST
-						? "Rotating screens from the selected playlist."
-						: device.display_mode === DeviceDisplayMode.MIXUP
-							? "Split-screen layout combining multiple recipes."
-							: "Single screen rendering the selected component."}
-				</p>
-			</section>
-
-			{/* Preview */}
-			<section className="overflow-hidden rounded-2xl border bg-card lg:col-span-2">
 				<PanelHeader
 					label="Preview"
 					right={
@@ -330,65 +183,228 @@ export default function DeviceView({
 						</span>
 					}
 				/>
-				<div className="bg-[radial-gradient(circle_at_50%_0%,theme(colors.muted/40),transparent_70%)] p-6">
-					{device.display_mode === DeviceDisplayMode.PLAYLIST &&
-					device.playlist_id &&
-					playlistScreens.length > 0 ? (
-						<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
-							{playlistScreens.map((screen) => (
-								<div key={screen.screen} className="space-y-1">
-									<DeviceFrame size="md" portrait={isPortrait}>
+				<div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_50%_0%,theme(colors.muted/40),transparent_70%)] p-6">
+					<div
+						className={cn(
+							"w-full",
+							isPortrait ? "max-w-[260px]" : "max-w-[520px]",
+						)}
+					>
+						<DeviceFrame size="lg" portrait={isPortrait}>
+							<Image
+								src={heroSrc}
+								alt="Device screen"
+								fill
+								className="absolute inset-0 h-full w-full object-cover"
+								style={{ imageRendering: "pixelated" }}
+								unoptimized
+							/>
+						</DeviceFrame>
+					</div>
+				</div>
+				{isPlaylist && (
+					<div className="border-t bg-muted/20 px-4 py-3">
+						<div className="mb-2 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+							<span>Rotation</span>
+							<span className="tabular-nums">
+								{playlistScreens.length}{" "}
+								{playlistScreens.length === 1 ? "screen" : "screens"}
+							</span>
+						</div>
+						<div className="flex items-stretch gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]">
+							{playlistScreens.map((screen, i) => (
+								<div
+									key={`${screen.screen}-${i}`}
+									className="w-[110px] shrink-0 space-y-1"
+								>
+									<DeviceFrame size="sm" portrait={isPortrait} flat>
 										<Image
 											src={`/api/bitmap/${screen.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
-											alt="Playlist screen"
+											alt={`Frame ${i + 1}`}
 											fill
 											className="absolute inset-0 h-full w-full object-cover"
 											style={{ imageRendering: "pixelated" }}
 											unoptimized
 										/>
 									</DeviceFrame>
-									<div className="flex items-center justify-between text-[11px] text-muted-foreground">
-										<span className="truncate font-medium text-foreground">
-											{screen.screen}
-										</span>
+									<div className="flex items-center justify-between text-[10px] text-muted-foreground">
+										<span className="tabular-nums">#{i + 1}</span>
 										<span className="tabular-nums">{screen.duration}s</span>
 									</div>
 								</div>
 							))}
 						</div>
-					) : (
-						<div
-							className={cn(
-								"mx-auto w-full",
-								isPortrait ? "max-w-[260px]" : "max-w-[520px]",
-							)}
-						>
-							<DeviceFrame size="lg" portrait={isPortrait}>
-								{device.display_mode === DeviceDisplayMode.MIXUP &&
-								device.mixup_id ? (
-									<Image
-										src={`/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`}
-										alt="Mixup preview"
-										fill
-										className="absolute inset-0 h-full w-full object-cover"
-										style={{ imageRendering: "pixelated" }}
-										unoptimized
-									/>
-								) : (
-									<Image
-										src={`/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`}
-										alt="Device screen"
-										fill
-										className="absolute inset-0 h-full w-full object-cover"
-										style={{ imageRendering: "pixelated" }}
-										unoptimized
-									/>
-								)}
-							</DeviceFrame>
-						</div>
-					)}
-				</div>
+					</div>
+				)}
+				<footer className="flex items-center gap-2 border-t bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
+					<span>
+						Passive device — this preview may be newer than what&apos;s
+						currently on the screen.
+					</span>
+				</footer>
 			</section>
+
+			{/* Right column: stacked detail panels */}
+			<div className="flex flex-col gap-4">
+				{/* Identity */}
+				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
+					<PanelHeader
+						label="Identity"
+						right={
+							<span
+								className="text-[11px] text-muted-foreground tabular-nums"
+								suppressHydrationWarning
+							>
+								{device.last_update_time
+									? `Last seen ${formatDate(device.last_update_time)}`
+									: "—"}
+							</span>
+						}
+					/>
+					<div className="grid gap-3 p-4 sm:grid-cols-2">
+						<MetaPair label="Status">
+							<span className="inline-flex items-center gap-1.5 capitalize">
+								<StatusIndicator status={status} size="sm" />
+								{device.status}
+							</span>
+						</MetaPair>
+						<MetaPair label="Friendly ID" mono>
+							{device.friendly_id}
+						</MetaPair>
+						<MetaPair label="MAC" mono>
+							{device.mac_address}
+						</MetaPair>
+						<MetaPair label="Timezone">
+							{formatTimezone(device.timezone)}
+						</MetaPair>
+					</div>
+					<div className="border-t bg-muted/20 px-4 py-3">
+						<div className="flex flex-wrap items-center gap-2 text-sm">
+							<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+								Firmware
+							</span>
+							<span className="font-mono">
+								{device.firmware_version || "Unknown"}
+							</span>
+							{firmwareInfo?.isUpdateAvailable && (
+								<>
+									<Badge
+										variant="outline"
+										className="border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+									>
+										Update available · v{firmwareInfo.version}
+									</Badge>
+									<Link
+										href="https://usetrmnl.com/flash"
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										<Button
+											variant="link"
+											size="sm"
+											className="h-auto gap-1 p-0 text-xs"
+										>
+											Flash
+											<ExternalLink className="h-3 w-3" />
+										</Button>
+									</Link>
+								</>
+							)}
+						</div>
+					</div>
+				</section>
+
+				{/* Health: WiFi + battery */}
+				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
+					<PanelHeader label="Health" />
+					<div className="space-y-3 p-4">
+						<div className="flex items-center justify-between text-sm">
+							<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+								WiFi
+							</span>
+							<span className="tabular-nums">
+								{device.rssi
+									? `${device.rssi} dBm · ${getSignalQuality(device.rssi)}`
+									: "Unknown"}
+							</span>
+						</div>
+						{batteryEstimate && (
+							<div className="space-y-2">
+								<div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Battery
+								</div>
+								<div className="flex flex-wrap items-center gap-3 text-sm">
+									<div className="flex items-center">
+										<Progress
+											value={batteryEstimate.batteryPercentage}
+											className={cn(
+												"h-5 w-12 rounded-sm border border-primary",
+												batteryEstimate.batteryPercentage < 20 &&
+													"[&>[data-slot=progress-indicator]]:bg-destructive",
+												batteryEstimate.batteryPercentage >= 20 &&
+													batteryEstimate.batteryPercentage < 50 &&
+													"[&>[data-slot=progress-indicator]]:bg-amber-500",
+											)}
+										/>
+										<div className="ml-[1px] h-2 w-0.5 rounded-r-sm bg-primary" />
+									</div>
+									<span className="font-medium tabular-nums">
+										{batteryEstimate.isCharging
+											? "Charging"
+											: `${batteryEstimate.batteryPercentage}%`}
+									</span>
+									<span className="text-muted-foreground tabular-nums">
+										{device.battery_voltage}V
+									</span>
+									<span className="text-xs text-muted-foreground">
+										{batteryEstimate.isCharging
+											? "Estimating while charging"
+											: `~${batteryEstimate.remainingDays} days at ${refreshPerDay} refreshes/day`}
+									</span>
+								</div>
+							</div>
+						)}
+					</div>
+				</section>
+
+				{/* Display + refresh */}
+				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
+					<PanelHeader
+						label="Display"
+						right={
+							<span
+								className="text-[11px] text-muted-foreground tabular-nums"
+								suppressHydrationWarning
+							>
+								Next:{" "}
+								{device.next_expected_update
+									? formatDate(device.next_expected_update)
+									: "—"}
+							</span>
+						}
+					/>
+					<div className="grid gap-3 p-4 sm:grid-cols-3">
+						<MetaPair label="Mode">
+							<span className="capitalize">{device.display_mode}</span>
+						</MetaPair>
+						<MetaPair label="Last refresh">
+							{device.last_refresh_duration
+								? `${device.last_refresh_duration}s`
+								: "Unknown"}
+						</MetaPair>
+						<MetaPair label="Default refresh">
+							{device?.refresh_schedule?.default_refresh_rate || 300}s
+						</MetaPair>
+					</div>
+					<p className="border-t bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
+						{device.display_mode === DeviceDisplayMode.PLAYLIST
+							? "Rotating screens from the selected playlist."
+							: device.display_mode === DeviceDisplayMode.MIXUP
+								? "Split-screen layout combining multiple recipes."
+								: "Single screen rendering the selected component."}
+					</p>
+				</section>
+			</div>
 		</div>
 	);
 }
