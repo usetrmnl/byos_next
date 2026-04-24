@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import tools from "@/app/(app)/tools/tools.json";
-import { Badge } from "@/components/ui/badge";
 import { PageTemplate } from "@/components/common/page-template";
+import { Badge } from "@/components/ui/badge";
 
 // Tool configuration type
 type ToolConfig = {

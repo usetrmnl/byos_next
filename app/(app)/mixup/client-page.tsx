@@ -9,13 +9,13 @@ import {
 	fetchMixupWithSlots,
 	saveMixupWithSlots,
 } from "@/app/actions/mixup";
+import { PageTemplate } from "@/components/common/page-template";
 import {
 	MixupBuilder,
 	type MixupBuilderData,
 } from "@/components/mixup/mixup-builder";
 import { MixupList } from "@/components/mixup/mixup-list";
 import { Button } from "@/components/ui/button";
-import { PageTemplate } from "@/components/common/page-template";
 import { slotsToAssignments } from "@/lib/mixup/constants";
 import type { Mixup } from "@/lib/types";
 

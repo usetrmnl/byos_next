@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { fetchRecipes } from "@/app/actions/mixup";
+import { PageTemplate } from "@/components/common/page-template";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,7 +12,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { PageTemplate } from "@/components/common/page-template";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {

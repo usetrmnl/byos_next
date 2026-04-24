@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { addUserDevice } from "@/app/actions/device";
 import type { ComponentConfig } from "@/components/client-sidebar";
+import { StatusIndicator } from "@/components/common/status-indicator";
 import { NavUser } from "@/components/nav-user";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,7 +54,6 @@ import {
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { StatusIndicator } from "@/components/common/status-indicator";
 import type { Device, RecipeSidebarItem } from "@/lib/types";
 import packageJson from "@/package.json";
 import { getDeviceStatus } from "@/utils/helpers";

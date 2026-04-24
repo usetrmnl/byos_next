@@ -18,6 +18,7 @@ import {
 	fetchAllUsersForAdmin,
 	unassignDevice,
 } from "@/app/actions/admin-devices";
+import { PageTemplate } from "@/components/common/page-template";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +43,6 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { PageTemplate } from "@/components/common/page-template";
 import {
 	Select,
 	SelectContent,

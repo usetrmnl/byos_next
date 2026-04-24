@@ -4,6 +4,7 @@ import { AspectRatio } from "@radix-ui/react-aspect-ratio";
 import { ArrowRightIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import {
 	Card,
@@ -13,7 +14,6 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusIndicator } from "@/components/common/status-indicator";
 import {
 	Table,
 	TableBody,

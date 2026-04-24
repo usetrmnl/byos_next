@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { memo, Suspense, useCallback, useEffect, useState } from "react";
+import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,6 @@ import {
 } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusIndicator } from "@/components/common/status-indicator";
 import type { Device, RecipeSidebarItem } from "@/lib/types";
 import packageJson from "@/package.json";
 import { getDeviceStatus } from "@/utils/helpers";
