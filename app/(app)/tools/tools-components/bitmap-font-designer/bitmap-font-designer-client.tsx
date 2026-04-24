@@ -557,9 +557,11 @@ const SentencePreview = memo(
 		]);
 
 		return (
-			<div className="w-full border border-border p-3 rounded-md">
-				<div className="flex justify-between items-center mb-3">
-					<h3 className="text-sm font-medium">Preview</h3>
+			<div className="w-full overflow-hidden rounded-2xl border bg-card">
+				<div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
+					<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+						Preview
+					</h3>
 					<TooltipProvider>
 						<Tooltip>
 							<TooltipTrigger asChild>
@@ -567,7 +569,7 @@ const SentencePreview = memo(
 									type="button"
 									className="inline-flex items-center text-muted-foreground hover:text-foreground"
 								>
-									<Info className="w-4 h-4" />
+									<Info className="h-3.5 w-3.5" />
 								</button>
 							</TooltipTrigger>
 							<TooltipContent>
@@ -581,83 +583,82 @@ const SentencePreview = memo(
 					</TooltipProvider>
 				</div>
 
-				{/* Input field with debounce */}
-				<div className="mb-3">
+				<div className="space-y-3 p-4">
 					<Input
 						type="text"
 						value={inputValue}
 						onChange={handleInputChange}
-						placeholder="Type a custom preview sentence..."
+						placeholder="Type a custom preview sentence…"
 						className="w-full"
 						aria-label="Preview sentence"
 					/>
-				</div>
 
-				{/* Slider controls */}
-				<div className="flex gap-4 items-center justify-end mb-3 text-sm">
-					<div className="flex items-center gap-2">
-						<label
-							htmlFor="preview-scale"
-							className="text-xs whitespace-nowrap"
-						>
-							Scale:
-						</label>
-						<input
-							id="preview-scale"
-							type="range"
-							min="1"
-							max="3"
-							step="0.25"
-							value={previewScale}
-							onChange={handleScaleChange}
-							className="w-24"
-						/>
-						<span className="text-xs">{previewScale.toFixed(2)}x</span>
-					</div>
-					<div className="flex items-center gap-2">
-						<label htmlFor="preview-gap" className="text-xs whitespace-nowrap">
-							Gap:
-						</label>
-						<input
-							id="preview-gap"
-							type="range"
-							min="0"
-							max="5"
-							step="1"
-							value={previewGap}
-							onChange={handleGapChange}
-							className="w-24"
-						/>
-						<span className="text-xs">{previewGap}px</span>
-					</div>
-				</div>
-
-				<div className="overflow-x-auto pb-2 border-b border-gray-100 dark:border-gray-800">
-					<svg
-						width={svgData.width}
-						height={svgData.height}
-						viewBox={`0 0 ${svgData.width} ${svgData.height}`}
-						className="dark:invert"
-						role="img"
-						aria-label="Font preview"
-					>
-						{svgData.paths.map((item, index) => (
-							<g
-								key={index}
-								transform={`translate(${item.x}, 0) scale(${previewScale})`}
+					<div className="flex flex-wrap items-center justify-end gap-4 text-sm">
+						<div className="flex items-center gap-2">
+							<label
+								htmlFor="preview-scale"
+								className="text-xs whitespace-nowrap"
 							>
-								<path d={item.path} fill={"black"} />
-							</g>
-						))}
-					</svg>
+								Scale:
+							</label>
+							<input
+								id="preview-scale"
+								type="range"
+								min="1"
+								max="3"
+								step="0.25"
+								value={previewScale}
+								onChange={handleScaleChange}
+								className="w-24 accent-primary"
+							/>
+							<span className="text-xs">{previewScale.toFixed(2)}x</span>
+						</div>
+						<div className="flex items-center gap-2">
+							<label
+								htmlFor="preview-gap"
+								className="text-xs whitespace-nowrap"
+							>
+								Gap:
+							</label>
+							<input
+								id="preview-gap"
+								type="range"
+								min="0"
+								max="5"
+								step="1"
+								value={previewGap}
+								onChange={handleGapChange}
+								className="w-24 accent-primary"
+							/>
+							<span className="text-xs">{previewGap}px</span>
+						</div>
+					</div>
+
+					<div className="overflow-x-auto rounded-md border bg-muted/20 p-3">
+						<svg
+							width={svgData.width}
+							height={svgData.height}
+							viewBox={`0 0 ${svgData.width} ${svgData.height}`}
+							className="dark:invert"
+							role="img"
+							aria-label="Font preview"
+						>
+							{svgData.paths.map((item, index) => (
+								<g
+									key={index}
+									transform={`translate(${item.x}, 0) scale(${previewScale})`}
+								>
+									<path d={item.path} fill={"black"} />
+								</g>
+							))}
+						</svg>
+					</div>
 				</div>
-				<div className="flex justify-between items-center mt-2">
-					<div className="text-xs text-muted-foreground">
-						Font size: {selectedGridSize}
-					</div>
-					<div className="text-xs text-muted-foreground">
-						{previewText.length} characters ({uniqueChars} unique)
-					</div>
+				<div className="flex items-center justify-between gap-2 border-t bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
+					<span>Font size: {selectedGridSize}</span>
+					<span className="tabular-nums">
+						{previewText.length} characters · {uniqueChars} unique
+					</span>
 				</div>
 			</div>
 		);
