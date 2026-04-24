@@ -3,9 +3,12 @@ import { fetchResources } from "@takumi-rs/helpers";
 import { fromJsx } from "@takumi-rs/helpers/jsx";
 import { ImageResponse } from "next/og";
 import React, { cache, createElement } from "react";
+import sharp from "sharp";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
-import screens from "@/app/(app)/recipes/screens.json";
 import { getScreenParams } from "@/app/actions/screens-params";
+import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
+import { checkDbConnection } from "@/lib/database/utils";
 import { getTakumiFonts } from "@/lib/fonts";
 import { renderHtmlToImage } from "@/lib/recipes/html-screenshot";
 import {
@@ -63,12 +66,21 @@ export type RecipeParamDefinition = {
 
 export type RecipeParamDefinitions = Record<string, RecipeParamDefinition>;
 
-export type RecipeConfig = (typeof screens)[keyof typeof screens] & {
+export type RecipeConfig = {
+	title: string;
+	published?: boolean;
+	description?: string;
+	componentPath?: string;
+	hasDataFetch?: boolean;
+	props?: Record<string, unknown>;
+	params?: RecipeParamDefinitions;
+	tags?: string[];
 	renderSettings?: {
 		doubleSizeForSharperText?: boolean;
+		applyEdgeSnap?: boolean;
 		[key: string]: boolean | string | number | undefined;
 	};
-	params?: RecipeParamDefinitions;
+	[key: string]: unknown;
 };
 
 // Re-export constants from shared file
@@ -90,9 +102,11 @@ export const addDimensionsToProps = (
 });
 
 // Get renderer type from environment variable (defaults to "takumi")
-export const getRendererType = (): "takumi" | "satori" => {
+export const getRendererType = (): "takumi" | "satori" | "browser" => {
 	const renderer = process.env.REACT_RENDERER?.toLowerCase();
-	return renderer === "satori" ? "satori" : "takumi";
+	if (renderer === "satori") return "satori";
+	if (renderer === "browser") return "browser";
+	return "takumi";
 };
 
 // Cache the fonts at module initialization
@@ -154,13 +168,37 @@ async function renderWithSatori(
 	return Buffer.from(pngBuffer);
 }
 
-export const fetchRecipeConfig = cache((slug: string): RecipeConfig | null => {
-	const config = screens[slug as keyof typeof screens];
-	if (!config || (!config.published && process.env.NODE_ENV === "production")) {
-		return null;
-	}
-	return config as RecipeConfig;
-});
+export const fetchRecipeConfig = cache(
+	async (slug: string, userId?: string): Promise<RecipeConfig | null> => {
+		const { ready } = await checkDbConnection();
+		if (!ready) return null;
+
+		const runQuery = (conn: typeof db) =>
+			conn
+				.selectFrom("recipes")
+				.select(["metadata"])
+				.where("slug", "=", slug)
+				.where("type", "=", "react")
+				.executeTakeFirst();
+
+		const row = userId
+			? await withExplicitUserScope(userId, runQuery)
+			: await runQuery(db);
+
+		if (!row?.metadata) return null;
+
+		const config =
+			typeof row.metadata === "string"
+				? (JSON.parse(row.metadata) as RecipeConfig)
+				: (row.metadata as unknown as RecipeConfig);
+
+		if (!config.published && process.env.NODE_ENV === "production") {
+			return null;
+		}
+
+		return config;
+	},
+);
 
 export const fetchRecipeComponent = cache(async (slug: string) => {
 	try {
@@ -183,9 +221,10 @@ export const fetchRecipeProps = cache(
 		slug: string,
 		config: RecipeConfig,
 		options?: FetchPropsOptions,
+		userId?: string,
 	): Promise<ComponentProps> => {
 		const params = config.params
-			? await getScreenParams(slug, config.params)
+			? await getScreenParams(slug, config.params, userId)
 			: {};
 
 		let props: ComponentProps = {
@@ -269,6 +308,7 @@ type RenderOptions = {
 	formats?: RenderFormats;
 	grayscale?: number; // Number of gray levels: 2, 4, or 16
 	html?: string; // When set, uses Puppeteer screenshot instead of Takumi/Satori
+	cookies?: string; // Cookie header to forward to browser renderer
 };
 
 type RenderResults = {
@@ -292,13 +332,19 @@ export const renderRecipeOutputs = cache(
 		formats = ["bitmap", "png"],
 		grayscale,
 		html,
+		cookies,
 	}: RenderOptions): Promise<RenderResults> => {
 		const results = getDefaultRenderResults();
+		const needsPng = formats.includes("png");
+		const needsBitmap = formats.includes("bitmap");
+
+		if (!needsPng && !needsBitmap) return results;
+
 		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
 		const rendererType = getRendererType();
 
-		// Generate the PNG once and reuse for both output formats
-		let pngBuffer: Buffer | null = null;
+		// Render PNG once and reuse it for png/bitmap outputs.
+		let pngBuffer: Buffer;
 		try {
 			if (html) {
 				pngBuffer = await renderHtmlToImage(
@@ -307,42 +353,70 @@ export const renderRecipeOutputs = cache(
 					imageOptions.height,
 				);
 			} else if (Component && props) {
-				const element = createElement(Component, props);
-				pngBuffer =
-					rendererType === "satori"
-						? await renderWithSatori(
-							element,
-							imageOptions.width,
-							imageOptions.height,
-						)
-						: await renderWithTakumi(
-							element,
-							imageOptions.width,
-							imageOptions.height,
+				if (rendererType === "browser") {
+					const { renderWithBrowser } = await import(
+						"./renderers/browser"
+					).catch(() => {
+						throw new Error(
+							"Browser renderer requires one of: " +
+								"(1) puppeteer-core + BROWSER_URL or BROWSER_WS_ENDPOINT for a remote Chrome container, " +
+								"(2) puppeteer-core + CHROME_EXECUTABLE_PATH for a local Chrome install, " +
+								"(3) puppeteer for bundled Chrome (pnpm add puppeteer).",
 						);
+					});
+					const scaleFactor = imageOptions.width / imageWidth;
+					pngBuffer = await renderWithBrowser(
+						slug,
+						imageWidth,
+						imageHeight,
+						scaleFactor,
+						cookies,
+					);
+				} else {
+					const element = createElement(Component, props);
+					pngBuffer =
+						rendererType === "satori"
+							? await renderWithSatori(
+									element,
+									imageOptions.width,
+									imageOptions.height,
+								)
+							: await renderWithTakumi(
+									element,
+									imageOptions.width,
+									imageOptions.height,
+								);
+				}
 			} else {
 				logger.error(`No Component or html provided for ${slug}`);
+				return results;
 			}
 		} catch (error) {
 			logger.error(`Error generating PNG for ${slug}:`, error);
+			return results;
 		}
 
-		if (pngBuffer) {
-			if (formats.includes("png")) {
-				results.png = pngBuffer;
-			}
+		if (needsPng) {
+			results.png =
+				imageOptions.width !== imageWidth
+					? await sharp(pngBuffer)
+							.resize(imageWidth, imageHeight)
+							.png()
+							.toBuffer()
+					: pngBuffer;
+		}
 
-			if (formats.includes("bitmap")) {
-				try {
-					results.bitmap = await renderBmp(pngBuffer, {
-						ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
-						width: imageWidth,
-						height: imageHeight,
-						...(grayscale !== undefined && { grayscale }),
-					});
-				} catch (error) {
-					logger.error(`Error generating bitmap for ${slug}:`, error);
-				}
+		if (needsBitmap) {
+			try {
+				results.bitmap = await renderBmp(pngBuffer, {
+					ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
+					width: imageWidth,
+					height: imageHeight,
+					applyEdgeSnap: config?.renderSettings?.applyEdgeSnap ?? true,
+					...(grayscale !== undefined && { grayscale }),
+				});
+			} catch (error) {
+				logger.error(`Error generating bitmap for ${slug}:`, error);
 			}
 		}
 
@@ -402,22 +476,27 @@ export const buildRecipeElement = async ({
 	userId?: string | null;
 	validateProps?: (slug: string, props: ComponentProps) => boolean;
 }): Promise<BuildRecipeResult> => {
-	// First try React recipe from screens.json
-	const config = fetchRecipeConfig(slug);
+	// First try React recipe from the DB metadata cache.
+	const config = await fetchRecipeConfig(slug, userId ?? undefined);
 	const Component = config ? await fetchRecipeComponent(slug) : null;
 
 	if (config && Component) {
-		const props = await fetchRecipeProps(slug, config, {
-			validateFetchedData: validateProps
-				? (slug: string, data: unknown) => {
-					return (
-						typeof data === "object" &&
-						data !== null &&
-						validateProps(slug, data as ComponentProps)
-					);
-				}
-				: undefined,
-		});
+		const props = await fetchRecipeProps(
+			slug,
+			config,
+			{
+				validateFetchedData: validateProps
+					? (recipeSlug: string, data: unknown) => {
+							return (
+								typeof data === "object" &&
+								data !== null &&
+								validateProps(recipeSlug, data as ComponentProps)
+							);
+						}
+					: undefined,
+			},
+			userId ?? undefined,
+		);
 
 		if (validateProps && !validateProps(slug, props)) {
 			return {
@@ -462,6 +541,7 @@ export async function renderRecipeToImage({
 	formats = ["bitmap", "png"],
 	grayscale,
 	userId,
+	cookies,
 }: {
 	slug: string;
 	imageWidth: number;
@@ -469,6 +549,7 @@ export async function renderRecipeToImage({
 	formats?: RenderFormats;
 	grayscale?: number;
 	userId?: string | null;
+	cookies?: string;
 }): Promise<RenderResults> {
 	const result = await buildRecipeElement({ slug, userId });
 
@@ -481,6 +562,7 @@ export async function renderRecipeToImage({
 			imageHeight,
 			formats,
 			grayscale,
+			cookies,
 		});
 	}
 
@@ -500,5 +582,6 @@ export async function renderRecipeToImage({
 		imageHeight,
 		formats,
 		grayscale,
+		cookies,
 	});
 }

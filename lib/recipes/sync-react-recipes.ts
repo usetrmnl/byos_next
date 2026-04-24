@@ -36,6 +36,10 @@ export async function syncReactRecipes(): Promise<{
 	let synced = 0;
 
 	for (const [slug, config] of entries) {
+		// Store the full screens.json config as metadata so the renderer can
+		// read it from the DB instead of importing screens.json at runtime.
+		const metadata = JSON.stringify(config);
+
 		await db
 			.insertInto("recipes")
 			.values({
@@ -48,6 +52,7 @@ export async function syncReactRecipes(): Promise<{
 				category: config.category ?? null,
 				version: config.version ?? null,
 				user_id: null,
+				metadata,
 			} as never)
 			.onConflict((oc) =>
 				oc.column("slug").doUpdateSet({
@@ -57,6 +62,7 @@ export async function syncReactRecipes(): Promise<{
 					author_github: config.author?.github ?? null,
 					category: config.category ?? null,
 					version: config.version ?? null,
+					metadata,
 					updated_at: new Date().toISOString(),
 				} as never),
 			)

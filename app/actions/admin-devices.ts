@@ -1,7 +1,7 @@
 "use server";
 
-import { db } from "@/lib/database/db";
 import { getCurrentUser } from "@/lib/auth/get-user";
+import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 
 async function requireAdmin() {
@@ -124,10 +124,7 @@ export async function deleteDeviceAdmin(
 	if (!ready) return { success: false, error: "Database not available" };
 
 	try {
-		await db
-			.deleteFrom("devices")
-			.where("id", "=", String(deviceId))
-			.execute();
+		await db.deleteFrom("devices").where("id", "=", String(deviceId)).execute();
 		return { success: true };
 	} catch (error) {
 		return {

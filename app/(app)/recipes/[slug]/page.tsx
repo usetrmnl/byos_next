@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache, Suspense, use } from "react";
-import screens from "@/app/(app)/recipes/screens.json";
+import { fetchRecipes } from "@/app/actions/mixup";
 import {
 	getScreenParams,
 	updateScreenParams,
@@ -52,7 +52,8 @@ async function refreshData(slug: string) {
 }
 // Generate static params for all recipes
 export async function generateStaticParams() {
-	return Object.keys(screens).map((slug) => ({ slug }));
+	const recipes = await fetchRecipes();
+	return recipes.map((recipe) => ({ slug: recipe.slug }));
 }
 
 // Fetch liquid recipe metadata from DB
@@ -224,7 +225,7 @@ const RenderComponent = ({
 	imageHeight: number;
 }) => {
 	// Fetch config and handle null case
-	const configResult = use(Promise.resolve(fetchRecipeConfig(slug)));
+	const configResult = use(fetchRecipeConfig(slug));
 	if (!configResult) {
 		return (
 			<div className="w-full h-full flex items-center justify-center">
@@ -302,7 +303,11 @@ const RenderComponent = ({
 				width={imageWidth}
 				height={imageHeight}
 				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
-				style={{ imageRendering: "pixelated" }}
+				style={{
+					imageRendering: "pixelated",
+					width: imageWidth,
+					height: imageHeight,
+				}}
 				alt={`${title} BMP render`}
 				className="w-full object-cover"
 			/>
@@ -321,10 +326,14 @@ const RenderComponent = ({
 
 		return (
 			<Image
-				width={imageWidth * (useDoubling ? 2 : 1)}
-				height={imageHeight * (useDoubling ? 2 : 1)}
+				width={imageWidth}
+				height={imageHeight}
 				src={`data:image/png;base64,${renders.png.toString("base64")}`}
-				style={{ imageRendering: "pixelated" }}
+				style={{
+					imageRendering: "pixelated",
+					width: imageWidth,
+					height: imageHeight,
+				}}
 				alt={`${title} PNG render`}
 				className="w-full object-cover"
 			/>
@@ -522,8 +531,7 @@ export default async function RecipePage({
 							<p className="text-sm text-gray-500 max-w-prose">
 								This screen is rendering at double size for sharper text, but it
 								might cause issues with the layout, for example overflow hidden
-								is known to have issues with double size. change the setting in
-								screens.json.
+								is known to have issues with double size.
 							</p>
 						)}
 					</>

@@ -29,7 +29,7 @@ jobs:
       - run: pnpm lint
 
   typecheck:
-    name: Biome Type Check
+    name: TypeScript Type Check
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -40,4 +40,4 @@ jobs:
         with:
           node-version: "20"
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
+      - run: pnpm typecheck

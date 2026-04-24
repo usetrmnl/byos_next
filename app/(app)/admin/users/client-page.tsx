@@ -91,7 +91,24 @@ export default function AdminUsersClientPage() {
 				},
 			});
 			if (response.data?.users) {
-				setUsers(response.data.users as User[]);
+				const normalizedUsers: User[] = response.data.users.map((user) => ({
+					id: user.id,
+					name: user.name ?? "",
+					email: user.email ?? "",
+					role: user.role ?? "user",
+					banned: Boolean(user.banned),
+					banReason: user.banReason ?? undefined,
+					banExpires:
+						user.banExpires instanceof Date
+							? user.banExpires.toISOString()
+							: (user.banExpires ?? undefined),
+					createdAt:
+						user.createdAt instanceof Date
+							? user.createdAt.toISOString()
+							: String(user.createdAt),
+					emailVerified: Boolean(user.emailVerified),
+				}));
+				setUsers(normalizedUsers);
 			}
 		} catch (_error) {
 			toast.error("Failed to fetch users");

@@ -440,6 +440,7 @@ CREATE TABLE IF NOT EXISTS recipes (
     zip_entry_path TEXT,
     category TEXT,
     version TEXT,
+    metadata JSONB DEFAULT '{}',
     user_id TEXT REFERENCES "user"("id") ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

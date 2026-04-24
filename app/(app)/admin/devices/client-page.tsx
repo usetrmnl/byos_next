@@ -10,13 +10,13 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
+	type AdminDevice,
+	type AdminUser,
 	assignDeviceToUser,
 	deleteDeviceAdmin,
 	fetchAllDevicesAdmin,
 	fetchAllUsersForAdmin,
 	unassignDevice,
-	type AdminDevice,
-	type AdminUser,
 } from "@/app/actions/admin-devices";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -179,9 +179,7 @@ export default function AdminDevicesClientPage() {
 							) : (
 								devices.map((device) => (
 									<TableRow key={device.id}>
-										<TableCell className="font-medium">
-											{device.name}
-										</TableCell>
+										<TableCell className="font-medium">{device.name}</TableCell>
 										<TableCell>
 											<code className="text-xs">{device.friendly_id}</code>
 										</TableCell>

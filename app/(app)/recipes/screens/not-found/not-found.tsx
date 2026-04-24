@@ -11,7 +11,7 @@ export default function NotFoundScreen({
 }) {
 	return (
 		<PreSatori width={width} height={height}>
-			<div className="w-full h-full p-4 bg-white flex flex-col items-center justify-center">
+			<div className="w-full h-full p-4 bg-white flex flex-col items-center justify-center text-black">
 				<div className="text-6xl text-center">Screen Not Found</div>
 				{slug && (
 					<div className="text-xl mt-4 text-center">

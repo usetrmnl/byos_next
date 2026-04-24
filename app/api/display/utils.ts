@@ -414,9 +414,9 @@ export const findOrCreateDevice = async (
 		const new_api_key = macAddress
 			? apiKey
 			: generateApiKey(
-				mockMacAddress,
-				new Date().toISOString().replace(/[-:Z]/g, ""),
-			);
+					mockMacAddress,
+					new Date().toISOString().replace(/[-:Z]/g, ""),
+				);
 
 		try {
 			const newDevice = await db

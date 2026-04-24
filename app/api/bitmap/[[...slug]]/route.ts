@@ -8,7 +8,10 @@ import {
 	renderRecipeOutputs,
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
-import { parseRequestHeaders, resolveUserIdFromApiKey } from "../../display/utils";
+import {
+	parseRequestHeaders,
+	resolveUserIdFromApiKey,
+} from "../../display/utils";
 
 export async function GET(
 	req: NextRequest,
@@ -46,12 +49,16 @@ export async function GET(
 			? await resolveUserIdFromApiKey(headers.apiKey)
 			: null;
 
+		// Forward cookies so browser rendering can reuse the caller's auth session.
+		const cookieHeader = req.headers.get("cookie");
+
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeSlug,
 			validWidth,
 			validHeight,
 			grayscaleLevels,
 			userId,
+			cookieHeader || undefined,
 		);
 
 		if (
@@ -87,6 +94,7 @@ const renderRecipeBitmap = cache(
 		height: number,
 		grayscaleLevels: number = 2,
 		userId: string | null = null,
+		cookies?: string,
 	) => {
 		const renders = await renderRecipeToImage({
 			slug: recipeId,
@@ -95,6 +103,7 @@ const renderRecipeBitmap = cache(
 			formats: ["bitmap"],
 			grayscale: grayscaleLevels,
 			userId,
+			cookies,
 		});
 		return renders.bitmap ?? Buffer.from([]);
 	},

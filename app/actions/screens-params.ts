@@ -3,10 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { JsonObject } from "@/lib/database/db.d";
-import {
-	withExplicitUserScope,
-	withUserScope,
-} from "@/lib/database/scoped-db";
+import { withExplicitUserScope, withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import type { RecipeParamDefinitions } from "@/lib/recipes/recipe-renderer";
 
@@ -98,7 +95,9 @@ export async function getScreenParams(
 		return params;
 	}
 
-	const query = (scopedDb: Parameters<Parameters<typeof withUserScope>[0]>[0]) =>
+	const query = (
+		scopedDb: Parameters<Parameters<typeof withUserScope>[0]>[0],
+	) =>
 		scopedDb
 			.selectFrom("screen_configs")
 			.select(["params"])

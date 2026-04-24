@@ -62,7 +62,9 @@
 			"name": "Mangle Kuo",
 			"github": "ghcpuman902"
 		},
-		"renderSettings": {},
+		"renderSettings": {
+			"applyEdgeSnap": false
+		},
 		"version": "0.1.0",
 		"category": "display-components"
 	},

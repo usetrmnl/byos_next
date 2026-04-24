@@ -19,162 +19,17 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import {
+	DitheringMethod,
+	applyDithering as processDithering,
+} from "@/utils/image-processing";
 
-// Dithering functions - pure functions that don't depend on component state
-const applyThreshold = (
-	imageData: ImageData,
-	threshold: number,
-	inverted: boolean,
-) => {
-	const data = imageData.data;
-	for (let i = 0; i < data.length; i += 4) {
-		const gray = data[i];
-		const newValue = gray < threshold ? 0 : 255;
-		const finalValue = inverted ? 255 - newValue : newValue;
-		data[i] = data[i + 1] = data[i + 2] = finalValue;
-	}
-};
-
-const applyFloydSteinberg = (imageData: ImageData, inverted: boolean) => {
-	const width = imageData.width;
-	const height = imageData.height;
-	const data = imageData.data;
-	const grayscale = new Array(width * height);
-
-	// Extract grayscale values
-	for (let i = 0; i < data.length; i += 4) {
-		grayscale[i / 4] = data[i];
-	}
-
-	// Apply Floyd-Steinberg dithering
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const index = y * width + x;
-			const oldPixel = grayscale[index];
-			const newPixel = oldPixel < 128 ? 0 : 255;
-			grayscale[index] = newPixel;
-			const error = oldPixel - newPixel;
-
-			if (x + 1 < width) grayscale[index + 1] += (error * 7) / 16;
-			if (y + 1 < height && x > 0)
-				grayscale[index + width - 1] += (error * 3) / 16;
-			if (y + 1 < height) grayscale[index + width] += (error * 5) / 16;
-			if (y + 1 < height && x + 1 < width)
-				grayscale[index + width + 1] += (error * 1) / 16;
-		}
-	}
-
-	// Update image data
-	for (let i = 0; i < data.length; i += 4) {
-		const value = inverted ? 255 - grayscale[i / 4] : grayscale[i / 4];
-		data[i] = data[i + 1] = data[i + 2] = value;
-	}
-};
-
-const applyAtkinson = (imageData: ImageData, inverted: boolean) => {
-	const width = imageData.width;
-	const height = imageData.height;
-	const data = imageData.data;
-	const grayscale = new Array(width * height);
-
-	// Extract grayscale values
-	for (let i = 0; i < data.length; i += 4) {
-		grayscale[i / 4] = data[i];
-	}
-
-	// Apply Atkinson dithering
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const index = y * width + x;
-			const oldPixel = grayscale[index];
-			const newPixel = oldPixel < 128 ? 0 : 255;
-			grayscale[index] = newPixel;
-			const error = Math.floor((oldPixel - newPixel) / 8);
-
-			if (x + 1 < width) grayscale[index + 1] += error;
-			if (x + 2 < width) grayscale[index + 2] += error;
-			if (y + 1 < height && x - 1 >= 0) grayscale[index + width - 1] += error;
-			if (y + 1 < height) grayscale[index + width] += error;
-			if (y + 1 < height && x + 1 < width)
-				grayscale[index + width + 1] += error;
-			if (y + 2 < height) grayscale[index + width * 2] += error;
-		}
-	}
-
-	// Update image data
-	for (let i = 0; i < data.length; i += 4) {
-		const value = inverted ? 255 - grayscale[i / 4] : grayscale[i / 4];
-		data[i] = data[i + 1] = data[i + 2] = value;
-	}
-};
-
-const applyBayer = (
-	imageData: ImageData,
-	patternSize: number,
-	inverted: boolean,
-) => {
-	const width = imageData.width;
-	const height = imageData.height;
-	const data = imageData.data;
-
-	// Bayer matrices for different sizes
-	const bayerMatrix: Record<number, number[][]> = {
-		2: [
-			[0, 2],
-			[3, 1],
-		],
-		4: [
-			[0, 8, 2, 10],
-			[12, 4, 14, 6],
-			[3, 11, 1, 9],
-			[15, 7, 13, 5],
-		],
-		8: [
-			[0, 32, 8, 40, 2, 34, 10, 42],
-			[48, 16, 56, 24, 50, 18, 58, 26],
-			[12, 44, 4, 36, 14, 46, 6, 38],
-			[60, 28, 52, 20, 62, 30, 54, 22],
-			[3, 35, 11, 43, 1, 33, 9, 41],
-			[51, 19, 59, 27, 49, 17, 57, 25],
-			[15, 47, 7, 39, 13, 45, 5, 37],
-			[63, 31, 55, 23, 61, 29, 53, 21],
-		],
-	};
-
-	// Use the closest available matrix size
-	const matrixSize = patternSize <= 2 ? 2 : patternSize <= 4 ? 4 : 8;
-	const matrix = bayerMatrix[matrixSize];
-	const matrixLength = matrix.length;
-
-	// Normalize the matrix values to 0-255 range
-	const normalizedMatrix = matrix.map((row) =>
-		row.map((val) => Math.floor((val * 255) / (matrixLength * matrixLength))),
-	);
-
-	// Apply Bayer dithering
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const index = (y * width + x) * 4;
-			const gray = data[index];
-			const matrixX = x % matrixLength;
-			const matrixY = y % matrixLength;
-			const threshold = normalizedMatrix[matrixY][matrixX];
-			const newValue = gray < threshold ? 0 : 255;
-			const finalValue = inverted ? 255 - newValue : newValue;
-			data[index] = data[index + 1] = data[index + 2] = finalValue;
-		}
-	}
-};
-
-const applyRandom = (imageData: ImageData, inverted: boolean) => {
-	const data = imageData.data;
-	for (let i = 0; i < data.length; i += 4) {
-		const gray = data[i];
-		const randomThreshold = Math.random() * 255;
-		const newValue = gray < randomThreshold ? 0 : 255;
-		const finalValue = inverted ? 255 - newValue : newValue;
-		data[i] = data[i + 1] = data[i + 2] = finalValue;
-	}
+const METHOD_MAP: Record<string, DitheringMethod> = {
+	threshold: DitheringMethod.THRESHOLD,
+	floydSteinberg: DitheringMethod.FLOYD_STEINBERG,
+	atkinson: DitheringMethod.ATKINSON,
+	bayer: DitheringMethod.BAYER,
+	random: DitheringMethod.RANDOM,
 };
 
 export default function ImageDitherer() {
@@ -278,24 +133,34 @@ export default function ImageDitherer() {
 
 		// Get the pre-processed image data for dithering
 		const processedImageData = tempCtx.getImageData(0, 0, width, height);
+		const { data: processedData } = processedImageData;
 
-		// Apply selected dithering method
-		switch (ditheringMethod) {
-			case "threshold":
-				applyThreshold(processedImageData, threshold[0], inverted);
-				break;
-			case "floydSteinberg":
-				applyFloydSteinberg(processedImageData, inverted);
-				break;
-			case "atkinson":
-				applyAtkinson(processedImageData, inverted);
-				break;
-			case "bayer":
-				applyBayer(processedImageData, patternSize[0], inverted);
-				break;
-			case "random":
-				applyRandom(processedImageData, inverted);
-				break;
+		// Extract single-channel grayscale for image-processing functions
+		const grayscaleData = new Uint8Array(width * height);
+		for (let i = 0; i < width * height; i++) {
+			grayscaleData[i] = processedData[i * 4];
+		}
+
+		const bayerSize = (patternSize[0] <= 2 ? 2 : patternSize[0] <= 4 ? 4 : 8) as
+			| 2
+			| 4
+			| 8;
+		const method =
+			METHOD_MAP[ditheringMethod] ?? DitheringMethod.FLOYD_STEINBERG;
+		const dithered = processDithering(method, grayscaleData, {
+			width,
+			height,
+			threshold: threshold[0],
+			bayerPatternSize: bayerSize,
+		});
+
+		// Write result back to ImageData with optional inversion
+		for (let i = 0; i < width * height; i++) {
+			const value = inverted ? 255 - dithered[i] : dithered[i];
+			processedData[i * 4] =
+				processedData[i * 4 + 1] =
+				processedData[i * 4 + 2] =
+					value;
 		}
 
 		// Put the processed image data back
@@ -521,7 +386,7 @@ export default function ImageDitherer() {
 										<SelectValue placeholder="Select dithering method" />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="threshold">Simple Threshold</SelectItem>
+										<SelectItem value="threshold">Threshold</SelectItem>
 										<SelectItem value="floydSteinberg">
 											Floyd-Steinberg
 										</SelectItem>

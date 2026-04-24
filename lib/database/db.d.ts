@@ -171,6 +171,7 @@ export interface Recipes {
 	description: string | null;
 	id: Generated<string>;
 	logo_url: string | null;
+	metadata: Generated<JsonObject | null>;
 	name: string;
 	repo: string | null;
 	screenshot_url: string | null;

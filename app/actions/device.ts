@@ -1,8 +1,8 @@
 "use server";
 
 import crypto from "crypto";
-import { db } from "@/lib/database/db";
 import { getCurrentUserId } from "@/lib/auth/get-user";
+import { db } from "@/lib/database/db";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import type { Device, Log } from "@/lib/types";
@@ -264,7 +264,10 @@ export async function addUserDevice(input: {
 			.executeTakeFirst();
 
 		if (existing) {
-			return { success: false, error: "A device with this API key already exists" };
+			return {
+				success: false,
+				error: "A device with this API key already exists",
+			};
 		}
 
 		// Generate a placeholder MAC from the API key (will be replaced on /api/setup)
@@ -282,8 +285,7 @@ export async function addUserDevice(input: {
 
 		const timestamp = new Date().toISOString().replace(/[-:Z]/g, "");
 		const friendlyId = generateFriendlyId(mockMac, timestamp);
-		const deviceName =
-			input.name?.trim() || `TRMNL Device ${friendlyId}`;
+		const deviceName = input.name?.trim() || `TRMNL Device ${friendlyId}`;
 
 		await withUserScope((scopedDb) =>
 			scopedDb
