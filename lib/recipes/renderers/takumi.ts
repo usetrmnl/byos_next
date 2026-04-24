@@ -11,7 +11,7 @@ export async function renderWithTakumi(
 	width: number,
 	height: number,
 ): Promise<Buffer> {
-	const node = await fromJsx(element);
+	const { node } = await fromJsx(element);
 	const urls = extractResourceUrls(node);
 	let fetchedResources: Awaited<ReturnType<typeof fetchResources>> = [];
 	if (urls.length > 0) {

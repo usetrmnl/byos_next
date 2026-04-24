@@ -50,10 +50,20 @@ async function refreshData(slug: string) {
 	await new Promise((resolve) => setTimeout(resolve, 500)); // Demo loading state
 	revalidateTag(slug, "max");
 }
-// Generate static params for all recipes
+// Recipes are user-scoped and resolved at request time from the DB, so the
+// static-params list is best-effort. Next.js Cache Components require at
+// least one entry, so fall back to a placeholder when the DB isn't reachable
+// at build time (which happens in CI where no Postgres is provisioned).
 export async function generateStaticParams() {
-	const recipes = await fetchRecipes();
-	return recipes.map((recipe) => ({ slug: recipe.slug }));
+	try {
+		const recipes = await fetchRecipes();
+		if (recipes.length > 0) {
+			return recipes.map((recipe) => ({ slug: recipe.slug }));
+		}
+	} catch {
+		// fall through to placeholder
+	}
+	return [{ slug: "_" }];
 }
 
 // Fetch liquid recipe metadata from DB
