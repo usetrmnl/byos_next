@@ -1,26 +1,27 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { deletePlaylist, savePlaylistWithItems } from "@/app/actions/playlist";
+import { PlaylistBuilder } from "@/components/playlists/playlist-builder";
+import { PlaylistList } from "@/components/playlists/playlist-list";
 import { Button } from "@/components/ui/button";
-import { Playlist, PlaylistItem } from "@/lib/types";
-import { PlaylistEditor } from "./playlist-editor";
-import { PlaylistList } from "./playlist-list";
+import type { Playlist, PlaylistItem, Recipe } from "@/lib/types";
 
-interface PlaylistPageClientProps {
+interface PlaylistsClientPageProps {
 	initialPlaylists: Playlist[];
 	initialPlaylistItems: PlaylistItem[];
+	recipes: Recipe[];
 }
 
-export function PlaylistPageClient({
+export default function PlaylistsClientPage({
 	initialPlaylists,
 	initialPlaylistItems,
-}: PlaylistPageClientProps) {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	const [playlists, _setPlaylists] = useState(initialPlaylists);
-	const [playlistItems] = useState(initialPlaylistItems);
+	recipes,
+}: PlaylistsClientPageProps) {
+	const router = useRouter();
 	const [showEditor, setShowEditor] = useState(false);
 	const [editingPlaylist, setEditingPlaylist] = useState<
 		(Playlist & { items?: PlaylistItem[] }) | null
@@ -33,7 +34,7 @@ export function PlaylistPageClient({
 	};
 
 	const handleEditPlaylist = (playlist: Playlist) => {
-		const itemsForPlaylist = playlistItems
+		const itemsForPlaylist = initialPlaylistItems
 			.filter((item) => item.playlist_id === playlist.id)
 			.sort(
 				(a, b) =>
@@ -41,10 +42,7 @@ export function PlaylistPageClient({
 					(b.order_index ?? Number.MAX_SAFE_INTEGER),
 			);
 
-		setEditingPlaylist({
-			...playlist,
-			items: itemsForPlaylist,
-		});
+		setEditingPlaylist({ ...playlist, items: itemsForPlaylist });
 		setShowEditor(true);
 	};
 
@@ -72,8 +70,9 @@ export function PlaylistPageClient({
 						: "Playlist created successfully!",
 				);
 
-				// Refresh the page to get updated data
-				window.location.reload();
+				setShowEditor(false);
+				setEditingPlaylist(null);
+				router.refresh();
 			} else {
 				toast.error(result.error || "Failed to save playlist");
 			}
@@ -96,8 +95,9 @@ export function PlaylistPageClient({
 
 			if (result.success) {
 				toast.success("Playlist deleted successfully!");
-				// Refresh the page to get updated data
-				window.location.reload();
+				setShowEditor(false);
+				setEditingPlaylist(null);
+				router.refresh();
 			} else {
 				toast.error(result.error || "Failed to delete playlist");
 			}
@@ -116,54 +116,45 @@ export function PlaylistPageClient({
 
 	if (showEditor) {
 		return (
-			<div className="space-y-6">
-				<div className="space-y-2">
-					<h1 className="text-3xl font-bold">
-						{editingPlaylist ? "Edit Playlist" : "New Playlist"}
-					</h1>
-					<p className="text-muted-foreground">
-						{editingPlaylist
-							? "Modify your playlist settings and items."
-							: "Create a new playlist for your TRMNL devices."}
-					</p>
-				</div>
-
-				<PlaylistEditor
-					playlist={
-						editingPlaylist
-							? {
-									id: editingPlaylist.id,
-									name: editingPlaylist.name,
-									items: editingPlaylist.items?.map((item) => ({
-										...item,
-										start_time: item.start_time ?? undefined,
-										end_time: item.end_time ?? undefined,
-										days_of_week: item.days_of_week ?? undefined,
-									})),
-								}
-							: undefined
-					}
-					onSave={handleSavePlaylist}
-					onCancel={handleCancel}
-				/>
-			</div>
+			<PlaylistBuilder
+				playlist={
+					editingPlaylist
+						? {
+								id: editingPlaylist.id,
+								name: editingPlaylist.name,
+								items: editingPlaylist.items?.map((item) => ({
+									...item,
+									start_time: item.start_time ?? undefined,
+									end_time: item.end_time ?? undefined,
+									days_of_week: item.days_of_week ?? undefined,
+								})),
+							}
+						: undefined
+				}
+				recipes={recipes}
+				onSave={handleSavePlaylist}
+				onCancel={handleCancel}
+				isSaving={isLoading}
+			/>
 		);
 	}
 
 	return (
 		<div className="space-y-6">
-			<div className="flex justify-between items-center">
+			<div className="flex items-center justify-end">
 				<Button onClick={handleCreatePlaylist} disabled={isLoading}>
-					<Plus className="h-4 w-4 mr-2" />
+					<Plus className="mr-2 h-4 w-4" />
 					New Playlist
 				</Button>
 			</div>
 
 			<PlaylistList
-				playlists={playlists}
-				playlistItems={playlistItems}
+				playlists={initialPlaylists}
+				playlistItems={initialPlaylistItems}
+				recipes={recipes}
 				onEditPlaylist={handleEditPlaylist}
 				onDeletePlaylist={handleDeletePlaylist}
+				onCreatePlaylist={handleCreatePlaylist}
 				isLoading={isLoading}
 			/>
 		</div>

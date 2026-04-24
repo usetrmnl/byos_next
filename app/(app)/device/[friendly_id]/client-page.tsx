@@ -1,14 +1,15 @@
 "use client";
 
-import { RefreshCw, Save, X } from "lucide-react";
+import { Pencil, RefreshCw, Save, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { fetchDeviceByFriendlyId, updateDevice } from "@/app/actions/device";
+import { PageTemplate } from "@/components/common/page-template";
+import { StatusIndicator } from "@/components/common/status-indicator";
 import DeviceEditForm from "@/components/device/device-edit-form";
 import DeviceView from "@/components/device/device-view";
 import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -32,7 +33,7 @@ const DEVICE_SIZE_PRESETS = {
 
 type DeviceSizePreset = keyof typeof DEVICE_SIZE_PRESETS;
 
-interface DevicePageClientProps {
+interface DeviceClientPageProps {
 	initialDevice: Device & { status?: string; type?: string };
 	availableScreens: { id: string; title: string }[];
 	availablePlaylists: Playlist[];
@@ -40,13 +41,13 @@ interface DevicePageClientProps {
 	playlistItems: PlaylistItem[];
 }
 
-export default function DevicePageClient({
+export default function DeviceClientPage({
 	initialDevice,
 	availableScreens,
 	availablePlaylists,
 	availableMixups,
 	playlistItems,
-}: DevicePageClientProps) {
+}: DeviceClientPageProps) {
 	const [device, setDevice] = useState<
 		Device & { status?: string; type?: string }
 	>(initialDevice);
@@ -388,18 +389,27 @@ export default function DevicePageClient({
 	}, [editedDevice.playlist_id, playlistItems]);
 
 	return (
-		<>
-			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-				<div className="flex items-center gap-2">
-					<h2 className="mt-10 scroll-m-20 pb-0 text-3xl font-semibold tracking-tight transition-colors first:mt-0 text-box">
-						{device.name}
-					</h2>
-					<Badge
-						className={`text-xs h-[1lh] px-1 py-0 text-white overflow-hidden ${device.status === "online" ? "bg-green-500" : "bg-red-500"}`}
-					>
+		<PageTemplate
+			title={
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+					<h1 className="text-2xl font-bold tracking-tight">{device.name}</h1>
+					<span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
+						<StatusIndicator
+							status={
+								device.status === "online" || device.status === "offline"
+									? device.status
+									: "offline"
+							}
+							size="sm"
+						/>
 						{device.status}
-					</Badge>
+					</span>
+					<span className="font-mono text-[11px] text-muted-foreground">
+						{device.friendly_id}
+					</span>
 				</div>
+			}
+			left={
 				<div className="flex items-center gap-2">
 					{isEditing ? (
 						<>
@@ -409,19 +419,19 @@ export default function DevicePageClient({
 								onClick={handleCancel}
 								disabled={isSaving}
 							>
-								<X className="h-4 w-4 mr-2" />
+								<X className="mr-1.5 h-3.5 w-3.5" />
 								Cancel
 							</Button>
 							<Button size="sm" onClick={handleSubmit} disabled={isSaving}>
 								{isSaving ? (
 									<>
-										<RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-										Saving...
+										<RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+										Saving…
 									</>
 								) : (
 									<>
-										<Save className="h-4 w-4 mr-2" />
-										Save Changes
+										<Save className="mr-1.5 h-3.5 w-3.5" />
+										Save changes
 									</>
 								)}
 							</Button>
@@ -432,12 +442,13 @@ export default function DevicePageClient({
 							variant="outline"
 							onClick={() => setIsEditing(true)}
 						>
-							Edit Device
+							<Pencil className="mr-1.5 h-3.5 w-3.5" />
+							Edit device
 						</Button>
 					)}
 				</div>
-			</div>
-
+			}
+		>
 			{isEditing ? (
 				<DeviceEditForm
 					editedDevice={editedDevice}
@@ -464,10 +475,7 @@ export default function DevicePageClient({
 				<DeviceView device={device} playlistScreens={playlistScreens} />
 			)}
 
-			{/* Device Logs */}
-			<div className="w-full">
-				<DeviceLogsContainer device={device} />
-			</div>
-		</>
+			<DeviceLogsContainer device={device} />
+		</PageTemplate>
 	);
 }

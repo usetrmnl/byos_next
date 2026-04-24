@@ -1,6 +1,28 @@
 import crypto from "crypto";
 import type { Device, Log } from "@/lib/types";
 
+// Compare two semantic version strings
+// Returns -1 if v1 < v2, 0 if equal, 1 if v1 > v2
+export function compareVersions(v1: string, v2: string): number {
+	const parseVersion = (version: string): number[] =>
+		version
+			.replace(/^v/i, "")
+			.split(".")
+			.map((p) => Number.parseInt(p, 10) || 0);
+
+	const parts1 = parseVersion(v1);
+	const parts2 = parseVersion(v2);
+	const maxLength = Math.max(parts1.length, parts2.length);
+
+	for (let i = 0; i < maxLength; i++) {
+		const p1 = parts1[i] || 0;
+		const p2 = parts2[i] || 0;
+		if (p1 < p2) return -1;
+		if (p1 > p2) return 1;
+	}
+	return 0;
+}
+
 // Format date to a readable format
 export function formatDate(dateString: string | null): string {
 	if (!dateString) return "Never";

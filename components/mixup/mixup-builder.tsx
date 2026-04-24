@@ -2,11 +2,9 @@
 
 import { ArrowLeft, LayoutGrid, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
+import { DeviceFrame } from "@/components/common/device-frame";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -24,10 +22,10 @@ import {
 import { cn } from "@/lib/utils";
 
 type MixupRecipe = {
+	id: string;
 	slug: string;
 	title: string;
 	description?: string;
-	tags?: string[];
 };
 
 export type MixupBuilderData = {
@@ -45,44 +43,60 @@ interface MixupBuilderProps {
 	isSaving?: boolean;
 }
 
-const SLOT_GRADIENTS = [
-	"from-sky-500/70 via-cyan-400/50 to-blue-500/30",
-	"from-fuchsia-500/60 via-purple-500/40 to-indigo-500/30",
-	"from-amber-500/70 via-orange-400/50 to-yellow-400/30",
-	"from-emerald-500/70 via-lime-400/60 to-green-400/30",
-];
-
-const LayoutPreview = ({ layout }: { layout: LayoutOption }) => {
-	return (
-		<div className="aspect-square w-full max-w-[48px] overflow-hidden rounded-xs border bg-muted/30 p-0.5 shadow-xs">
-			<div
-				className="grid h-full w-full gap-0.5"
-				style={{
-					gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-					gridTemplateRows: "repeat(2, minmax(0, 1fr))",
-				}}
-			>
-				{layout.slots.map((slot, index) => (
-					<div
-						key={slot.id}
-						style={{
-							gridColumn: `span ${slot.colSpan ?? 1}`,
-							gridRow: `span ${slot.rowSpan ?? 1}`,
-						}}
-						className={cn(
-							"rounded-[2px] border border-border/80 bg-foreground/[0.08]",
-							index === 0 && "opacity-90",
-						)}
-					/>
-				))}
-			</div>
-		</div>
-	);
-};
-
 const spanLabel = (slot: LayoutSlot) => {
 	const spanSize = (slot.colSpan ?? 1) * (slot.rowSpan ?? 1);
 	return spanSize > 1 ? `${spanSize} quarters` : "1 quarter";
+};
+
+const LayoutTile = ({
+	layout,
+	active,
+	onClick,
+}: {
+	layout: LayoutOption;
+	active: boolean;
+	onClick: () => void;
+}) => {
+	return (
+		<button
+			type="button"
+			onClick={onClick}
+			className={cn(
+				"flex flex-col items-center gap-1.5 rounded-xl border-2 p-2 transition-all",
+				active
+					? "border-primary bg-primary/5"
+					: "border-transparent hover:border-border bg-card",
+			)}
+			aria-pressed={active}
+		>
+			<div className="aspect-[5/3] w-full overflow-hidden rounded-md border bg-muted/40 p-1">
+				<div
+					className="grid h-full w-full gap-0.5"
+					style={{
+						gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+						gridTemplateRows: "repeat(2, minmax(0, 1fr))",
+					}}
+				>
+					{layout.slots.map((slot, i) => (
+						<div
+							key={slot.id}
+							style={{
+								gridColumn: `span ${slot.colSpan ?? 1}`,
+								gridRow: `span ${slot.rowSpan ?? 1}`,
+							}}
+							className={cn(
+								"rounded-[2px] bg-foreground/15",
+								i === 0 && active && "bg-primary/60",
+							)}
+						/>
+					))}
+				</div>
+			</div>
+			<span className="text-[10px] font-medium capitalize text-muted-foreground">
+				{layout.id.replace(/-/g, " ")}
+			</span>
+		</button>
+	);
 };
 
 export function MixupBuilder({
@@ -95,7 +109,7 @@ export function MixupBuilder({
 	const recipeMap = useMemo(
 		() =>
 			recipes.reduce<Record<string, MixupRecipe>>((acc, recipe) => {
-				acc[recipe.slug] = recipe;
+				acc[recipe.id] = recipe;
 				return acc;
 			}, {}),
 		[recipes],
@@ -106,13 +120,11 @@ export function MixupBuilder({
 		initialData?.layout_id ?? LAYOUT_OPTIONS[0].id,
 	);
 	const [assignments, setAssignments] = useState<Record<string, string>>(() => {
-		if (initialData?.assignments) {
-			return initialData.assignments;
-		}
+		if (initialData?.assignments) return initialData.assignments;
 		return buildAssignments(LAYOUT_OPTIONS[0], recipes);
 	});
+	const [activeSlot, setActiveSlot] = useState<string | null>(null);
 
-	// Update assignments when initial data changes (e.g., when editing different mixup)
 	useEffect(() => {
 		if (initialData) {
 			setName(initialData.name);
@@ -125,6 +137,13 @@ export function MixupBuilder({
 		LAYOUT_OPTIONS.find((option) => option.id === layoutId) ??
 		LAYOUT_OPTIONS[0];
 
+	useEffect(() => {
+		// Reset / clamp active slot when layout changes
+		if (activeSlot && !currentLayout.slots.some((s) => s.id === activeSlot)) {
+			setActiveSlot(null);
+		}
+	}, [currentLayout, activeSlot]);
+
 	const handleLayoutChange = (id: string) => {
 		const nextLayout =
 			LAYOUT_OPTIONS.find((option) => option.id === id) ?? currentLayout;
@@ -132,14 +151,11 @@ export function MixupBuilder({
 		setAssignments((prev) => buildAssignments(nextLayout, recipes, prev));
 	};
 
-	const handleRecipeChange = (slotId: string, slug: string | null) => {
+	const handleRecipeChange = (slotId: string, recipeId: string | null) => {
 		setAssignments((prev) => {
 			const next = { ...prev };
-			if (slug) {
-				next[slotId] = slug;
-			} else {
-				delete next[slotId];
-			}
+			if (recipeId) next[slotId] = recipeId;
+			else delete next[slotId];
 			return next;
 		});
 	};
@@ -154,180 +170,231 @@ export function MixupBuilder({
 		});
 	};
 
+	const filledSlots = currentLayout.slots.filter(
+		(s) => assignments[s.id],
+	).length;
 	const isValid = name.trim().length > 0;
 
 	return (
-		<div className="space-y-4">
-			{/* Header with save/cancel */}
-			<div className="flex items-center justify-between gap-4">
-				{onCancel && (
-					<Button variant="ghost" size="sm" onClick={onCancel}>
-						<ArrowLeft className="h-4 w-4 mr-1" />
-						Back
+		<div className="flex flex-col gap-4">
+			{/* Top bar */}
+			<div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-card px-4 py-3">
+				<div className="flex min-w-0 flex-1 items-center gap-3">
+					{onCancel && (
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={onCancel}
+							aria-label="Back to mixups"
+						>
+							<ArrowLeft className="h-4 w-4" />
+						</Button>
+					)}
+					<div className="flex min-w-0 flex-1 flex-col">
+						<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+							{initialData?.id ? "Editing mixup" : "New mixup"}
+						</span>
+						<Input
+							value={name}
+							onChange={(e) => setName(e.target.value)}
+							placeholder="Untitled mixup"
+							className={cn(
+								"h-auto border-0 bg-transparent p-0 text-lg font-semibold shadow-none",
+								"focus-visible:ring-0 focus-visible:ring-offset-0",
+							)}
+						/>
+					</div>
+				</div>
+				<div className="flex items-center gap-4">
+					<div className="hidden text-right text-xs text-muted-foreground sm:block">
+						<div className="font-semibold tabular-nums text-foreground">
+							{filledSlots}/{currentLayout.slots.length}
+						</div>
+						<div>slots filled</div>
+					</div>
+					{onCancel && (
+						<Button variant="outline" onClick={onCancel} disabled={isSaving}>
+							Cancel
+						</Button>
+					)}
+					<Button onClick={handleSave} disabled={!isValid || isSaving}>
+						<Save className="mr-2 h-4 w-4" />
+						{isSaving ? "Saving…" : initialData?.id ? "Update" : "Create"}
 					</Button>
-				)}
-				<div className="flex-1" />
-				{onSave && (
-					<Button
-						onClick={handleSave}
-						disabled={!isValid || isSaving}
-						size="sm"
-					>
-						<Save className="h-4 w-4 mr-1" />
-						{isSaving ? "Saving..." : initialData?.id ? "Update" : "Save"}
-					</Button>
-				)}
-			</div>
-
-			{/* Name input */}
-			<div className="space-y-2">
-				<Label htmlFor="mixup-name">Mixup Name</Label>
-				<Input
-					id="mixup-name"
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					placeholder="Enter a name for this mixup..."
-					className="max-w-md"
-				/>
-			</div>
-
-			{/* Layout selector */}
-			<div className="flex items-center justify-between gap-2">
-				<div className="flex gap-2 overflow-x-auto pb-1">
-					{LAYOUT_OPTIONS.map((option) => {
-						const isActive = option.id === currentLayout.id;
-						return (
-							<button
-								key={option.id}
-								type="button"
-								onClick={() => handleLayoutChange(option.id)}
-								className={cn(
-									"relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xs border transition-all",
-									isActive ? "border-primary shadow-xs" : "border-border",
-								)}
-							>
-								<LayoutPreview layout={option} />
-							</button>
-						);
-					})}
 				</div>
 			</div>
 
-			<Card>
-				<CardContent className="space-y-4 p-3 md:p-4 lg:p-6">
-					<div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-						<LayoutGrid className="size-4 text-primary" />
-						<span>Live preview</span>
-						<span className="text-xs">Click a slot to swap its recipe</span>
+			{/* Split: preview left, configuration right */}
+			<div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+				{/* Live preview */}
+				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
+					<div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
+						<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+							Live preview
+						</h3>
+						<span className="text-[11px] tabular-nums text-muted-foreground">
+							{currentLayout.slots.length} slots ·{" "}
+							<span className="capitalize">{layoutId.replace(/-/g, " ")}</span>
+						</span>
 					</div>
-					<AspectRatio
-						ratio={5 / 3}
-						className="overflow-hidden rounded-2xl border bg-gradient-to-br from-slate-50 to-slate-100 p-3 shadow-md dark:from-slate-900 dark:to-slate-900/40"
-					>
-						<div
-							className="grid h-full w-full gap-2"
-							style={{
-								gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-								gridTemplateRows: "repeat(2, minmax(0, 1fr))",
-							}}
-						>
+					<div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_50%_0%,theme(colors.muted/40),transparent_70%)] p-6">
+						<div className="w-full max-w-[640px]">
+							<DeviceFrame size="lg">
+								<div
+									className="grid h-full w-full"
+									style={{
+										gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+										gridTemplateRows: "repeat(2, minmax(0, 1fr))",
+									}}
+								>
+									{currentLayout.slots.map((slot) => {
+										const selectedId = assignments[slot.id];
+										const recipe = selectedId ? recipeMap[selectedId] : null;
+										const isActive = activeSlot === slot.id;
+
+										return (
+											<button
+												key={slot.id}
+												type="button"
+												onClick={() => setActiveSlot(slot.id)}
+												style={{
+													gridColumn: `span ${slot.colSpan ?? 1}`,
+													gridRow: `span ${slot.rowSpan ?? 1}`,
+												}}
+												className={cn(
+													"group relative overflow-hidden border border-black/40",
+													isActive && "ring-2 ring-primary ring-offset-1",
+												)}
+												aria-label={`Edit ${slot.label}`}
+												aria-pressed={isActive}
+											>
+												{recipe ? (
+													<picture>
+														<source
+															srcSet={`/api/bitmap/${recipe.slug}.bmp?width=${slot.width}&height=${slot.height}`}
+															type="image/bmp"
+														/>
+														<img
+															src={`/api/bitmap/${recipe.slug}.bmp`}
+															alt={`${recipe.title} preview`}
+															className="absolute inset-0 h-full w-full object-cover"
+															style={{ imageRendering: "pixelated" }}
+														/>
+													</picture>
+												) : (
+													<div className="absolute inset-0 flex items-center justify-center bg-muted/40 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+														Empty
+													</div>
+												)}
+												<div className="absolute left-1.5 top-1.5 rounded bg-black/55 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-white opacity-0 transition-opacity group-hover:opacity-100">
+													{slot.label}
+												</div>
+											</button>
+										);
+									})}
+								</div>
+							</DeviceFrame>
+						</div>
+					</div>
+				</section>
+
+				{/* Configuration */}
+				<section className="flex flex-col gap-4">
+					{/* Layout picker */}
+					<div className="overflow-hidden rounded-2xl border bg-card">
+						<div className="flex items-center gap-2 border-b bg-muted/30 px-4 py-2">
+							<LayoutGrid className="h-3.5 w-3.5 text-muted-foreground" />
+							<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+								Layout
+							</h3>
+						</div>
+						<div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-3">
+							{LAYOUT_OPTIONS.map((option) => (
+								<LayoutTile
+									key={option.id}
+									layout={option}
+									active={option.id === currentLayout.id}
+									onClick={() => handleLayoutChange(option.id)}
+								/>
+							))}
+						</div>
+					</div>
+
+					{/* Slots */}
+					<div className="overflow-hidden rounded-2xl border bg-card">
+						<div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
+							<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+								Slots
+							</h3>
+							<span className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+								{filledSlots}/{currentLayout.slots.length}
+							</span>
+						</div>
+						<div className="divide-y">
 							{currentLayout.slots.map((slot, index) => {
-								const selectedSlug = assignments[slot.id];
-								const recipe = selectedSlug
-									? recipeMap[selectedSlug]
-									: undefined;
-								const gradient = SLOT_GRADIENTS[index % SLOT_GRADIENTS.length];
+								const selectedId = assignments[slot.id];
+								const recipe = selectedId ? recipeMap[selectedId] : null;
+								const isActive = activeSlot === slot.id;
 
 								return (
-									<div
+									<button
+										type="button"
 										key={slot.id}
-										style={{
-											gridColumn: `span ${slot.colSpan ?? 1}`,
-											gridRow: `span ${slot.rowSpan ?? 1}`,
-										}}
+										onClick={() => setActiveSlot(slot.id)}
 										className={cn(
-											"relative overflow-hidden rounded-lg border shadow-sm bg-muted/40",
-											!recipe && "border-dashed",
+											"flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+											isActive ? "bg-primary/5" : "hover:bg-muted/40",
 										)}
 									>
-										<div className="absolute inset-0">
-											{recipe ? (
-												<picture>
-													<source
-														srcSet={`/api/bitmap/${recipe.slug}.bmp?width=${slot.width}&height=${slot.height}`}
-														type="image/bmp"
-													/>
-													<img
-														src={`/api/bitmap/${recipe.slug}.bmp`}
-														alt={`${recipe.title} preview`}
-														className="h-full w-full object-cover"
-														style={{ imageRendering: "pixelated" }}
-													/>
-												</picture>
-											) : (
-												<div
-													className={cn(
-														"absolute inset-0 bg-gradient-to-br opacity-70",
-														gradient,
-													)}
-												/>
-											)}
-											<div className="absolute inset-0 bg-black/15" />
+										<div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border bg-background text-[11px] font-semibold tabular-nums text-muted-foreground">
+											{index + 1}
 										</div>
-
-										<div className="absolute right-2 top-2 z-10">
-											<Select
-												value={selectedSlug ?? "none"}
-												onValueChange={(value) =>
-													handleRecipeChange(
-														slot.id,
-														value === "none" ? null : value,
-													)
-												}
-											>
-												<SelectTrigger className="h-8 min-w-[110px] rounded-md border bg-background/80 text-xs shadow-sm backdrop-blur focus:ring-0 focus:ring-offset-0">
-													<SelectValue placeholder="Choose recipe" />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="none">No recipe</SelectItem>
-													{recipes.map((recipeOption) => (
-														<SelectItem
-															key={recipeOption.slug}
-															value={recipeOption.slug}
-														>
-															{recipeOption.title}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-										</div>
-
-										<div className="relative flex h-full flex-col justify-between p-3 pr-24 text-white drop-shadow">
-											<div className="flex items-center justify-between text-[11px] uppercase tracking-wide">
+										<div className="min-w-0 flex-1">
+											<div className="flex items-center justify-between gap-2 text-xs">
 												<span className="font-semibold">{slot.label}</span>
-												<span className="rounded-full bg-black/40 px-2 py-0.5 text-[10px]">
+												<span className="text-[10px] text-muted-foreground">
 													{spanLabel(slot)}
 												</span>
 											</div>
-											<div className="space-y-1">
-												<p className="text-lg font-semibold leading-tight">
-													{recipe ? recipe.title : "Pick a recipe"}
-												</p>
-												<p className="text-xs text-white/85">
-													{recipe
-														? (recipe.tags || []).slice(0, 3).join(" / ") ||
-															recipe.slug
-														: "Unassigned slot"}
-												</p>
+											<div className="mt-1.5">
+												<Select
+													value={selectedId ?? "none"}
+													onValueChange={(value) =>
+														handleRecipeChange(
+															slot.id,
+															value === "none" ? null : value,
+														)
+													}
+												>
+													<SelectTrigger
+														className="h-8 w-full text-xs"
+														onClick={(e) => e.stopPropagation()}
+													>
+														<SelectValue placeholder="Choose recipe" />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="none">No recipe</SelectItem>
+														{recipes.map((option) => (
+															<SelectItem key={option.id} value={option.id}>
+																{option.title}
+															</SelectItem>
+														))}
+													</SelectContent>
+												</Select>
+												{recipe?.description && (
+													<p className="mt-1 truncate text-[11px] text-muted-foreground">
+														{recipe.description}
+													</p>
+												)}
 											</div>
 										</div>
-									</div>
+									</button>
 								);
 							})}
 						</div>
-					</AspectRatio>
-				</CardContent>
-			</Card>
+					</div>
+				</section>
+			</div>
 		</div>
 	);
 }

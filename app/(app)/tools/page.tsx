@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import tools from "@/app/(app)/tools/tools.json";
+import { PageTemplate } from "@/components/common/page-template";
 import { Badge } from "@/components/ui/badge";
 
 // Tool configuration type
@@ -38,7 +39,7 @@ const ToolCard = ({ slug, config }: { slug: string; config: ToolConfig }) => {
 			className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full"
 		>
 			<div className="p-4 flex flex-col flex-grow">
-				<h4 className="scroll-m-20 text-xl font-semibold tracking-tight group-hover:text-blue-600 transition-colors">
+				<h4 className="scroll-m-20 text-xl font-semibold tracking-tight group-hover:text-primary transition-colors">
 					{config.title}
 				</h4>
 				<p className="text-gray-600 text-sm mt-2 mb-4 flex-grow">
@@ -121,16 +122,13 @@ const ToolsGrid = () => {
 
 export default function ToolsIndex() {
 	return (
-		<div className="space-y-6">
-			<div className="space-y-2">
-				<h1 className="text-3xl font-bold">Tools</h1>
-				<p className="text-muted-foreground">
-					Explore and use helpful tools for your workflow and creative projects.
-				</p>
-			</div>
+		<PageTemplate
+			title="Tools"
+			subtitle="Explore and use helpful tools for your workflow and creative projects."
+		>
 			<Suspense fallback={<div>Loading tools...</div>}>
 				<ToolsGrid />
 			</Suspense>
-		</div>
+		</PageTemplate>
 	);
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Check } from "lucide-react";
+import { AlertCircle, Check, Save } from "lucide-react";
 import type { ChangeEvent } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,6 @@ const buildInitialState = (
 			state[key] = value;
 			continue;
 		}
-
 		if (definition.default !== undefined) {
 			state[key] = definition.default;
 		} else {
@@ -55,7 +54,6 @@ const renderField = (
 		id: key,
 		name: key,
 		value: typeof value === "string" || typeof value === "number" ? value : "",
-		className: "max-w-lg",
 		onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
 			const nextValue =
 				definition.type === "number"
@@ -88,10 +86,18 @@ export function ScreenParamsForm({
 	const [values, setValues] = useState<Record<string, unknown>>(() =>
 		buildInitialState(paramsSchema, initialValues),
 	);
+	const [initial] = useState(() =>
+		buildInitialState(paramsSchema, initialValues),
+	);
 
 	const hasParams = useMemo(
 		() => Object.keys(paramsSchema || {}).length > 0,
 		[paramsSchema],
+	);
+
+	const isDirty = useMemo(
+		() => JSON.stringify(values) !== JSON.stringify(initial),
+		[values, initial],
 	);
 
 	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -106,64 +112,92 @@ export function ScreenParamsForm({
 				setStatusMessage(result.error ?? "Unable to save configuration");
 				return;
 			}
-
 			setFormStatus("success");
-			setStatusMessage("Configuration saved");
+			setStatusMessage("Saved");
 		});
+	};
+
+	const handleReset = () => {
+		setValues(initial);
+		setFormStatus("idle");
+		setStatusMessage("");
 	};
 
 	if (!hasParams) return null;
 
-	return (
-		<div className="mt-8 space-y-4">
-			<div className="flex flex-row items-center gap-2">
-				<h2 className="text-xl font-semibold">Screen parameters</h2>
-				{formStatus === "success" && (
-					<span className="inline-flex items-center gap-1 text-sm text-green-600">
-						<Check className="size-4" />
-						Saved
-					</span>
-				)}
-				{formStatus === "error" && (
-					<span className="inline-flex items-center gap-1 text-sm text-red-600">
-						<AlertCircle className="size-4" />
-						{statusMessage || "Error saving"}
-					</span>
-				)}
-			</div>
+	const entries = Object.entries(paramsSchema);
 
-			<form onSubmit={handleSubmit} className="space-y-4">
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-					{Object.entries(paramsSchema).map(([key, definition]) => (
-						<div
-							key={key}
-							className="flex flex-col gap-2 rounded-lg border p-4 shadow-sm"
+	return (
+		<form
+			onSubmit={handleSubmit}
+			className="overflow-hidden rounded-xl border bg-card"
+		>
+			<div className="flex items-center justify-between gap-3 border-b bg-muted/30 px-4 py-1.5">
+				<div className="flex items-center gap-2">
+					<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+						Parameters
+					</h3>
+					<span className="rounded-full border px-1.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+						{entries.length}
+					</span>
+				</div>
+				<div className="flex items-center gap-2 text-xs">
+					{formStatus === "success" && (
+						<span className="inline-flex items-center gap-1 text-primary">
+							<Check className="h-3 w-3" />
+							{statusMessage || "Saved"}
+						</span>
+					)}
+					{formStatus === "error" && (
+						<span className="inline-flex items-center gap-1 text-destructive">
+							<AlertCircle className="h-3 w-3" />
+							{statusMessage || "Error"}
+						</span>
+					)}
+					{formStatus === "idle" && isDirty && (
+						<span className="text-muted-foreground">Unsaved</span>
+					)}
+					{isDirty && !isPending && (
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							className="h-7 px-2"
+							onClick={handleReset}
 						>
-							<div className="space-y-1">
-								<Label htmlFor={key}>{definition.label}</Label>
-								{definition.description && (
-									<p className="text-sm text-muted-foreground">
-										{definition.description}
-									</p>
-								)}
-							</div>
-							{renderField(key, definition, values[key], (field, value) =>
-								setValues((prev) => ({
-									...prev,
-									[field]: value,
-								})),
+							Reset
+						</Button>
+					)}
+					<Button
+						type="submit"
+						size="sm"
+						className="h-7 px-2.5"
+						disabled={isPending || !isDirty}
+					>
+						<Save className="mr-1 h-3 w-3" />
+						{isPending ? "Saving…" : "Save"}
+					</Button>
+				</div>
+			</div>
+			<div className="grid gap-4 p-4 sm:grid-cols-2">
+				{entries.map(([key, definition]) => (
+					<div key={key} className="flex flex-col gap-1.5">
+						<div className="flex items-baseline justify-between gap-2">
+							<Label htmlFor={key} className="text-xs font-semibold">
+								{definition.label}
+							</Label>
+							{definition.description && (
+								<span className="truncate text-[11px] text-muted-foreground">
+									{definition.description}
+								</span>
 							)}
 						</div>
-					))}
-				</div>
-
-				<Button type="submit" disabled={isPending}>
-					{isPending ? "Saving..." : "Save parameters"}
-				</Button>
-				{formStatus === "error" && statusMessage && (
-					<p className="text-sm text-red-600">{statusMessage}</p>
-				)}
-			</form>
-		</div>
+						{renderField(key, definition, values[key], (field, val) =>
+							setValues((prev) => ({ ...prev, [field]: val })),
+						)}
+					</div>
+				))}
+			</div>
+		</form>
 	);
 }

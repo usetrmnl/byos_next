@@ -12,10 +12,14 @@ const BREAKPOINTS = {
 
 const responsivePattern = /^(max-)?(sm|md|lg|xl|2xl):(.+)$/;
 
-// Satori-compatible reset styles
+// Satori/Takumi-compatible reset styles.
+// Heading tags inherit a UA-default `font-size` multiplier (h1=2em, h2=1.5em…)
+// that Takumi honors but Tailwind's browser preflight zeroes out. Reset
+// `text-base font-normal` on heading resets so tw text-* classes win cleanly.
 const satoriResetStyles = {
 	common: "m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none",
-	heading: "m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none",
+	heading:
+		"m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none text-base font-normal",
 	paragraph: "m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none",
 	div: "m-0 p-0 mt-0 mb-0 border-0 bg-transparent shadow-none",
 } as const;

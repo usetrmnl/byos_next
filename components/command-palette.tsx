@@ -22,13 +22,13 @@ import {
 	CommandList,
 	CommandSeparator,
 } from "@/components/ui/command";
-import type { Device } from "@/lib/types";
+import type { Device, RecipeSidebarItem } from "@/lib/types";
 
 interface CommandPaletteProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	devices: Device[];
-	recipesComponents: [string, ComponentConfig][];
+	recipeSidebarItems: RecipeSidebarItem[];
 	toolsComponents: [string, ComponentConfig][];
 }
 
@@ -36,7 +36,7 @@ export function CommandPalette({
 	open,
 	onOpenChange,
 	devices,
-	recipesComponents,
+	recipeSidebarItems,
 	toolsComponents,
 }: CommandPaletteProps) {
 	const router = useRouter();
@@ -133,13 +133,13 @@ export function CommandPalette({
 						<Palette className="mr-2 size-4" />
 						<span>All Recipes</span>
 					</CommandItem>
-					{recipesComponents.map(([slug, config]) => (
+					{recipeSidebarItems.map((recipe) => (
 						<CommandItem
-							key={slug}
-							onSelect={() => navigateTo(`/recipes/${slug}`)}
+							key={recipe.slug}
+							onSelect={() => navigateTo(`/recipes/${recipe.slug}`)}
 						>
 							<FileText className="mr-2 size-4" />
-							<span>{config.title}</span>
+							<span>{recipe.name}</span>
 						</CommandItem>
 					))}
 				</CommandGroup>

@@ -279,13 +279,13 @@ export const LAYOUT_OPTIONS: LayoutOption[] = RELATIVE_LAYOUT_OPTIONS.map(
 
 export const buildAssignments = (
 	layout: LayoutOption,
-	recipes: Array<{ slug: string }>,
+	recipes: Array<{ id: string }>,
 	existing?: Record<string, string>,
 ): Record<string, string> => {
 	const next: Record<string, string> = {};
 	layout.slots.forEach((slot, index) => {
 		const inherited = existing?.[slot.id];
-		const fallback = recipes[index]?.slug;
+		const fallback = recipes[index]?.id;
 		if (inherited) {
 			next[slot.id] = inherited;
 		} else if (fallback) {
@@ -300,12 +300,16 @@ export const buildAssignments = (
  * Useful when loading a mixup back into the builder
  */
 export const slotsToAssignments = (
-	slots: Array<{ slot_id: string; recipe_slug: string | null }>,
+	slots: Array<{
+		slot_id: string;
+		recipe_id: string | null;
+		recipe_slug: string | null;
+	}>,
 ): Record<string, string> => {
 	const assignments: Record<string, string> = {};
 	for (const slot of slots) {
-		if (slot.recipe_slug) {
-			assignments[slot.slot_id] = slot.recipe_slug;
+		if (slot.recipe_id) {
+			assignments[slot.slot_id] = slot.recipe_id;
 		}
 	}
 	return assignments;

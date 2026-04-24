@@ -18,7 +18,7 @@ export default async function RecipePreviewPage({
 	const { slug } = await params;
 	const { width: widthParam, height: heightParam } = await searchParams;
 
-	const config = fetchRecipeConfig(slug);
+	const config = await fetchRecipeConfig(slug);
 
 	if (!config) {
 		notFound();

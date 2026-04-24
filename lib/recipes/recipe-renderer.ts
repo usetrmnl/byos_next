@@ -1,8 +1,17 @@
 import React, { cache, createElement } from "react";
 import sharp from "sharp";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
-import screens from "@/app/(app)/recipes/screens.json";
 import { getScreenParams } from "@/app/actions/screens-params";
+import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
+import { checkDbConnection } from "@/lib/database/utils";
+import { renderHtmlToImage } from "@/lib/recipes/html-screenshot";
+import {
+	customFieldsToParamDefinitions,
+	fetchLiquidRecipeSettings,
+	isLiquidRecipe,
+	renderLiquidRecipe,
+} from "@/lib/recipes/liquid-renderer";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 import { renderWithSatori } from "./renderers/satori";
 import { renderWithTakumi } from "./renderers/takumi";
@@ -54,13 +63,21 @@ export type RecipeParamDefinition = {
 
 export type RecipeParamDefinitions = Record<string, RecipeParamDefinition>;
 
-export type RecipeConfig = (typeof screens)[keyof typeof screens] & {
+export type RecipeConfig = {
+	title: string;
+	published?: boolean;
+	description?: string;
+	componentPath?: string;
+	hasDataFetch?: boolean;
+	props?: Record<string, unknown>;
+	params?: RecipeParamDefinitions;
+	tags?: string[];
 	renderSettings?: {
 		doubleSizeForSharperText?: boolean;
 		applyEdgeSnap?: boolean;
 		[key: string]: boolean | string | number | undefined;
 	};
-	params?: RecipeParamDefinitions;
+	[key: string]: unknown;
 };
 
 // Re-export constants from shared file
@@ -89,13 +106,37 @@ export const getRendererType = (): "takumi" | "satori" | "browser" => {
 	return "takumi";
 };
 
-export const fetchRecipeConfig = cache((slug: string): RecipeConfig | null => {
-	const config = screens[slug as keyof typeof screens];
-	if (!config || (!config.published && process.env.NODE_ENV === "production")) {
-		return null;
-	}
-	return config as RecipeConfig;
-});
+export const fetchRecipeConfig = cache(
+	async (slug: string, userId?: string): Promise<RecipeConfig | null> => {
+		const { ready } = await checkDbConnection();
+		if (!ready) return null;
+
+		const runQuery = (conn: typeof db) =>
+			conn
+				.selectFrom("recipes")
+				.select(["metadata"])
+				.where("slug", "=", slug)
+				.where("type", "=", "react")
+				.executeTakeFirst();
+
+		const row = userId
+			? await withExplicitUserScope(userId, runQuery)
+			: await runQuery(db);
+
+		if (!row?.metadata) return null;
+
+		const config =
+			typeof row.metadata === "string"
+				? (JSON.parse(row.metadata) as RecipeConfig)
+				: (row.metadata as unknown as RecipeConfig);
+
+		if (!config.published && process.env.NODE_ENV === "production") {
+			return null;
+		}
+
+		return config;
+	},
+);
 
 export const fetchRecipeComponent = cache(async (slug: string) => {
 	try {
@@ -118,9 +159,10 @@ export const fetchRecipeProps = cache(
 		slug: string,
 		config: RecipeConfig,
 		options?: FetchPropsOptions,
+		userId?: string,
 	): Promise<ComponentProps> => {
 		const params = config.params
-			? await getScreenParams(slug, config.params)
+			? await getScreenParams(slug, config.params, userId)
 			: {};
 
 		let props: ComponentProps = {
@@ -196,13 +238,14 @@ type RenderFormats = Array<"bitmap" | "png">;
 
 type RenderOptions = {
 	slug: string;
-	Component: React.ComponentType<ComponentProps>;
-	props: ComponentProps;
+	Component?: React.ComponentType<ComponentProps> | null;
+	props?: ComponentProps;
 	config: RecipeConfig | null;
 	imageWidth: number;
 	imageHeight: number;
 	formats?: RenderFormats;
 	grayscale?: number; // Number of gray levels: 2, 4, or 16
+	html?: string; // When set, uses Puppeteer screenshot instead of Takumi/Satori
 	cookies?: string; // Cookie header to forward to browser renderer
 };
 
@@ -226,6 +269,7 @@ export const renderRecipeOutputs = cache(
 		imageHeight,
 		formats = ["bitmap", "png"],
 		grayscale,
+		html,
 		cookies,
 	}: RenderOptions): Promise<RenderResults> => {
 		const results = getDefaultRenderResults();
@@ -234,61 +278,66 @@ export const renderRecipeOutputs = cache(
 
 		if (!needsPng && !needsBitmap) return results;
 
+		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
 		const rendererType = getRendererType();
 
-		// Render PNG once — reused for both png and bitmap outputs
-		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
-		let png: Buffer;
+		// Render PNG once and reuse it for png/bitmap outputs.
+		let pngBuffer: Buffer;
 		try {
-			if (rendererType === "browser") {
-				const { renderWithBrowser } = await import("./renderers/browser").catch(
-					() => {
-						throw new Error(
-							"Browser renderer requires one of: " +
-								"(1) puppeteer-core + BROWSER_URL or BROWSER_WS_ENDPOINT for a remote Chrome container, " +
-								"(2) puppeteer-core + CHROME_EXECUTABLE_PATH for a local Chrome install, " +
-								"(3) puppeteer for bundled Chrome (pnpm add puppeteer).",
-						);
-					},
+			if (html) {
+				pngBuffer = await renderHtmlToImage(
+					html,
+					imageOptions.width,
+					imageOptions.height,
 				);
-				const scaleFactor = imageOptions.width / imageWidth;
-				png = await renderWithBrowser(
-					slug,
-					imageWidth,
-					imageHeight,
-					scaleFactor,
-					cookies,
-				);
+			} else if (Component && props) {
+				if (rendererType === "browser") {
+					const { renderWithBrowser } = await import("./renderers/browser");
+					const scaleFactor = imageOptions.width / imageWidth;
+					pngBuffer = await renderWithBrowser(
+						slug,
+						imageWidth,
+						imageHeight,
+						scaleFactor,
+						cookies,
+					);
+				} else {
+					const element = createElement(Component, props);
+					pngBuffer =
+						rendererType === "satori"
+							? await renderWithSatori(
+									element,
+									imageOptions.width,
+									imageOptions.height,
+								)
+							: await renderWithTakumi(
+									element,
+									imageOptions.width,
+									imageOptions.height,
+								);
+				}
 			} else {
-				const element = createElement(Component, props);
-				png =
-					rendererType === "satori"
-						? await renderWithSatori(
-								element,
-								imageOptions.width,
-								imageOptions.height,
-							)
-						: await renderWithTakumi(
-								element,
-								imageOptions.width,
-								imageOptions.height,
-							);
+				logger.error(`No Component or html provided for ${slug}`);
+				return results;
 			}
 		} catch (error) {
-			logger.error(`Error rendering PNG for ${slug}:`, error);
+			logger.error(`Error generating PNG for ${slug}:`, error);
 			return results;
 		}
 
 		if (needsPng) {
 			results.png =
 				imageOptions.width !== imageWidth
-					? await sharp(png).resize(imageWidth, imageHeight).png().toBuffer()
-					: png;
+					? await sharp(pngBuffer)
+							.resize(imageWidth, imageHeight)
+							.png()
+							.toBuffer()
+					: pngBuffer;
 		}
 
 		if (needsBitmap) {
 			try {
-				results.bitmap = await renderBmp(png, {
+				results.bitmap = await renderBmp(pngBuffer, {
 					ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
 					width: imageWidth,
 					height: imageHeight,
@@ -304,50 +353,164 @@ export const renderRecipeOutputs = cache(
 	},
 );
 
-export const buildRecipeElement = async ({
-	slug,
-	validateProps,
-}: {
-	slug: string;
-	validateProps?: (slug: string, props: ComponentProps) => boolean;
-}) => {
-	const config = fetchRecipeConfig(slug);
-	const Component = config ? await fetchRecipeComponent(slug) : null;
+type BuildRecipeResult = {
+	config: RecipeConfig | null;
+	Component: React.ComponentType<ComponentProps> | null;
+	props: ComponentProps;
+	html?: string;
+	element: React.ReactElement | null;
+};
 
-	if (!config || !Component) {
+/**
+ * Build a liquid recipe element by rendering the liquid template.
+ */
+async function buildLiquidRecipeElement(
+	slug: string,
+	userId?: string,
+): Promise<BuildRecipeResult> {
+	// Load stored custom field overrides from screen_configs
+	let customFieldOverrides: Record<string, unknown> | undefined;
+	const settings = await fetchLiquidRecipeSettings(slug, userId);
+	if (settings?.custom_fields?.length) {
+		const definitions = customFieldsToParamDefinitions(settings.custom_fields);
+		customFieldOverrides = await getScreenParams(slug, definitions, userId);
+	}
+
+	const result = await renderLiquidRecipe(slug, customFieldOverrides, userId);
+
+	if (!result) {
 		return {
-			config,
+			config: null,
 			Component: null,
 			props: {},
 			element: createElement(NotFoundScreen, { slug }),
 		};
 	}
 
-	const props = await fetchRecipeProps(slug, config, {
-		validateFetchedData: validateProps
-			? (slug: string, data: unknown) => {
-					return (
-						typeof data === "object" &&
-						data !== null &&
-						validateProps(slug, data as ComponentProps)
-					);
-				}
-			: undefined,
-	});
+	return {
+		config: null,
+		Component: null,
+		props: {},
+		html: result.html,
+		element: null,
+	};
+}
 
-	if (validateProps && !validateProps(slug, props)) {
+export const buildRecipeElement = async ({
+	slug,
+	userId,
+	validateProps,
+}: {
+	slug: string;
+	userId?: string | null;
+	validateProps?: (slug: string, props: ComponentProps) => boolean;
+}): Promise<BuildRecipeResult> => {
+	// First try React recipe from the DB metadata cache.
+	const config = await fetchRecipeConfig(slug, userId ?? undefined);
+	const Component = config ? await fetchRecipeComponent(slug) : null;
+
+	if (config && Component) {
+		const props = await fetchRecipeProps(
+			slug,
+			config,
+			{
+				validateFetchedData: validateProps
+					? (recipeSlug: string, data: unknown) => {
+							return (
+								typeof data === "object" &&
+								data !== null &&
+								validateProps(recipeSlug, data as ComponentProps)
+							);
+						}
+					: undefined,
+			},
+			userId ?? undefined,
+		);
+
+		if (validateProps && !validateProps(slug, props)) {
+			return {
+				config,
+				Component: null,
+				props,
+				element: createElement(NotFoundScreen, { slug }),
+			};
+		}
+
 		return {
 			config,
-			Component: null,
+			Component,
 			props,
-			element: createElement(NotFoundScreen, { slug }),
+			element: createElement(Component, props),
 		};
 	}
 
+	// Try liquid recipe from DB
+	if (await isLiquidRecipe(slug, userId ?? undefined)) {
+		return buildLiquidRecipeElement(slug, userId ?? undefined);
+	}
+
+	// Not found
 	return {
-		config,
-		Component,
-		props,
-		element: createElement(Component, props),
+		config: null,
+		Component: null,
+		props: {},
+		element: createElement(NotFoundScreen, { slug }),
 	};
 };
+
+/**
+ * High-level helper: resolve a recipe (react or liquid) and render to image outputs.
+ * Encapsulates buildRecipeElement + renderRecipeOutputs so API routes don't
+ * need to branch on recipe type.
+ */
+export async function renderRecipeToImage({
+	slug,
+	imageWidth,
+	imageHeight,
+	formats = ["bitmap", "png"],
+	grayscale,
+	userId,
+	cookies,
+}: {
+	slug: string;
+	imageWidth: number;
+	imageHeight: number;
+	formats?: RenderFormats;
+	grayscale?: number;
+	userId?: string | null;
+	cookies?: string;
+}): Promise<RenderResults> {
+	const result = await buildRecipeElement({ slug, userId });
+
+	if (result.html) {
+		return renderRecipeOutputs({
+			slug,
+			html: result.html,
+			config: null,
+			imageWidth,
+			imageHeight,
+			formats,
+			grayscale,
+			cookies,
+		});
+	}
+
+	const ComponentToRender = result.Component ?? (() => result.element);
+	const propsWithDimensions = addDimensionsToProps(
+		result.props,
+		imageWidth,
+		imageHeight,
+	);
+
+	return renderRecipeOutputs({
+		slug,
+		Component: ComponentToRender,
+		props: propsWithDimensions,
+		config: result.config,
+		imageWidth,
+		imageHeight,
+		formats,
+		grayscale,
+		cookies,
+	});
+}

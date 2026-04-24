@@ -1,9 +1,13 @@
 import { existsSync } from "fs";
 import type { NextConfig } from "next";
 
-const serverExternalPackages = ["@takumi-rs/core", "@takumi-rs/helpers"];
+const serverExternalPackages = [
+	"@takumi-rs/core",
+	"@takumi-rs/helpers",
+	"@sparticuz/chromium-min",
+];
 
-const browserTracingIncludes = [];
+const browserTracingIncludes: string[] = [];
 
 // Detect which optional browser packages are installed at build time.
 if (existsSync("node_modules/puppeteer-core")) {
@@ -29,6 +33,17 @@ const nextConfig: NextConfig = {
 			"/**": browserTracingIncludes,
 		},
 	}),
+	images: {
+		remotePatterns: [
+			{ protocol: "https", hostname: "raw.githubusercontent.com" },
+			{ protocol: "https", hostname: "github.com" },
+			{ protocol: "https", hostname: "*.github.io" },
+			{ protocol: "https", hostname: "trmnl.com" },
+			{ protocol: "https", hostname: "usetrmnl.com" },
+			{ protocol: "https", hostname: "trmnl.s3.us-east-2.amazonaws.com" },
+			{ protocol: "https", hostname: "trmnl-public.s3.us-east-2.amazonaws.com" },
+		],
+	},
 };
 
 export default nextConfig;

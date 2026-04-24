@@ -1,6 +1,5 @@
-import screens from "@/app/(app)/recipes/screens.json";
-import { fetchMixups } from "@/app/actions/mixup";
-import { MixupPageClient } from "@/components/mixup/mixup-page-client";
+import { fetchMixups, fetchRecipes } from "@/app/actions/mixup";
+import MixupClientPage from "./client-page";
 
 export const metadata = {
 	title: "Mixup",
@@ -8,19 +7,14 @@ export const metadata = {
 };
 
 export default async function MixupPage() {
-	const availableRecipes = Object.entries(screens)
-		.filter(
-			([, config]) => process.env.NODE_ENV !== "production" || config.published,
-		)
-		.map(([slug, config]) => ({
-			slug,
-			title: config.title,
-			description: config.description,
-			tags: config.tags,
-		}))
-		.sort((a, b) => a.title.localeCompare(b.title));
+	const [mixups, recipes] = await Promise.all([fetchMixups(), fetchRecipes()]);
 
-	const mixups = await fetchMixups();
+	const availableRecipes = recipes.map((r) => ({
+		id: r.id,
+		slug: r.slug,
+		title: r.name,
+		description: r.description ?? undefined,
+	}));
 
-	return <MixupPageClient initialMixups={mixups} recipes={availableRecipes} />;
+	return <MixupClientPage initialMixups={mixups} recipes={availableRecipes} />;
 }

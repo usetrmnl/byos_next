@@ -10,6 +10,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+	Pagination,
+	PaginationContent,
+	PaginationEllipsis,
+	PaginationItem,
+	PaginationLink,
+	PaginationNext,
+	PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
 	Select,
 	SelectContent,
 	SelectItem,
@@ -17,12 +26,20 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
 import type { SystemLog } from "@/lib/types";
 import { formatDate } from "@/utils/helpers";
 
-const ITEMS_PER_PAGE = 100;
+const DEFAULT_ITEMS_PER_PAGE = 100;
 
 // Define the type for the fetch function parameters
 export type SystemLogsFetchParams = {
@@ -45,6 +62,7 @@ interface SystemLogsViewerProps {
 		params: SystemLogsFetchParams,
 	) => Promise<SystemLogsFetchResult>;
 	paramPrefix?: string;
+	perPage?: number;
 	initialData?: {
 		logs: SystemLog[];
 		total: number;
@@ -55,19 +73,20 @@ interface SystemLogsViewerProps {
 export default function SystemLogsViewer({
 	customFetchFunction,
 	paramPrefix = "",
+	perPage = DEFAULT_ITEMS_PER_PAGE,
 	initialData,
 }: SystemLogsViewerProps) {
 	const router = useRouter();
-	const pathname = usePathname();
+	const pathname = usePathname() ?? "/";
 	const searchParams = useSearchParams();
 	const scrollRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	// Get URL params with defaults
-	const page = Number(searchParams.get(`${paramPrefix}page`) || "1");
-	const searchQuery = searchParams.get(`${paramPrefix}search`) || "";
-	const levelFilter = searchParams.get(`${paramPrefix}level`) || "all";
-	const sourceFilter = searchParams.get(`${paramPrefix}source`) || "all";
+	const page = Number(searchParams?.get(`${paramPrefix}page`) || "1");
+	const searchQuery = searchParams?.get(`${paramPrefix}search`) || "";
+	const levelFilter = searchParams?.get(`${paramPrefix}level`) || "all";
+	const sourceFilter = searchParams?.get(`${paramPrefix}source`) || "all";
 
 	// State
 	const [logs, setLogs] = useState<SystemLog[]>(initialData?.logs || []);
@@ -82,7 +101,7 @@ export default function SystemLogsViewer({
 	// Create a memoized function to update URL params
 	const createQueryString = useCallback(
 		(params: Record<string, string | number | null>) => {
-			const newSearchParams = new URLSearchParams(searchParams.toString());
+			const newSearchParams = new URLSearchParams(searchParams?.toString());
 
 			// Add prefix to all parameters
 			for (const [key, value] of Object.entries(params)) {
@@ -172,7 +191,7 @@ export default function SystemLogsViewer({
 			try {
 				const fetchParams = {
 					page,
-					perPage: ITEMS_PER_PAGE,
+					perPage: perPage,
 					search: searchQuery,
 					level: levelFilter !== "all" ? levelFilter : undefined,
 					source: sourceFilter !== "all" ? sourceFilter : undefined,
@@ -204,6 +223,7 @@ export default function SystemLogsViewer({
 		sourceFilter,
 		customFetchFunction,
 		initialData,
+		perPage,
 	]);
 
 	// Maintain scroll position
@@ -214,13 +234,40 @@ export default function SystemLogsViewer({
 	}, [isLoading]);
 
 	// Calculate pagination values
-	const totalPages = Math.ceil(totalLogs / ITEMS_PER_PAGE);
-	const showingFrom = (page - 1) * ITEMS_PER_PAGE + 1;
-	const showingTo = Math.min(page * ITEMS_PER_PAGE, totalLogs);
+	const totalPages = Math.ceil(totalLogs / perPage);
+	const showingFrom = (page - 1) * perPage + 1;
+	const showingTo = Math.min(page * perPage, totalLogs);
 
 	// Check if any filters are active
 	const hasActiveFilters =
 		searchQuery || levelFilter !== "all" || sourceFilter !== "all";
+
+	// Generate page numbers for pagination
+	const getPageNumbers = () => {
+		const pages: (number | "ellipsis")[] = [];
+		if (totalPages <= 5) {
+			for (let i = 1; i <= totalPages; i++) pages.push(i);
+		} else if (page <= 3) {
+			for (let i = 1; i <= Math.min(5, totalPages); i++) pages.push(i);
+			if (totalPages > 5) {
+				pages.push("ellipsis");
+				pages.push(totalPages);
+			}
+		} else if (page >= totalPages - 2) {
+			pages.push(1);
+			pages.push("ellipsis");
+			for (let i = totalPages - 4; i <= totalPages; i++) {
+				if (i > 1) pages.push(i);
+			}
+		} else {
+			pages.push(1);
+			pages.push("ellipsis");
+			for (let i = page - 1; i <= page + 1; i++) pages.push(i);
+			pages.push("ellipsis");
+			pages.push(totalPages);
+		}
+		return pages;
+	};
 
 	return (
 		<div ref={scrollRef} className="space-y-4">
@@ -306,7 +353,7 @@ export default function SystemLogsViewer({
 					<TabsTrigger value="warning" className="text-amber-500">
 						Warning
 					</TabsTrigger>
-					<TabsTrigger value="info" className="text-blue-500">
+					<TabsTrigger value="info" className="text-primary">
 						Info
 					</TabsTrigger>
 					<TabsTrigger value="debug" className="text-gray-500">
@@ -317,162 +364,147 @@ export default function SystemLogsViewer({
 
 			{/* Logs table */}
 			<Card className="overflow-hidden p-0">
-				<div className="overflow-x-auto">
-					<table className="w-full">
-						<thead>
-							<tr className="border-b bg-muted/50">
-								<th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-									Time
-								</th>
-								<th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-									Level
-								</th>
-								<th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-									Source
-								</th>
-								<th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-									Message
-								</th>
-								<th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-									Metadata
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							{isLoading ? (
-								Array.from({ length: 5 }).map((_, i) => (
-									<tr key={i} className="border-b">
-										<td className="px-4 py-3">
-											<Skeleton className="h-4 w-24" />
-										</td>
-										<td className="px-4 py-3">
-											<Skeleton className="h-4 w-16" />
-										</td>
-										<td className="px-4 py-3">
-											<Skeleton className="h-4 w-20" />
-										</td>
-										<td className="px-4 py-3">
-											<Skeleton className="h-4 w-full" />
-										</td>
-										<td className="px-4 py-3">
-											<Skeleton className="h-4 w-20" />
-										</td>
-									</tr>
-								))
-							) : logs.length === 0 ? (
-								<tr>
-									<td
-										colSpan={6}
-										className="px-4 py-8 text-center text-muted-foreground"
-									>
-										No logs found matching your criteria
-									</td>
-								</tr>
-							) : (
-								logs.map((log, index) => {
-									const prevLog = index > 0 ? logs[index - 1] : null;
-									// Check if we should show time based on time difference with previous log
-									const shouldTimeBeShown =
-										index === 0 ||
-										(prevLog &&
-											Math.abs(
-												new Date(log.created_at || "").getTime() -
-													new Date(prevLog.created_at || "").getTime(),
-											) /
-												1000 >=
-												3);
-									// Check if we should show level based on level difference with previous log or time difference
-									const shouldLevelBeShown =
-										index === 0 ||
-										(prevLog && prevLog.level !== log.level) ||
-										(prevLog &&
-											Math.abs(
-												new Date(log.created_at || "").getTime() -
-													new Date(prevLog.created_at || "").getTime(),
-											) /
-												1000 >=
-												3);
+				<Table>
+					<TableHeader>
+						<TableRow className="bg-muted/50">
+							<TableHead className="px-4 py-3">Time</TableHead>
+							<TableHead className="px-4 py-3">Level</TableHead>
+							<TableHead className="px-4 py-3">Source</TableHead>
+							<TableHead className="px-4 py-3">Message</TableHead>
+							<TableHead className="px-4 py-3">Metadata</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{isLoading ? (
+							Array.from({ length: 5 }).map((_, i) => (
+								<TableRow key={i}>
+									<TableCell className="px-4 py-3">
+										<Skeleton className="h-4 w-24" />
+									</TableCell>
+									<TableCell className="px-4 py-3">
+										<Skeleton className="h-4 w-16" />
+									</TableCell>
+									<TableCell className="px-4 py-3">
+										<Skeleton className="h-4 w-20" />
+									</TableCell>
+									<TableCell className="px-4 py-3">
+										<Skeleton className="h-4 w-full" />
+									</TableCell>
+									<TableCell className="px-4 py-3">
+										<Skeleton className="h-4 w-20" />
+									</TableCell>
+								</TableRow>
+							))
+						) : logs.length === 0 ? (
+							<TableRow>
+								<TableCell
+									colSpan={6}
+									className="px-4 py-8 text-center text-muted-foreground"
+								>
+									No logs found matching your criteria
+								</TableCell>
+							</TableRow>
+						) : (
+							logs.map((log, index) => {
+								const prevLog = index > 0 ? logs[index - 1] : null;
+								// Check if we should show time based on time difference with previous log
+								const shouldTimeBeShown =
+									index === 0 ||
+									(prevLog &&
+										Math.abs(
+											new Date(log.created_at || "").getTime() -
+												new Date(prevLog.created_at || "").getTime(),
+										) /
+											1000 >=
+											3);
+								// Check if we should show level based on level difference with previous log or time difference
+								const shouldLevelBeShown =
+									index === 0 ||
+									(prevLog && prevLog.level !== log.level) ||
+									(prevLog &&
+										Math.abs(
+											new Date(log.created_at || "").getTime() -
+												new Date(prevLog.created_at || "").getTime(),
+										) /
+											1000 >=
+											3);
 
-									return (
-										<tr
-											key={log.id}
-											className="border-b hover:bg-muted/50 transition-colors"
-										>
-											<td className="px-4 py-3 text-sm whitespace-nowrap">
-												{shouldTimeBeShown ? formatDate(log.created_at) : ""}
-											</td>
-											<td className="px-4 py-3">
-												{shouldLevelBeShown ? (
-													<Badge
-														variant="outline"
-														className={`
+								return (
+									<TableRow key={log.id}>
+										<TableCell className="px-4 py-3 text-sm">
+											{shouldTimeBeShown ? formatDate(log.created_at) : ""}
+										</TableCell>
+										<TableCell className="px-4 py-3">
+											{shouldLevelBeShown ? (
+												<Badge
+													variant="outline"
+													className={`
                                         ${log.level === "error" ? "bg-red-100 text-red-800 border-red-200" : ""}
                                         ${log.level === "warning" ? "bg-amber-100 text-amber-800 border-amber-200" : ""}
                                         ${log.level === "info" ? "bg-blue-100 text-blue-800 border-blue-200" : ""}
                                         ${log.level === "debug" ? "bg-gray-100 text-gray-800 border-gray-200" : ""}
                                         `}
-													>
-														{log.level}
-													</Badge>
-												) : (
-													""
-												)}
-											</td>
-											<td className="px-4 py-3 text-sm max-w-[120px] truncate">
-												{log.source}
-											</td>
-											<td className="px-4 py-3 text-sm max-w-[200px] md:max-w-[250px] lg:max-w-[300px] truncate">
-												{log.message}
-											</td>
-											<td className="px-4 py-3 text-sm">
-												{log.metadata ? (
-													<div className="flex items-start gap-1 justify-between">
-														<div className="font-mono text-xs w-full max-w-[120px] md:max-w-[200px] lg:max-w-[400px]">
-															{expandedLogs[log.id] ? (
-																<div className="pt-2 h-[200px] w-full overflow-auto">
-																	<pre className="whitespace-pre-wrap break-words">
-																		{JSON.stringify(
-																			JSON.parse(log.metadata),
-																			null,
-																			2,
-																		)}
-																	</pre>
-																</div>
-															) : (
-																<div className="pt-2 h-8 truncate">
-																	{log.metadata}
-																</div>
-															)}
-														</div>
-														<Button
-															variant="ghost"
-															size="sm"
-															onClick={() => toggleExpanded(log.id)}
-															aria-label={
-																expandedLogs[log.id]
-																	? "Collapse details"
-																	: "Expand details"
-															}
-															className="bg-transparent"
-														>
-															{expandedLogs[log.id] ? (
-																<ChevronUp className="h-4 w-4" />
-															) : (
-																<ChevronDown className="h-4 w-4" />
-															)}
-														</Button>
+												>
+													{log.level}
+												</Badge>
+											) : (
+												""
+											)}
+										</TableCell>
+										<TableCell className="px-4 py-3 text-sm max-w-[120px] truncate">
+											{log.source}
+										</TableCell>
+										<TableCell className="px-4 py-3 text-sm max-w-[200px] md:max-w-[250px] lg:max-w-[300px] truncate">
+											{log.message}
+										</TableCell>
+										<TableCell className="px-4 py-3 text-sm">
+											{log.metadata ? (
+												<div className="flex items-start gap-1 justify-between">
+													<div className="font-mono text-xs w-full max-w-[120px] md:max-w-[200px] lg:max-w-[400px]">
+														{expandedLogs[log.id] ? (
+															<div className="pt-2 h-[200px] w-full overflow-auto">
+																<pre className="whitespace-pre-wrap break-words">
+																	{JSON.stringify(
+																		JSON.parse(log.metadata),
+																		null,
+																		2,
+																	)}
+																</pre>
+															</div>
+														) : (
+															<div className="pt-2 h-8 truncate">
+																{log.metadata}
+															</div>
+														)}
 													</div>
-												) : (
-													<span className="text-muted-foreground"> - </span>
-												)}
-											</td>
-										</tr>
-									);
-								})
-							)}
-						</tbody>
-					</table>
-				</div>
+													<Button
+														variant="ghost"
+														size="sm"
+														onClick={() => toggleExpanded(log.id)}
+														aria-label={
+															expandedLogs[log.id]
+																? "Collapse details"
+																: "Expand details"
+														}
+														className="bg-transparent"
+													>
+														{expandedLogs[log.id] ? (
+															<ChevronUp className="h-4 w-4" />
+														) : (
+															<ChevronDown className="h-4 w-4" />
+														)}
+													</Button>
+												</div>
+											) : (
+												<span className="text-muted-foreground"> - </span>
+											)}
+										</TableCell>
+									</TableRow>
+								);
+							})
+						)}
+					</TableBody>
+				</Table>
 			</Card>
 
 			{/* Pagination */}
@@ -484,69 +516,51 @@ export default function SystemLogsViewer({
 						<span className="font-medium">{totalLogs}</span> logs
 					</div>
 
-					<div className="flex items-center gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => handlePageChange(page - 1)}
-							disabled={page <= 1}
-						>
-							Previous
-						</Button>
+					<Pagination>
+						<PaginationContent>
+							<PaginationItem>
+								<PaginationPrevious
+									onClick={() => page > 1 && handlePageChange(page - 1)}
+									className={
+										page <= 1
+											? "pointer-events-none opacity-50"
+											: "cursor-pointer"
+									}
+								/>
+							</PaginationItem>
 
-						<div className="flex items-center gap-1">
-							{Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-								// Show pages around current page
-								let pageNum = page;
-								if (page <= 3) {
-									pageNum = i + 1;
-								} else if (page >= totalPages - 2) {
-									pageNum = totalPages - 4 + i;
-								} else {
-									pageNum = page - 2 + i;
-								}
-
-								// Ensure page numbers are within valid range
-								if (pageNum > 0 && pageNum <= totalPages) {
-									return (
-										<Button
-											key={pageNum}
-											variant={page === pageNum ? "default" : "outline"}
-											size="sm"
+							{getPageNumbers().map((pageNum, i) =>
+								pageNum === "ellipsis" ? (
+									<PaginationItem key={`ellipsis-${i}`}>
+										<PaginationEllipsis />
+									</PaginationItem>
+								) : (
+									<PaginationItem key={pageNum}>
+										<PaginationLink
+											isActive={page === pageNum}
 											onClick={() => handlePageChange(pageNum)}
-											className="w-9"
+											className="cursor-pointer"
 										>
 											{pageNum}
-										</Button>
-									);
-								}
-								return null;
-							})}
-
-							{totalPages > 5 && page < totalPages - 2 && (
-								<>
-									<span className="text-muted-foreground">...</span>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => handlePageChange(totalPages)}
-										className="w-9"
-									>
-										{totalPages}
-									</Button>
-								</>
+										</PaginationLink>
+									</PaginationItem>
+								),
 							)}
-						</div>
 
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => handlePageChange(page + 1)}
-							disabled={page >= totalPages}
-						>
-							Next
-						</Button>
-					</div>
+							<PaginationItem>
+								<PaginationNext
+									onClick={() =>
+										page < totalPages && handlePageChange(page + 1)
+									}
+									className={
+										page >= totalPages
+											? "pointer-events-none opacity-50"
+											: "cursor-pointer"
+									}
+								/>
+							</PaginationItem>
+						</PaginationContent>
+					</Pagination>
 				</div>
 			)}
 		</div>

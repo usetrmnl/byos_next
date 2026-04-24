@@ -4,12 +4,10 @@ import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
 import {
-	addDimensionsToProps,
-	buildRecipeElement,
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 	logger,
-	renderRecipeOutputs,
+	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
@@ -39,7 +37,7 @@ export async function GET(
 			return new Response("Database not available", { status: 503 });
 		}
 
-		// Fetch mixup and its slots
+		// Fetch mixup and its slots (join with recipes to get slug)
 		const [mixup, slots] = await Promise.all([
 			db
 				.selectFrom("mixups")
@@ -48,9 +46,18 @@ export async function GET(
 				.executeTakeFirst(),
 			db
 				.selectFrom("mixup_slots")
-				.selectAll()
-				.where("mixup_id", "=", mixupId)
-				.orderBy("order_index", "asc")
+				.leftJoin("recipes", "recipes.id", "mixup_slots.recipe_id")
+				.select([
+					"mixup_slots.id",
+					"mixup_slots.mixup_id",
+					"mixup_slots.slot_id",
+					"mixup_slots.recipe_slug",
+					"mixup_slots.recipe_id",
+					"mixup_slots.order_index",
+					"recipes.slug as resolved_slug",
+				])
+				.where("mixup_slots.mixup_id", "=", mixupId)
+				.orderBy("mixup_slots.order_index", "asc")
 				.execute(),
 		]);
 
@@ -65,10 +72,10 @@ export async function GET(
 			return new Response("Invalid layout", { status: 400 });
 		}
 
-		// Build slot assignments map
+		// Build slot assignments map — prefer resolved slug from recipes table, fall back to legacy recipe_slug
 		const assignments: Record<string, string | null> = {};
 		for (const slot of slots) {
-			assignments[slot.slot_id] = slot.recipe_slug;
+			assignments[slot.slot_id] = slot.resolved_slug ?? slot.recipe_slug;
 		}
 
 		logger.info(
@@ -104,27 +111,12 @@ async function renderSlot(
 	recipeSlug: string,
 ): Promise<Buffer | null> {
 	try {
-		const { config, Component, props, element } = await buildRecipeElement({
+		const renders = await renderRecipeToImage({
 			slug: recipeSlug,
-		});
-
-		const ComponentToRender = Component ?? (() => element);
-		const propsWithDimensions = addDimensionsToProps(
-			props,
-			slot.width,
-			slot.height,
-		);
-
-		const renders = await renderRecipeOutputs({
-			slug: recipeSlug,
-			Component: ComponentToRender,
-			props: propsWithDimensions,
-			config: config ?? null,
 			imageWidth: slot.width,
 			imageHeight: slot.height,
 			formats: ["png"],
 		});
-
 		return renders.png;
 	} catch (error) {
 		logger.error(

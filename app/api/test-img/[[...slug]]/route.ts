@@ -354,7 +354,7 @@ export async function GET(
 		);
 
 		// Safety check for fallback data
-		if (!fallback || !fallback.data) {
+		if (!fallback?.data) {
 			throw new Error("Failed to generate fallback image");
 		}
 
@@ -379,7 +379,7 @@ export async function GET(
 			const fallback = await generateFallbackImage(errorMessage);
 
 			// Final safety check
-			if (!fallback || !fallback.data) {
+			if (!fallback?.data) {
 				return new Response(
 					`Critical failure: Failed to generate error image`,
 					{

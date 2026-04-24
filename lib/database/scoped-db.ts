@@ -31,21 +31,51 @@ export async function withUserScope<T>(
 	callback: (scopedDb: typeof db) => Promise<T>,
 ): Promise<T> {
 	const userId = await getCurrentUserId();
+	return runScoped(userId ?? "", callback);
+}
 
-	// Use a dedicated connection to ensure role and session variable persist
+/**
+ * Execute a database operation scoped to a specific user ID for RLS.
+ *
+ * Use this when the user ID is known from context other than the HTTP session
+ * (e.g. resolved from a device access token).
+ */
+export async function withExplicitUserScope<T>(
+	userId: string,
+	callback: (scopedDb: typeof db) => Promise<T>,
+): Promise<T> {
+	return runScoped(userId, callback);
+}
+
+/**
+ * Acquire a pooled connection, switch role + set RLS user, run the callback,
+ * then reset both settings before releasing the connection back to the pool.
+ * Without the reset, `app.current_user_id` would persist on the connection and
+ * any later unscoped query on that same pooled connection would inherit it.
+ */
+async function runScoped<T>(
+	userId: string,
+	callback: (scopedDb: typeof db) => Promise<T>,
+): Promise<T> {
 	return db.connection().execute(async (conn) => {
-		// Switch to non-superuser role so RLS policies are enforced
-		// (superusers bypass RLS even with FORCE ROW LEVEL SECURITY)
 		await sql`SET ROLE ${sql.ref(APP_ROLE)}`.execute(conn);
-
-		// Set the user context for RLS
-		// Empty string when no user (auth disabled) = only access to unclaimed rows (user_id IS NULL)
-		// User ID when authenticated = access to own rows + unclaimed rows
-		await sql`SELECT set_config('app.current_user_id', ${userId ?? ""}, false)`.execute(
+		await sql`SELECT set_config('app.current_user_id', ${userId}, false)`.execute(
 			conn,
 		);
-
-		return callback(conn);
+		try {
+			return await callback(conn);
+		} finally {
+			// Best-effort cleanup: clear the RLS user and restore the default role
+			// so the next checkout of this connection starts clean.
+			try {
+				await sql`SELECT set_config('app.current_user_id', '', false)`.execute(
+					conn,
+				);
+				await sql`RESET ROLE`.execute(conn);
+			} catch {
+				// If reset fails (connection already broken), the pool will discard it.
+			}
+		}
 	});
 }
 
@@ -77,6 +107,6 @@ export async function withUserScopeTransaction<T>(
 			trx,
 		);
 
-		return callback(trx);
+		return await callback(trx);
 	});
 }

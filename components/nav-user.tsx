@@ -5,6 +5,7 @@ import {
 	LogOut,
 	Mail,
 	MessageSquare,
+	Monitor,
 	Settings,
 } from "lucide-react";
 import Image from "next/image";
@@ -118,6 +119,12 @@ export function NavUser({ user }: NavUserProps) {
 										<Link href="/admin/users">
 											<Settings className="mr-2 size-4" />
 											Manage users
+										</Link>
+									</DropdownMenuItem>
+									<DropdownMenuItem asChild>
+										<Link href="/admin/devices">
+											<Monitor className="mr-2 size-4" />
+											Manage devices
 										</Link>
 									</DropdownMenuItem>
 								</DropdownMenuGroup>
