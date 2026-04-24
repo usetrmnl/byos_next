@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import {
-	applyDithering as processDithering,
 	DitheringMethod,
+	applyDithering as processDithering,
 } from "@/utils/image-processing";
 
 const METHOD_MAP: Record<string, DitheringMethod> = {

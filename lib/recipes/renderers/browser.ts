@@ -73,28 +73,25 @@ async function getBrowser(): Promise<Browser> {
 		const executablePath = process.env.CHROME_EXECUTABLE_PATH;
 
 		// puppeteer-core and puppeteer are optional dependencies — types may not
-		// be present in non-browser builds, hence the @ts-ignore comments.
+		// be present in non-browser builds, hence the @ts-expect-error comments.
 		// serverExternalPackages in next.config.ts prevents the bundler from
 		// trying to bundle or resolve these at build time.
 		if (browserUrl) {
 			// browserURL lets Puppeteer discover the WebSocket URL via /json/version,
 			// avoiding the need to know Chrome's UUID-based WS path upfront.
-			// biome-ignore lint/ts/noTsIgnoreComment: optional dependency, types absent in non-browser builds
-			// @ts-ignore
+			// @ts-expect-error
 			const { connect } = await import("puppeteer-core");
 			browser = (await connect({
 				browserURL: browserUrl,
 			})) as unknown as Browser;
 		} else if (wsEndpoint) {
-			// biome-ignore lint/ts/noTsIgnoreComment: optional dependency, types absent in non-browser builds
-			// @ts-ignore
+			// @ts-expect-error
 			const { connect } = await import("puppeteer-core");
 			browser = (await connect({
 				browserWSEndpoint: wsEndpoint,
 			})) as unknown as Browser;
 		} else if (executablePath) {
-			// biome-ignore lint/ts/noTsIgnoreComment: optional dependency, types absent in non-browser builds
-			// @ts-ignore
+			// @ts-expect-error
 			const { launch } = await import("puppeteer-core");
 			browser = (await launch({
 				headless: true,
@@ -102,8 +99,7 @@ async function getBrowser(): Promise<Browser> {
 				args: BROWSER_OPTIONS,
 			})) as unknown as Browser;
 		} else {
-			// biome-ignore lint/ts/noTsIgnoreComment: optional dependency, types absent in non-browser builds
-			// @ts-ignore
+			// @ts-expect-error
 			const { launch } = await import("puppeteer");
 			browser = (await launch({
 				headless: true,

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/auth";
 
 // Paths that don't require authentication
@@ -35,4 +35,3 @@ export async function proxy(request: NextRequest) {
 
 	return NextResponse.next();
 }
-
