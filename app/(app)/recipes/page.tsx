@@ -1,18 +1,9 @@
+import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import { fetchRecipes } from "@/app/actions/mixup";
 import { PageTemplate } from "@/components/common/page-template";
-import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardFooter,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -20,124 +11,121 @@ import {
 } from "@/lib/recipes/constants";
 import type { Recipe } from "@/lib/types";
 
-// Component to display a preview with Suspense
-const ComponentPreview = ({ recipe }: { recipe: Recipe }) => {
-	return (
-		<AspectRatio
-			ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
-			className="bg-red-100 flex items-center justify-center p-0 border-b"
-		>
-			<picture>
-				<source srcSet={`/api/bitmap/${recipe.slug}.bmp`} type="image/bmp" />
-				<img
-					src={`/api/bitmap/${recipe.slug}.bmp`}
-					alt={`${recipe.name} preview`}
-					width={DEFAULT_IMAGE_WIDTH}
-					height={DEFAULT_IMAGE_HEIGHT}
-					className="object-cover"
-					style={{
-						imageRendering: "pixelated",
-					}}
-				/>
-			</picture>
-		</AspectRatio>
-	);
-};
-
-// Component for a single card
 const RecipeCard = ({ recipe }: { recipe: Recipe }) => {
 	return (
 		<Link
 			key={recipe.slug}
 			href={`/recipes/${recipe.slug}`}
-			className="group flex flex-col h-full"
+			className="group flex h-full flex-col overflow-hidden rounded-xl border bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
 		>
-			<Card className="pt-0 overflow-hidden h-full flex flex-col transition-shadow group-hover:shadow-md">
-				<ComponentPreview recipe={recipe} />
-
-				<CardHeader>
-					<div className="flex items-center gap-2">
-						<Badge variant="outline">
-							{recipe.type.charAt(0).toUpperCase() + recipe.type.slice(1)}
+			<div
+				className="relative overflow-hidden border-b bg-neutral-100"
+				style={{
+					aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
+				}}
+			>
+				<picture>
+					<source srcSet={`/api/bitmap/${recipe.slug}.bmp`} type="image/bmp" />
+					<img
+						src={`/api/bitmap/${recipe.slug}.bmp`}
+						alt={`${recipe.name} preview`}
+						width={DEFAULT_IMAGE_WIDTH}
+						height={DEFAULT_IMAGE_HEIGHT}
+						className="absolute inset-0 h-full w-full object-cover"
+						style={{ imageRendering: "pixelated" }}
+					/>
+				</picture>
+				<div className="absolute left-2 top-2 flex items-center gap-1">
+					<Badge
+						variant="secondary"
+						className="h-5 border border-black/10 bg-white/85 text-[10px] uppercase tracking-wider backdrop-blur"
+					>
+						{recipe.type}
+					</Badge>
+					{recipe.version && (
+						<Badge
+							variant="secondary"
+							className="h-5 border border-black/10 bg-white/85 text-[10px] tabular-nums backdrop-blur"
+						>
+							v{recipe.version}
 						</Badge>
-						{recipe.version && (
-							<Badge variant="secondary">v{recipe.version}</Badge>
-						)}
-					</div>
-					<CardTitle className="text-xl group-hover:text-blue-600 transition-colors">
-						{recipe.name}
-					</CardTitle>
-					{recipe.description && (
-						<CardDescription>{recipe.description}</CardDescription>
 					)}
-				</CardHeader>
+				</div>
+			</div>
 
-				<CardContent className="flex-grow" />
-
-				<Separator />
-
-				<CardFooter className="text-xs text-muted-foreground flex justify-between items-center">
-					{recipe.category && (
+			<div className="flex flex-1 flex-col gap-1.5 p-4">
+				<div className="flex items-start justify-between gap-2">
+					<h3 className="text-base font-semibold tracking-tight transition-colors group-hover:text-primary">
+						{recipe.name}
+					</h3>
+					<ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+				</div>
+				{recipe.description && (
+					<p className="line-clamp-2 text-sm text-muted-foreground">
+						{recipe.description}
+					</p>
+				)}
+				<div className="mt-auto flex items-center justify-between pt-2 text-[11px] text-muted-foreground">
+					{recipe.category ? (
 						<span className="capitalize">
 							{recipe.category.replace(/-/g, " ")}
 						</span>
+					) : (
+						<span>—</span>
 					)}
 					{recipe.updated_at && (
-						<span>{new Date(recipe.updated_at).toLocaleDateString()}</span>
+						<span className="tabular-nums">
+							{new Date(recipe.updated_at).toLocaleDateString()}
+						</span>
 					)}
-				</CardFooter>
-			</Card>
+				</div>
+			</div>
 		</Link>
 	);
 };
 
-// Skeleton card for loading state
 const RecipeCardSkeleton = () => {
 	return (
-		<Card className="overflow-hidden h-full flex flex-col">
-			<AspectRatio
-				ratio={DEFAULT_IMAGE_WIDTH / DEFAULT_IMAGE_HEIGHT}
-				className="border-b"
-			>
-				<Skeleton className="h-full w-full" />
-			</AspectRatio>
-			<CardHeader className="pb-2">
-				<div className="flex items-center gap-2">
-					<Skeleton className="h-5 w-14 rounded-full" />
-					<Skeleton className="h-5 w-10 rounded-full" />
-				</div>
-				<Skeleton className="h-6 w-3/4" />
+		<div className="flex h-full flex-col overflow-hidden rounded-xl border bg-card">
+			<Skeleton
+				className="w-full rounded-none"
+				style={{
+					aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
+				}}
+			/>
+			<div className="flex flex-1 flex-col gap-2 p-4">
+				<Skeleton className="h-5 w-3/4" />
 				<Skeleton className="h-4 w-full" />
 				<Skeleton className="h-4 w-2/3" />
-			</CardHeader>
-			<CardContent className="flex-grow" />
-			<Separator />
-			<CardFooter className="py-3">
-				<div className="flex justify-between items-center w-full">
+				<div className="mt-auto flex justify-between pt-2">
 					<Skeleton className="h-3 w-16" />
 					<Skeleton className="h-3 w-20" />
-				</div>
-			</CardFooter>
-		</Card>
-	);
-};
-
-const RecipesGridSkeleton = () => {
-	return (
-		<div className="flex flex-col">
-			<div className="mb-8">
-				<Skeleton className="h-8 w-40 mb-4" />
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-					{Array.from({ length: 6 }).map((_, i) => (
-						<RecipeCardSkeleton key={i} />
-					))}
 				</div>
 			</div>
 		</div>
 	);
 };
 
-// Component for a category section
+const RecipesGridSkeleton = () => {
+	return (
+		<div className="space-y-10">
+			{Array.from({ length: 2 }).map((_, section) => (
+				<div key={section} className="space-y-4">
+					<div className="flex items-center gap-3">
+						<Skeleton className="h-3 w-24" />
+						<div className="h-px flex-1 bg-border" />
+					</div>
+					<div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+						{Array.from({ length: 3 }).map((_, i) => (
+							<RecipeCardSkeleton key={i} />
+						))}
+					</div>
+				</div>
+			))}
+		</div>
+	);
+};
+
 const CategorySection = ({
 	category,
 	recipes,
@@ -146,41 +134,42 @@ const CategorySection = ({
 	recipes: Recipe[];
 }) => {
 	return (
-		<div key={category} className="mb-8">
-			<h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mb-4 capitalize">
-				{category.replace(/-/g, " ")}
-			</h3>
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+		<section key={category} className="space-y-4">
+			<div className="flex items-center gap-3">
+				<h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+					{category.replace(/-/g, " ")}
+				</h3>
+				<span className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+					{recipes.length}
+				</span>
+				<div className="h-px flex-1 bg-border" />
+			</div>
+			<div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
 				{recipes.map((recipe) => (
 					<RecipeCard key={recipe.slug} recipe={recipe} />
 				))}
 			</div>
-		</div>
+		</section>
 	);
 };
 
-// Main component that organizes recipes by category
 async function RecipesGrid() {
 	const allRecipes = await fetchRecipes();
 
-	// Group recipes by category
 	const recipesByCategory = allRecipes.reduce(
 		(acc, recipe) => {
 			const category = (recipe.category || "uncategorized").split(",")[0];
-			if (!acc[category]) {
-				acc[category] = [];
-			}
+			if (!acc[category]) acc[category] = [];
 			acc[category].push(recipe);
 			return acc;
 		},
 		{} as Record<string, Recipe[]>,
 	);
 
-	// Sort categories alphabetically
 	const sortedCategories = Object.keys(recipesByCategory).sort();
 
 	return (
-		<div className="flex flex-col">
+		<div className="space-y-10">
 			{sortedCategories.map((category) => (
 				<CategorySection
 					key={category}
