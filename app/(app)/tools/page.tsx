@@ -1,10 +1,10 @@
-import { ArrowUpRight, Wrench } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
 import tools from "@/app/(app)/tools/tools.json";
 import { PageTemplate } from "@/components/common/page-template";
 import { Badge } from "@/components/ui/badge";
 
+// Tool configuration type
 type ToolConfig = {
 	title: string;
 	published: boolean;
@@ -20,69 +20,52 @@ type ToolConfig = {
 	updatedAt: string;
 };
 
+// Get published tools
 const getPublishedTools = () => {
 	const toolEntries = Object.entries(tools as Record<string, ToolConfig>);
+
+	// Filter out unpublished tools in production
 	return process.env.NODE_ENV === "production"
 		? toolEntries.filter(([, config]) => config.published)
 		: toolEntries;
 };
 
+// Component for a single card
 const ToolCard = ({ slug, config }: { slug: string; config: ToolConfig }) => {
 	return (
 		<Link
 			key={slug}
 			href={`/tools/${slug}`}
-			className="group flex h-full flex-col overflow-hidden rounded-xl border bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+			className="border rounded-lg overflow-hidden hover:shadow-md transition-shadow group flex flex-col h-full"
 		>
-			<div className="flex items-center justify-between border-b bg-muted/30 px-4 py-2.5">
-				<div className="flex items-center gap-2">
-					<div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-						<Wrench className="h-3.5 w-3.5" />
-					</div>
-					<Badge variant="secondary" className="tabular-nums">
-						v{config.version}
-					</Badge>
-				</div>
-				<ArrowUpRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
-			</div>
-
-			<div className="flex flex-1 flex-col gap-2 p-4">
-				<h3 className="text-base font-semibold tracking-tight transition-colors group-hover:text-primary">
+			<div className="p-4 flex flex-col flex-grow">
+				<h4 className="scroll-m-20 text-xl font-semibold tracking-tight group-hover:text-primary transition-colors">
 					{config.title}
-				</h3>
-				<p className="line-clamp-3 text-sm text-muted-foreground">
+				</h4>
+				<p className="text-gray-600 text-sm mt-2 mb-4 flex-grow">
 					{config.description}
 				</p>
 
-				{config.tags?.length > 0 && (
-					<div className="flex flex-wrap gap-1.5 pt-1">
-						{config.tags.slice(0, 4).map((tag) => (
-							<span
-								key={tag}
-								className="rounded-md border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-							>
-								{tag}
-							</span>
-						))}
-						{config.tags.length > 4 && (
-							<span className="rounded-md border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-								+{config.tags.length - 4}
-							</span>
-						)}
-					</div>
-				)}
-
-				<div className="mt-auto flex items-center justify-between pt-2 text-[11px] text-muted-foreground">
-					<span className="truncate">by {config.author?.name}</span>
-					<span className="tabular-nums">
-						{new Date(config.updatedAt).toLocaleDateString()}
-					</span>
+				<div className="flex flex-wrap gap-2 mt-auto">
+					{config.tags.slice(0, 3).map((tag: string) => (
+						<Badge key={tag} variant="outline">
+							{tag}
+						</Badge>
+					))}
+					{config.tags.length > 3 && (
+						<Badge variant="outline">+{config.tags.length - 3} more</Badge>
+					)}
+				</div>
+				<div className="mt-4 text-xs text-gray-500 flex justify-between items-center">
+					<span>v{config.version}</span>
+					<span>{new Date(config.updatedAt).toLocaleDateString()}</span>
 				</div>
 			</div>
 		</Link>
 	);
 };
 
+// Component for a category section
 const CategorySection = ({
 	category,
 	tools,
@@ -91,42 +74,41 @@ const CategorySection = ({
 	tools: Array<[string, ToolConfig]>;
 }) => {
 	return (
-		<section key={category} className="space-y-4">
-			<div className="flex items-center gap-3">
-				<h3 className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-					{category.replace(/-/g, " ")}
-				</h3>
-				<span className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-					{tools.length}
-				</span>
-				<div className="h-px flex-1 bg-border" />
-			</div>
-			<div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+		<div key={category} className="mb-8">
+			<h3 className="scroll-m-20 text-2xl font-semibold tracking-tight mb-4">
+				{category.replace(/-/g, " ")}
+			</h3>
+			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 				{tools.map(([slug, config]) => (
 					<ToolCard key={slug} slug={slug} config={config} />
 				))}
 			</div>
-		</section>
+		</div>
 	);
 };
 
+// Main component that organizes tools by category
 const ToolsGrid = () => {
 	const publishedTools = getPublishedTools();
 
+	// Group tools by category
 	const toolsByCategory = publishedTools.reduce(
 		(acc, [slug, config]) => {
 			const category = config.category || "uncategorized";
-			if (!acc[category]) acc[category] = [];
+			if (!acc[category]) {
+				acc[category] = [];
+			}
 			acc[category].push([slug, config]);
 			return acc;
 		},
 		{} as Record<string, Array<[string, ToolConfig]>>,
 	);
 
+	// Sort categories alphabetically
 	const sortedCategories = Object.keys(toolsByCategory).sort();
 
 	return (
-		<div className="space-y-10">
+		<div className="flex flex-col">
 			{sortedCategories.map((category) => (
 				<CategorySection
 					key={category}
@@ -142,13 +124,9 @@ export default function ToolsIndex() {
 	return (
 		<PageTemplate
 			title="Tools"
-			subtitle="Helpful tools for your workflow and creative projects."
+			subtitle="Explore and use helpful tools for your workflow and creative projects."
 		>
-			<Suspense
-				fallback={
-					<div className="text-sm text-muted-foreground">Loading tools…</div>
-				}
-			>
+			<Suspense fallback={<div>Loading tools...</div>}>
 				<ToolsGrid />
 			</Suspense>
 		</PageTemplate>
