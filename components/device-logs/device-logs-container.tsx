@@ -3,13 +3,6 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchDeviceSystemLogs } from "@/app/actions/system";
 import SystemLogsViewer from "@/components/system-logs/system-logs-viewer";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Device } from "@/lib/types";
 import DeviceLogsViewer from "./device-logs-viewer";
@@ -36,39 +29,35 @@ export default function DeviceLogsContainer({
 	};
 
 	return (
-		<Card className="mt-6 overflow-x-scroll">
-			<CardHeader>
-				<CardTitle className="text-base">Device Logs</CardTitle>
-				<CardDescription className="text-xs">
-					View logs and events for this device
-				</CardDescription>
-			</CardHeader>
-			<CardContent>
-				<Tabs value={activeTab} onValueChange={handleTabChange}>
-					<TabsList className="grid w-full grid-cols-2">
-						<TabsTrigger value="device-logs">Device Logs</TabsTrigger>
-						<TabsTrigger value="system-logs">System Logs</TabsTrigger>
-					</TabsList>
-					<div className="mt-4">
-						<TabsContent value="device-logs" className="mt-0">
-							<DeviceLogsViewer
-								friendlyId={device.friendly_id}
-								paramPrefix="device_"
-							/>
-						</TabsContent>
-						<TabsContent value="system-logs" className="mt-0">
-							{/* Custom SystemLogsViewer that filters for this device */}
-							<SystemLogsViewerWithDeviceFilter
-								friendlyId={device.friendly_id}
-								macAddress={device.mac_address}
-								apiKey={device.api_key}
-								paramPrefix="system_"
-							/>
-						</TabsContent>
-					</div>
-				</Tabs>
-			</CardContent>
-		</Card>
+		<section className="overflow-hidden rounded-2xl border bg-card">
+			<div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
+				<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+					Device logs
+				</h3>
+			</div>
+			<Tabs value={activeTab} onValueChange={handleTabChange} className="p-4">
+				<TabsList className="grid w-full grid-cols-2">
+					<TabsTrigger value="device-logs">Device logs</TabsTrigger>
+					<TabsTrigger value="system-logs">System logs</TabsTrigger>
+				</TabsList>
+				<div className="mt-4">
+					<TabsContent value="device-logs" className="mt-0">
+						<DeviceLogsViewer
+							friendlyId={device.friendly_id}
+							paramPrefix="device_"
+						/>
+					</TabsContent>
+					<TabsContent value="system-logs" className="mt-0">
+						<SystemLogsViewerWithDeviceFilter
+							friendlyId={device.friendly_id}
+							macAddress={device.mac_address}
+							apiKey={device.api_key}
+							paramPrefix="system_"
+						/>
+					</TabsContent>
+				</div>
+			</Tabs>
+		</section>
 	);
 }
 
