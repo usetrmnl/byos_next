@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { deletePlaylist, savePlaylistWithItems } from "@/app/actions/playlist";
-import { PlaylistEditor } from "@/components/playlists/playlist-editor";
+import { PlaylistBuilder } from "@/components/playlists/playlist-builder";
 import { PlaylistList } from "@/components/playlists/playlist-list";
 import { Button } from "@/components/ui/button";
 import type { Playlist, PlaylistItem, Recipe } from "@/lib/types";
@@ -42,10 +42,7 @@ export default function PlaylistsClientPage({
 					(b.order_index ?? Number.MAX_SAFE_INTEGER),
 			);
 
-		setEditingPlaylist({
-			...playlist,
-			items: itemsForPlaylist,
-		});
+		setEditingPlaylist({ ...playlist, items: itemsForPlaylist });
 		setShowEditor(true);
 	};
 
@@ -119,46 +116,34 @@ export default function PlaylistsClientPage({
 
 	if (showEditor) {
 		return (
-			<div className="space-y-6">
-				<div className="space-y-2">
-					<h1 className="text-3xl font-bold">
-						{editingPlaylist ? "Edit Playlist" : "New Playlist"}
-					</h1>
-					<p className="text-muted-foreground">
-						{editingPlaylist
-							? "Modify your playlist settings and items."
-							: "Create a new playlist for your TRMNL devices."}
-					</p>
-				</div>
-
-				<PlaylistEditor
-					playlist={
-						editingPlaylist
-							? {
-									id: editingPlaylist.id,
-									name: editingPlaylist.name,
-									items: editingPlaylist.items?.map((item) => ({
-										...item,
-										start_time: item.start_time ?? undefined,
-										end_time: item.end_time ?? undefined,
-										days_of_week: item.days_of_week ?? undefined,
-									})),
-								}
-							: undefined
-					}
-					recipes={recipes}
-					onSave={handleSavePlaylist}
-					onCancel={handleCancel}
-				/>
-			</div>
+			<PlaylistBuilder
+				playlist={
+					editingPlaylist
+						? {
+								id: editingPlaylist.id,
+								name: editingPlaylist.name,
+								items: editingPlaylist.items?.map((item) => ({
+									...item,
+									start_time: item.start_time ?? undefined,
+									end_time: item.end_time ?? undefined,
+									days_of_week: item.days_of_week ?? undefined,
+								})),
+							}
+						: undefined
+				}
+				recipes={recipes}
+				onSave={handleSavePlaylist}
+				onCancel={handleCancel}
+				isSaving={isLoading}
+			/>
 		);
 	}
 
 	return (
 		<div className="space-y-6">
-			<div className="flex justify-between items-center">
+			<div className="flex items-center justify-end">
 				<Button onClick={handleCreatePlaylist} disabled={isLoading}>
-					<Plus className="h-4 w-4 mr-2" />
+					<Plus className="mr-2 h-4 w-4" />
 					New Playlist
 				</Button>
 			</div>
@@ -169,6 +154,7 @@ export default function PlaylistsClientPage({
 				recipes={recipes}
 				onEditPlaylist={handleEditPlaylist}
 				onDeletePlaylist={handleDeletePlaylist}
+				onCreatePlaylist={handleCreatePlaylist}
 				isLoading={isLoading}
 			/>
 		</div>
