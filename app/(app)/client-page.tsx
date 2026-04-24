@@ -13,7 +13,7 @@ import {
 	CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusIndicator } from "@/components/ui/status-indicator";
+import { StatusIndicator } from "@/components/common/status-indicator";
 import {
 	Table,
 	TableBody,

@@ -53,7 +53,7 @@ import {
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import { StatusIndicator } from "@/components/ui/status-indicator";
+import { StatusIndicator } from "@/components/common/status-indicator";
 import type { Device, RecipeSidebarItem } from "@/lib/types";
 import packageJson from "@/package.json";
 import { getDeviceStatus } from "@/utils/helpers";

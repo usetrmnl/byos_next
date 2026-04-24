@@ -8,7 +8,7 @@ import { installCommunityRecipe } from "@/app/actions/catalog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { PageTemplate } from "@/components/ui/page-template";
+import { PageTemplate } from "@/components/common/page-template";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { CatalogEntry, TrmnlRecipe } from "@/lib/catalog";
 

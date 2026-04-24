@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { fetchRecipes } from "@/app/actions/mixup";
-import { PageTemplate } from "@/components/ui/page-template";
+import { PageTemplate } from "@/components/common/page-template";
 import { getInitData } from "@/lib/getInitData";
 import PlaylistsClientPage from "./client-page";
 

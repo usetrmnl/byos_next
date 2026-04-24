@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { cache, Suspense } from "react";
 import tools from "@/app/(app)/tools/tools.json";
-import { PageTemplate } from "@/components/ui/page-template";
+import { PageTemplate } from "@/components/common/page-template";
 
 export async function generateMetadata({
 	params,

@@ -15,7 +15,7 @@ import { RecipePreviewLayout } from "@/components/recipes/recipe-preview-layout"
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
-import { PageTemplate } from "@/components/ui/page-template";
+import { PageTemplate } from "@/components/common/page-template";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import LiquidPreview from "@/lib/recipes/liquid-preview";

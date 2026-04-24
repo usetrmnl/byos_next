@@ -5,7 +5,7 @@
 // import { AlertCircle } from "lucide-react";
 // import Link from "next/link";
 // import { Suspense } from "react";
-import { PageTemplate } from "@/components/ui/page-template";
+import { PageTemplate } from "@/components/common/page-template";
 
 export const metadata = {
 	title: "Maintenance",

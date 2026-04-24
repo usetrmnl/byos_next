@@ -15,7 +15,7 @@ import {
 } from "@/components/mixup/mixup-builder";
 import { MixupList } from "@/components/mixup/mixup-list";
 import { Button } from "@/components/ui/button";
-import { PageTemplate } from "@/components/ui/page-template";
+import { PageTemplate } from "@/components/common/page-template";
 import { slotsToAssignments } from "@/lib/mixup/constants";
 import type { Mixup } from "@/lib/types";
 

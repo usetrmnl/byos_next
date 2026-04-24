@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
 import { Badge } from "@/components/ui/badge";
-import { PageTemplate } from "@/components/ui/page-template";
+import { PageTemplate } from "@/components/common/page-template";
 import { getInitData } from "@/lib/getInitData";
 import DashboardClientPage from "./client-page";
 

@@ -1,4 +1,4 @@
-import { Graph } from "@/components/ui/graph";
+import { Graph } from "@/components/common/graph";
 import { PreSatori } from "@/utils/pre-satori";
 
 interface CryptoPriceProps {

@@ -2,7 +2,7 @@ import { Edit, Trash2 } from "lucide-react";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FormattedDate } from "@/components/ui/formatted-date";
+import { FormattedDate } from "@/components/common/formatted-date";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,

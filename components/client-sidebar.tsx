@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/collapsible";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusIndicator } from "@/components/ui/status-indicator";
+import { StatusIndicator } from "@/components/common/status-indicator";
 import type { Device, RecipeSidebarItem } from "@/lib/types";
 import packageJson from "@/package.json";
 import { getDeviceStatus } from "@/utils/helpers";
