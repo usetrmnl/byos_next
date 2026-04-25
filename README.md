@@ -36,6 +36,7 @@
     - [Run with Docker Compose (app + Postgres)](#run-with-docker-compose-app--postgres)
     - [Run Locally](#run-locally)
   - [Environment](#environment)
+    - [Renderer Options](#renderer-options)
     - [Database Options](#database-options)
   - [Project Structure](#project-structure)
   - [Playlists](#playlists)
@@ -68,11 +69,24 @@
 5. Sync environment variables locally via `vercel link` and `vercel env pull` if you also develop on your machine.
 
 ### Run with Docker Compose (app + Postgres)
+1. Copy `.env.example` to `.env` and fill in the required values. At minimum:
+   ```
+   POSTGRES_PASSWORD=your_password
+   BETTER_AUTH_SECRET=a_random_32_character_secret
+   ```
+   `docker-compose.yml` reads from `.env` (not `.env.local`). Generate a secret with `openssl rand -base64 32`.
+2. Start the stack:
+   ```bash
+   docker-compose up -d
+   # visit http://localhost:3000
+   ```
+
+#### Browser-based renderer (optional)
+For pixel-perfect TRMNL Framework UI compatibility, run the browser renderer alongside a headless Chrome container:
 ```bash
-export POSTGRES_PASSWORD=your_password
-docker-compose up -d
-# visit http://localhost:3000
+docker-compose -f docker-compose.yml -f docker-compose.browser.yml up -d
 ```
+This sets `REACT_RENDERER=browser` and starts a Chromium debugger that renders recipes via `/recipes/[slug]/preview`. See the `Environment` section for renderer options.
 
 ### Run Locally
 ```bash
@@ -92,15 +106,27 @@ pnpm lint
 ```
 
 ## Environment
-Create `.env.local` with the keys you need. Common variables:
-```
-DATABASE_URL
-POSTGRES_PASSWORD
-```
+Create `.env.local` (for `pnpm dev`) or `.env` (for Docker Compose) with the keys you need. See `.env.example` for the full list. Common variables:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Postgres connection string. |
+| `POSTGRES_PASSWORD` | Used by `docker-compose.yml` to bootstrap the Postgres container. |
+| `BETTER_AUTH_SECRET` | Required when `AUTH_ENABLED=true`. Generate with `openssl rand -base64 32`. |
+| `BETTER_AUTH_URL` | Public URL of your deployment (defaults to `http://localhost:3000`). |
+| `AUTH_ENABLED` | Set to `false` to disable authentication (mono-user mode). |
+| `ADMIN_EMAIL` | Email that receives admin role on first sign-up. |
+| `REACT_RENDERER` | `takumi` (default), `satori`, or `browser`. See below. |
+| `ENABLE_EXTERNAL_CATALOG` | Allow fetching the community / TRMNL recipe catalog. |
+
+### Renderer Options
+- **`takumi`** (default): fast Rust-backed Satori-compatible renderer.
+- **`satori`**: original Vercel Satori renderer.
+- **`browser`**: headless Chrome via `puppeteer-core`, required for full TRMNL Framework UI components and pixel-perfect parity with the official cloud. Use the `docker-compose.browser.yml` overlay or set `BROWSER_URL` to a reachable Chrome DevTools endpoint.
 
 ### Database Options
-- **Supabase or Neon:** run migrations in `migrations/` in order to create tables and playlist support.
-- **Docker/Postgres:** set `POSTGRES_PASSWORD`, run `docker-compose up -d`.
+- **Supabase or Neon:** run migrations in `migrations/` in order, or use the in-app Initialize button on first launch. **Note:** migration `0009_add_user_tenancy.sql` assumes a `postgres` superuser role. On managed providers where the connection role differs, edit `GRANT byos_app TO <your_role>` before running it (see [#46](https://github.com/usetrmnl/byos_next/issues/46)).
+- **Docker/Postgres:** set `POSTGRES_PASSWORD` and `BETTER_AUTH_SECRET` in `.env`, then run `docker-compose up -d`.
 - **No-DB mode:** run `pnpm dev` without DB env vars to preview screens only (device management disabled).
 
 ## Project Structure
