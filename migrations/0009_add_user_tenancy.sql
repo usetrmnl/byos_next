@@ -129,11 +129,20 @@ $$;
 -- Ensure the role does NOT have BYPASSRLS (default, but explicit for clarity)
 ALTER ROLE byos_app NOBYPASSRLS;
 
--- Allow postgres to switch to this role via SET ROLE
-GRANT byos_app TO postgres;
+-- Allow the connecting role (whatever it is — postgres, neondb_owner, supabase_admin, etc.)
+-- to switch to byos_app via SET ROLE. Using CURRENT_USER makes this portable across providers.
+DO $$
+BEGIN
+    EXECUTE format('GRANT byos_app TO %I', CURRENT_USER);
+END
+$$;
 
--- Grant connect to database
-GRANT CONNECT ON DATABASE byos_db TO byos_app;
+-- Grant connect to the current database (name varies by provider: byos_db, neondb, postgres, etc.)
+DO $$
+BEGIN
+    EXECUTE format('GRANT CONNECT ON DATABASE %I TO byos_app', current_database());
+END
+$$;
 
 -- Grant usage on schema
 GRANT USAGE ON SCHEMA public TO byos_app;
