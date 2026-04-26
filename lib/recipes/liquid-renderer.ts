@@ -279,7 +279,7 @@ async function fetchPollingData(
  * Scripts that contain Liquid expressions ({{ }} or {% %}) are left unprotected
  * so that template variables are resolved by the Liquid engine.
  */
-function wrapNonLiquidScripts(content: string): string {
+export function wrapNonLiquidScripts(content: string): string {
 	return content.replace(
 		/(<script(?![^>]*\bsrc\s*=)[^>]*>)([\s\S]*?)(<\/script>)/gi,
 		(_, open, body, close) => {
@@ -299,7 +299,7 @@ function wrapNonLiquidScripts(content: string): string {
  * it misreads `(name` as the start of a range expression like `(1..5)`.
  * Liquid evaluates and/or left-to-right, so parens can be safely removed.
  */
-function removeCosmeticParens(content: string): string {
+export function removeCosmeticParens(content: string): string {
 	return content.replace(
 		/\{%[-\s]*(if|elsif|unless)\s+([\s\S]*?)[-]?%\}/g,
 		(match) => match.replace(/[()]/g, ""),
@@ -351,7 +351,7 @@ export async function fetchLiquidRecipeSettings(
 /**
  * Register custom filters matching TRMNL/Laravel's Liquid extensions.
  */
-function registerCustomFilters(engine: Liquid): void {
+export function registerCustomFilters(engine: Liquid): void {
 	engine.registerFilter("l_date", (date: string, format?: string) => {
 		try {
 			const d = date ? new Date(date) : new Date();
