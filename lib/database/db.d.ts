@@ -82,8 +82,16 @@ export interface Devices {
 	last_update_time: Timestamp | null;
 	mac_address: string;
 	mixup_id: string | null;
+	/**
+	 * TRMNL model name reported via the Model request header (e.g. og_plus, seeed_e1002, v2). Used to resolve render parameters from the local TRMNL models registry.
+	 */
+	model: string | null;
 	name: string;
 	next_expected_update: Timestamp | null;
+	/**
+	 * Optional palette override when the device model supports multiple palettes. NULL means use the model's first declared palette as default.
+	 */
+	palette_id: string | null;
 	playlist_id: string | null;
 	refresh_schedule: Json | null;
 	/**
