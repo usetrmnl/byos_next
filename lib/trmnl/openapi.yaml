@@ -1,0 +1,1367 @@
+---
+openapi: 3.0.1
+info:
+  title: TRMNL API
+  version: '1'
+paths:
+  "/api/display":
+    get:
+      summary: Fetch the next screen
+      tags:
+      - Device API
+      parameters:
+      - name: Access-Token
+        in: header
+        required: true
+        description: Device API Key (eg. abc-123)
+        schema:
+          type: string
+      - name: Battery-Voltage
+        in: header
+        required: false
+        description: Device battery voltage (eg. 3.7)
+        schema:
+          type: number
+      - name: Percent-Charged
+        in: header
+        required: false
+        description: Device percent charged (eg. 69.4)
+        schema:
+          type: number
+      - name: Battery-Count
+        in: header
+        required: false
+        description: Number of batteries in device (e.g. 1-2)
+        schema:
+          type: number
+      - name: Battery-Charging
+        in: header
+        required: false
+        description: Whether device is plugged into power (eg. true)
+        schema:
+          type: number
+      - name: Battery-Health
+        in: header
+        required: false
+        description: Quality of battery (eg. -1-100)
+        schema:
+          type: number
+      - name: Battery-Current
+        in: header
+        required: false
+        description: Battery current (eg. -1-N)
+        schema:
+          type: number
+      - name: Battery-Temp
+        in: header
+        required: false
+        description: Battery temperature in celsius (eg. -1-N)
+        schema:
+          type: number
+      - name: Battery-Capacity
+        in: header
+        required: false
+        description: Ratio of current / max capacity (eg. -1/-1 in fault case)
+        schema:
+          type: number
+      - name: FW-Version
+        in: header
+        required: false
+        description: Device firmware version (eg. 0.0.1)
+        schema:
+          type: string
+      - name: RSSI
+        in: header
+        required: false
+        description: Device RSSI (eg. -69)
+        schema:
+          type: number
+      - name: Height
+        in: header
+        required: false
+        description: Device screen height (eg. 480)
+        schema:
+          type: string
+      - name: Width
+        in: header
+        required: false
+        description: Device screen width (eg. 800)
+        schema:
+          type: string
+      - name: Special-Function
+        in: header
+        required: false
+        description: Device special function (eg. true)
+        schema:
+          type: boolean
+      - name: BASE64
+        in: header
+        required: false
+        description: Encode image function (eg. true)
+        schema:
+          type: boolean
+      - name: Sensors
+        in: header
+        required: false
+        description: Environmental sensor data
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+                  image_url:
+                    type: string
+                    nullable: true
+                    example: https://trmnl.com/images/system_screens/setup_logo/og_plus.png
+                  filename:
+                    type: string
+                    nullable: true
+                    example: setup-logo.bmp
+                  refresh_rate:
+                    type: integer
+                    example: 300
+                  reset_firmware:
+                    type: boolean
+                    example: false
+                  update_firmware:
+                    type: boolean
+                    example: false
+                  firmware_url:
+                    type: string
+                    nullable: true
+                    example: https://trmnl.com/firmware/1.0.0.bin
+                  special_function:
+                    type: string
+                    nullable: false
+                    example: identify
+                  action:
+                    type: string
+                    nullable: true
+                    example: identify
+  "/api/display/current":
+    get:
+      summary: Fetch the current screen
+      tags:
+      - Device API
+      parameters:
+      - name: Access-Token
+        in: header
+        required: true
+        description: Device API Key (eg. abc-123)
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+                  refresh_rate:
+                    type: integer
+                    example: 300
+                  image_url:
+                    type: string
+                    nullable: true
+                    example: https://trmnl.com/images/system_screens/setup_logo/og_plus.png
+                  filename:
+                    type: string
+                    nullable: true
+                    example: setup-logo.bmp
+                  rendered_at:
+                    type: string
+                    nullable: true
+                    example: '2023-01-01T00:00:00Z'
+  "/api/log":
+    post:
+      summary: Log with logs[] (array)
+      tags:
+      - Device API
+      parameters:
+      - name: Access-Token
+        in: header
+        required: true
+        description: Device API Key (eg. abc-123)
+        schema:
+          type: string
+      responses:
+        '204':
+          description: Logs created when ignore_log_messages is not set
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                logs:
+                  type: array
+                  items: {}
+              required:
+              - logs
+              additionalProperties: false
+        required: true
+        description: 'An array of log entries. Each entry can be any JSON type: string,
+          object, etc.'
+  "/api/setup":
+    get:
+      summary: Set up device
+      tags:
+      - Device API
+      parameters:
+      - name: ID
+        in: header
+        required: true
+        description: Device MAC Address (eg. 41:B4:10:39:A1:24)
+        schema:
+          type: string
+      - name: Model
+        in: header
+        required: true
+        description: DEVICE_MODEL from firmware definitions
+        schema:
+          type: string
+      description: |
+        Please note that the returned `status` JSON value may NOT always equal the HTTP status code. Notably, if a device MAC address is not found,
+        then the HTTP status code will be 200 but the `status` code in the response will be 404.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+                  api_key:
+                    type: string
+                    nullable: true
+                    example: abc-123
+                  friendly_id:
+                    type: string
+                    nullable: true
+                    example: ABC-123
+                  image_url:
+                    type: string
+                    nullable: true
+                    example: https://trmnl.com/images/system_screens/setup_logo/og_plus.png
+                  message:
+                    type: string
+                    example: Register at trmnl.com/start with Device ID 'ABC-123'
+  "/api/categories":
+    get:
+      summary: List all plugin categories
+      tags:
+      - Categories
+      description: Returns a list of approved plugin categories.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: integer
+                    example: 200
+                  data:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - life
+                    - marketing
+                    - ecommerce
+  "/api/ips":
+    get:
+      summary: List all TRMNL server IP addresses
+      tags:
+      - Server IPs
+      description: |
+        Returns a list of public IP addresses for all TRMNL core servers.
+
+        Plugin poll requests will only originate from these IPs.
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      ipv4:
+                        type: array
+                        items:
+                          type: string
+                      ipv6:
+                        type: array
+                        items:
+                          type: string
+  "/api/markup":
+    post:
+      summary: Render Liquid template
+      tags:
+      - Markup
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    oneOf:
+                    - type: string
+                    - type: array
+                      items:
+                        type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                markup:
+                  oneOf:
+                  - type: string
+                    example: Hello, {{ name }}!
+                  - type: array
+                    items:
+                      type: string
+                    example:
+                    - Hello, {{ name }}!
+                    - Goodbye, {{ name }}!
+                variables:
+                  type: object
+                  example:
+                    name: World
+              required:
+              - markup
+              - variables
+              additionalProperties: false
+        required: true
+        description: The Liquid markup(s) to render and an optional set of variables
+          to use in the rendering process.
+  "/api/models":
+    get:
+      summary: List all device models
+      tags:
+      - Models
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Model"
+  "/api/palettes":
+    get:
+      summary: List all palettes
+      tags:
+      - Palettes
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Palette"
+  "/api/devices":
+    get:
+      summary: List my devices
+      tags:
+      - Devices
+      security:
+      - bearer_auth: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/Device"
+  "/api/devices/{id}":
+    parameters:
+    - name: id
+      in: path
+      description: Device ID
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Get the data of a device
+      tags:
+      - Devices
+      security:
+      - bearer_auth: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/Device"
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+    patch:
+      summary: Update a device
+      tags:
+      - Devices
+      parameters: []
+      security:
+      - bearer_auth: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Updated
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sleep_mode_enabled:
+                  type: boolean
+                  example: true
+                sleep_start_time:
+                  type: integer
+                  example: 1320
+                sleep_end_time:
+                  type: integer
+                  example: 480
+                percent_charged:
+                  type: number
+                  example: 69.0
+  "/api/me":
+    get:
+      summary: Get my user data
+      tags:
+      - Users
+      security:
+      - bearer_auth: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/User"
+  "/api/playlists/items":
+    get:
+      summary: List my playlist items
+      tags:
+      - Playlists
+      security:
+      - bearer_auth: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/PlaylistItem"
+  "/api/playlists/items/{id}":
+    patch:
+      summary: Update a playlist item
+      tags:
+      - Playlists
+      parameters:
+      - name: id
+        in: path
+        description: ID of the playlist item
+        required: true
+        schema:
+          type: integer
+      security:
+      - bearer_auth: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Updated
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                visible:
+                  type: boolean
+              required:
+              - visible
+  "/api/plugin_settings/{id}/archive":
+    parameters:
+    - name: id
+      in: path
+      description: Plugin setting ID
+      required: true
+      schema:
+        type: integer
+    get:
+      summary: Download a plugin setting archive
+      tags:
+      - Plugin Settings
+      description: |
+        This endpoint is available for unauthenticated requests.
+
+        When unauthenticated, any published recipe may be archived.
+
+        When authenticated, the requesting user's private plugins are also archivable.
+      security:
+      - bearer_auth: []
+      responses:
+        '200':
+          description: Success
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+    post:
+      summary: Upload a plugin setting archive
+      tags:
+      - Plugin Settings
+      security:
+      - bearer_auth: []
+      parameters: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/PluginSettingArchive"
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: file
+        required: true
+        description: Plugin setting archive file
+  "/api/plugin_settings/{id}/data":
+    parameters:
+    - name: id
+      in: path
+      description: Plugin setting ID or UUID
+      required: true
+      schema:
+        type: string
+    get:
+      summary: Get the data of a plugin setting
+      tags:
+      - Plugin Settings
+      security:
+      - bearer_auth: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: Data is not available
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+    post:
+      summary: Update data for a plugin setting
+      tags:
+      - Plugin Settings
+      security:
+      - bearer_auth: []
+      parameters: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Success with UUID (no auth required)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '422':
+          description: Data cannot be modified
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                merge_variables: {}
+              required:
+              - merge_variables
+              additionalProperties: false
+        required: true
+        description: The value of `merge_variables` must be a JSON object
+  "/api/plugin_settings/{id}/image":
+    parameters:
+    - name: id
+      in: path
+      description: Plugin setting UUID
+      required: true
+      schema:
+        type: string
+    post:
+      summary: Upload an image for a webhook_image plugin
+      tags:
+      - Plugin Settings
+      responses:
+        '200':
+          description: Success with home_assistant_screenshot plugin
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+        '404':
+          description: Not found
+        '422':
+          description: Image too large
+        '503':
+          description: Storage service unavailable
+        '429':
+          description: Rate limited
+  "/api/plugin_settings/{plugin_setting_id}/markup/{size}":
+    get:
+      summary: Read markup for a size
+      tags:
+      - Plugin Settings - Markup
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: plugin_setting_id
+        in: path
+        required: true
+        description: Plugin setting UUID
+        schema:
+          type: string
+      - name: size
+        in: path
+        required: true
+        description: Markup size (e.g. markup_full)
+        schema:
+          type: string
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Returns markup content
+        '422':
+          description: Invalid size
+        '404':
+          description: UUID belonging to another user
+    put:
+      summary: Write markup for a size
+      tags:
+      - Plugin Settings - Markup
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: plugin_setting_id
+        in: path
+        required: true
+        description: Plugin setting UUID
+        schema:
+          type: string
+      - name: size
+        in: path
+        required: true
+        description: Markup size (e.g. markup_full)
+        schema:
+          type: string
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Markup written successfully
+        '422':
+          description: Invalid size
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                content:
+                  type: string
+              required:
+              - content
+        required: true
+  "/api/plugin_settings/{plugin_setting_id}/settings":
+    patch:
+      summary: Update plugin settings fields
+      tags:
+      - Plugin Settings - Settings
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: plugin_setting_id
+        in: path
+        required: true
+        description: Plugin setting UUID
+        schema:
+          type: string
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Settings updated successfully
+        '422':
+          description: Non-string field values
+        '404':
+          description: Unknown UUID
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fields:
+                  type: object
+              required:
+              - fields
+        required: true
+  "/api/plugin_settings":
+    get:
+      summary: List my plugin settings
+      tags:
+      - Plugin Settings
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: plugin_id
+        in: query
+        required: false
+        description: ID of a plugin or "calendars" to filter calendar plugins
+        schema:
+          type: string
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Returns all calendar plugin settings except Google Calendar
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      "$ref": "#/components/schemas/PluginSetting"
+    post:
+      summary: Create a new plugin setting
+      tags:
+      - Plugin Settings
+      security:
+      - bearer_auth: []
+      parameters: []
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/PluginSetting"
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              "$ref": "#/components/schemas/PluginSettingParams"
+        required: true
+  "/api/plugin_settings/{id}/details":
+    get:
+      summary: Get plugin setting details
+      tags:
+      - Plugin Settings
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: Plugin setting UUID
+        schema:
+          type: string
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '200':
+          description: Returns plugin details with sizes
+        '404':
+          description: UUID belonging to another user
+  "/api/plugin_settings/{id}":
+    delete:
+      summary: Delete a plugin setting
+      tags:
+      - Plugin Settings
+      security:
+      - bearer_auth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        description: ID of the plugin setting to delete
+        schema:
+          type: integer
+      responses:
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+        '204':
+          description: Deleted
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+servers:
+- url: https://{defaultHost}
+  variables:
+    defaultHost:
+      default: trmnl.com
+components:
+  securitySchemes:
+    bearer_auth:
+      type: http
+      scheme: bearer
+      bearerFormat: Account API key
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        error:
+          type: string
+          example: An error occurred
+    Device:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 123
+        name:
+          type: string
+          example: My TRMNL
+        friendly_id:
+          type: string
+          example: ABC-123
+        mac_address:
+          type: string
+          example: 12:34:56:78:9A:BC
+        battery_voltage:
+          type: number
+          nullable: true
+          example: 3.7
+        rssi:
+          type: integer
+          nullable: true
+          example: -70
+        sleep_mode_enabled:
+          type: boolean
+          nullable: false
+          example: false
+        sleep_start_time:
+          type: integer
+          example: 1320
+        sleep_end_time:
+          type: integer
+          example: 480
+        last_ping_at:
+          type: string
+          format: date_time
+          nullable: true
+          example: '2026-03-31T14:30:00.000Z'
+        hardware_last_ping_at:
+          type: string
+          format: date_time
+          nullable: true
+          example: '2026-03-31T14:30:00.000Z'
+        percent_charged:
+          type: number
+          example: 85.0
+          minimum: 0
+          maximum: 100
+        wifi_strength:
+          type: number
+          example: 75.0
+          minimum: 0
+          maximum: 100
+    Model:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          example: trmnl_original
+          description: Unique identifier
+        label:
+          type: string
+          example: TRMNL
+          description: Human-readable name
+        description:
+          type: string
+          example: Original TRMNL model
+          description: Description
+        width:
+          type: integer
+          example: 800
+          description: Screen width in pixels
+        height:
+          type: integer
+          example: 480
+          description: Screen height in pixels
+        colors:
+          type: integer
+          example: 2
+          description: Number of colors supported
+        bit_depth:
+          type: integer
+          example: 1
+          description: Color bit depth
+        scale_factor:
+          type: number
+          example: 1.0
+          description: Display scale factor
+        rotation:
+          type: integer
+          example: 90
+          description: Screen rotation in degrees
+        mime_type:
+          type: string
+          example: image/png
+          description: Image MIME type
+        offset_x:
+          type: integer
+          example: 10
+          description: X offset for image rendering
+        offset_y:
+          type: integer
+          example: 20
+          description: Y offset for image rendering
+        kind:
+          type: string
+          example: trmnl
+          description: Device kind (e.g., trmnl, kindle, byod)
+          enum:
+          - trmnl
+          - kindle
+          - byod
+          - tidbyt
+        palette_ids:
+          type: array
+          items:
+            type: string
+          example:
+          - bw
+          - gray-4
+          - gray-16
+          description: Supported color palette IDs
+        preview_white_point:
+          type: string
+          example: true_white
+          description: Preview white point mode for color previews
+          enum:
+          - true_white
+          - limited
+        image_size_limit:
+          type: integer
+          example: 92160
+          description: Maximum image file size in bytes for webhook uploads
+        image_upload_supported:
+          type: boolean
+          example: true
+          description: Whether webhook image uploads are supported for this device
+            type
+        css:
+          type: object
+          nullable: true
+          description: CSS classes and variables for web rendering
+          properties:
+            classes:
+              type: object
+              properties:
+                device:
+                  type: string
+                  example: screen--og_plus
+                size:
+                  type: string
+                  example: screen--md
+                density:
+                  type: string
+                  example: screen--density-1x
+            variables:
+              type: array
+              items:
+                type: array
+                items:
+                  type: string
+                example:
+                - "--screen-w"
+                - 800px
+    Palette:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          example: gray-16
+          description: Unique identifier
+          required: true
+        name:
+          type: string
+          example: 16-Gray
+          description: Human-readable name
+          required: true
+        grays:
+          type: integer
+          nullable: true
+          example: 16
+          description: Number of grayscale levels (null for color palettes)
+        colors:
+          type: array
+          nullable: true
+          items:
+            type: string
+          example:
+          - "#FF0000"
+          - "#00FF00"
+          - "#0000FF"
+          - "#FFFF00"
+          - "#000000"
+          - "#FFFFFF"
+          description: Array of hex color codes (null for grayscale palettes)
+        framework_class:
+          type: string
+          example: screen--4bit
+          description: Framework CSS class for this palette
+        grayscale_bit_depth:
+          type: integer
+          nullable: true
+          example: 1
+          description: For color palettes, bit depth for grayscale areas (1 for 3/4-color
+            limited, 2 for 6/7-color, 4 for full-spectrum)
+    PlaylistItem:
+      type: object
+      additionalProperties: false
+      properties:
+        created_at:
+          type: string
+          format: date_time
+          example: '2023-10-01T12:00:00Z'
+        device_id:
+          type: integer
+          example: 1
+        id:
+          type: integer
+          example: 1
+        mashup_id:
+          type: integer
+          example: 1
+          nullable: true
+        mirror:
+          type: boolean
+          example: true
+        playlist_group_id:
+          type: integer
+          example: 1
+        plugin_setting:
+          "$ref": "#/components/schemas/PluginSetting"
+        plugin_setting_id:
+          type: integer
+          example: 1
+        rendered_at:
+          type: string
+          format: date_time
+          example: '2023-10-01T12:00:00Z'
+        row_order:
+          type: integer
+          example: 1
+        updated_at:
+          type: string
+          format: date_time
+          example: '2023-10-01T12:00:00Z'
+        visible:
+          type: boolean
+          example: true
+    PlaylistItemParams:
+      type: object
+      additionalProperties: false
+      properties:
+        visible:
+          type: boolean
+          example: true
+    PluginSetting:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: My Plugin Setting
+        plugin_id:
+          type: integer
+          example: 1
+        icon_url:
+          type: string
+          example: https://trmnl-public.s3.com/qwertyasdf
+          nullable: true
+        icon_content_type:
+          type: string
+          example: image/png
+          nullable: true
+        read_only?:
+          type: boolean
+          example: false
+        strategy:
+          type: string
+          example: webhook
+          nullable: true
+    PluginSettingArchive:
+      type: object
+      properties:
+        settings_yaml:
+          type: string
+          description: YAML settings file
+    PluginSettingParams:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          example: My Plugin Setting
+          required: true
+        plugin_id:
+          type: integer
+          example: 1
+          required: true
+    PluginSettingDataParams:
+      type: object
+      additionalProperties: false
+      properties:
+        merge_variables:
+          type: content
+          required: true
+          example: true
+        error:
+          type: string
+          required: false
+    User:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: integer
+          example: 42
+        name:
+          type: string
+          example: Jim Bob
+        email:
+          type: string
+          example: jimbob@gmail.net
+        first_name:
+          type: string
+          example: Jim
+        last_name:
+          type: string
+          example: Bob
+        locale:
+          type: string
+          example: en
+        time_zone:
+          type: string
+          example: Eastern Time (US & Canada)
+        time_zone_iana:
+          type: string
+          example: America/New_York
+        utc_offset:
+          type: integer
+          example: -14400
+        api_key:
+          type: string
+          example: user_xxxxxx
