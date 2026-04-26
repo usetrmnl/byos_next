@@ -91,6 +91,7 @@ export async function GET(request: Request) {
 			return buildErrorResponse("Device not found", baseUrl, uniqueId);
 		}
 
+		const deviceUserId = device.user_id;
 		let screenToDisplay = device.screen;
 		const orientation = device.screen_orientation || "landscape";
 
@@ -106,9 +107,7 @@ export async function GET(request: Request) {
 
 		const deviceWidth = headers.width || storedWidth;
 		const deviceHeight = headers.height || storedHeight;
-		const grayscaleLevels = getGrayscaleLevels(
-			(device as { grayscale?: number | null }).grayscale ?? null,
-		);
+		const grayscaleLevels = getGrayscaleLevels(device.grayscale);
 
 		// Build common query params for image URLs
 		const baseQueryParams = `width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}${headers.base64 ? "&base64=true" : ""}`;
@@ -123,6 +122,7 @@ export async function GET(request: Request) {
 						device.playlist_id,
 						device.current_playlist_index || 0,
 						device.timezone || "UTC",
+						deviceUserId,
 					);
 
 					if (activeItem) {
@@ -148,7 +148,7 @@ export async function GET(request: Request) {
 
 			case DeviceDisplayMode.MIXUP:
 				if (device.mixup_id) {
-					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?${baseQueryParams}`;
+					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?${baseQueryParams}&access_token=${encodeURIComponent(headers.apiKey)}`;
 					const metadata = {
 						deviceId: device.friendly_id,
 						mixupId: device.mixup_id,

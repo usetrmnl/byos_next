@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import type { CustomError } from "@/lib/api/types";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
@@ -107,7 +108,7 @@ export async function POST(request: Request) {
 					source: "api/log",
 					metadata: {
 						macAddress: macAddress || null,
-						apiKey: apiKey || null,
+						hasApiKey: Boolean(apiKey),
 						refreshRate: refreshRate || null,
 						batteryVoltage: batteryVoltage || null,
 						fwVersion: fwVersion || null,
@@ -128,6 +129,7 @@ export async function POST(request: Request) {
 		let deviceId = "";
 		let deviceFound = false;
 		let deviceStatus: "known" | "existing_mock" | "new_mock" = "known";
+		const currentUserId = await getCurrentUserId();
 
 		// First, try to find the device by MAC address if provided
 		if (macAddress) {
@@ -138,6 +140,31 @@ export async function POST(request: Request) {
 				.executeTakeFirst();
 
 			if (deviceByMac) {
+				const canUseDeviceByMac =
+					apiKey === deviceByMac.api_key ||
+					(Boolean(currentUserId) && deviceByMac.user_id === currentUserId);
+
+				if (!canUseDeviceByMac) {
+					logError(
+						"Refusing logs for device without owner or valid access token",
+						{
+							source: "api/log",
+							metadata: {
+								device_id: deviceByMac.friendly_id,
+								mac_address: macAddress,
+								hasApiKey: Boolean(apiKey),
+							},
+						},
+					);
+					return NextResponse.json(
+						{
+							status: 401,
+							message: "Valid access token required for registered device",
+						},
+						{ status: 200 },
+					);
+				}
+
 				// Device found by MAC address
 				deviceId = deviceByMac.friendly_id;
 				deviceFound = true;
@@ -242,7 +269,7 @@ export async function POST(request: Request) {
 							metadata: {
 								device_id: deviceByApiKey.friendly_id,
 								mac_address: macAddress,
-								api_key: apiKey,
+								has_api_key: Boolean(apiKey),
 							},
 						});
 					} catch (updateError) {
@@ -251,7 +278,7 @@ export async function POST(request: Request) {
 							metadata: {
 								device_id: deviceByApiKey.friendly_id,
 								mac_address: macAddress,
-								api_key: apiKey,
+								has_api_key: Boolean(apiKey),
 								error: updateError,
 							},
 						});
@@ -299,7 +326,7 @@ export async function POST(request: Request) {
 							source: "api/log",
 							metadata: {
 								mac_address: macAddress,
-								api_key: apiKey,
+								has_api_key: Boolean(apiKey),
 								device_id: deviceId,
 								refresh_rate: refreshRate,
 								battery_voltage: batteryVoltage,
@@ -312,6 +339,23 @@ export async function POST(request: Request) {
 					);
 				} else {
 					// API key not found, create a new device with the provided MAC address and API key
+					if (!currentUserId) {
+						logError("Refusing to auto-provision an unowned device", {
+							source: "api/log",
+							metadata: {
+								macAddress,
+								hasApiKey: true,
+							},
+						});
+						return NextResponse.json(
+							{
+								status: 400,
+								message: "Device owner is required before logs can be accepted",
+							},
+							{ status: 200 },
+						);
+					}
+
 					const friendly_id = generateFriendlyId(
 						macAddress,
 						new Date().toISOString().replace(/[-:Z]/g, ""),
@@ -344,6 +388,7 @@ export async function POST(request: Request) {
 									: null,
 								firmware_version: fwVersion || null,
 								rssi: rssi ? Number.parseInt(rssi, 10) : null,
+								user_id: currentUserId,
 							})
 							.returningAll()
 							.executeTakeFirst();
@@ -360,7 +405,7 @@ export async function POST(request: Request) {
 							source: "api/log",
 							metadata: {
 								mac_address: macAddress,
-								api_key: apiKey,
+								has_api_key: Boolean(apiKey),
 								device_id: deviceId,
 								refresh_rate: refreshRate,
 								battery_voltage: batteryVoltage,
@@ -380,7 +425,7 @@ export async function POST(request: Request) {
 							source: "api/log",
 							metadata: {
 								mac_address: macAddress,
-								api_key: apiKey,
+								has_api_key: Boolean(apiKey),
 								friendly_id,
 							},
 						});
@@ -470,7 +515,7 @@ export async function POST(request: Request) {
 				logInfo("Device authenticated by API key", {
 					source: "api/log",
 					metadata: {
-						api_key: apiKey,
+						has_api_key: Boolean(apiKey),
 						device_id: deviceId,
 						refresh_rate: refreshRate,
 						battery_voltage: batteryVoltage,
@@ -566,7 +611,7 @@ export async function POST(request: Request) {
 					logInfo("Device authenticated by API key (different MAC)", {
 						source: "api/log",
 						metadata: {
-							api_key: apiKey,
+							has_api_key: Boolean(apiKey),
 							device_id: deviceId,
 							mac_address: macAddress,
 							refresh_rate: refreshRate,
@@ -678,6 +723,24 @@ export async function POST(request: Request) {
 						});
 					} else {
 						// No existing mock device, create a new one
+						if (!currentUserId) {
+							logError("Refusing to auto-provision an unowned mock device", {
+								source: "api/log",
+								metadata: {
+									hasApiKey: true,
+									mockMacAddress,
+								},
+							});
+							return NextResponse.json(
+								{
+									status: 400,
+									message:
+										"Device owner is required before logs can be accepted",
+								},
+								{ status: 200 },
+							);
+						}
+
 						deviceStatus = "new_mock";
 
 						// Create a masked API key from the provided one
@@ -725,6 +788,7 @@ export async function POST(request: Request) {
 										: null,
 									firmware_version: fwVersion || null,
 									rssi: rssi ? Number.parseInt(rssi, 10) : null,
+									user_id: currentUserId,
 								})
 								.returningAll()
 								.executeTakeFirst();
@@ -788,7 +852,7 @@ export async function POST(request: Request) {
 				source: "api/log",
 				metadata: {
 					mac_address: macAddress,
-					api_key: apiKey,
+					has_api_key: Boolean(apiKey),
 				},
 			});
 

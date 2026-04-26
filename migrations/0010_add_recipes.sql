@@ -5,7 +5,13 @@
 -- Part 1: Create recipe_type enum
 -- =============================================================================
 
-CREATE TYPE recipe_type AS ENUM ('react', 'liquid');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'recipe_type') THEN
+        CREATE TYPE recipe_type AS ENUM ('react', 'liquid');
+    END IF;
+END
+$$;
 
 -- =============================================================================
 -- Part 2: Create recipes table
@@ -69,6 +75,11 @@ ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes FORCE ROW LEVEL SECURITY;
 
 -- SELECT: user sees own + shared (user_id IS NULL)
+DROP POLICY IF EXISTS recipes_select_policy ON recipes;
+DROP POLICY IF EXISTS recipes_insert_policy ON recipes;
+DROP POLICY IF EXISTS recipes_update_policy ON recipes;
+DROP POLICY IF EXISTS recipes_delete_policy ON recipes;
+
 CREATE POLICY recipes_select_policy ON recipes
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -92,9 +103,48 @@ CREATE POLICY recipes_delete_policy ON recipes
 ALTER TABLE recipe_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_files FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY recipe_files_policy ON recipe_files
-    USING (EXISTS (SELECT 1 FROM recipes r WHERE r.id = recipe_files.recipe_id))
-    WITH CHECK (EXISTS (SELECT 1 FROM recipes r WHERE r.id = recipe_files.recipe_id));
+DROP POLICY IF EXISTS recipe_files_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_select_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_insert_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_update_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_delete_policy ON recipe_files;
+
+CREATE POLICY recipe_files_select_policy ON recipe_files
+    FOR SELECT
+    USING (EXISTS (SELECT 1 FROM recipes r WHERE r.id = recipe_files.recipe_id));
+
+CREATE POLICY recipe_files_insert_policy ON recipe_files
+    FOR INSERT
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY recipe_files_update_policy ON recipe_files
+    FOR UPDATE
+    USING (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ))
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY recipe_files_delete_policy ON recipe_files
+    FOR DELETE
+    USING (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
 
 -- Grant permissions on new tables to byos_app role
 GRANT SELECT, INSERT, UPDATE, DELETE ON recipes TO byos_app;

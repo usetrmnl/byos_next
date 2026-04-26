@@ -47,10 +47,15 @@ export async function fetchDeviceLogs(friendlyId: string): Promise<Log[]> {
 		return [];
 	}
 
+	const visibleDeviceIds = await getVisibleDeviceFriendlyIds(friendlyId);
+	if (visibleDeviceIds.length === 0) {
+		return [];
+	}
+
 	const logs = await db
 		.selectFrom("logs")
 		.selectAll()
-		.where("friendly_id", "=", friendlyId)
+		.where("friendly_id", "in", visibleDeviceIds)
 		.orderBy("created_at", "desc")
 		.limit(50)
 		.execute();
@@ -74,6 +79,20 @@ export type FetchDeviceLogsResult = {
 	uniqueTypes: string[];
 };
 
+async function getVisibleDeviceFriendlyIds(
+	friendlyId?: string,
+): Promise<string[]> {
+	const devices = await withUserScope((scopedDb) => {
+		let query = scopedDb.selectFrom("devices").select("friendly_id");
+		if (friendlyId) {
+			query = query.where("friendly_id", "=", friendlyId);
+		}
+		return query.execute();
+	});
+
+	return devices.map((device) => device.friendly_id);
+}
+
 export async function fetchDeviceLogsWithFilters({
 	page,
 	perPage,
@@ -89,13 +108,17 @@ export async function fetchDeviceLogsWithFilters({
 
 	// Calculate pagination
 	const offset = (page - 1) * perPage;
+	const visibleDeviceIds = await getVisibleDeviceFriendlyIds(friendlyId);
+
+	if (visibleDeviceIds.length === 0) {
+		return { logs: [], total: 0, uniqueTypes: [] };
+	}
 
 	// Start building the query
-	let query = db.selectFrom("logs").selectAll();
-
-	if (friendlyId) {
-		query = query.where("friendly_id", "=", friendlyId);
-	}
+	let query = db
+		.selectFrom("logs")
+		.selectAll()
+		.where("friendly_id", "in", visibleDeviceIds);
 
 	if (search) {
 		query = query.where("log_data", "ilike", `%${search}%`);
@@ -111,11 +134,8 @@ export async function fetchDeviceLogsWithFilters({
 	// Get total count
 	let countQuery = db
 		.selectFrom("logs")
-		.select((eb) => eb.fn.countAll().as("count"));
-
-	if (friendlyId) {
-		countQuery = countQuery.where("friendly_id", "=", friendlyId);
-	}
+		.select((eb) => eb.fn.countAll().as("count"))
+		.where("friendly_id", "in", visibleDeviceIds);
 
 	if (search) {
 		countQuery = countQuery.where("log_data", "ilike", `%${search}%`);

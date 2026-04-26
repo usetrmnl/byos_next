@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/database/db";
+import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
 
@@ -26,12 +26,14 @@ export async function GET(_request: Request) {
 	}
 
 	try {
-		const items = await db
-			.selectFrom("playlist_items")
-			.selectAll()
-			.orderBy("playlist_id", "asc")
-			.orderBy("order_index", "asc")
-			.execute();
+		const items = await withUserScope((scopedDb) =>
+			scopedDb
+				.selectFrom("playlist_items")
+				.selectAll()
+				.orderBy("playlist_id", "asc")
+				.orderBy("order_index", "asc")
+				.execute(),
+		);
 
 		// Transform items to match TRMNL API format
 		const playlistItems = items.map((item) => {

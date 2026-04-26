@@ -36,6 +36,11 @@ ALTER TABLE screen_configs ENABLE ROW LEVEL SECURITY;
 -- =============================================================================
 
 -- Policies for devices
+DROP POLICY IF EXISTS devices_select_policy ON devices;
+DROP POLICY IF EXISTS devices_insert_policy ON devices;
+DROP POLICY IF EXISTS devices_update_policy ON devices;
+DROP POLICY IF EXISTS devices_delete_policy ON devices;
+
 CREATE POLICY devices_select_policy ON devices
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -53,6 +58,11 @@ CREATE POLICY devices_delete_policy ON devices
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
 
 -- Policies for playlists
+DROP POLICY IF EXISTS playlists_select_policy ON playlists;
+DROP POLICY IF EXISTS playlists_insert_policy ON playlists;
+DROP POLICY IF EXISTS playlists_update_policy ON playlists;
+DROP POLICY IF EXISTS playlists_delete_policy ON playlists;
+
 CREATE POLICY playlists_select_policy ON playlists
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -70,6 +80,11 @@ CREATE POLICY playlists_delete_policy ON playlists
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
 
 -- Policies for mixups
+DROP POLICY IF EXISTS mixups_select_policy ON mixups;
+DROP POLICY IF EXISTS mixups_insert_policy ON mixups;
+DROP POLICY IF EXISTS mixups_update_policy ON mixups;
+DROP POLICY IF EXISTS mixups_delete_policy ON mixups;
+
 CREATE POLICY mixups_select_policy ON mixups
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -87,6 +102,11 @@ CREATE POLICY mixups_delete_policy ON mixups
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
 
 -- Policies for screen_configs
+DROP POLICY IF EXISTS screen_configs_select_policy ON screen_configs;
+DROP POLICY IF EXISTS screen_configs_insert_policy ON screen_configs;
+DROP POLICY IF EXISTS screen_configs_update_policy ON screen_configs;
+DROP POLICY IF EXISTS screen_configs_delete_policy ON screen_configs;
+
 CREATE POLICY screen_configs_select_policy ON screen_configs
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);

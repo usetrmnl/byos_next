@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { CustomError } from "@/lib/api/types";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
@@ -20,7 +21,10 @@ export async function GET(request: Request) {
 				"Database client not initialized, using noDB mode, skipping device setup",
 				{
 					source: "api/setup",
-					metadata: { macAddress: macAddress || null, apiKey: apiKey || null },
+					metadata: {
+						macAddress: macAddress || null,
+						hasApiKey: Boolean(apiKey),
+					},
 				},
 			);
 			return NextResponse.json(
@@ -38,7 +42,7 @@ export async function GET(request: Request) {
 				source: "api/setup",
 				metadata: {
 					macAddress: macAddress || null,
-					apiKey: apiKey || null,
+					hasApiKey: Boolean(apiKey),
 					model: model || null,
 				},
 			});
@@ -67,6 +71,8 @@ export async function GET(request: Request) {
 				{ status: 200 },
 			); // Status 200 for device compatibility
 		}
+
+		const currentUserId = await getCurrentUserId();
 
 		// First check if the device exists by MAC address
 		const device = await db
@@ -100,7 +106,7 @@ export async function GET(request: Request) {
 						metadata: {
 							device_id: deviceByApiKey.friendly_id,
 							mac_address: macAddress,
-							api_key: apiKey,
+							has_api_key: Boolean(apiKey),
 						},
 					});
 
@@ -122,7 +128,7 @@ export async function GET(request: Request) {
 						metadata: {
 							device_id: deviceByApiKey.friendly_id,
 							mac_address: macAddress,
-							api_key: apiKey,
+							has_api_key: Boolean(apiKey),
 							error: updateError,
 						},
 					});
@@ -132,6 +138,27 @@ export async function GET(request: Request) {
 
 		// If device not found by MAC address or API key, create a new one
 		if (!device) {
+			if (!currentUserId) {
+				logError("Refusing to set up an unowned device", {
+					source: "api/setup",
+					metadata: {
+						macAddress,
+						hasApiKey: Boolean(apiKey),
+						model,
+					},
+				});
+				return NextResponse.json(
+					{
+						status: 403,
+						api_key: null,
+						friendly_id: null,
+						image_url: null,
+						message: "Device setup requires an authenticated owner",
+					},
+					{ status: 200 },
+				);
+			}
+
 			const friendly_id = generateFriendlyId(
 				macAddress,
 				new Date().toISOString().replace(/[-:Z]/g, ""),
@@ -167,6 +194,7 @@ export async function GET(request: Request) {
 							Date.now() + 3600 * 1000,
 						).toISOString(), // 1 hour from now
 						timezone: "Europe/London", // Default timezone
+						user_id: currentUserId,
 					})
 					.returningAll()
 					.executeTakeFirst();
@@ -180,7 +208,7 @@ export async function GET(request: Request) {
 					metadata: {
 						friendly_id: newDevice.friendly_id,
 						mac_address: macAddress,
-						api_key: api_key,
+						has_api_key: Boolean(api_key),
 					},
 				});
 				return NextResponse.json(
@@ -202,14 +230,14 @@ export async function GET(request: Request) {
 
 				logError(deviceError, {
 					source: "api/setup",
-					metadata: { macAddress, friendly_id, api_key },
+					metadata: { macAddress, friendly_id, has_api_key: Boolean(api_key) },
 				});
 
 				return NextResponse.json(
 					{
 						status: 500,
 						reset_firmware: false,
-						message: `Error creating new device. ${friendly_id}|${api_key}`,
+						message: `Error creating new device. ${friendly_id}`,
 					},
 					{ status: 200 },
 				);
@@ -218,6 +246,34 @@ export async function GET(request: Request) {
 
 		// Device exists by MAC address - check if we need to update the API key
 		let currentApiKey = device.api_key;
+		const canManageExistingDevice =
+			apiKey === device.api_key ||
+			(Boolean(currentUserId) && device.user_id === currentUserId);
+
+		if (!canManageExistingDevice) {
+			logError(
+				"Refusing setup for device without owner or valid access token",
+				{
+					source: "api/setup",
+					metadata: {
+						friendly_id: device.friendly_id,
+						mac_address: macAddress,
+						hasApiKey: Boolean(apiKey),
+					},
+				},
+			);
+			return NextResponse.json(
+				{
+					status: 403,
+					api_key: null,
+					friendly_id: null,
+					image_url: null,
+					message:
+						"Device setup requires a valid access token or owner session",
+				},
+				{ status: 200 },
+			);
+		}
 
 		if (apiKey && apiKey !== device.api_key) {
 			try {
@@ -256,7 +312,7 @@ export async function GET(request: Request) {
 			metadata: {
 				friendly_id: device.friendly_id,
 				mac_address: macAddress,
-				api_key: currentApiKey,
+				has_api_key: Boolean(currentApiKey),
 			},
 		});
 		return NextResponse.json(

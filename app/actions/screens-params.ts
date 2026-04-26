@@ -1,5 +1,6 @@
 "use server";
 
+import { sql } from "kysely";
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import type { JsonObject } from "@/lib/database/db.d";
@@ -39,6 +40,9 @@ export async function updateScreenParams(
 
 	const now = new Date().toISOString();
 	const userId = await getCurrentUserId();
+	if (!userId) {
+		return { success: false, error: "You must be signed in to save params" };
+	}
 
 	try {
 		await withUserScope((scopedDb) =>
@@ -52,10 +56,13 @@ export async function updateScreenParams(
 					user_id: userId,
 				})
 				.onConflict((oc) =>
-					oc.column("screen_id").doUpdateSet({
-						params: sanitizedParams as JsonObject,
-						updated_at: now,
-					}),
+					oc
+						.columns(["screen_id", "user_id"])
+						.where("user_id", "is not", null)
+						.doUpdateSet({
+							params: sanitizedParams as JsonObject,
+							updated_at: now,
+						}),
 				)
 				.execute(),
 		);
@@ -102,6 +109,9 @@ export async function getScreenParams(
 			.selectFrom("screen_configs")
 			.select(["params"])
 			.where("screen_id", "=", slug)
+			.orderBy(
+				sql`CASE WHEN user_id = current_setting('app.current_user_id', true) THEN 0 ELSE 1 END`,
+			)
 			.executeTakeFirst();
 
 	const row = userId

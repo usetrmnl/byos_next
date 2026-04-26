@@ -1,11 +1,23 @@
-import { proxyToTRMNL } from "@/lib/api/proxy";
+import { getRegistry } from "@/lib/trmnl/registry";
 
 /**
  * GET /api/ips
- * List all TRMNL server IP addresses
+ * List all TRMNL server IP addresses.
  *
- * Proxies to TRMNL API
+ * Served from a local 24h cache seeded by `data/trmnl/ips.json`.
+ * Set TRMNL_PROXY_LIVE=true to always proxy upstream.
  */
-export async function GET(request: Request) {
-	return proxyToTRMNL("/api/ips", "GET", request);
+export async function GET() {
+	try {
+		const data = await getRegistry("ips");
+		return Response.json(data);
+	} catch (error) {
+		return Response.json(
+			{
+				error: "Failed to load ips registry",
+				message: error instanceof Error ? error.message : "Unknown error",
+			},
+			{ status: 502 },
+		);
+	}
 }

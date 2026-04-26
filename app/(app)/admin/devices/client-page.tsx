@@ -18,6 +18,10 @@ import {
 	fetchAllUsersForAdmin,
 	unassignDevice,
 } from "@/app/actions/admin-devices";
+import {
+	deleteAllDeviceLogs,
+	deleteAllSystemLogs,
+} from "@/app/actions/admin-maintenance";
 import { PageTemplate } from "@/components/common/page-template";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -133,6 +137,32 @@ export default function AdminDevicesClientPage() {
 		}
 	};
 
+	const handleDeleteAllDeviceLogs = async () => {
+		if (!confirm("Delete all device logs? This action cannot be undone.")) {
+			return;
+		}
+
+		const result = await deleteAllDeviceLogs();
+		if (result.success) {
+			toast.success(`Deleted ${result.count ?? 0} device logs`);
+		} else {
+			toast.error(result.error || "Failed to delete device logs");
+		}
+	};
+
+	const handleDeleteAllSystemLogs = async () => {
+		if (!confirm("Delete all system logs? This action cannot be undone.")) {
+			return;
+		}
+
+		const result = await deleteAllSystemLogs();
+		if (result.success) {
+			toast.success(`Deleted ${result.count ?? 0} system logs`);
+		} else {
+			toast.error(result.error || "Failed to delete system logs");
+		}
+	};
+
 	return (
 		<PageTemplate
 			title="Device Management"
@@ -143,6 +173,25 @@ export default function AdminDevicesClientPage() {
 				</Button>
 			}
 		>
+			<Card>
+				<CardHeader>
+					<CardTitle>Admin Maintenance</CardTitle>
+					<CardDescription>
+						Database cleanup actions for operational logs.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="flex flex-col gap-3 sm:flex-row">
+					<Button variant="destructive" onClick={handleDeleteAllDeviceLogs}>
+						<Trash2 className="mr-2 size-4" />
+						Delete device logs
+					</Button>
+					<Button variant="destructive" onClick={handleDeleteAllSystemLogs}>
+						<Trash2 className="mr-2 size-4" />
+						Delete system logs
+					</Button>
+				</CardContent>
+			</Card>
+
 			<Card>
 				<CardHeader>
 					<CardTitle>Devices</CardTitle>

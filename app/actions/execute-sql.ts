@@ -1,7 +1,13 @@
 "use server";
 
+import { createHash } from "crypto";
+import { sql as kyselySql } from "kysely";
 import postgres from "postgres";
+import { auth } from "@/lib/auth/auth";
+import { getCurrentUser } from "@/lib/auth/get-user";
+import { db } from "@/lib/database/db";
 import { SQL_STATEMENTS } from "@/lib/database/sql-statements";
+import { checkDbConnection } from "@/lib/database/utils";
 
 export type SqlExecutionStatus =
 	| "idle"
@@ -22,14 +28,112 @@ export type SqlExecutionState = {
 	[key in keyof typeof SQL_STATEMENTS]: SqlExecutionResult;
 };
 
-// List of error messages that should be treated as warnings and allow execution to continue
-const NON_FATAL_ERRORS = [
-	"already exists",
-	"relation already exists",
-	"duplicate key value violates unique constraint",
-];
+const SCHEMA_MIGRATIONS_MIGRATION = "0012_create_schema_migrations";
+
+function checksumSql(sql: string): string {
+	return createHash("sha256").update(sql).digest("hex");
+}
+
+function migrationEntries() {
+	return Object.entries(SQL_STATEMENTS).filter(
+		([key]) => key !== "validate_schema" && key !== SCHEMA_MIGRATIONS_MIGRATION,
+	);
+}
+
+async function authTablesExist(): Promise<boolean> {
+	const result = await kyselySql<{
+		count: string | number | bigint;
+	}>`
+		SELECT COUNT(*) AS count
+		FROM information_schema.tables
+		WHERE table_schema = 'public'
+			AND table_name IN ('user', 'session')
+	`.execute(db);
+
+	const count = Number(result.rows[0]?.count ?? 0);
+	return count >= 2;
+}
+
+async function canRunSetupSql(): Promise<boolean> {
+	if (!auth) {
+		return true;
+	}
+
+	const user = await getCurrentUser().catch(() => null);
+	if (user?.role === "admin") {
+		return true;
+	}
+
+	const status = await checkDbConnection();
+	if (!status.ready && status.error?.startsWith("Missing required tables:")) {
+		// Fresh installs do not have auth tables yet, so setup must be runnable
+		// before anyone can sign in. Once auth tables exist, require admin.
+		return !(await authTablesExist().catch(() => false));
+	}
+
+	return false;
+}
+
+async function getAppliedMigrations(
+	sql: postgres.Sql,
+): Promise<Map<string, string>> {
+	const rows = await sql<{ name: string; checksum: string }[]>`
+		SELECT name, checksum
+		FROM schema_migrations
+	`;
+
+	return new Map(rows.map((row) => [row.name, row.checksum]));
+}
+
+async function ensureMigrationLedger(
+	sql: postgres.Sql,
+	resultState: SqlExecutionState,
+): Promise<void> {
+	const statement = SQL_STATEMENTS[SCHEMA_MIGRATIONS_MIGRATION];
+	const checksum = checksumSql(statement.sql);
+	const startTime = performance.now();
+
+	await sql.unsafe(statement.sql);
+
+	const applied = await getAppliedMigrations(sql);
+	const appliedChecksum = applied.get(SCHEMA_MIGRATIONS_MIGRATION);
+
+	if (appliedChecksum && appliedChecksum !== checksum) {
+		throw new Error(
+			`Migration ${SCHEMA_MIGRATIONS_MIGRATION} was already applied with a different checksum`,
+		);
+	}
+
+	if (!appliedChecksum) {
+		await sql`
+			INSERT INTO schema_migrations (name, checksum)
+			VALUES (${SCHEMA_MIGRATIONS_MIGRATION}, ${checksum})
+		`;
+	}
+
+	resultState[SCHEMA_MIGRATIONS_MIGRATION] = {
+		status: "success",
+		result: appliedChecksum
+			? [{ skipped: true, reason: "Already applied" }]
+			: [{ applied: true }],
+		notices: [],
+		executionTime: Math.round(performance.now() - startTime),
+	};
+}
 
 export async function executeSqlStatements(): Promise<SqlExecutionState> {
+	if (!(await canRunSetupSql())) {
+		return Object.keys(SQL_STATEMENTS).reduce((acc, key) => {
+			acc[key as keyof typeof SQL_STATEMENTS] = {
+				status: "error",
+				result: [],
+				notices: [],
+				error: "Unauthorized",
+			};
+			return acc;
+		}, {} as SqlExecutionState);
+	}
+
 	const postgresUrl = process.env.DATABASE_URL;
 
 	if (!postgresUrl) {
@@ -60,11 +164,11 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 
 	const connectionString = transformPostgresUrl(postgresUrl);
 
-	// Initialize result state with all statements in loading state
+	// The client shows a local loading state while this server action runs.
 	const resultState: SqlExecutionState = Object.keys(SQL_STATEMENTS).reduce(
 		(acc, key) => {
 			acc[key as keyof typeof SQL_STATEMENTS] = {
-				status: "loading",
+				status: "idle",
 				result: [],
 				notices: [],
 			};
@@ -81,11 +185,28 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 	});
 
 	try {
-		// Execute each statement in sequence
-		for (const [key, statement] of Object.entries(SQL_STATEMENTS)) {
+		let migrationFailed: string | null = null;
+
+		try {
+			await ensureMigrationLedger(sql, resultState);
+		} catch (error) {
+			migrationFailed = SCHEMA_MIGRATIONS_MIGRATION;
+			resultState[SCHEMA_MIGRATIONS_MIGRATION] = {
+				status: "error",
+				result: [],
+				notices: [],
+				error: error instanceof Error ? error.message : String(error),
+			};
+		}
+
+		const entries = migrationFailed ? [] : migrationEntries();
+		const applied = migrationFailed
+			? new Map()
+			: await getAppliedMigrations(sql);
+
+		for (const [key, statement] of entries) {
 			const notices: Record<string, unknown>[] = [];
 
-			// Create a new SQL client with notice handler for this specific query
 			const sqlWithNotices = postgres(connectionString, {
 				ssl: connectionString.includes("sslmode=disable") ? false : "require",
 				onnotice: (notice) => {
@@ -95,13 +216,41 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 			});
 
 			try {
+				const checksum = checksumSql(statement.sql);
+				const appliedChecksum = applied.get(key);
+				if (appliedChecksum) {
+					if (appliedChecksum !== checksum) {
+						resultState[key as keyof typeof SQL_STATEMENTS] = {
+							status: "error",
+							result: [],
+							notices,
+							error: `Migration ${key} was already applied with a different checksum`,
+						};
+						migrationFailed = key;
+						break;
+					}
+
+					resultState[key as keyof typeof SQL_STATEMENTS] = {
+						status: "success",
+						result: [{ skipped: true, reason: "Already applied" }],
+						notices,
+					};
+					continue;
+				}
+
 				const startTime = performance.now();
-				const result = await sqlWithNotices.unsafe(statement.sql);
+				await sqlWithNotices.begin(async (trx) => {
+					await trx.unsafe(statement.sql);
+					await trx`
+						INSERT INTO schema_migrations (name, checksum)
+						VALUES (${key}, ${checksum})
+					`;
+				});
 				const endTime = performance.now();
 
 				resultState[key as keyof typeof SQL_STATEMENTS] = {
 					status: "success",
-					result: result || [],
+					result: [{ applied: true }],
 					notices,
 					executionTime: Math.round(endTime - startTime),
 				};
@@ -111,30 +260,52 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 				const errorMessage =
 					error instanceof Error ? error.message : String(error);
 
-				// Check if this is a non-fatal error that should be treated as a warning
-				const isNonFatalError = NON_FATAL_ERRORS.some((msg) =>
-					errorMessage.toLowerCase().includes(msg.toLowerCase()),
-				);
-
 				resultState[key as keyof typeof SQL_STATEMENTS] = {
-					status: isNonFatalError ? "warning" : "error",
+					status: "error",
 					result: [],
 					notices,
 					error: errorMessage,
 				};
 
-				// Only stop execution on fatal errors
-				if (!isNonFatalError) {
-					break;
-				}
-				// For non-fatal errors, continue with the next statement
+				migrationFailed = key;
+				break;
 			} finally {
-				// Close the connection for this query
 				await sqlWithNotices.end();
 			}
 		}
+
+		if (migrationFailed) {
+			resultState.validate_schema = {
+				status: "error",
+				result: [],
+				notices: [],
+				error: `Skipped schema validation because migration ${migrationFailed} failed`,
+			};
+			return resultState;
+		}
+
+		const validationStartTime = performance.now();
+		const validationResult = await sql.unsafe(
+			SQL_STATEMENTS.validate_schema.sql,
+		);
+		resultState.validate_schema = {
+			status: validationResult.length === 0 ? "success" : "error",
+			result: validationResult,
+			notices: [],
+			error:
+				validationResult.length === 0
+					? undefined
+					: "Schema validation found missing tables",
+			executionTime: Math.round(performance.now() - validationStartTime),
+		};
 	} catch (error) {
 		console.error("Unexpected error during SQL execution:", error);
+		resultState.validate_schema = {
+			status: "error",
+			result: [],
+			notices: [],
+			error: error instanceof Error ? error.message : String(error),
+		};
 	} finally {
 		// Close the main connection
 		await sql.end();

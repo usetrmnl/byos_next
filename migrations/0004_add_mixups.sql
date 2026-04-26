@@ -2,20 +2,32 @@
 -- Description: Creates mixups tables and replaces use_playlist with display_mode enum
 
 -- Create enum for layout IDs
-CREATE TYPE mixup_layout_id AS ENUM (
-    'quarters',
-    'top-banner',
-    'left-rail',
-    'vertical-halves',
-    'horizontal-halves'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mixup_layout_id') THEN
+        CREATE TYPE mixup_layout_id AS ENUM (
+            'quarters',
+            'top-banner',
+            'left-rail',
+            'vertical-halves',
+            'horizontal-halves'
+        );
+    END IF;
+END
+$$;
 
 -- Create enum for device display mode
-CREATE TYPE device_display_mode AS ENUM (
-    'screen',
-    'playlist',
-    'mixup'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'device_display_mode') THEN
+        CREATE TYPE device_display_mode AS ENUM (
+            'screen',
+            'playlist',
+            'mixup'
+        );
+    END IF;
+END
+$$;
 
 -- Create mixups table
 CREATE TABLE IF NOT EXISTS mixups (
@@ -49,9 +61,19 @@ ALTER TABLE devices
 ADD COLUMN IF NOT EXISTS display_mode device_display_mode DEFAULT 'screen';
 
 -- Migrate existing data: if use_playlist is true, set display_mode to 'playlist'
-UPDATE devices SET display_mode = 'playlist' WHERE use_playlist = TRUE;
-UPDATE devices SET display_mode = 'screen' WHERE use_playlist = FALSE OR use_playlist IS NULL;
-
--- Drop the old use_playlist column
-ALTER TABLE devices DROP COLUMN IF EXISTS use_playlist;
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+            AND table_name = 'devices'
+            AND column_name = 'use_playlist'
+    ) THEN
+        UPDATE devices SET display_mode = 'playlist' WHERE use_playlist = TRUE;
+        UPDATE devices SET display_mode = 'screen' WHERE use_playlist = FALSE OR use_playlist IS NULL;
+        ALTER TABLE devices DROP COLUMN use_playlist;
+    END IF;
+END
+$$;
 

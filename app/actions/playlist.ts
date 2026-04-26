@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/auth/get-user";
-import { db } from "@/lib/database/db";
 import {
 	withUserScope,
 	withUserScopeTransaction,
@@ -90,11 +89,13 @@ export async function createPlaylist(name: string): Promise<{
 	const userId = await getCurrentUserId();
 
 	try {
-		const playlist = await db
-			.insertInto("playlists")
-			.values({ name, user_id: userId })
-			.returningAll()
-			.executeTakeFirst();
+		const playlist = await withUserScope((scopedDb) =>
+			scopedDb
+				.insertInto("playlists")
+				.values({ name, user_id: userId })
+				.returningAll()
+				.executeTakeFirst(),
+		);
 
 		return { success: true, playlist: playlist as unknown as Playlist };
 	} catch (error) {
@@ -184,21 +185,23 @@ export async function createPlaylistItem(
 	}
 
 	try {
-		const newItem = await db
-			.insertInto("playlist_items")
-			.values({
-				playlist_id: playlistId,
-				screen_id: item.screen_id,
-				duration: item.duration,
-				start_time: item.start_time,
-				end_time: item.end_time,
-				days_of_week: item.days_of_week
-					? JSON.stringify(item.days_of_week)
-					: null,
-				order_index: item.order_index,
-			})
-			.returningAll()
-			.executeTakeFirst();
+		const newItem = await withUserScope((scopedDb) =>
+			scopedDb
+				.insertInto("playlist_items")
+				.values({
+					playlist_id: playlistId,
+					screen_id: item.screen_id,
+					duration: item.duration,
+					start_time: item.start_time,
+					end_time: item.end_time,
+					days_of_week: item.days_of_week
+						? JSON.stringify(item.days_of_week)
+						: null,
+					order_index: item.order_index,
+				})
+				.returningAll()
+				.executeTakeFirst(),
+		);
 
 		return { success: true, item: newItem as unknown as PlaylistItem };
 	} catch (error) {
@@ -230,11 +233,13 @@ export async function updatePlaylistItem(
 			updateData.days_of_week = JSON.stringify(updates.days_of_week);
 		}
 
-		await db
-			.updateTable("playlist_items")
-			.set(updateData)
-			.where("id", "=", itemId)
-			.execute();
+		await withUserScope((scopedDb) =>
+			scopedDb
+				.updateTable("playlist_items")
+				.set(updateData)
+				.where("id", "=", itemId)
+				.execute(),
+		);
 
 		return { success: true };
 	} catch (error) {
@@ -261,7 +266,9 @@ export async function deletePlaylistItem(itemId: string): Promise<{
 	}
 
 	try {
-		await db.deleteFrom("playlist_items").where("id", "=", itemId).execute();
+		await withUserScope((scopedDb) =>
+			scopedDb.deleteFrom("playlist_items").where("id", "=", itemId).execute(),
+		);
 
 		return { success: true };
 	} catch (error) {

@@ -86,18 +86,24 @@ async function fetchRecipeFiles(
 		return null;
 	}
 
-	const runQuery = (conn: typeof db) =>
-		conn
+	const runQuery = (conn: typeof db, sharedOnly = false) => {
+		let query = conn
 			.selectFrom("recipe_files")
 			.innerJoin("recipes", "recipes.id", "recipe_files.recipe_id")
 			.select(["recipe_files.filename", "recipe_files.content"])
 			.where("recipes.slug", "=", slug)
-			.where("recipes.type", "=", "liquid")
-			.execute();
+			.where("recipes.type", "=", "liquid");
+
+		if (sharedOnly) {
+			query = query.where("recipes.user_id", "is", null);
+		}
+
+		return query.execute();
+	};
 
 	const files = userId
 		? await withExplicitUserScope(userId, runQuery)
-		: await runQuery(db);
+		: await runQuery(db, true);
 
 	if (!files || files.length === 0) {
 		return null;
@@ -279,7 +285,7 @@ async function fetchPollingData(
  * Scripts that contain Liquid expressions ({{ }} or {% %}) are left unprotected
  * so that template variables are resolved by the Liquid engine.
  */
-function wrapNonLiquidScripts(content: string): string {
+export function wrapNonLiquidScripts(content: string): string {
 	return content.replace(
 		/(<script(?![^>]*\bsrc\s*=)[^>]*>)([\s\S]*?)(<\/script>)/gi,
 		(_, open, body, close) => {
@@ -299,7 +305,7 @@ function wrapNonLiquidScripts(content: string): string {
  * it misreads `(name` as the start of a range expression like `(1..5)`.
  * Liquid evaluates and/or left-to-right, so parens can be safely removed.
  */
-function removeCosmeticParens(content: string): string {
+export function removeCosmeticParens(content: string): string {
 	return content.replace(
 		/\{%[-\s]*(if|elsif|unless)\s+([\s\S]*?)[-]?%\}/g,
 		(match) => match.replace(/[()]/g, ""),
@@ -351,7 +357,7 @@ export async function fetchLiquidRecipeSettings(
 /**
  * Register custom filters matching TRMNL/Laravel's Liquid extensions.
  */
-function registerCustomFilters(engine: Liquid): void {
+export function registerCustomFilters(engine: Liquid): void {
 	engine.registerFilter("l_date", (date: string, format?: string) => {
 		try {
 			const d = date ? new Date(date) : new Date();
@@ -595,17 +601,23 @@ export async function isLiquidRecipe(
 	const { ready } = await checkDbConnection();
 	if (!ready) return false;
 
-	const runQuery = (conn: typeof db) =>
-		conn
+	const runQuery = (conn: typeof db, sharedOnly = false) => {
+		let query = conn
 			.selectFrom("recipes")
 			.select("id")
 			.where("slug", "=", slug)
-			.where("type", "=", "liquid")
-			.executeTakeFirst();
+			.where("type", "=", "liquid");
+
+		if (sharedOnly) {
+			query = query.where("user_id", "is", null);
+		}
+
+		return query.executeTakeFirst();
+	};
 
 	const recipe = userId
 		? await withExplicitUserScope(userId, runQuery)
-		: await runQuery(db);
+		: await runQuery(db, true);
 
 	return !!recipe;
 }

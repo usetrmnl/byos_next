@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/database/db";
+import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
 
@@ -46,11 +46,13 @@ export async function PATCH(
 		}
 
 		// Check if item exists
-		const item = await db
-			.selectFrom("playlist_items")
-			.selectAll()
-			.where("id", "=", id)
-			.executeTakeFirst();
+		const item = await withUserScope((scopedDb) =>
+			scopedDb
+				.selectFrom("playlist_items")
+				.selectAll()
+				.where("id", "=", id)
+				.executeTakeFirst(),
+		);
 
 		if (!item) {
 			return NextResponse.json(
