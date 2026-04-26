@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import sharp from "sharp";
 import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
 import {
@@ -24,6 +25,8 @@ export async function GET(
 		const widthParam = searchParams.get("width");
 		const heightParam = searchParams.get("height");
 		const grayscaleParam = searchParams.get("grayscale");
+		const accessToken =
+			searchParams.get("access_token") ?? req.headers.get("Access-Token");
 
 		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
 		const height = heightParam
@@ -37,29 +40,47 @@ export async function GET(
 			return new Response("Database not available", { status: 503 });
 		}
 
+		if (!accessToken) {
+			return new Response("Access token is required", { status: 401 });
+		}
+
+		const device = await db
+			.selectFrom("devices")
+			.select(["user_id", "mixup_id"])
+			.where("api_key", "=", accessToken)
+			.executeTakeFirst();
+
+		if (!device || device.mixup_id !== mixupId || !device.user_id) {
+			return new Response("Mixup not found", { status: 404 });
+		}
+
 		// Fetch mixup and its slots (join with recipes to get slug)
-		const [mixup, slots] = await Promise.all([
-			db
-				.selectFrom("mixups")
-				.selectAll()
-				.where("id", "=", mixupId)
-				.executeTakeFirst(),
-			db
-				.selectFrom("mixup_slots")
-				.leftJoin("recipes", "recipes.id", "mixup_slots.recipe_id")
-				.select([
-					"mixup_slots.id",
-					"mixup_slots.mixup_id",
-					"mixup_slots.slot_id",
-					"mixup_slots.recipe_slug",
-					"mixup_slots.recipe_id",
-					"mixup_slots.order_index",
-					"recipes.slug as resolved_slug",
-				])
-				.where("mixup_slots.mixup_id", "=", mixupId)
-				.orderBy("mixup_slots.order_index", "asc")
-				.execute(),
-		]);
+		const [mixup, slots] = await withExplicitUserScope(
+			device.user_id,
+			(scopedDb) =>
+				Promise.all([
+					scopedDb
+						.selectFrom("mixups")
+						.selectAll()
+						.where("id", "=", mixupId)
+						.executeTakeFirst(),
+					scopedDb
+						.selectFrom("mixup_slots")
+						.leftJoin("recipes", "recipes.id", "mixup_slots.recipe_id")
+						.select([
+							"mixup_slots.id",
+							"mixup_slots.mixup_id",
+							"mixup_slots.slot_id",
+							"mixup_slots.recipe_slug",
+							"mixup_slots.recipe_id",
+							"mixup_slots.order_index",
+							"recipes.slug as resolved_slug",
+						])
+						.where("mixup_slots.mixup_id", "=", mixupId)
+						.orderBy("mixup_slots.order_index", "asc")
+						.execute(),
+				]),
+		);
 
 		if (!mixup) {
 			logger.warn(`Mixup not found: ${mixupId}`);
@@ -72,7 +93,7 @@ export async function GET(
 			return new Response("Invalid layout", { status: 400 });
 		}
 
-		// Build slot assignments map — prefer resolved slug from recipes table, fall back to legacy recipe_slug
+		// Build slot assignments map, preferring the normalized recipe_id relation.
 		const assignments: Record<string, string | null> = {};
 		for (const slot of slots) {
 			assignments[slot.slot_id] = slot.resolved_slug ?? slot.recipe_slug;
@@ -89,6 +110,7 @@ export async function GET(
 			width,
 			height,
 			grayscaleLevels,
+			device.user_id,
 		);
 
 		return new Response(new Uint8Array(compositeBuffer), {
@@ -109,6 +131,7 @@ export async function GET(
 async function renderSlot(
 	slot: LayoutSlot,
 	recipeSlug: string,
+	userId: string,
 ): Promise<Buffer | null> {
 	try {
 		const renders = await renderRecipeToImage({
@@ -116,6 +139,7 @@ async function renderSlot(
 			imageWidth: slot.width,
 			imageHeight: slot.height,
 			formats: ["png"],
+			userId,
 		});
 		return renders.png;
 	} catch (error) {
@@ -135,7 +159,8 @@ async function renderMixupComposite(
 	assignments: Record<string, string | null>,
 	width: number,
 	height: number,
-	grayscaleLevels: number = 2,
+	grayscaleLevels: number,
+	userId: string,
 ): Promise<Buffer> {
 	// Render all slots in parallel
 	const slotRenders = await Promise.all(
@@ -145,7 +170,7 @@ async function renderMixupComposite(
 				return { slot, buffer: null };
 			}
 
-			const buffer = await renderSlot(slot, recipeSlug);
+			const buffer = await renderSlot(slot, recipeSlug, userId);
 			return { slot, buffer };
 		}),
 	);

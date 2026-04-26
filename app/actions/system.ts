@@ -1,5 +1,7 @@
 "use server";
 
+import { auth } from "@/lib/auth/auth";
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import type { SystemLog } from "@/lib/types";
@@ -18,6 +20,15 @@ type FetchSystemLogsResult = {
 	uniqueSources: string[];
 };
 
+async function canReadSystemLogs(): Promise<boolean> {
+	if (!auth) {
+		return true;
+	}
+
+	const user = await getCurrentUser();
+	return user?.role === "admin";
+}
+
 export async function fetchSystemLogs({
 	page,
 	perPage,
@@ -29,6 +40,10 @@ export async function fetchSystemLogs({
 
 	if (!ready) {
 		console.warn("Database client not initialized");
+		return { logs: [], total: 0, uniqueSources: [] };
+	}
+
+	if (!(await canReadSystemLogs())) {
 		return { logs: [], total: 0, uniqueSources: [] };
 	}
 
@@ -136,6 +151,10 @@ export async function fetchDeviceSystemLogs({
 
 	if (!ready) {
 		console.warn("Database client not initialized");
+		return { logs: [], total: 0, uniqueSources: [] };
+	}
+
+	if (!(await canReadSystemLogs())) {
 		return { logs: [], total: 0, uniqueSources: [] };
 	}
 

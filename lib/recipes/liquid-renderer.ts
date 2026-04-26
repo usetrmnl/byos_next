@@ -86,18 +86,24 @@ async function fetchRecipeFiles(
 		return null;
 	}
 
-	const runQuery = (conn: typeof db) =>
-		conn
+	const runQuery = (conn: typeof db, sharedOnly = false) => {
+		let query = conn
 			.selectFrom("recipe_files")
 			.innerJoin("recipes", "recipes.id", "recipe_files.recipe_id")
 			.select(["recipe_files.filename", "recipe_files.content"])
 			.where("recipes.slug", "=", slug)
-			.where("recipes.type", "=", "liquid")
-			.execute();
+			.where("recipes.type", "=", "liquid");
+
+		if (sharedOnly) {
+			query = query.where("recipes.user_id", "is", null);
+		}
+
+		return query.execute();
+	};
 
 	const files = userId
 		? await withExplicitUserScope(userId, runQuery)
-		: await runQuery(db);
+		: await runQuery(db, true);
 
 	if (!files || files.length === 0) {
 		return null;
@@ -595,17 +601,23 @@ export async function isLiquidRecipe(
 	const { ready } = await checkDbConnection();
 	if (!ready) return false;
 
-	const runQuery = (conn: typeof db) =>
-		conn
+	const runQuery = (conn: typeof db, sharedOnly = false) => {
+		let query = conn
 			.selectFrom("recipes")
 			.select("id")
 			.where("slug", "=", slug)
-			.where("type", "=", "liquid")
-			.executeTakeFirst();
+			.where("type", "=", "liquid");
+
+		if (sharedOnly) {
+			query = query.where("user_id", "is", null);
+		}
+
+		return query.executeTakeFirst();
+	};
 
 	const recipe = userId
 		? await withExplicitUserScope(userId, runQuery)
-		: await runQuery(db);
+		: await runQuery(db, true);
 
 	return !!recipe;
 }

@@ -2,7 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentUserId } from "@/lib/auth/get-user";
-import { db } from "@/lib/database/db";
 import type { MixupLayoutId as DbMixupLayoutId } from "@/lib/database/db.d";
 import {
 	withUserScope,
@@ -94,11 +93,17 @@ export async function createMixup(
 	const userId = await getCurrentUserId();
 
 	try {
-		const mixup = await db
-			.insertInto("mixups")
-			.values({ name, layout_id: layoutId as DbMixupLayoutId, user_id: userId })
-			.returningAll()
-			.executeTakeFirst();
+		const mixup = await withUserScope((scopedDb) =>
+			scopedDb
+				.insertInto("mixups")
+				.values({
+					name,
+					layout_id: layoutId as DbMixupLayoutId,
+					user_id: userId,
+				})
+				.returningAll()
+				.executeTakeFirst(),
+		);
 
 		return { success: true, mixup: mixup as unknown as Mixup };
 	} catch (error) {

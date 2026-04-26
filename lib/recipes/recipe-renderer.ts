@@ -111,17 +111,23 @@ export const fetchRecipeConfig = cache(
 		const { ready } = await checkDbConnection();
 		if (!ready) return null;
 
-		const runQuery = (conn: typeof db) =>
-			conn
+		const runQuery = (conn: typeof db, sharedOnly = false) => {
+			let query = conn
 				.selectFrom("recipes")
 				.select(["metadata"])
 				.where("slug", "=", slug)
-				.where("type", "=", "react")
-				.executeTakeFirst();
+				.where("type", "=", "react");
+
+			if (sharedOnly) {
+				query = query.where("user_id", "is", null);
+			}
+
+			return query.executeTakeFirst();
+		};
 
 		const row = userId
 			? await withExplicitUserScope(userId, runQuery)
-			: await runQuery(db);
+			: await runQuery(db, true);
 
 		if (!row?.metadata) return null;
 

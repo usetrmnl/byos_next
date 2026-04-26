@@ -40,6 +40,7 @@ export type Device = {
 	mixup_id: string | null;
 	display_mode: DeviceDisplayMode;
 	current_playlist_index: number | null;
+	user_id: string | null;
 	screen_width: number | null;
 	screen_height: number | null;
 	screen_orientation: string | null;

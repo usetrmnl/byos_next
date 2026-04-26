@@ -1,6 +1,8 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
 import { logger } from "@/lib/recipes/recipe-renderer";
@@ -133,16 +135,22 @@ export const getActivePlaylistItem = async (
 	playlistId: string,
 	currentIndex: number,
 	timezone: string = "UTC",
+	userId?: string | null,
 ): Promise<PlaylistItem | null> => {
 	const { ready } = await checkDbConnection();
 	if (!ready) return null;
 
-	const items = await db
-		.selectFrom("playlist_items")
-		.selectAll()
-		.where("playlist_id", "=", playlistId)
-		.orderBy("order_index", "asc")
-		.execute();
+	const runQuery = (conn: typeof db) =>
+		conn
+			.selectFrom("playlist_items")
+			.selectAll()
+			.where("playlist_id", "=", playlistId)
+			.orderBy("order_index", "asc")
+			.execute();
+
+	const items = userId
+		? await withExplicitUserScope(userId, runQuery)
+		: await runQuery(db);
 
 	if (!items || items.length === 0) {
 		logError("No items in playlist", {
@@ -331,6 +339,18 @@ export const findOrCreateDevice = async (
 			const device = deviceByMac as unknown as Device;
 			const patch: Partial<Device> = {};
 			if (apiKey && apiKey !== device.api_key) {
+				const currentUserId = await getCurrentUserId();
+				if (!currentUserId || device.user_id !== currentUserId) {
+					logError("Refusing to rotate device API key from MAC-only match", {
+						source: "api/display",
+						metadata: {
+							deviceId: device.friendly_id,
+							macAddress,
+							hasApiKey: true,
+						},
+					});
+					return null;
+				}
 				patch.api_key = apiKey;
 			}
 			if (headers.model && headers.model !== device.model) {
@@ -358,6 +378,19 @@ export const findOrCreateDevice = async (
 
 	// 3. Create new device or use mock
 	if (apiKey) {
+		const currentUserId = await getCurrentUserId();
+		if (!currentUserId) {
+			logError("Refusing to auto-provision an unowned device", {
+				source: "api/display",
+				metadata: {
+					macAddress,
+					hasApiKey: true,
+					model: headers.model,
+				},
+			});
+			return null;
+		}
+
 		// New device by explicit MAC
 		if (macAddress) {
 			const friendly_id = generateFriendlyId(
@@ -385,6 +418,7 @@ export const findOrCreateDevice = async (
 						timezone: "UTC",
 						screen: DEFAULT_SCREEN,
 						model: headers.model,
+						user_id: currentUserId,
 					})
 					.returningAll()
 					.executeTakeFirst();
@@ -459,6 +493,7 @@ export const findOrCreateDevice = async (
 					timezone: "UTC",
 					screen: DEFAULT_SCREEN,
 					model: headers.model,
+					user_id: currentUserId,
 				})
 				.returningAll()
 				.executeTakeFirst();
