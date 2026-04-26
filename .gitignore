@@ -51,3 +51,6 @@ sync.sh
 
 # local git worktrees
 .worktrees/
+
+# local planning notes
+.notes/
