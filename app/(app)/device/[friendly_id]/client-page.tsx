@@ -15,6 +15,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/registry";
 import type { Device, Mixup, Playlist, PlaylistItem } from "@/lib/types";
 import {
 	generateApiKey,
@@ -39,6 +40,8 @@ interface DeviceClientPageProps {
 	availablePlaylists: Playlist[];
 	availableMixups: Mixup[];
 	playlistItems: PlaylistItem[];
+	trmnlModels: TrmnlModel[];
+	trmnlPalettes: TrmnlPalette[];
 }
 
 export default function DeviceClientPage({
@@ -47,6 +50,8 @@ export default function DeviceClientPage({
 	availablePlaylists,
 	availableMixups,
 	playlistItems,
+	trmnlModels,
+	trmnlPalettes,
 }: DeviceClientPageProps) {
 	const [device, setDevice] = useState<
 		Device & { status?: string; type?: string }
@@ -183,6 +188,23 @@ export default function DeviceClientPage({
 					...editedDevice,
 					[name]: Number.parseInt(value, 10),
 				});
+			} else if (name === "model") {
+				const model = trmnlModels.find((item) => item.name === value);
+				const nextPaletteId = model?.palette_ids[0] ?? null;
+				setEditedDevice({
+					...editedDevice,
+					model: value || null,
+					palette_id: nextPaletteId,
+					screen_width: model?.width ?? editedDevice.screen_width,
+					screen_height: model?.height ?? editedDevice.screen_height,
+				});
+				if (model?.width === 800 && model.height === 480) {
+					setDeviceSizePreset("800x480");
+				} else if (model?.width === 1872 && model.height === 1404) {
+					setDeviceSizePreset("1872x1404");
+				} else if (model) {
+					setDeviceSizePreset("custom");
+				}
 			} else {
 				setEditedDevice({
 					...editedDevice,
@@ -283,6 +305,8 @@ export default function DeviceClientPage({
 				screen_height: editedDevice.screen_height,
 				screen_orientation: editedDevice.screen_orientation,
 				grayscale: editedDevice.grayscale,
+				model: editedDevice.model,
+				palette_id: editedDevice.palette_id,
 			});
 
 			if (result.success) {
@@ -455,6 +479,8 @@ export default function DeviceClientPage({
 					availableScreens={availableScreens}
 					availablePlaylists={availablePlaylists}
 					availableMixups={availableMixups}
+					trmnlModels={trmnlModels}
+					trmnlPalettes={trmnlPalettes}
 					deviceSizePreset={deviceSizePreset}
 					apiKeyError={apiKeyError}
 					friendlyIdError={friendlyIdError}
@@ -472,7 +498,12 @@ export default function DeviceClientPage({
 					onCancel={handleCancel}
 				/>
 			) : (
-				<DeviceView device={device} playlistScreens={playlistScreens} />
+				<DeviceView
+					device={device}
+					playlistScreens={playlistScreens}
+					trmnlModels={trmnlModels}
+					trmnlPalettes={trmnlPalettes}
+				/>
 			)}
 
 			<DeviceLogsContainer device={device} />

@@ -35,6 +35,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/registry";
 import type { Device, Mixup, Playlist } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatTimezone, timezones } from "@/utils/helpers";
@@ -52,6 +53,8 @@ interface DeviceEditFormProps {
 	availableScreens: { id: string; title: string }[];
 	availablePlaylists: Playlist[];
 	availableMixups: Mixup[];
+	trmnlModels: TrmnlModel[];
+	trmnlPalettes: TrmnlPalette[];
 	deviceSizePreset: DeviceSizePreset;
 	apiKeyError: string | null;
 	friendlyIdError: string | null;
@@ -100,6 +103,8 @@ export default function DeviceEditForm({
 	availableScreens,
 	availablePlaylists,
 	availableMixups,
+	trmnlModels,
+	trmnlPalettes,
 	deviceSizePreset,
 	apiKeyError,
 	friendlyIdError,
@@ -124,6 +129,26 @@ export default function DeviceEditForm({
 		? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH
 		: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
 	const grayscaleLevels = getGrayscaleLevels(editedDevice.grayscale);
+	const selectedModel =
+		trmnlModels.find((model) => model.name === editedDevice.model) ??
+		trmnlModels.find((model) => model.name === "og_plus") ??
+		trmnlModels[0];
+	const selectedPaletteIds = selectedModel?.palette_ids ?? [];
+	const selectedPalette =
+		trmnlPalettes.find((palette) => palette.id === editedDevice.palette_id) ??
+		trmnlPalettes.find((palette) => palette.id === selectedPaletteIds[0]);
+	const imageExtension = getModelImageExtension(selectedModel);
+	const profileQuery = new URLSearchParams({
+		width: String(deviceWidth),
+		height: String(deviceHeight),
+		grayscale: String(grayscaleLevels),
+	});
+	if (selectedModel?.name) {
+		profileQuery.set("model", selectedModel.name);
+	}
+	if (selectedPalette?.id) {
+		profileQuery.set("palette_id", selectedPalette.id);
+	}
 
 	const isMixup =
 		editedDevice.display_mode === DeviceDisplayMode.MIXUP &&
@@ -133,8 +158,8 @@ export default function DeviceEditForm({
 		!!editedDevice.playlist_id;
 
 	const heroSrc = isMixup
-		? `/api/bitmap/mixup/${editedDevice.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`
-		: `/api/bitmap/${editedDevice?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
+		? `/api/bitmap/mixup/${editedDevice.mixup_id}.${imageExtension}?${profileQuery}`
+		: `/api/bitmap/${editedDevice?.screen || "simple-text"}.${imageExtension}?${profileQuery}`;
 
 	return (
 		<form onSubmit={onSubmit}>
@@ -440,6 +465,60 @@ export default function DeviceEditForm({
 						</TabsContent>
 
 						<TabsContent value="display" className="mt-4 space-y-4">
+							<Field
+								label="Device model"
+								htmlFor="model"
+								hint="Determines output format, dimensions, and available palettes."
+							>
+								<Select
+									value={selectedModel?.name || ""}
+									onValueChange={(value) => onSelectChange("model", value)}
+								>
+									<SelectTrigger className="w-full">
+										<SelectValue placeholder="Select model…" />
+									</SelectTrigger>
+									<SelectContent>
+										{trmnlModels.map((model) => (
+											<SelectItem key={model.name} value={model.name}>
+												{model.label} · {model.width}×{model.height} ·{" "}
+												{model.mime_type.replace("image/", "")}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</Field>
+
+							{selectedPaletteIds.length > 0 && (
+								<Field
+									label="Palette"
+									htmlFor="palette_id"
+									hint="Restricted to palettes declared by the selected model."
+								>
+									<Select
+										value={selectedPalette?.id || selectedPaletteIds[0]}
+										onValueChange={(value) =>
+											onSelectChange("palette_id", value)
+										}
+									>
+										<SelectTrigger className="w-full">
+											<SelectValue placeholder="Select palette…" />
+										</SelectTrigger>
+										<SelectContent>
+											{selectedPaletteIds.map((paletteId) => {
+												const palette = trmnlPalettes.find(
+													(item) => item.id === paletteId,
+												);
+												return (
+													<SelectItem key={paletteId} value={paletteId}>
+														{palette?.name ?? paletteId}
+													</SelectItem>
+												);
+											})}
+										</SelectContent>
+									</Select>
+								</Field>
+							)}
+
 							<Field label="Device size" htmlFor="device_size_preset">
 								<Select
 									value={deviceSizePreset}
@@ -650,6 +729,14 @@ export default function DeviceEditForm({
 			</div>
 		</form>
 	);
+}
+
+function getModelImageExtension(model: TrmnlModel | undefined): string {
+	if (!model) return "png";
+	if (model.mime_type === "image/webp") return "webp";
+	if (model.mime_type === "image/bmp") return "bmp";
+	if (model.mime_type === "image/jpeg") return "jpg";
+	return "png";
 }
 
 function Field({

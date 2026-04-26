@@ -39,6 +39,8 @@ export async function GET(
 		const widthParam = searchParams.get("width");
 		const heightParam = searchParams.get("height");
 		const grayscaleParam = searchParams.get("grayscale");
+		const modelParam = searchParams.get("model");
+		const paletteParam = searchParams.get("palette_id");
 
 		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
 		const height = heightParam
@@ -61,7 +63,10 @@ export async function GET(
 
 		// Forward cookies so browser rendering can reuse the caller's auth session.
 		const cookieHeader = req.headers.get("cookie");
-		const profile = await resolveDeviceProfileForRequest(headers);
+		const profile = await resolveDeviceProfileForRequest(headers, {
+			modelName: modelParam,
+			paletteId: paletteParam,
+		});
 
 		if (profile.model.mime_type !== "image/bmp") {
 			const image = await renderRecipeForDevice({
@@ -120,11 +125,12 @@ export async function GET(
 
 async function resolveDeviceProfileForRequest(
 	headers: RequestHeaders,
+	query: { modelName?: string | null; paletteId?: string | null } = {},
 ): Promise<DeviceProfile> {
-	let modelName = headers.model;
-	let paletteId: string | null = null;
+	let modelName = query.modelName || headers.model;
+	let paletteId: string | null = query.paletteId || null;
 
-	if (headers.apiKey) {
+	if (headers.apiKey && !query.modelName) {
 		const { ready } = await checkDbConnection();
 		if (ready) {
 			const device = await db
