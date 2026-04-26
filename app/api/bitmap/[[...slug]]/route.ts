@@ -1,15 +1,25 @@
 import type { NextRequest } from "next/server";
 import { cache } from "react";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
+import { db } from "@/lib/database/db";
+import { checkDbConnection } from "@/lib/database/utils";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 	logger,
+	renderRecipeForDevice,
 	renderRecipeOutputs,
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
+import { renderDeviceImage } from "@/lib/render/device-image";
+import { stripImageExtension } from "@/lib/render/device-image-url";
+import {
+	type DeviceProfile,
+	getDeviceProfile,
+} from "@/lib/trmnl/device-profile";
 import {
 	parseRequestHeaders,
+	type RequestHeaders,
 	resolveUserIdFromApiKey,
 } from "../../display/utils";
 
@@ -22,7 +32,7 @@ export async function GET(
 		// Always await params as required by Next.js 14/15
 		const { slug = ["not-found"] } = await params;
 		const bitmapPath = Array.isArray(slug) ? slug.join("/") : slug;
-		const recipeSlug = bitmapPath.replace(".bmp", "");
+		const recipeSlug = stripImageExtension(bitmapPath);
 
 		// Get width, height, and grayscale from query parameters
 		const { searchParams } = new URL(req.url);
@@ -51,6 +61,27 @@ export async function GET(
 
 		// Forward cookies so browser rendering can reuse the caller's auth session.
 		const cookieHeader = req.headers.get("cookie");
+		const profile = await resolveDeviceProfileForRequest(headers);
+
+		if (profile.model.mime_type !== "image/bmp") {
+			const image = await renderRecipeForDevice({
+				slug: recipeSlug,
+				profile,
+				userId,
+				cookies: cookieHeader || undefined,
+			});
+
+			if (!image?.buffer.length) {
+				logger.warn(
+					`Failed to generate device image for ${recipeSlug}, returning fallback`,
+				);
+				return renderFallbackDeviceImage(profile);
+			}
+
+			return new Response(new Uint8Array(image.buffer), {
+				headers: getImageResponseHeaders(image),
+			});
+		}
 
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeSlug,
@@ -85,6 +116,43 @@ export async function GET(
 		// Instead of returning an error, return the NotFoundScreen as a fallback
 		return await renderFallbackBitmap("Error occurred");
 	}
+}
+
+async function resolveDeviceProfileForRequest(
+	headers: RequestHeaders,
+): Promise<DeviceProfile> {
+	let modelName = headers.model;
+	let paletteId: string | null = null;
+
+	if (headers.apiKey) {
+		const { ready } = await checkDbConnection();
+		if (ready) {
+			const device = await db
+				.selectFrom("devices")
+				.select(["model", "palette_id"])
+				.where("api_key", "=", headers.apiKey)
+				.executeTakeFirst();
+
+			modelName = device?.model ?? modelName;
+			paletteId = device?.palette_id ?? null;
+		}
+	}
+
+	return getDeviceProfile(modelName, paletteId);
+}
+
+function getImageResponseHeaders(image: {
+	buffer: Buffer;
+	mime_type: string;
+	size_limit_exceeded?: boolean;
+}) {
+	return {
+		"Content-Type": image.mime_type,
+		"Content-Length": image.buffer.length.toString(),
+		...(image.size_limit_exceeded
+			? { "X-TRMNL-Image-Size-Limit-Exceeded": "true" }
+			: {}),
+	};
 }
 
 const renderRecipeBitmap = cache(
@@ -142,3 +210,34 @@ const renderFallbackBitmap = cache(async (slug: string = "not-found") => {
 		});
 	}
 });
+
+async function renderFallbackDeviceImage(profile: DeviceProfile) {
+	try {
+		const renders = await renderRecipeOutputs({
+			slug: "not-found",
+			Component: NotFoundScreen,
+			props: { slug: "not-found" },
+			config: null,
+			imageWidth: profile.model.width,
+			imageHeight: profile.model.height,
+			formats: ["png"],
+		});
+
+		if (!renders.png) {
+			throw new Error("Missing PNG buffer for fallback");
+		}
+
+		const image = await renderDeviceImage({ png: renders.png, profile });
+		return new Response(new Uint8Array(image.buffer), {
+			headers: getImageResponseHeaders(image),
+		});
+	} catch (fallbackError) {
+		logger.error("Error generating fallback image:", fallbackError);
+		return new Response("Error generating image", {
+			status: 500,
+			headers: {
+				"Content-Type": "text/plain",
+			},
+		});
+	}
+}

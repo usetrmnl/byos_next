@@ -10,6 +10,9 @@ import {
 	logger,
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
+import { renderDeviceImage } from "@/lib/render/device-image";
+import { stripImageExtension } from "@/lib/render/device-image-url";
+import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
@@ -18,7 +21,7 @@ export async function GET(
 ) {
 	try {
 		const { id } = await params;
-		const mixupId = id.replace(".bmp", "");
+		const mixupId = stripImageExtension(id);
 
 		// Get width, height, and grayscale from query parameters
 		const { searchParams } = new URL(req.url);
@@ -46,13 +49,14 @@ export async function GET(
 
 		const device = await db
 			.selectFrom("devices")
-			.select(["user_id", "mixup_id"])
+			.select(["user_id", "mixup_id", "model", "palette_id"])
 			.where("api_key", "=", accessToken)
 			.executeTakeFirst();
 
 		if (!device || device.mixup_id !== mixupId || !device.user_id) {
 			return new Response("Mixup not found", { status: 404 });
 		}
+		const profile = await getDeviceProfile(device.model, device.palette_id);
 
 		// Fetch mixup and its slots (join with recipes to get slug)
 		const [mixup, slots] = await withExplicitUserScope(
@@ -103,20 +107,34 @@ export async function GET(
 			`Rendering mixup ${mixupId} with layout ${mixup.layout_id} and ${slots.length} slots`,
 		);
 
-		// Render the mixup composite
-		const compositeBuffer = await renderMixupComposite(
+		const compositedPng = await renderMixupCompositePng(
 			layout.slots,
 			assignments,
 			width,
 			height,
-			grayscaleLevels,
 			device.user_id,
 		);
+		const image =
+			profile.model.mime_type === "image/bmp"
+				? {
+						buffer: await renderBmp(compositedPng, {
+							ditheringMethod: DitheringMethod.ATKINSON,
+							width,
+							height,
+							grayscale: grayscaleLevels,
+						}),
+						mime_type: "image/bmp",
+						size_limit_exceeded: false,
+					}
+				: await renderDeviceImage({ png: compositedPng, profile });
 
-		return new Response(new Uint8Array(compositeBuffer), {
+		return new Response(new Uint8Array(image.buffer), {
 			headers: {
-				"Content-Type": "image/bmp",
-				"Content-Length": compositeBuffer.length.toString(),
+				"Content-Type": image.mime_type,
+				"Content-Length": image.buffer.length.toString(),
+				...(image.size_limit_exceeded
+					? { "X-TRMNL-Image-Size-Limit-Exceeded": "true" }
+					: {}),
 			},
 		});
 	} catch (error) {
@@ -152,14 +170,13 @@ async function renderSlot(
 }
 
 /**
- * Render all slots and composite them into a final bitmap
+ * Render all slots and composite them into a final PNG
  */
-async function renderMixupComposite(
+async function renderMixupCompositePng(
 	slots: LayoutSlot[],
 	assignments: Record<string, string | null>,
 	width: number,
 	height: number,
-	grayscaleLevels: number,
 	userId: string,
 ): Promise<Buffer> {
 	// Render all slots in parallel
@@ -210,13 +227,5 @@ async function renderMixupComposite(
 		.png()
 		.toBuffer();
 
-	// Convert to BMP with dithering
-	const bmpBuffer = await renderBmp(compositedPng, {
-		ditheringMethod: DitheringMethod.ATKINSON,
-		width,
-		height,
-		grayscale: grayscaleLevels,
-	});
-
-	return bmpBuffer;
+	return compositedPng;
 }

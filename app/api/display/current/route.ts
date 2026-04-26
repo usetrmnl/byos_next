@@ -6,6 +6,11 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/recipe-renderer";
+import {
+	buildDeviceImageFilename,
+	buildDeviceImageUrl,
+} from "@/lib/render/device-image-url";
+import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import type { Device } from "@/lib/types";
 import { parseRequestHeaders } from "../utils";
 
@@ -66,14 +71,22 @@ export async function GET(request: Request) {
 		const baseUrl = `${headers.hostUrl}/api/bitmap`;
 		const screenToDisplay = deviceData.screen || "not-found";
 		const orientation = deviceData.screen_orientation || "landscape";
+		const profile = await getDeviceProfile(
+			deviceData.model,
+			deviceData.palette_id,
+		);
 		const deviceWidth =
-			orientation === "landscape"
+			headers.width ||
+			profile.model.width ||
+			(orientation === "landscape"
 				? deviceData.screen_width || DEFAULT_IMAGE_WIDTH
-				: deviceData.screen_height || DEFAULT_IMAGE_HEIGHT;
+				: deviceData.screen_height || DEFAULT_IMAGE_HEIGHT);
 		const deviceHeight =
-			orientation === "landscape"
+			headers.height ||
+			profile.model.height ||
+			(orientation === "landscape"
 				? deviceData.screen_height || DEFAULT_IMAGE_HEIGHT
-				: deviceData.screen_width || DEFAULT_IMAGE_WIDTH;
+				: deviceData.screen_width || DEFAULT_IMAGE_WIDTH);
 
 		// Get grayscale levels (default to 2 if not set)
 		const grayscaleLevels =
@@ -83,7 +96,12 @@ export async function GET(request: Request) {
 				? deviceData.grayscale
 				: 2;
 
-		const imageUrl = `${baseUrl}/${screenToDisplay}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
+		const imageUrl = buildDeviceImageUrl({
+			baseUrl,
+			imagePath: screenToDisplay,
+			profile,
+			query: `width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`,
+		});
 
 		// Calculate refresh rate from schedule or use default
 		const refreshSchedule = deviceData.refresh_schedule as {
@@ -104,7 +122,7 @@ export async function GET(request: Request) {
 				status: 200,
 				refresh_rate: refreshRate,
 				image_url: imageUrl,
-				filename: `${screenToDisplay}.bmp`,
+				filename: buildDeviceImageFilename(screenToDisplay, "current", profile),
 				rendered_at: deviceData.last_update_time || new Date().toISOString(),
 			},
 			{ status: 200 },

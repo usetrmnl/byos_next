@@ -12,6 +12,11 @@ import {
 	isLiquidRecipe,
 	renderLiquidRecipe,
 } from "@/lib/recipes/liquid-renderer";
+import {
+	type RenderDeviceImageResult,
+	renderDeviceImage,
+} from "@/lib/render/device-image";
+import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 import { renderWithSatori } from "./renderers/satori";
 import { renderWithTakumi } from "./renderers/takumi";
@@ -519,4 +524,31 @@ export async function renderRecipeToImage({
 		grayscale,
 		cookies,
 	});
+}
+
+export async function renderRecipeForDevice({
+	slug,
+	profile,
+	userId,
+	cookies,
+}: {
+	slug: string;
+	profile: DeviceProfile;
+	userId?: string | null;
+	cookies?: string;
+}): Promise<RenderDeviceImageResult | null> {
+	const renders = await renderRecipeToImage({
+		slug,
+		imageWidth: profile.model.width,
+		imageHeight: profile.model.height,
+		formats: ["png"],
+		userId,
+		cookies,
+	});
+
+	if (!renders.png) {
+		return null;
+	}
+
+	return renderDeviceImage({ png: renders.png, profile });
 }

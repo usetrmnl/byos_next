@@ -8,6 +8,11 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/recipe-renderer";
+import {
+	buildDeviceImageFilename,
+	buildDeviceImageUrl,
+} from "@/lib/render/device-image-url";
+import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import type { RefreshSchedule } from "@/lib/types";
 import {
 	buildDisplayResponse,
@@ -63,14 +68,21 @@ export async function GET(request: Request) {
 			source: "api/display",
 			metadata: { headers },
 		});
+		const profile = await getDeviceProfile(headers.model);
 		// Use header dimensions if provided
-		const width = headers.width || DEFAULT_IMAGE_WIDTH;
-		const height = headers.height || DEFAULT_IMAGE_HEIGHT;
+		const width = headers.width || profile.model.width || DEFAULT_IMAGE_WIDTH;
+		const height =
+			headers.height || profile.model.height || DEFAULT_IMAGE_HEIGHT;
 		const noDbQueryParams = `width=${width}&height=${height}&grayscale=2${headers.base64 ? "&base64=true" : ""}`;
 
 		return buildDisplayResponse(
-			`${baseUrl}/${DEFAULT_SCREEN}.bmp?${noDbQueryParams}`,
-			`${DEFAULT_SCREEN}_${uniqueId}.bmp`,
+			buildDeviceImageUrl({
+				baseUrl,
+				imagePath: DEFAULT_SCREEN,
+				profile,
+				query: noDbQueryParams,
+			}),
+			buildDeviceImageFilename(DEFAULT_SCREEN, uniqueId, profile),
 			DEFAULT_REFRESH_RATE,
 		);
 	}
@@ -94,6 +106,7 @@ export async function GET(request: Request) {
 		const deviceUserId = device.user_id;
 		let screenToDisplay = device.screen;
 		const orientation = device.screen_orientation || "landscape";
+		const profile = await getDeviceProfile(device.model, device.palette_id);
 
 		// Use dimensions from headers if provided, otherwise fall back to device settings
 		const storedWidth =
@@ -105,8 +118,8 @@ export async function GET(request: Request) {
 				? device.screen_height || DEFAULT_IMAGE_HEIGHT
 				: device.screen_width || DEFAULT_IMAGE_WIDTH;
 
-		const deviceWidth = headers.width || storedWidth;
-		const deviceHeight = headers.height || storedHeight;
+		const deviceWidth = headers.width || profile.model.width || storedWidth;
+		const deviceHeight = headers.height || profile.model.height || storedHeight;
 		const grayscaleLevels = getGrayscaleLevels(device.grayscale);
 
 		// Build common query params for image URLs
@@ -143,12 +156,22 @@ export async function GET(request: Request) {
 						dynamicRefreshRate = 60;
 					}
 				}
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
+				imageUrl = buildDeviceImageUrl({
+					baseUrl,
+					imagePath: screenToDisplay || "not-found",
+					profile,
+					query: baseQueryParams,
+				});
 				break;
 
 			case DeviceDisplayMode.MIXUP:
 				if (device.mixup_id) {
-					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?${baseQueryParams}&access_token=${encodeURIComponent(headers.apiKey)}`;
+					imageUrl = buildDeviceImageUrl({
+						baseUrl,
+						imagePath: `mixup/${device.mixup_id}`,
+						profile,
+						query: `${baseQueryParams}&access_token=${encodeURIComponent(headers.apiKey)}`,
+					});
 					const metadata = {
 						deviceId: device.friendly_id,
 						mixupId: device.mixup_id,
@@ -158,7 +181,12 @@ export async function GET(request: Request) {
 						metadata,
 					});
 				} else {
-					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
+					imageUrl = buildDeviceImageUrl({
+						baseUrl,
+						imagePath: screenToDisplay || "not-found",
+						profile,
+						query: baseQueryParams,
+					});
 				}
 				dynamicRefreshRate = calculateRefreshRate(
 					device.refresh_schedule as unknown as RefreshSchedule,
@@ -173,7 +201,12 @@ export async function GET(request: Request) {
 					180,
 					device.timezone || "UTC",
 				);
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
+				imageUrl = buildDeviceImageUrl({
+					baseUrl,
+					imagePath: screenToDisplay || "not-found",
+					profile,
+					query: baseQueryParams,
+				});
 				break;
 		}
 
@@ -216,7 +249,11 @@ export async function GET(request: Request) {
 
 		return buildDisplayResponse(
 			imageUrl,
-			`${screenToDisplay || "not-found"}_${uniqueId}.bmp`,
+			buildDeviceImageFilename(
+				screenToDisplay || "not-found",
+				uniqueId,
+				profile,
+			),
 			dynamicRefreshRate,
 			firmwareExtra,
 		);
