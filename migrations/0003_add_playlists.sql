@@ -21,5 +21,5 @@ CREATE TABLE IF NOT EXISTS playlist_items (
 );
 -- Update devices table
 ALTER TABLE devices
-ADD COLUMN playlist_id UUID REFERENCES playlists(id),
-    ADD COLUMN use_playlist BOOLEAN DEFAULT FALSE;
+ADD COLUMN IF NOT EXISTS playlist_id UUID REFERENCES playlists(id),
+    ADD COLUMN IF NOT EXISTS use_playlist BOOLEAN DEFAULT FALSE;

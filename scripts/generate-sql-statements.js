@@ -32,7 +32,7 @@ function extractTableNames(sql) {
 	// Handles both "CREATE TABLE table_name" and "CREATE TABLE IF NOT EXISTS table_name"
 	// Also handles "CREATE TABLE public.table_name" and "CREATE TABLE IF NOT EXISTS public.table_name"
 	const createTableRegex =
-		/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:public\.)?(\w+)/gi;
+		/CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:(?:"?public"?\.)?"?([A-Za-z_][\w$]*)"?)/gi;
 	let match = createTableRegex.exec(sql);
 
 	while (match !== null) {

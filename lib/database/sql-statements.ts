@@ -130,28 +130,40 @@ CREATE TABLE IF NOT EXISTS playlist_items (
 );
 -- Update devices table
 ALTER TABLE devices
-ADD COLUMN playlist_id UUID REFERENCES playlists(id),
-    ADD COLUMN use_playlist BOOLEAN DEFAULT FALSE;`,
+ADD COLUMN IF NOT EXISTS playlist_id UUID REFERENCES playlists(id),
+    ADD COLUMN IF NOT EXISTS use_playlist BOOLEAN DEFAULT FALSE;`,
 	},
 	"0004_add_mixups": {
 		title: "Add Mixups and Display Mode",
 		description:
 			"Creates mixups tables and replaces use_playlist with display_mode enum",
 		sql: `-- Create enum for layout IDs
-CREATE TYPE mixup_layout_id AS ENUM (
-    'quarters',
-    'top-banner',
-    'left-rail',
-    'vertical-halves',
-    'horizontal-halves'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'mixup_layout_id') THEN
+        CREATE TYPE mixup_layout_id AS ENUM (
+            'quarters',
+            'top-banner',
+            'left-rail',
+            'vertical-halves',
+            'horizontal-halves'
+        );
+    END IF;
+END
+$$;
 
 -- Create enum for device display mode
-CREATE TYPE device_display_mode AS ENUM (
-    'screen',
-    'playlist',
-    'mixup'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'device_display_mode') THEN
+        CREATE TYPE device_display_mode AS ENUM (
+            'screen',
+            'playlist',
+            'mixup'
+        );
+    END IF;
+END
+$$;
 
 -- Create mixups table
 CREATE TABLE IF NOT EXISTS mixups (
@@ -185,11 +197,21 @@ ALTER TABLE devices
 ADD COLUMN IF NOT EXISTS display_mode device_display_mode DEFAULT 'screen';
 
 -- Migrate existing data: if use_playlist is true, set display_mode to 'playlist'
-UPDATE devices SET display_mode = 'playlist' WHERE use_playlist = TRUE;
-UPDATE devices SET display_mode = 'screen' WHERE use_playlist = FALSE OR use_playlist IS NULL;
-
--- Drop the old use_playlist column
-ALTER TABLE devices DROP COLUMN IF EXISTS use_playlist;`,
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+            AND table_name = 'devices'
+            AND column_name = 'use_playlist'
+    ) THEN
+        UPDATE devices SET display_mode = 'playlist' WHERE use_playlist = TRUE;
+        UPDATE devices SET display_mode = 'screen' WHERE use_playlist = FALSE OR use_playlist IS NULL;
+        ALTER TABLE devices DROP COLUMN use_playlist;
+    END IF;
+END
+$$;`,
 	},
 	"0005_add_screen_size_settings": {
 		title: "Add Screen Size Settings",
@@ -229,19 +251,19 @@ COMMENT ON COLUMN public.screen_configs.params IS 'JSON blob of screen parameter
 	"0007_add_better_auth": {
 		title: "0007_add_better_auth",
 		description: "Migration: 0007_add_better_auth.sql",
-		sql: `create table "user" ("id" text not null primary key, "name" text not null, "email" text not null unique, "emailVerified" boolean not null, "image" text, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz default CURRENT_TIMESTAMP not null);
+		sql: `CREATE TABLE IF NOT EXISTS "user" ("id" text not null primary key, "name" text not null, "email" text not null unique, "emailVerified" boolean not null, "image" text, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz default CURRENT_TIMESTAMP not null);
 
-create table "session" ("id" text not null primary key, "expiresAt" timestamptz not null, "token" text not null unique, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null, "ipAddress" text, "userAgent" text, "userId" text not null references "user" ("id") on delete cascade);
+CREATE TABLE IF NOT EXISTS "session" ("id" text not null primary key, "expiresAt" timestamptz not null, "token" text not null unique, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null, "ipAddress" text, "userAgent" text, "userId" text not null references "user" ("id") on delete cascade);
 
-create table "account" ("id" text not null primary key, "accountId" text not null, "providerId" text not null, "userId" text not null references "user" ("id") on delete cascade, "accessToken" text, "refreshToken" text, "idToken" text, "accessTokenExpiresAt" timestamptz, "refreshTokenExpiresAt" timestamptz, "scope" text, "password" text, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null);
+CREATE TABLE IF NOT EXISTS "account" ("id" text not null primary key, "accountId" text not null, "providerId" text not null, "userId" text not null references "user" ("id") on delete cascade, "accessToken" text, "refreshToken" text, "idToken" text, "accessTokenExpiresAt" timestamptz, "refreshTokenExpiresAt" timestamptz, "scope" text, "password" text, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz not null);
 
-create table "verification" ("id" text not null primary key, "identifier" text not null, "value" text not null, "expiresAt" timestamptz not null, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz default CURRENT_TIMESTAMP not null);
+CREATE TABLE IF NOT EXISTS "verification" ("id" text not null primary key, "identifier" text not null, "value" text not null, "expiresAt" timestamptz not null, "createdAt" timestamptz default CURRENT_TIMESTAMP not null, "updatedAt" timestamptz default CURRENT_TIMESTAMP not null);
 
-create index "session_userId_idx" on "session" ("userId");
+CREATE INDEX IF NOT EXISTS "session_userId_idx" on "session" ("userId");
 
-create index "account_userId_idx" on "account" ("userId");
+CREATE INDEX IF NOT EXISTS "account_userId_idx" on "account" ("userId");
 
-create index "verification_identifier_idx" on "verification" ("identifier");`,
+CREATE INDEX IF NOT EXISTS "verification_identifier_idx" on "verification" ("identifier");`,
 	},
 	"0008_add_admin_plugin": {
 		title: "Add Admin Plugin Fields",
@@ -298,6 +320,11 @@ ALTER TABLE screen_configs ENABLE ROW LEVEL SECURITY;
 -- =============================================================================
 
 -- Policies for devices
+DROP POLICY IF EXISTS devices_select_policy ON devices;
+DROP POLICY IF EXISTS devices_insert_policy ON devices;
+DROP POLICY IF EXISTS devices_update_policy ON devices;
+DROP POLICY IF EXISTS devices_delete_policy ON devices;
+
 CREATE POLICY devices_select_policy ON devices
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -315,6 +342,11 @@ CREATE POLICY devices_delete_policy ON devices
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
 
 -- Policies for playlists
+DROP POLICY IF EXISTS playlists_select_policy ON playlists;
+DROP POLICY IF EXISTS playlists_insert_policy ON playlists;
+DROP POLICY IF EXISTS playlists_update_policy ON playlists;
+DROP POLICY IF EXISTS playlists_delete_policy ON playlists;
+
 CREATE POLICY playlists_select_policy ON playlists
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -332,6 +364,11 @@ CREATE POLICY playlists_delete_policy ON playlists
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
 
 -- Policies for mixups
+DROP POLICY IF EXISTS mixups_select_policy ON mixups;
+DROP POLICY IF EXISTS mixups_insert_policy ON mixups;
+DROP POLICY IF EXISTS mixups_update_policy ON mixups;
+DROP POLICY IF EXISTS mixups_delete_policy ON mixups;
+
 CREATE POLICY mixups_select_policy ON mixups
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -349,6 +386,11 @@ CREATE POLICY mixups_delete_policy ON mixups
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
 
 -- Policies for screen_configs
+DROP POLICY IF EXISTS screen_configs_select_policy ON screen_configs;
+DROP POLICY IF EXISTS screen_configs_insert_policy ON screen_configs;
+DROP POLICY IF EXISTS screen_configs_update_policy ON screen_configs;
+DROP POLICY IF EXISTS screen_configs_delete_policy ON screen_configs;
+
 CREATE POLICY screen_configs_select_policy ON screen_configs
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -427,7 +469,13 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO by
 -- Part 1: Create recipe_type enum
 -- =============================================================================
 
-CREATE TYPE recipe_type AS ENUM ('react', 'liquid');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'recipe_type') THEN
+        CREATE TYPE recipe_type AS ENUM ('react', 'liquid');
+    END IF;
+END
+$$;
 
 -- =============================================================================
 -- Part 2: Create recipes table
@@ -491,6 +539,11 @@ ALTER TABLE recipes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipes FORCE ROW LEVEL SECURITY;
 
 -- SELECT: user sees own + shared (user_id IS NULL)
+DROP POLICY IF EXISTS recipes_select_policy ON recipes;
+DROP POLICY IF EXISTS recipes_insert_policy ON recipes;
+DROP POLICY IF EXISTS recipes_update_policy ON recipes;
+DROP POLICY IF EXISTS recipes_delete_policy ON recipes;
+
 CREATE POLICY recipes_select_policy ON recipes
     FOR SELECT
     USING (user_id = current_setting('app.current_user_id', true) OR user_id IS NULL);
@@ -514,9 +567,48 @@ CREATE POLICY recipes_delete_policy ON recipes
 ALTER TABLE recipe_files ENABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_files FORCE ROW LEVEL SECURITY;
 
-CREATE POLICY recipe_files_policy ON recipe_files
-    USING (EXISTS (SELECT 1 FROM recipes r WHERE r.id = recipe_files.recipe_id))
-    WITH CHECK (EXISTS (SELECT 1 FROM recipes r WHERE r.id = recipe_files.recipe_id));
+DROP POLICY IF EXISTS recipe_files_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_select_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_insert_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_update_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_delete_policy ON recipe_files;
+
+CREATE POLICY recipe_files_select_policy ON recipe_files
+    FOR SELECT
+    USING (EXISTS (SELECT 1 FROM recipes r WHERE r.id = recipe_files.recipe_id));
+
+CREATE POLICY recipe_files_insert_policy ON recipe_files
+    FOR INSERT
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY recipe_files_update_policy ON recipe_files
+    FOR UPDATE
+    USING (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ))
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY recipe_files_delete_policy ON recipe_files
+    FOR DELETE
+    USING (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
 
 -- Grant permissions on new tables to byos_app role
 GRANT SELECT, INSERT, UPDATE, DELETE ON recipes TO byos_app;
@@ -549,6 +641,293 @@ ADD COLUMN IF NOT EXISTS palette_id TEXT;
 COMMENT ON COLUMN devices.model IS 'TRMNL model name reported via the Model request header (e.g. og_plus, seeed_e1002, v2). Used to resolve render parameters from the local TRMNL models registry.';
 COMMENT ON COLUMN devices.palette_id IS 'Optional palette override when the device model supports multiple palettes. NULL means use the model''s first declared palette as default.';`,
 	},
+	"0012_create_schema_migrations": {
+		title: "Create Schema Migrations Ledger",
+		description:
+			"Tracks applied migration files so setup runs only pending migrations.",
+		sql: `CREATE TABLE IF NOT EXISTS schema_migrations (
+    name TEXT PRIMARY KEY,
+    checksum TEXT NOT NULL,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);`,
+	},
+	"0013_seed_mono_user": {
+		title: "Seed mono user for auth-disabled deployments",
+		description:
+			"When AUTH_ENABLED=false, the app scopes RLS with a stable user id; this row satisfies FKs on user_id columns.",
+		sql: `INSERT INTO "user" ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "role")
+VALUES (
+    'byos_mono_user',
+    'Local user',
+    'mono@byos.local',
+    true,
+    NOW(),
+    NOW(),
+    'user'
+)
+ON CONFLICT ("id") DO NOTHING;
+
+-- Existing single-user installs predate user ownership. Claim those rows for
+-- the mono user so stricter RLS write policies can still update them.
+UPDATE devices
+SET user_id = 'byos_mono_user'
+WHERE user_id IS NULL;
+
+UPDATE playlists
+SET user_id = 'byos_mono_user'
+WHERE user_id IS NULL;
+
+UPDATE mixups
+SET user_id = 'byos_mono_user'
+WHERE user_id IS NULL;
+
+UPDATE screen_configs
+SET user_id = 'byos_mono_user'
+WHERE user_id IS NULL;`,
+	},
+	"0014_harden_rls": {
+		title: "Harden RLS policies",
+		description:
+			"Tightens tenant writes, scopes child tables through their parent rows, and fixes screen config uniqueness for per-user settings.",
+		sql: `-- =============================================================================
+-- Part 1: Screen configs should be unique per user, not globally per screen
+-- =============================================================================
+
+ALTER TABLE screen_configs DROP CONSTRAINT IF EXISTS screen_configs_screen_id_key;
+DROP INDEX IF EXISTS screen_configs_screen_id_key;
+
+CREATE UNIQUE INDEX IF NOT EXISTS screen_configs_screen_id_user_key
+    ON screen_configs (screen_id, user_id)
+    WHERE user_id IS NOT NULL;
+
+CREATE UNIQUE INDEX IF NOT EXISTS screen_configs_screen_id_shared_key
+    ON screen_configs (screen_id)
+    WHERE user_id IS NULL;
+
+-- =============================================================================
+-- Part 2: Shared/unclaimed rows are readable, but user-scoped writes must own rows
+-- =============================================================================
+
+DROP POLICY IF EXISTS devices_insert_policy ON devices;
+DROP POLICY IF EXISTS devices_update_policy ON devices;
+DROP POLICY IF EXISTS devices_delete_policy ON devices;
+
+CREATE POLICY devices_insert_policy ON devices
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY devices_update_policy ON devices
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true))
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY devices_delete_policy ON devices
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true));
+
+DROP POLICY IF EXISTS playlists_insert_policy ON playlists;
+DROP POLICY IF EXISTS playlists_update_policy ON playlists;
+DROP POLICY IF EXISTS playlists_delete_policy ON playlists;
+
+CREATE POLICY playlists_insert_policy ON playlists
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY playlists_update_policy ON playlists
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true))
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY playlists_delete_policy ON playlists
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true));
+
+DROP POLICY IF EXISTS mixups_insert_policy ON mixups;
+DROP POLICY IF EXISTS mixups_update_policy ON mixups;
+DROP POLICY IF EXISTS mixups_delete_policy ON mixups;
+
+CREATE POLICY mixups_insert_policy ON mixups
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY mixups_update_policy ON mixups
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true))
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY mixups_delete_policy ON mixups
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true));
+
+DROP POLICY IF EXISTS screen_configs_insert_policy ON screen_configs;
+DROP POLICY IF EXISTS screen_configs_update_policy ON screen_configs;
+DROP POLICY IF EXISTS screen_configs_delete_policy ON screen_configs;
+
+CREATE POLICY screen_configs_insert_policy ON screen_configs
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY screen_configs_update_policy ON screen_configs
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true))
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY screen_configs_delete_policy ON screen_configs
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true));
+
+-- =============================================================================
+-- Part 3: Child tables inherit tenant scope from their parent rows
+-- =============================================================================
+
+DROP POLICY IF EXISTS recipe_files_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_select_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_insert_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_update_policy ON recipe_files;
+DROP POLICY IF EXISTS recipe_files_delete_policy ON recipe_files;
+
+CREATE POLICY recipe_files_select_policy ON recipe_files
+    FOR SELECT
+    USING (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+    ));
+
+CREATE POLICY recipe_files_insert_policy ON recipe_files
+    FOR INSERT
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY recipe_files_update_policy ON recipe_files
+    FOR UPDATE
+    USING (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ))
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY recipe_files_delete_policy ON recipe_files
+    FOR DELETE
+    USING (EXISTS (
+        SELECT 1
+        FROM recipes r
+        WHERE r.id = recipe_files.recipe_id
+            AND r.user_id = current_setting('app.current_user_id', true)
+    ));
+
+ALTER TABLE playlist_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE playlist_items FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS playlist_items_select_policy ON playlist_items;
+DROP POLICY IF EXISTS playlist_items_insert_policy ON playlist_items;
+DROP POLICY IF EXISTS playlist_items_update_policy ON playlist_items;
+DROP POLICY IF EXISTS playlist_items_delete_policy ON playlist_items;
+
+CREATE POLICY playlist_items_select_policy ON playlist_items
+    FOR SELECT
+    USING (EXISTS (
+        SELECT 1
+        FROM playlists p
+        WHERE p.id = playlist_items.playlist_id
+    ));
+
+CREATE POLICY playlist_items_insert_policy ON playlist_items
+    FOR INSERT
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM playlists p
+        WHERE p.id = playlist_items.playlist_id
+            AND p.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY playlist_items_update_policy ON playlist_items
+    FOR UPDATE
+    USING (EXISTS (
+        SELECT 1
+        FROM playlists p
+        WHERE p.id = playlist_items.playlist_id
+            AND p.user_id = current_setting('app.current_user_id', true)
+    ))
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM playlists p
+        WHERE p.id = playlist_items.playlist_id
+            AND p.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY playlist_items_delete_policy ON playlist_items
+    FOR DELETE
+    USING (EXISTS (
+        SELECT 1
+        FROM playlists p
+        WHERE p.id = playlist_items.playlist_id
+            AND p.user_id = current_setting('app.current_user_id', true)
+    ));
+
+ALTER TABLE mixup_slots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE mixup_slots FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS mixup_slots_select_policy ON mixup_slots;
+DROP POLICY IF EXISTS mixup_slots_insert_policy ON mixup_slots;
+DROP POLICY IF EXISTS mixup_slots_update_policy ON mixup_slots;
+DROP POLICY IF EXISTS mixup_slots_delete_policy ON mixup_slots;
+
+CREATE POLICY mixup_slots_select_policy ON mixup_slots
+    FOR SELECT
+    USING (EXISTS (
+        SELECT 1
+        FROM mixups m
+        WHERE m.id = mixup_slots.mixup_id
+    ));
+
+CREATE POLICY mixup_slots_insert_policy ON mixup_slots
+    FOR INSERT
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM mixups m
+        WHERE m.id = mixup_slots.mixup_id
+            AND m.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY mixup_slots_update_policy ON mixup_slots
+    FOR UPDATE
+    USING (EXISTS (
+        SELECT 1
+        FROM mixups m
+        WHERE m.id = mixup_slots.mixup_id
+            AND m.user_id = current_setting('app.current_user_id', true)
+    ))
+    WITH CHECK (EXISTS (
+        SELECT 1
+        FROM mixups m
+        WHERE m.id = mixup_slots.mixup_id
+            AND m.user_id = current_setting('app.current_user_id', true)
+    ));
+
+CREATE POLICY mixup_slots_delete_policy ON mixup_slots
+    FOR DELETE
+    USING (EXISTS (
+        SELECT 1
+        FROM mixups m
+        WHERE m.id = mixup_slots.mixup_id
+            AND m.user_id = current_setting('app.current_user_id', true)
+    ));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON playlist_items TO byos_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON mixup_slots TO byos_app;`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:
@@ -557,7 +936,7 @@ COMMENT ON COLUMN devices.palette_id IS 'Optional palette override when the devi
 -- Returns empty result if all tables exist, or rows with missing table names if any are missing
 SELECT 
   expected_table as missing_table
-FROM unnest(ARRAY['devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'recipe_files', 'recipes', 'screen_configs', 'system_logs']::text[]) as expected_table
+FROM unnest(ARRAY['account', 'devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'recipe_files', 'recipes', 'schema_migrations', 'screen_configs', 'session', 'system_logs', 'user', 'verification']::text[]) as expected_table
 WHERE NOT EXISTS (
   SELECT 1 
   FROM information_schema.tables 

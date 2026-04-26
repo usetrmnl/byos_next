@@ -4,7 +4,7 @@ import { db } from "./db";
 
 /**
  * The role used for application queries. This role must:
- * - Exist in the database (created by migration 0010)
+ * - Exist in the database (created by migration 0009)
  * - NOT have BYPASSRLS attribute
  * - Have SELECT, INSERT, UPDATE, DELETE on all tables
  */
@@ -97,16 +97,26 @@ export async function withUserScopeTransaction<T>(
 ): Promise<T> {
 	const userId = await getCurrentUserId();
 
-	return db.transaction().execute(async (trx) => {
-		// Switch to non-superuser role so RLS policies are enforced
-		await sql`SET ROLE ${sql.ref(APP_ROLE)}`.execute(trx);
+	return db.connection().execute(async (conn) => {
+		await sql`SET ROLE ${sql.ref(APP_ROLE)}`.execute(conn);
+		try {
+			return await conn.transaction().execute(async (trx) => {
+				// Set the user context for RLS within the transaction.
+				// is_local=true clears the setting automatically at transaction end.
+				await sql`SELECT set_config('app.current_user_id', ${userId ?? ""}, true)`.execute(
+					trx,
+				);
 
-		// Set the user context for RLS within the transaction
-		// is_local=true works correctly within transaction context
-		await sql`SELECT set_config('app.current_user_id', ${userId ?? ""}, true)`.execute(
-			trx,
-		);
-
-		return await callback(trx);
+				return await callback(trx);
+			});
+		} finally {
+			// SET ROLE is session-level, so reset it before releasing the pooled
+			// connection even when the transaction commits successfully.
+			try {
+				await sql`RESET ROLE`.execute(conn);
+			} catch {
+				// If reset fails (connection already broken), the pool will discard it.
+			}
+		}
 	});
 }
