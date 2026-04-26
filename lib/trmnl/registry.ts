@@ -51,7 +51,14 @@ export type TrmnlPalette = {
 	name: string;
 	grays?: number;
 	framework_class?: string;
-	colors?: Array<{ hex: string; [key: string]: unknown }>;
+	/**
+	 * Hex color list for discrete-color palettes (color-3bwr, color-4bwry,
+	 * color-6a, color-7a, …). Absent for grayscale palettes (bw, gray-4,
+	 * gray-16, gray-256) where colors are derived from `grays` count, and
+	 * for the continuous palettes color-12bit / color-24bit.
+	 */
+	colors?: string[];
+	grayscale_bit_depth?: number;
 	[key: string]: unknown;
 };
 
