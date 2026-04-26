@@ -24,6 +24,7 @@ export interface RequestHeaders {
 	rssi: string | null;
 	width: number | null;
 	height: number | null;
+	model: string | null;
 	specialFunction: boolean;
 	base64: boolean;
 	hostUrl: string;
@@ -45,6 +46,7 @@ export const parseRequestHeaders = (request: Request): RequestHeaders => {
 		rssi: headers.get("RSSI"),
 		width: widthStr ? Number.parseInt(widthStr, 10) : null,
 		height: heightStr ? Number.parseInt(heightStr, 10) : null,
+		model: headers.get("Model")?.trim() || null,
 		specialFunction: headers.get("Special-Function") === "true",
 		base64: headers.get("BASE64") === "true",
 		hostUrl:
@@ -290,19 +292,27 @@ export const findOrCreateDevice = async (
 
 		if (deviceByApiKey) {
 			const device = deviceByApiKey as unknown as Device;
-			// Update MAC if needed
+			const patch: Partial<Device> = {};
 			if (macAddress && macAddress !== device.mac_address) {
+				patch.mac_address = macAddress;
+			}
+			if (headers.model && headers.model !== device.model) {
+				patch.model = headers.model;
+			}
+			if (Object.keys(patch).length > 0) {
+				patch.updated_at = new Date().toISOString();
 				await db
 					.updateTable("devices")
-					.set({
-						mac_address: macAddress,
-						updated_at: new Date().toISOString(),
-					})
+					.set(patch)
 					.where("id", "=", device.id.toString())
 					.execute();
-				logInfo("Updated MAC address for device", {
+				Object.assign(device, patch);
+				logInfo("Updated device identity from headers", {
 					source: "api/display",
-					metadata: { deviceId: device.friendly_id },
+					metadata: {
+						deviceId: device.friendly_id,
+						fields: Object.keys(patch),
+					},
 				});
 			}
 			return device;
@@ -319,16 +329,27 @@ export const findOrCreateDevice = async (
 
 		if (deviceByMac) {
 			const device = deviceByMac as unknown as Device;
-			// Update API Key if needed
+			const patch: Partial<Device> = {};
 			if (apiKey && apiKey !== device.api_key) {
+				patch.api_key = apiKey;
+			}
+			if (headers.model && headers.model !== device.model) {
+				patch.model = headers.model;
+			}
+			if (Object.keys(patch).length > 0) {
+				patch.updated_at = new Date().toISOString();
 				await db
 					.updateTable("devices")
-					.set({ api_key: apiKey, updated_at: new Date().toISOString() })
+					.set(patch)
 					.where("id", "=", device.id.toString())
 					.execute();
-				logInfo("Updated API key for device", {
+				Object.assign(device, patch);
+				logInfo("Updated device identity from headers", {
 					source: "api/display",
-					metadata: { deviceId: device.friendly_id },
+					metadata: {
+						deviceId: device.friendly_id,
+						fields: Object.keys(patch),
+					},
 				});
 			}
 			return device;
@@ -363,6 +384,7 @@ export const findOrCreateDevice = async (
 						).toISOString(),
 						timezone: "UTC",
 						screen: DEFAULT_SCREEN,
+						model: headers.model,
 					})
 					.returningAll()
 					.executeTakeFirst();
@@ -436,6 +458,7 @@ export const findOrCreateDevice = async (
 					).toISOString(),
 					timezone: "UTC",
 					screen: DEFAULT_SCREEN,
+					model: headers.model,
 				})
 				.returningAll()
 				.executeTakeFirst();
