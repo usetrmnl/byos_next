@@ -10,6 +10,49 @@ export function isExternalCatalogEnabled(): boolean {
 	return process.env.ENABLE_EXTERNAL_CATALOG === "true";
 }
 
+export const CATALOG_PAGE_SIZE = 10;
+
+export interface CatalogSourceResult<T> {
+	entries: T[];
+	error: string | null;
+}
+
+export interface TrmnlRecipesPageResult {
+	recipes: TrmnlRecipe[];
+	currentPage: number;
+	nextPage: number | null;
+	total: number | null;
+	error: string | null;
+}
+
+function formatFetchError(source: string, error: unknown): string {
+	if (error instanceof Error && error.name === "AbortError") {
+		return `${source} took too long to respond.`;
+	}
+	if (error instanceof Error) {
+		if (error.message === "fetch failed") {
+			return `${source} is unavailable right now.`;
+		}
+		return error.message;
+	}
+	return `${source} is unavailable right now.`;
+}
+
+async function fetchWithTimeout(
+	url: string,
+	init?: RequestInit,
+	timeoutMs = 10000,
+): Promise<Response> {
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+	try {
+		return await fetch(url, { ...init, signal: controller.signal });
+	} finally {
+		clearTimeout(timeout);
+	}
+}
+
 // --- Community catalog (GitHub YAML) ---
 
 export interface CatalogEntry {
@@ -50,7 +93,7 @@ const CATALOG_URL =
 
 export async function fetchCatalog(): Promise<CatalogEntry[]> {
 	if (!isExternalCatalogEnabled()) return [];
-	const res = await fetch(CATALOG_URL, { cache: "no-store" });
+	const res = await fetchWithTimeout(CATALOG_URL, { cache: "no-store" });
 
 	if (!res.ok) {
 		throw new Error(`Failed to fetch catalog: ${res.status}`);
@@ -60,6 +103,23 @@ export async function fetchCatalog(): Promise<CatalogEntry[]> {
 	const data = yaml.load(text) as Record<string, CatalogEntry>;
 
 	return Object.values(data);
+}
+
+export async function fetchCatalogResult(): Promise<
+	CatalogSourceResult<CatalogEntry>
+> {
+	if (!isExternalCatalogEnabled()) {
+		return { entries: [], error: "External catalog is disabled." };
+	}
+
+	try {
+		return { entries: await fetchCatalog(), error: null };
+	} catch (error) {
+		return {
+			entries: [],
+			error: formatFetchError("Community catalog", error),
+		};
+	}
 }
 
 // --- TRMNL official recipes API ---
@@ -93,32 +153,86 @@ interface TrmnlRecipesResponse {
 
 const TRMNL_API_BASE = "https://trmnl.com";
 
+function uniqueTrmnlRecipes(recipes: TrmnlRecipe[]): TrmnlRecipe[] {
+	const seen = new Set<number>();
+	return recipes.filter((recipe) => {
+		if (seen.has(recipe.id)) return false;
+		seen.add(recipe.id);
+		return true;
+	});
+}
+
+export async function fetchTrmnlRecipesPage(
+	page = 1,
+): Promise<TrmnlRecipesPageResult> {
+	const requestedPage = Number.isFinite(page) ? page : 1;
+	const currentPage = Math.max(1, Math.floor(requestedPage));
+
+	if (!isExternalCatalogEnabled()) {
+		return {
+			recipes: [],
+			currentPage,
+			nextPage: null,
+			total: null,
+			error: "External catalog is disabled.",
+		};
+	}
+
+	try {
+		const params = new URLSearchParams({
+			"sort-by": "install",
+			page: String(currentPage),
+			per_page: String(CATALOG_PAGE_SIZE),
+		});
+		const res = await fetchWithTimeout(
+			`${TRMNL_API_BASE}/recipes.json?${params.toString()}`,
+			{ cache: "no-store" },
+		);
+
+		if (!res.ok) {
+			return {
+				recipes: [],
+				currentPage,
+				nextPage: null,
+				total: null,
+				error: `TRMNL recipes returned ${res.status}.`,
+			};
+		}
+
+		const json: TrmnlRecipesResponse = await res.json();
+		return {
+			recipes: uniqueTrmnlRecipes(json.data),
+			currentPage: json.current_page ?? currentPage,
+			nextPage: json.next_page_url ? currentPage + 1 : null,
+			total: json.total ?? null,
+			error: null,
+		};
+	} catch (error) {
+		return {
+			recipes: [],
+			currentPage,
+			nextPage: null,
+			total: null,
+			error: formatFetchError("TRMNL recipes", error),
+		};
+	}
+}
+
 export async function fetchTrmnlRecipes(): Promise<TrmnlRecipe[]> {
 	if (!isExternalCatalogEnabled()) return [];
 	const all: TrmnlRecipe[] = [];
 	let page = 1;
 
 	while (true) {
-		const res = await fetch(
-			`${TRMNL_API_BASE}/recipes.json?sort-by=install&page=${page}`,
-			{ cache: "no-store" },
-		);
-
-		if (!res.ok) {
-			throw new Error(`Failed to fetch TRMNL recipes: ${res.status}`);
+		const result = await fetchTrmnlRecipesPage(page);
+		if (result.error) {
+			throw new Error(result.error);
 		}
+		all.push(...result.recipes);
 
-		const json: TrmnlRecipesResponse = await res.json();
-		all.push(...json.data);
-
-		if (!json.next_page_url) break;
-		page++;
+		if (!result.nextPage) break;
+		page = result.nextPage;
 	}
 
-	const seen = new Set<number>();
-	return all.filter((r) => {
-		if (seen.has(r.id)) return false;
-		seen.add(r.id);
-		return true;
-	});
+	return uniqueTrmnlRecipes(all);
 }

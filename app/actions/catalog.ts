@@ -7,6 +7,7 @@ import { getCurrentUserId } from "@/lib/auth/get-user";
 import {
 	type CatalogEntry,
 	fetchCatalog,
+	fetchTrmnlRecipesPage,
 	isExternalCatalogEnabled,
 } from "@/lib/catalog";
 import {
@@ -232,6 +233,10 @@ export async function installCommunityRecipe(
 			error: error instanceof Error ? error.message : String(error),
 		};
 	}
+}
+
+export async function loadOfficialRecipesPage(page: number) {
+	return fetchTrmnlRecipesPage(page);
 }
 
 export async function deleteRecipe(slug: string): Promise<void> {

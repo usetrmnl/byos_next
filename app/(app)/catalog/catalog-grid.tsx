@@ -1,16 +1,31 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
+import {
+	AlertCircle,
+	ArrowUpRight,
+	Loader2,
+	RefreshCw,
+	WifiOff,
+} from "lucide-react";
 import Image from "next/image";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
-import { installCommunityRecipe } from "@/app/actions/catalog";
+import {
+	installCommunityRecipe,
+	loadOfficialRecipesPage,
+} from "@/app/actions/catalog";
 import { PageTemplate } from "@/components/common/page-template";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { CatalogEntry, TrmnlRecipe } from "@/lib/catalog";
+import {
+	CATALOG_PAGE_SIZE,
+	type CatalogEntry,
+	type TrmnlRecipe,
+} from "@/lib/catalog";
+import { cn } from "@/lib/utils";
 
 // --- Shared recipe card ---
 
@@ -39,41 +54,35 @@ function RecipeCard({
 }: CardProps) {
 	return (
 		<div
-			className={`border rounded-lg overflow-hidden hover:shadow-md transition-shadow flex flex-col h-full ${className ?? ""}`}
+			className={cn(
+				"group flex h-full flex-col overflow-hidden rounded-xl border bg-card transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md",
+				className,
+			)}
 		>
-			<div className="aspect-video bg-muted overflow-hidden bg-neutral-100 relative">
-				{screenshotUrl ? (
+			<div className="relative aspect-video overflow-hidden border-b bg-neutral-100">
+				{screenshotUrl || fallbackImageUrl ? (
 					<Image
-						src={screenshotUrl}
-						alt={`${name} screenshot`}
+						src={screenshotUrl ?? fallbackImageUrl ?? ""}
+						alt={screenshotUrl ? `${name} screenshot` : ""}
 						fill
-						className="object-cover"
+						className={cn(
+							"object-cover transition-transform duration-300 group-hover:scale-[1.02]",
+							!screenshotUrl && "object-contain p-8 opacity-55",
+						)}
 						sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
 					/>
 				) : (
 					<div className="w-full h-full flex items-center justify-center text-muted-foreground">
-						{fallbackImageUrl ? (
-							<div className="relative w-24 h-24">
-								<Image
-									src={fallbackImageUrl}
-									alt=""
-									fill
-									className="object-contain opacity-50"
-									sizes="96px"
-								/>
-							</div>
-						) : (
-							<span className="text-3xl font-bold opacity-30">
-								{name.charAt(0)}
-							</span>
-						)}
+						<span className="text-3xl font-bold opacity-30">
+							{name.charAt(0)}
+						</span>
 					</div>
 				)}
 			</div>
 			<div className="p-4 flex flex-col flex-grow gap-3">
 				<div className="min-w-0">
-					<div className="flex items-center gap-1.5">
-						<h4 className="text-base font-semibold tracking-tight truncate">
+					<div className="flex items-start justify-between gap-2">
+						<h4 className="text-base font-semibold tracking-tight transition-colors group-hover:text-primary">
 							{name}
 						</h4>
 						{href && (
@@ -81,14 +90,15 @@ function RecipeCard({
 								href={href}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+								aria-label={`Open ${name}`}
+								className="mt-0.5 shrink-0 text-muted-foreground transition-all hover:text-primary group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
 							>
-								<ExternalLink className="w-3.5 h-3.5" />
+								<ArrowUpRight className="w-4 h-4" />
 							</a>
 						)}
 					</div>
 					{author && (
-						<p className="text-xs text-muted-foreground">by {author}</p>
+						<p className="mt-0.5 text-xs text-muted-foreground">by {author}</p>
 					)}
 				</div>
 
@@ -98,7 +108,7 @@ function RecipeCard({
 					</p>
 				)}
 
-				<div className="flex flex-wrap gap-1.5 mt-auto">{badges}</div>
+				<div className="flex flex-wrap gap-1.5 mt-auto pt-1">{badges}</div>
 				{action && <div className="mt-2">{action}</div>}
 			</div>
 		</div>
@@ -121,26 +131,129 @@ function SearchBar({
 	onSearchChange,
 	count,
 	extra,
+	placeholder = "Search catalog...",
 }: {
 	search: string;
 	onSearchChange: (v: string) => void;
 	count: number;
 	extra?: React.ReactNode;
+	placeholder?: string;
 }) {
 	return (
-		<div className="flex items-center gap-3">
+		<div className="flex flex-col gap-3 rounded-xl border bg-card/60 p-3 sm:flex-row sm:items-center sm:justify-between">
 			<Input
-				placeholder="Search plugins..."
+				placeholder={placeholder}
 				value={search}
 				onChange={(e) => onSearchChange(e.target.value)}
-				className="max-w-sm"
+				className="h-9 max-w-sm bg-background"
 			/>
-			{extra}
-			<span className="text-sm text-muted-foreground">
-				{count} result{count !== 1 ? "s" : ""}
-			</span>
+			<div className="flex flex-wrap items-center gap-2">
+				{extra}
+				<span className="rounded-full border px-2 py-1 text-[11px] font-medium tabular-nums text-muted-foreground">
+					{count} result{count !== 1 ? "s" : ""}
+				</span>
+			</div>
 		</div>
 	);
+}
+
+function SourceNotice({
+	error,
+	source,
+}: {
+	error: string | null;
+	source: string;
+}) {
+	if (!error) return null;
+
+	return (
+		<Alert className="border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100">
+			<WifiOff className="h-4 w-4" />
+			<AlertTitle>{source} is unavailable</AlertTitle>
+			<AlertDescription>
+				<p>{error}</p>
+				<p className="text-xs">
+					The rest of the catalog still works. Try again later or load another
+					source.
+				</p>
+			</AlertDescription>
+		</Alert>
+	);
+}
+
+function EmptyState({
+	title,
+	description,
+}: {
+	title: string;
+	description: string;
+}) {
+	return (
+		<div className="rounded-xl border border-dashed bg-muted/20 p-10 text-center">
+			<AlertCircle className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
+			<p className="font-medium">{title}</p>
+			<p className="mt-1 text-sm text-muted-foreground">{description}</p>
+		</div>
+	);
+}
+
+function AutoLoadMore({
+	disabled,
+	hasMore,
+	isLoading,
+	onLoad,
+}: {
+	disabled?: boolean;
+	hasMore: boolean;
+	isLoading?: boolean;
+	onLoad: () => void;
+}) {
+	const markerRef = useRef<HTMLDivElement | null>(null);
+
+	useEffect(() => {
+		if (!hasMore || disabled) return;
+		const marker = markerRef.current;
+		if (!marker) return;
+
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry?.isIntersecting) onLoad();
+			},
+			{ rootMargin: "320px 0px" },
+		);
+
+		observer.observe(marker);
+		return () => observer.disconnect();
+	}, [disabled, hasMore, onLoad]);
+
+	if (!hasMore) return null;
+
+	return (
+		<div
+			ref={markerRef}
+			className="flex min-h-12 items-center justify-center pt-2 text-xs text-muted-foreground"
+		>
+			{isLoading ? (
+				<span className="inline-flex items-center gap-2">
+					<Loader2 className="h-3.5 w-3.5 animate-spin" />
+					Loading 10 more...
+				</span>
+			) : (
+				<span>More items load as you scroll</span>
+			)}
+		</div>
+	);
+}
+
+function useVisibleCount() {
+	const [visibleCount, setVisibleCount] = useState(CATALOG_PAGE_SIZE);
+
+	return {
+		visibleCount,
+		resetVisibleCount: () => setVisibleCount(CATALOG_PAGE_SIZE),
+		showAll: (count: number) => setVisibleCount(count),
+		showMore: () => setVisibleCount((count) => count + CATALOG_PAGE_SIZE),
+	};
 }
 
 // --- Install button for community entries ---
@@ -173,7 +286,13 @@ function InstallButton({ entry }: { entry: CatalogEntry }) {
 
 // --- Tab: Community ---
 
-function CommunityTab({ entries }: { entries: CatalogEntry[] }) {
+function CommunityTab({
+	entries,
+	error,
+}: {
+	entries: CatalogEntry[];
+	error: string | null;
+}) {
 	const [search, setSearch] = useState("");
 	const [byosOnly, setByosOnly] = useState(false);
 
@@ -190,30 +309,53 @@ function CommunityTab({ entries }: { entries: CatalogEntry[] }) {
 			);
 		});
 	}, [entries, search, byosOnly]);
+	const { visibleCount, resetVisibleCount, showAll, showMore } =
+		useVisibleCount();
+	const visibleEntries = filtered.slice(0, visibleCount);
+	const hasMore = visibleCount < filtered.length;
 
 	return (
 		<div className="space-y-4">
+			<SourceNotice error={error} source="Community catalog" />
 			<SearchBar
 				search={search}
-				onSearchChange={setSearch}
+				onSearchChange={(value) => {
+					setSearch(value);
+					resetVisibleCount();
+				}}
 				count={filtered.length}
+				placeholder="Search community plugins..."
 				extra={
-					<button
-						type="button"
-						onClick={() => setByosOnly(!byosOnly)}
-						className="shrink-0"
-					>
-						<Badge
-							variant={byosOnly ? "default" : "outline"}
-							className={`cursor-pointer ${byosOnly ? "bg-green-600 hover:bg-green-700" : ""}`}
+					<>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							disabled={!hasMore}
+							onClick={() => showAll(filtered.length)}
 						>
-							BYOS compatible only
-						</Badge>
-					</button>
+							Load all
+						</Button>
+						<button
+							type="button"
+							onClick={() => {
+								setByosOnly(!byosOnly);
+								resetVisibleCount();
+							}}
+							className="shrink-0"
+						>
+							<Badge
+								variant={byosOnly ? "default" : "outline"}
+								className={`cursor-pointer ${byosOnly ? "bg-green-600 hover:bg-green-700" : ""}`}
+							>
+								BYOS compatible only
+							</Badge>
+						</button>
+					</>
 				}
 			/>
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-				{filtered.map((entry, index) => {
+			<div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+				{visibleEntries.map((entry, index) => {
 					const byos = entry.byos?.byos_laravel;
 					return (
 						<RecipeCard
@@ -224,7 +366,6 @@ function CommunityTab({ entries }: { entries: CatalogEntry[] }) {
 							fallbackImageUrl={entry.logo_url}
 							author={entry.author?.github}
 							description={entry.author_bio?.description}
-							className="bg-neutral-200"
 							action={
 								entry.trmnlp?.zip_url ? (
 									<InstallButton entry={entry} />
@@ -259,10 +400,16 @@ function CommunityTab({ entries }: { entries: CatalogEntry[] }) {
 					);
 				})}
 			</div>
+			<AutoLoadMore hasMore={hasMore} onLoad={showMore} />
 			{filtered.length === 0 && (
-				<p className="text-center text-muted-foreground py-12">
-					No plugins match your search.
-				</p>
+				<EmptyState
+					title={error ? "Community catalog is offline" : "No plugins found"}
+					description={
+						error
+							? "The community source did not load, but the official TRMNL catalog may still be available."
+							: "No community plugins match your current filters."
+					}
+				/>
 			)}
 		</div>
 	);
@@ -270,8 +417,23 @@ function CommunityTab({ entries }: { entries: CatalogEntry[] }) {
 
 // --- Tab: Official ---
 
-function OfficialTab({ recipes }: { recipes: TrmnlRecipe[] }) {
+function OfficialTab({
+	recipes: initialRecipes,
+	error,
+	initialNextPage,
+	total,
+}: {
+	recipes: TrmnlRecipe[];
+	error: string | null;
+	initialNextPage: number | null;
+	total: number | null;
+}) {
 	const [search, setSearch] = useState("");
+	const [recipes, setRecipes] = useState(initialRecipes);
+	const [nextPage, setNextPage] = useState(initialNextPage);
+	const [sourceError, setSourceError] = useState(error);
+	const [isLoadingPage, setIsLoadingPage] = useState(false);
+	const [isLoadingAll, setIsLoadingAll] = useState(false);
 
 	const filtered = useMemo(() => {
 		const q = search.toLowerCase();
@@ -284,16 +446,164 @@ function OfficialTab({ recipes }: { recipes: TrmnlRecipe[] }) {
 				r.author_bio?.category?.toLowerCase().includes(q),
 		);
 	}, [recipes, search]);
+	const { visibleCount, resetVisibleCount, showAll, showMore } =
+		useVisibleCount();
+	const visibleRecipes = filtered.slice(0, visibleCount);
+	const hasHiddenLoaded = visibleCount < filtered.length;
+	const canLoadRemote = nextPage !== null;
+	const hasMore = hasHiddenLoaded || canLoadRemote;
+
+	function mergeRecipes(nextRecipes: TrmnlRecipe[]) {
+		setRecipes((current) => {
+			const seen = new Set(current.map((recipe) => recipe.id));
+			const fresh = nextRecipes.filter((recipe) => {
+				if (seen.has(recipe.id)) return false;
+				seen.add(recipe.id);
+				return true;
+			});
+			return [...current, ...fresh];
+		});
+	}
+
+	function loadPage(pageToLoad: number, revealAfterLoad: boolean) {
+		if (isLoadingPage || isLoadingAll) return;
+
+		setIsLoadingPage(true);
+		void (async () => {
+			try {
+				const result = await loadOfficialRecipesPage(pageToLoad);
+				if (result.error) {
+					setSourceError(result.error);
+					toast.error("TRMNL catalog is unavailable", {
+						description: result.error,
+					});
+					return;
+				}
+
+				setSourceError(null);
+				setNextPage(result.nextPage);
+				mergeRecipes(result.recipes);
+				if (revealAfterLoad) showMore();
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: "TRMNL recipes are unavailable right now.";
+				setSourceError(message);
+				toast.error("TRMNL catalog is unavailable", {
+					description: message,
+				});
+			} finally {
+				setIsLoadingPage(false);
+			}
+		})();
+	}
+
+	function handleRetry() {
+		loadPage(1, false);
+	}
+
+	function handleLoadMore() {
+		if (isLoadingAll) return;
+
+		if (hasHiddenLoaded) {
+			showMore();
+			return;
+		}
+
+		if (nextPage) loadPage(nextPage, true);
+	}
+
+	async function loadRemainingOfficialRecipes() {
+		if (!nextPage) return recipes;
+
+		let pageToLoad: number | null = nextPage;
+		const loaded: TrmnlRecipe[] = [];
+
+		while (pageToLoad) {
+			const result = await loadOfficialRecipesPage(pageToLoad);
+			if (result.error) {
+				throw new Error(result.error);
+			}
+			loaded.push(...result.recipes);
+			pageToLoad = result.nextPage;
+		}
+
+		setNextPage(null);
+		const seen = new Set(recipes.map((recipe) => recipe.id));
+		const fresh = loaded.filter((recipe) => {
+			if (seen.has(recipe.id)) return false;
+			seen.add(recipe.id);
+			return true;
+		});
+		const allRecipes = [...recipes, ...fresh];
+		setRecipes(allRecipes);
+		return allRecipes;
+	}
+
+	function handleLoadAll() {
+		if (isLoadingPage || isLoadingAll) return;
+
+		setIsLoadingAll(true);
+		void (async () => {
+			try {
+				const allRecipes = await loadRemainingOfficialRecipes();
+				setSourceError(null);
+				showAll(allRecipes.length);
+			} catch (error) {
+				const message =
+					error instanceof Error
+						? error.message
+						: "TRMNL recipes are unavailable right now.";
+				setSourceError(message);
+				toast.error("TRMNL catalog is unavailable", {
+					description: message,
+				});
+			} finally {
+				setIsLoadingAll(false);
+			}
+		})();
+	}
 
 	return (
 		<div className="space-y-4">
+			<SourceNotice error={sourceError} source="TRMNL recipes" />
 			<SearchBar
 				search={search}
-				onSearchChange={setSearch}
+				onSearchChange={(value) => {
+					setSearch(value);
+					resetVisibleCount();
+				}}
 				count={filtered.length}
+				placeholder="Search official recipes..."
+				extra={
+					<>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							disabled={!hasMore || isLoadingPage || isLoadingAll}
+							onClick={handleLoadAll}
+						>
+							{isLoadingAll ? (
+								<>
+									<Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+									Loading all...
+								</>
+							) : (
+								"Load all"
+							)}
+						</Button>
+						{total ? (
+							<span className="rounded-full border px-2 py-1 text-[11px] font-medium tabular-nums text-muted-foreground">
+								{recipes.length} / {total} loaded
+							</span>
+						) : undefined}
+					</>
+				}
 			/>
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-				{filtered.map((recipe) => (
+			<div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+				{visibleRecipes.map((recipe) => (
 					<RecipeCard
 						key={`official-${recipe.id}`}
 						href={`https://trmnl.com/recipes/${recipe.id}`}
@@ -317,10 +627,38 @@ function OfficialTab({ recipes }: { recipes: TrmnlRecipe[] }) {
 					/>
 				))}
 			</div>
+			<AutoLoadMore
+				disabled={isLoadingPage || isLoadingAll}
+				hasMore={hasMore}
+				isLoading={isLoadingPage || isLoadingAll}
+				onLoad={handleLoadMore}
+			/>
 			{filtered.length === 0 && (
-				<p className="text-center text-muted-foreground py-12">
-					No recipes match your search.
-				</p>
+				<div className="space-y-3">
+					<EmptyState
+						title={sourceError ? "TRMNL is unreachable" : "No recipes found"}
+						description={
+							sourceError
+								? "The official catalog did not load. Community plugins remain available if that source is online."
+								: canLoadRemote
+									? "No loaded recipes match your search yet. Load more to search the next batch."
+									: "No official recipes match your search."
+						}
+					/>
+					{sourceError && recipes.length === 0 && (
+						<div className="flex justify-center">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={handleRetry}
+								disabled={isLoadingPage}
+							>
+								<RefreshCw className="mr-2 h-3.5 w-3.5" />
+								Try TRMNL again
+							</Button>
+						</div>
+					)}
+				</div>
 			)}
 		</div>
 	);
@@ -330,30 +668,64 @@ function OfficialTab({ recipes }: { recipes: TrmnlRecipe[] }) {
 
 export function CatalogPage({
 	communityEntries,
+	communityError,
+	externalCatalogEnabled,
 	officialEntries,
+	officialError,
+	officialNextPage,
+	officialTotal,
 }: {
 	communityEntries: CatalogEntry[];
+	communityError: string | null;
+	externalCatalogEnabled: boolean;
 	officialEntries: TrmnlRecipe[];
+	officialError: string | null;
+	officialNextPage: number | null;
+	officialTotal: number | null;
 }) {
+	const officialCount = officialTotal ?? officialEntries.length;
+
 	return (
 		<PageTemplate
 			title="Catalog"
-			subtitle="Browse TRMNL official and community recipe catalogs."
+			subtitle={
+				<div className="space-y-2">
+					<p>Browse official TRMNL recipes and community plugins.</p>
+					{!externalCatalogEnabled && (
+						<p className="text-sm">
+							Set{" "}
+							<code className="font-mono">ENABLE_EXTERNAL_CATALOG=true</code> to
+							allow this server to reach external catalog sources.
+						</p>
+					)}
+				</div>
+			}
 		>
-			<Tabs defaultValue="official">
-				<TabsList>
+			<Tabs defaultValue="official" className="gap-4">
+				<TabsList className="w-full justify-start sm:w-fit">
 					<TabsTrigger value="official">
-						Official ({officialEntries.length})
+						Official
+						<span className="ml-1 rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums">
+							{officialCount}
+						</span>
 					</TabsTrigger>
 					<TabsTrigger value="community">
-						Community ({communityEntries.length})
+						Community
+						<span className="ml-1 rounded-full bg-background px-1.5 py-0.5 text-[10px] tabular-nums">
+							{communityEntries.length}
+						</span>
 					</TabsTrigger>
 				</TabsList>
 				<TabsContent value="official" className="mt-4">
-					<OfficialTab recipes={officialEntries} />
+					<OfficialTab
+						recipes={officialEntries}
+						error={officialError}
+						initialNextPage={officialNextPage}
+						total={officialTotal}
+					/>
 				</TabsContent>
 				<TabsContent value="community" className="mt-4">
-					<CommunityTab entries={communityEntries} />
+					<CommunityTab entries={communityEntries} error={communityError} />
 				</TabsContent>
 			</Tabs>
 		</PageTemplate>
