@@ -22,6 +22,61 @@ const FETCH_TIMEOUT_MS = 10_000;
 
 export type RegistryResource = "models" | "palettes" | "categories" | "ips";
 
+export type TrmnlModel = {
+	name: string;
+	label: string;
+	description?: string;
+	width: number;
+	height: number;
+	colors: number;
+	bit_depth: number;
+	scale_factor: number;
+	rotation: number;
+	mime_type: string;
+	offset_x: number;
+	offset_y: number;
+	kind?: string;
+	palette_ids: string[];
+	preview_white_point?: string;
+	image_size_limit?: number;
+	image_upload_supported?: boolean;
+	css?: {
+		classes?: Record<string, string>;
+		variables?: Record<string, string>;
+	};
+};
+
+export type TrmnlPalette = {
+	id: string;
+	name: string;
+	grays?: number;
+	framework_class?: string;
+	colors?: Array<{ hex: string; [key: string]: unknown }>;
+	[key: string]: unknown;
+};
+
+type WrappedList<T> = { data: T[] };
+
+export async function listModels(): Promise<TrmnlModel[]> {
+	const payload = (await getRegistry("models")) as WrappedList<TrmnlModel>;
+	return payload?.data ?? [];
+}
+
+export async function listPalettes(): Promise<TrmnlPalette[]> {
+	const payload = (await getRegistry("palettes")) as WrappedList<TrmnlPalette>;
+	return payload?.data ?? [];
+}
+
+export async function findModel(name: string): Promise<TrmnlModel | null> {
+	const models = await listModels();
+	return models.find((m) => m.name === name) ?? null;
+}
+
+export async function findPalette(id: string): Promise<TrmnlPalette | null> {
+	const palettes = await listPalettes();
+	return palettes.find((p) => p.id === id) ?? null;
+}
+
 type CacheEntry = { data: unknown; fetchedAt: number };
 
 const memCache = new Map<RegistryResource, CacheEntry>();
