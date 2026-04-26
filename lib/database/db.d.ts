@@ -154,6 +154,24 @@ export interface PlaylistItems {
 	start_time: string | null;
 }
 
+export interface PluginSettings {
+	created_at: Generated<Timestamp | null>;
+	fields: Generated<JsonObject>;
+	icon_content_type: string | null;
+	icon_url: string | null;
+	id: Generated<Int8>;
+	markup: Generated<JsonObject>;
+	merge_variables: Generated<JsonObject>;
+	name: string;
+	plugin_id: number;
+	read_only: Generated<boolean>;
+	settings_yaml: string | null;
+	strategy: string | null;
+	updated_at: Generated<Timestamp | null>;
+	user_id: string;
+	uuid: string;
+}
+
 export interface Playlists {
 	created_at: Generated<Timestamp | null>;
 	id: Generated<string>;
@@ -256,6 +274,7 @@ export interface DB {
 	mixup_slots: MixupSlots;
 	mixups: Mixups;
 	playlist_items: PlaylistItems;
+	plugin_settings: PluginSettings;
 	playlists: Playlists;
 	recipe_files: RecipeFiles;
 	recipes: Recipes;

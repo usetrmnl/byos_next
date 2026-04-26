@@ -1,16 +1,10 @@
-import { db } from "@/lib/database/db";
+import { formatPluginSettingDetails } from "@/lib/trmnl/plugin-settings";
 import {
 	findPluginSettingForUser,
 	requirePluginSettingsUser,
 } from "@/lib/trmnl/plugin-settings-store";
 
-/**
- * DELETE /api/plugin_settings/{id}
- * Delete a plugin setting
- *
- * Proxies to TRMNL API
- */
-export async function DELETE(
+export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
@@ -24,11 +18,5 @@ export async function DELETE(
 		return Response.json({ error: "Not found" }, { status: 404 });
 	}
 
-	await db
-		.deleteFrom("plugin_settings")
-		.where("id", "=", setting.id)
-		.where("user_id", "=", auth.userId)
-		.execute();
-
-	return new Response(null, { status: 204 });
+	return Response.json({ data: formatPluginSettingDetails(setting) });
 }
