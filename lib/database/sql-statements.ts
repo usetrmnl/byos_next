@@ -928,6 +928,31 @@ CREATE POLICY mixup_slots_delete_policy ON mixup_slots
 GRANT SELECT, INSERT, UPDATE, DELETE ON playlist_items TO byos_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON mixup_slots TO byos_app;`,
 	},
+	"0015_add_plugin_settings": {
+		title: "Add Plugin Settings",
+		description:
+			"Stores local TRMNL-compatible plugin settings, data, markup, and archives.",
+		sql: `CREATE TABLE IF NOT EXISTS plugin_settings (
+  id BIGSERIAL PRIMARY KEY,
+  uuid TEXT NOT NULL UNIQUE,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  plugin_id INTEGER NOT NULL,
+  icon_url TEXT,
+  icon_content_type TEXT,
+  read_only BOOLEAN NOT NULL DEFAULT FALSE,
+  strategy TEXT DEFAULT 'webhook',
+  merge_variables JSONB NOT NULL DEFAULT '{}'::jsonb,
+  fields JSONB NOT NULL DEFAULT '{}'::jsonb,
+  markup JSONB NOT NULL DEFAULT '{}'::jsonb,
+  settings_yaml TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_plugin_settings_user_id ON plugin_settings(user_id);
+CREATE INDEX IF NOT EXISTS idx_plugin_settings_plugin_id ON plugin_settings(plugin_id);`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:
@@ -936,7 +961,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON mixup_slots TO byos_app;`,
 -- Returns empty result if all tables exist, or rows with missing table names if any are missing
 SELECT 
   expected_table as missing_table
-FROM unnest(ARRAY['account', 'devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'recipe_files', 'recipes', 'schema_migrations', 'screen_configs', 'session', 'system_logs', 'user', 'verification']::text[]) as expected_table
+FROM unnest(ARRAY['account', 'devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'plugin_settings', 'recipe_files', 'recipes', 'schema_migrations', 'screen_configs', 'session', 'system_logs', 'user', 'verification']::text[]) as expected_table
 WHERE NOT EXISTS (
   SELECT 1 
   FROM information_schema.tables 

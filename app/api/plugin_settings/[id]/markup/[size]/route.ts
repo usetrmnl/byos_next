@@ -9,13 +9,13 @@ const VALID_MARKUP_SIZE = /^markup_[a-z0-9_-]+$/i;
 
 export async function GET(
 	request: Request,
-	{ params }: { params: Promise<{ plugin_setting_id: string; size: string }> },
+	{ params }: { params: Promise<{ id: string; size: string }> },
 ) {
 	void request;
 	const auth = await requirePluginSettingsUser();
 	if ("response" in auth) return auth.response;
 
-	const { plugin_setting_id: id, size } = await params;
+	const { id, size } = await params;
 	if (!VALID_MARKUP_SIZE.test(size)) {
 		return Response.json({ error: "Invalid size" }, { status: 422 });
 	}
@@ -33,12 +33,12 @@ export async function GET(
 
 export async function PUT(
 	request: Request,
-	{ params }: { params: Promise<{ plugin_setting_id: string; size: string }> },
+	{ params }: { params: Promise<{ id: string; size: string }> },
 ) {
 	const auth = await requirePluginSettingsUser();
 	if ("response" in auth) return auth.response;
 
-	const { plugin_setting_id: id, size } = await params;
+	const { id, size } = await params;
 	if (!VALID_MARKUP_SIZE.test(size)) {
 		return Response.json({ error: "Invalid size" }, { status: 422 });
 	}

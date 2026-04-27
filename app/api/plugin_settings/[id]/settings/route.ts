@@ -7,12 +7,12 @@ import {
 
 export async function PATCH(
 	request: Request,
-	{ params }: { params: Promise<{ plugin_setting_id: string }> },
+	{ params }: { params: Promise<{ id: string }> },
 ) {
 	const auth = await requirePluginSettingsUser();
 	if ("response" in auth) return auth.response;
 
-	const { plugin_setting_id: id } = await params;
+	const { id } = await params;
 	const body = await request.json();
 	if (!isJsonObject(body.fields)) {
 		return Response.json(
