@@ -37,6 +37,7 @@ import {
 	RecipeConfig,
 	renderRecipeOutputs,
 } from "@/lib/recipes/recipe-renderer";
+import { listModels, listPalettes } from "@/lib/trmnl/registry";
 
 export async function generateMetadata() {
 	return {};
@@ -436,6 +437,10 @@ export default async function RecipePage({
 		const storedValues = hasParams
 			? await getScreenParams(slug, paramDefinitions)
 			: {};
+		const [trmnlModels, trmnlPalettes] = await Promise.all([
+			listModels(),
+			listPalettes(),
+		]);
 
 		return (
 			<div className="@container">
@@ -467,6 +472,9 @@ export default async function RecipePage({
 					<RecipePreviewStage
 						slug={slug}
 						isPortrait={isPortrait}
+						trmnlModels={trmnlModels}
+						trmnlPalettes={trmnlPalettes}
+						simulateReactPreviewInIframe={false}
 						bmpNode={
 							<Suspense fallback={<LoadingState label="Rendering bitmap…" />}>
 								<LiquidRenderComponent
@@ -534,6 +542,10 @@ export default async function RecipePage({
 	const screenParams = config.params
 		? await getScreenParams(slug, config.params)
 		: {};
+	const [trmnlModels, trmnlPalettes] = await Promise.all([
+		listModels(),
+		listPalettes(),
+	]);
 
 	return (
 		<div className="@container">
@@ -570,6 +582,8 @@ export default async function RecipePage({
 				<RecipePreviewStage
 					slug={slug}
 					isPortrait={isPortrait}
+					trmnlModels={trmnlModels}
+					trmnlPalettes={trmnlPalettes}
 					bmpNode={
 						<Suspense fallback={<LoadingState label="Rendering bitmap…" />}>
 							<RenderComponent
