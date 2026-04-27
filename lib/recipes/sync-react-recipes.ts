@@ -1,4 +1,5 @@
 import { sql } from "kysely";
+import { connection } from "next/server";
 import screens from "@/app/(app)/recipes/screens.json";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
@@ -15,6 +16,11 @@ type ScreenConfig = {
 	version?: string;
 	[key: string]: unknown;
 };
+
+const DEV_SYNC_INTERVAL_MS = 1000;
+
+let devSyncPromise: Promise<void> | null = null;
+let lastDevSyncAt = 0;
 
 /**
  * Upsert all react recipes from screens.json into the recipes table.
@@ -90,4 +96,33 @@ export async function syncReactRecipes(): Promise<{
 	);
 
 	return { synced, backfilled };
+}
+
+/**
+ * Keep the DB-backed recipe catalog in sync with local React screens during
+ * development, without adding request-time writes in production.
+ */
+export async function syncReactRecipesInDevelopment(): Promise<void> {
+	if (process.env.NODE_ENV !== "development") return;
+
+	await connection();
+
+	const now = Date.now();
+	if (devSyncPromise) {
+		await devSyncPromise;
+		return;
+	}
+	if (now - lastDevSyncAt < DEV_SYNC_INTERVAL_MS) return;
+
+	lastDevSyncAt = now;
+	devSyncPromise = syncReactRecipes()
+		.then(() => undefined)
+		.catch((error) => {
+			console.warn("[syncReactRecipes] Dev auto-sync failed", error);
+		})
+		.finally(() => {
+			devSyncPromise = null;
+		});
+
+	await devSyncPromise;
 }

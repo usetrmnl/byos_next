@@ -20,6 +20,7 @@ import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 import { renderWithSatori } from "./renderers/satori";
 import { renderWithTakumi } from "./renderers/takumi";
+import { syncReactRecipesInDevelopment } from "./sync-react-recipes";
 
 // Logging utility shared between recipe renderers
 export const logger = {
@@ -113,6 +114,8 @@ export const getRendererType = (): "takumi" | "satori" | "browser" => {
 
 export const fetchRecipeConfig = cache(
 	async (slug: string, userId?: string): Promise<RecipeConfig | null> => {
+		await syncReactRecipesInDevelopment();
+
 		const { ready } = await checkDbConnection();
 		if (!ready) return null;
 
