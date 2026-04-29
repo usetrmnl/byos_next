@@ -152,6 +152,53 @@
 		"version": "0.1.0",
 		"category": "display-components"
 	},
+	"local-news": {
+		"title": "Local News",
+		"published": true,
+		"createdAt": "2026-04-26T00:00:00Z",
+		"updatedAt": "2026-04-26T00:00:00Z",
+		"description": "A premium local news dashboard powered by Google News RSS. Shows the latest headlines for a configurable location and topic.",
+		"componentPath": "./screens/local-news",
+		"hasDataFetch": true,
+		"props": {
+			"location": "San Francisco",
+			"topic": "top stories",
+			"locale": "en-US",
+			"generatedAt": "Now",
+			"stories": []
+		},
+		"params": {
+			"location": {
+				"type": "string",
+				"label": "Location",
+				"description": "City or place name to fetch nearby headlines for",
+				"default": "San Francisco",
+				"placeholder": "Paris"
+			},
+			"topic": {
+				"type": "string",
+				"label": "Topic",
+				"description": "News query to combine with the location",
+				"default": "top stories",
+				"placeholder": "technology"
+			},
+			"locale": {
+				"type": "string",
+				"label": "Locale",
+				"description": "Google News locale such as en-US, fr-FR, or en-GB",
+				"default": "en-US",
+				"placeholder": "en-US"
+			}
+		},
+		"tags": ["tailwind", "news", "api", "live-data", "configurable"],
+		"author": {
+			"name": "rbouteiller",
+			"github": ""
+		},
+		"renderSettings": {},
+		"version": "0.1.0",
+		"category": "display-components"
+	},
 	"responsive-example": {
 		"title": "Responsive Example",
 		"published": true,
