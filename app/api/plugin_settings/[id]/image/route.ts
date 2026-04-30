@@ -5,6 +5,14 @@ import {
 } from "@/lib/trmnl/plugin-settings-store";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const SAFE_FILENAME_MAX = 128;
+
+function sanitizeImageFilename(name: string): string {
+	const base = name.split(/[\\/]/).pop() ?? "";
+	const cleaned = base.replace(/[^A-Za-z0-9._-]/g, "_").replace(/^\.+/, "");
+	const trimmed = cleaned.slice(0, SAFE_FILENAME_MAX);
+	return trimmed || "image";
+}
 
 export async function POST(
 	request: Request,
@@ -32,7 +40,7 @@ export async function POST(
 	const updated = await db
 		.updateTable("plugin_settings")
 		.set({
-			icon_url: `local-plugin-setting://${setting.uuid}/${image.name}`,
+			icon_url: `local-plugin-setting://${setting.uuid}/${sanitizeImageFilename(image.name)}`,
 			icon_content_type: image.type || "application/octet-stream",
 			updated_at: new Date().toISOString(),
 		})
