@@ -1,9 +1,11 @@
 "use client";
 
-import { RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, RefreshCw, Search } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
+import { type ChangeEvent, type ReactNode, useEffect, useMemo } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
 	Command,
@@ -35,6 +37,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/device-profile";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/registry";
 import type { Device, Mixup, Playlist } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -60,9 +63,7 @@ interface DeviceEditFormProps {
 	friendlyIdError: string | null;
 	isSaving: boolean;
 	onInputChange: (
-		e: React.ChangeEvent<
-			HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-		>,
+		e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
 	) => void;
 	onNestedInputChange: (path: string, value: string) => void;
 	onSelectChange: (name: string, value: string) => void;
@@ -76,18 +77,41 @@ interface DeviceEditFormProps {
 	onCancel: () => void;
 }
 
+const GRAYSCALE_LEVELS_BY_PALETTE: Record<string, number> = {
+	bw: 2,
+	"gray-4": 4,
+	"gray-16": 16,
+	"gray-256": 256,
+};
+
+const ALL_GRAYSCALE_LEVELS = [2, 4, 16, 256] as const;
+
+// Static Tailwind class map so the JIT compiler sees concrete class names.
+const GRID_COLS_BY_COUNT: Record<number, string> = {
+	1: "grid-cols-1",
+	2: "grid-cols-2",
+	3: "grid-cols-3",
+	4: "grid-cols-4",
+};
+
 const getGrayscaleLevels = (grayscale: number | null | undefined): number => {
-	if (grayscale === 2 || grayscale === 4 || grayscale === 16) return grayscale;
+	if (
+		typeof grayscale === "number" &&
+		(ALL_GRAYSCALE_LEVELS as readonly number[]).includes(grayscale)
+	) {
+		return grayscale;
+	}
 	return 2;
 };
 
-function PanelHeader({
-	label,
-	right,
-}: {
-	label: string;
-	right?: React.ReactNode;
-}) {
+const closestLevel = (target: number, available: readonly number[]): number => {
+	if (available.length === 0) return target;
+	return available.reduce((best, current) =>
+		Math.abs(current - target) < Math.abs(best - target) ? current : best,
+	);
+};
+
+function PanelHeader({ label, right }: { label: string; right?: ReactNode }) {
 	return (
 		<div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
 			<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
@@ -129,14 +153,44 @@ export default function DeviceEditForm({
 		? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH
 		: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
 	const grayscaleLevels = getGrayscaleLevels(editedDevice.grayscale);
+	const savedModelName = editedDevice.model?.trim() || null;
+	const savedModelMatch =
+		savedModelName != null
+			? trmnlModels.find((model) => model.name === savedModelName)
+			: null;
 	const selectedModel =
-		trmnlModels.find((model) => model.name === editedDevice.model) ??
-		trmnlModels.find((model) => model.name === "og_plus") ??
+		savedModelMatch ??
+		trmnlModels.find((model) => model.name === DEFAULT_MODEL_NAME) ??
 		trmnlModels[0];
+	const modelFellBack =
+		savedModelName != null &&
+		!savedModelMatch &&
+		selectedModel != null &&
+		selectedModel.name !== savedModelName;
 	const selectedPaletteIds = selectedModel?.palette_ids ?? [];
 	const selectedPalette =
 		trmnlPalettes.find((palette) => palette.id === editedDevice.palette_id) ??
 		trmnlPalettes.find((palette) => palette.id === selectedPaletteIds[0]);
+	const availableGrayscaleLevels = useMemo(() => {
+		const set = new Set<number>();
+		for (const id of selectedPaletteIds) {
+			const levels = GRAYSCALE_LEVELS_BY_PALETTE[id];
+			if (levels) set.add(levels);
+		}
+		return Array.from(set).sort((a, b) => a - b);
+	}, [selectedPaletteIds]);
+	// Show the toggle only when the model offers a real choice (≥ 2 levels).
+	// One-level models (e.g. seeed_e1002 has only `bw`) get clamped silently below.
+	const showGrayscaleField = availableGrayscaleLevels.length > 1;
+
+	useEffect(() => {
+		if (availableGrayscaleLevels.length === 0) return;
+		if (availableGrayscaleLevels.includes(grayscaleLevels)) return;
+		const next = closestLevel(grayscaleLevels, availableGrayscaleLevels);
+		if (next !== grayscaleLevels) {
+			onSelectChange("grayscale", String(next));
+		}
+	}, [availableGrayscaleLevels, grayscaleLevels, onSelectChange]);
 	const imageExtension = getModelImageExtension(selectedModel);
 	const profileQuery = new URLSearchParams({
 		width: String(deviceWidth),
@@ -166,6 +220,19 @@ export default function DeviceEditForm({
 			<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
 				{/* Hero preview — left column, sticky on lg */}
 				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card lg:sticky lg:top-4 lg:self-start">
+					{modelFellBack && (
+						<Alert className="rounded-none border-x-0 border-t-0 bg-muted/40 py-3 text-xs">
+							<AlertTriangle />
+							<AlertTitle>Unknown model — using fallback</AlertTitle>
+							<AlertDescription>
+								Saved model <code className="font-mono">{savedModelName}</code>{" "}
+								isn't in the local TRMNL registry. Previewing as{" "}
+								<code className="font-mono">{selectedModel?.name}</code>. Pick
+								the matching model in the Display tab to fix the rendering
+								profile.
+							</AlertDescription>
+						</Alert>
+					)}
 					<PanelHeader
 						label="Live preview"
 						right={
@@ -173,8 +240,11 @@ export default function DeviceEditForm({
 								{deviceWidth}×{deviceHeight}px ·{" "}
 								<span className="capitalize">
 									{isPortrait ? "portrait" : "landscape"}
-								</span>{" "}
-								· {grayscaleLevels} levels
+								</span>
+								{availableGrayscaleLevels.length > 0
+									? ` · ${grayscaleLevels} levels`
+									: ""}
+								{selectedPalette ? ` · ${selectedPalette.name}` : ""}
 							</span>
 						}
 					/>
@@ -331,6 +401,7 @@ export default function DeviceEditForm({
 																	<CommandItem
 																		key={tz.value}
 																		value={tz.value}
+																		keywords={[tz.label, tz.region]}
 																		onSelect={() =>
 																			onSelectChange("timezone", tz.value)
 																		}
@@ -394,7 +465,7 @@ export default function DeviceEditForm({
 											)
 										}
 									>
-										<SelectTrigger className="w-full">
+										<SelectTrigger id="playlist" className="w-full">
 											<SelectValue placeholder="Select playlist…" />
 										</SelectTrigger>
 										<SelectContent>
@@ -421,7 +492,7 @@ export default function DeviceEditForm({
 											onSelectChange("mixup_id", value === "none" ? "" : value)
 										}
 									>
-										<SelectTrigger className="w-full">
+										<SelectTrigger id="mixup" className="w-full">
 											<SelectValue placeholder="Select mixup…" />
 										</SelectTrigger>
 										<SelectContent>
@@ -448,7 +519,7 @@ export default function DeviceEditForm({
 											onScreenChange(value === "none" ? null : value)
 										}
 									>
-										<SelectTrigger className="w-full">
+										<SelectTrigger id="screen" className="w-full">
 											<SelectValue placeholder="Select screen…" />
 										</SelectTrigger>
 										<SelectContent>
@@ -474,7 +545,7 @@ export default function DeviceEditForm({
 									value={selectedModel?.name || ""}
 									onValueChange={(value) => onSelectChange("model", value)}
 								>
-									<SelectTrigger className="w-full">
+									<SelectTrigger id="model" className="w-full">
 										<SelectValue placeholder="Select model…" />
 									</SelectTrigger>
 									<SelectContent>
@@ -500,7 +571,7 @@ export default function DeviceEditForm({
 											onSelectChange("palette_id", value)
 										}
 									>
-										<SelectTrigger className="w-full">
+										<SelectTrigger id="palette_id" className="w-full">
 											<SelectValue placeholder="Select palette…" />
 										</SelectTrigger>
 										<SelectContent>
@@ -526,7 +597,7 @@ export default function DeviceEditForm({
 										onDeviceSizePresetChange(value as DeviceSizePreset)
 									}
 								>
-									<SelectTrigger className="w-full">
+									<SelectTrigger id="device_size_preset" className="w-full">
 										<SelectValue placeholder="Select device size…" />
 									</SelectTrigger>
 									<SelectContent>
@@ -583,7 +654,7 @@ export default function DeviceEditForm({
 										onSelectChange("screen_orientation", value)
 									}
 								>
-									<SelectTrigger className="w-full">
+									<SelectTrigger id="screen_orientation" className="w-full">
 										<SelectValue placeholder="Select orientation…" />
 									</SelectTrigger>
 									<SelectContent>
@@ -593,24 +664,32 @@ export default function DeviceEditForm({
 								</Select>
 							</Field>
 
-							<Field
-								label="Grayscale levels"
-								hint="Number of gray levels for image rendering."
-							>
-								<ToggleGroup
-									type="single"
-									value={String(grayscaleLevels)}
-									onValueChange={(value) => {
-										if (value) onSelectChange("grayscale", value);
-									}}
-									variant="outline"
-									className="grid w-fit grid-cols-3"
+							{showGrayscaleField && (
+								<Field
+									label="Grayscale levels"
+									hint="Choices reflect the grayscale palettes declared by the selected model."
 								>
-									<ToggleGroupItem value="2">2</ToggleGroupItem>
-									<ToggleGroupItem value="4">4</ToggleGroupItem>
-									<ToggleGroupItem value="16">16</ToggleGroupItem>
-								</ToggleGroup>
-							</Field>
+									<ToggleGroup
+										type="single"
+										value={String(grayscaleLevels)}
+										onValueChange={(value) => {
+											if (value) onSelectChange("grayscale", value);
+										}}
+										variant="outline"
+										className={cn(
+											"grid w-fit",
+											GRID_COLS_BY_COUNT[availableGrayscaleLevels.length] ??
+												"grid-flow-col",
+										)}
+									>
+										{availableGrayscaleLevels.map((level) => (
+											<ToggleGroupItem key={level} value={String(level)}>
+												{level}
+											</ToggleGroupItem>
+										))}
+									</ToggleGroup>
+								</Field>
+							)}
 						</TabsContent>
 
 						<TabsContent value="refresh" className="mt-4 space-y-4">
@@ -750,7 +829,7 @@ function Field({
 	htmlFor?: string;
 	hint?: string;
 	error?: string | null;
-	children: React.ReactNode;
+	children: ReactNode;
 }) {
 	return (
 		<div className="space-y-1.5">
@@ -766,13 +845,7 @@ function Field({
 	);
 }
 
-function MetaRow({
-	label,
-	children,
-}: {
-	label: string;
-	children: React.ReactNode;
-}) {
+function MetaRow({ label, children }: { label: string; children: ReactNode }) {
 	return (
 		<div className="flex flex-col gap-0.5">
 			<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
