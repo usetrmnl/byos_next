@@ -17,6 +17,11 @@ import {
 	renderDeviceImage,
 } from "@/lib/render/device-image";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
+import {
+	getTrmnlModelClassName,
+	getTrmnlModelStyle,
+} from "@/lib/trmnl/model-css";
+import type { TrmnlModel } from "@/lib/trmnl/registry";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 import { renderWithSatori } from "./renderers/satori";
 import { renderWithTakumi } from "./renderers/takumi";
@@ -56,6 +61,25 @@ export type ComponentProps = Record<string, unknown> & {
 	width?: number;
 	height?: number;
 };
+
+function wrapWithTrmnlCss(
+	element: React.ReactElement,
+	model: TrmnlModel | null,
+	width: number,
+	height: number,
+): React.ReactElement {
+	const className = getTrmnlModelClassName(model);
+	const vars = getTrmnlModelStyle(model);
+	if (!className && !vars) return element;
+	return createElement(
+		"div",
+		{
+			className: className || undefined,
+			style: { width, height, display: "flex", ...vars },
+		},
+		element,
+	);
+}
 
 export type RecipeParamType = "string" | "number" | "boolean";
 
@@ -261,6 +285,14 @@ type RenderOptions = {
 	grayscale?: number; // Number of gray levels: 2, 4, or 16
 	html?: string; // When set, uses Puppeteer screenshot instead of Takumi/Satori
 	cookies?: string; // Cookie header to forward to browser renderer
+	/**
+	 * TRMNL model declaration. When provided, its `css.classes` and
+	 * `css.variables` are applied to the rasterizer input so plugin layouts
+	 * authored against the TRMNL framework CSS render the same as on-device.
+	 */
+	model?: TrmnlModel | null;
+	/** Optional palette override; forwarded to the browser renderer URL. */
+	paletteId?: string | null;
 };
 
 type RenderResults = {
@@ -285,6 +317,8 @@ export const renderRecipeOutputs = cache(
 		grayscale,
 		html,
 		cookies,
+		model,
+		paletteId,
 	}: RenderOptions): Promise<RenderResults> => {
 		const results = getDefaultRenderResults();
 		const needsPng = formats.includes("png");
@@ -303,6 +337,7 @@ export const renderRecipeOutputs = cache(
 					html,
 					imageOptions.width,
 					imageOptions.height,
+					model ?? null,
 				);
 			} else if (Component && props) {
 				if (rendererType === "browser") {
@@ -314,9 +349,21 @@ export const renderRecipeOutputs = cache(
 						imageHeight,
 						scaleFactor,
 						cookies,
+						{ model: model?.name ?? null, paletteId: paletteId ?? null },
 					);
 				} else {
-					const element = createElement(Component, props);
+					const rawElement = createElement(Component, props);
+					// Satori/Takumi don't apply external stylesheets, so framework
+					// selectors (.screen--<model>) silently no-op. CSS variables on
+					// inline styles DO propagate to descendants — wrap with the
+					// model's vars + className so anything reading var(--screen-w)
+					// resolves correctly.
+					const element = wrapWithTrmnlCss(
+						rawElement,
+						model ?? null,
+						imageOptions.width,
+						imageOptions.height,
+					);
 					pngBuffer =
 						rendererType === "satori"
 							? await renderWithSatori(
@@ -485,6 +532,8 @@ export async function renderRecipeToImage({
 	grayscale,
 	userId,
 	cookies,
+	model,
+	paletteId,
 }: {
 	slug: string;
 	imageWidth: number;
@@ -493,6 +542,8 @@ export async function renderRecipeToImage({
 	grayscale?: number;
 	userId?: string | null;
 	cookies?: string;
+	model?: TrmnlModel | null;
+	paletteId?: string | null;
 }): Promise<RenderResults> {
 	const result = await buildRecipeElement({ slug, userId });
 
@@ -506,6 +557,8 @@ export async function renderRecipeToImage({
 			formats,
 			grayscale,
 			cookies,
+			model,
+			paletteId,
 		});
 	}
 
@@ -526,6 +579,8 @@ export async function renderRecipeToImage({
 		formats,
 		grayscale,
 		cookies,
+		model,
+		paletteId,
 	});
 }
 
@@ -547,6 +602,8 @@ export async function renderRecipeForDevice({
 		formats: ["png"],
 		userId,
 		cookies,
+		model: profile.model,
+		paletteId: profile.palette?.id ?? null,
 	});
 
 	if (!renders.png) {
