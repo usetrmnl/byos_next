@@ -14,6 +14,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -62,11 +63,6 @@ const calculateRefreshPerDay = (
 		}
 	}
 	return Math.max(0, refreshesPerDay);
-};
-
-const getGrayscaleLevels = (grayscale: number | null | undefined): number => {
-	if (grayscale === 2 || grayscale === 4 || grayscale === 16) return grayscale;
-	return 2;
 };
 
 interface DeviceViewProps {
@@ -151,7 +147,7 @@ export default function DeviceView({
 	const deviceHeight = isPortrait
 		? device.screen_width || DEFAULT_IMAGE_WIDTH
 		: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const grayscaleLevels = getGrayscaleLevels(device.grayscale);
+	const grayscaleLevels = normalizeGrayscale(device.grayscale);
 	const selectedModel =
 		trmnlModels.find((model) => model.name === device.model) ??
 		trmnlModels.find((model) => model.name === "og_plus") ??

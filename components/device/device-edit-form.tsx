@@ -37,6 +37,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import {
 	DEFAULT_MODEL_NAME,
 	type TrmnlModel,
@@ -87,24 +88,12 @@ const GRAYSCALE_LEVELS_BY_PALETTE: Record<string, number> = {
 	"gray-256": 256,
 };
 
-const ALL_GRAYSCALE_LEVELS = [2, 4, 16, 256] as const;
-
 // Static Tailwind class map so the JIT compiler sees concrete class names.
 const GRID_COLS_BY_COUNT: Record<number, string> = {
 	1: "grid-cols-1",
 	2: "grid-cols-2",
 	3: "grid-cols-3",
 	4: "grid-cols-4",
-};
-
-const getGrayscaleLevels = (grayscale: number | null | undefined): number => {
-	if (
-		typeof grayscale === "number" &&
-		(ALL_GRAYSCALE_LEVELS as readonly number[]).includes(grayscale)
-	) {
-		return grayscale;
-	}
-	return 2;
 };
 
 const closestLevel = (target: number, available: readonly number[]): number => {
@@ -155,7 +144,7 @@ export default function DeviceEditForm({
 	const deviceHeight = isPortrait
 		? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH
 		: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const grayscaleLevels = getGrayscaleLevels(editedDevice.grayscale);
+	const grayscaleLevels = normalizeGrayscale(editedDevice.grayscale);
 	const savedModelName = editedDevice.model?.trim() || null;
 	const savedModelMatch =
 		savedModelName != null

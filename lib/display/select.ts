@@ -7,6 +7,7 @@ import {
 	type DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
+import { type GrayscaleLevel, normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { Device } from "@/lib/types";
 
 /**
@@ -33,17 +34,10 @@ export type DisplaySelection = {
 	profile: DeviceProfile;
 	width: number;
 	height: number;
-	grayscaleLevels: 2 | 4 | 16;
+	grayscaleLevels: GrayscaleLevel;
 	imageUrl: string;
 	baseQueryParams: string;
 };
-
-const VALID_GRAYSCALE = new Set([2, 4, 16]);
-
-function normalizeGrayscale(value: number | null | undefined): 2 | 4 | 16 {
-	if (value && VALID_GRAYSCALE.has(value)) return value as 2 | 4 | 16;
-	return 2;
-}
 
 function defaultDimensions(
 	profile: DeviceProfile,
