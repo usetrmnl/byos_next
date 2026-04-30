@@ -1,11 +1,16 @@
-import { db } from "@/lib/database/db";
+import { sql } from "kysely";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { isJsonObject } from "@/lib/trmnl/plugin-settings";
 import {
-	findPluginSettingForUser,
+	findPluginSetting,
 	requirePluginSettingsUser,
 } from "@/lib/trmnl/plugin-settings-store";
-
-const VALID_MARKUP_SIZE = /^markup_[a-z0-9_-]+$/i;
+import {
+	isResponse,
+	parseJsonObjectBody,
+	validateMarkupContent,
+	validateMarkupSize,
+} from "@/lib/trmnl/plugin-settings-validation";
 
 export async function GET(
 	request: Request,
@@ -16,21 +21,30 @@ export async function GET(
 	if ("response" in auth) return auth.response;
 
 	const { id, size } = await params;
-	if (!VALID_MARKUP_SIZE.test(size)) {
-		return Response.json({ error: "Invalid size" }, { status: 422 });
-	}
+	const sizeOrError = validateMarkupSize(size);
+	if (isResponse(sizeOrError)) return sizeOrError;
 
-	const setting = await findPluginSettingForUser(id, auth.userId);
+	const setting = await withExplicitUserScope(auth.userId, (scopedDb) =>
+		findPluginSetting(scopedDb, id),
+	);
 	if (!setting) {
 		return Response.json({ error: "Not found" }, { status: 404 });
 	}
 
 	const markup = isJsonObject(setting.markup) ? setting.markup : {};
-	return new Response(String(markup[size] ?? ""), {
+	return new Response(String(markup[sizeOrError] ?? ""), {
 		headers: { "Content-Type": "text/plain; charset=utf-8" },
 	});
 }
 
+/**
+ * PUT /api/plugin_settings/{id}/markup/{size}
+ *
+ * Atomic write of one canonical markup size into the JSONB column via
+ * `jsonb_set`. Two concurrent PUTs to *different* sizes (e.g. `markup_full`
+ * + `markup_quadrant`) now both land — the previous read-modify-write
+ * silently dropped one.
+ */
 export async function PUT(
 	request: Request,
 	{ params }: { params: Promise<{ id: string; size: string }> },
@@ -39,30 +53,34 @@ export async function PUT(
 	if ("response" in auth) return auth.response;
 
 	const { id, size } = await params;
-	if (!VALID_MARKUP_SIZE.test(size)) {
-		return Response.json({ error: "Invalid size" }, { status: 422 });
-	}
+	const sizeOrError = validateMarkupSize(size);
+	if (isResponse(sizeOrError)) return sizeOrError;
 
-	const body = await request.json();
-	if (typeof body.content !== "string") {
-		return Response.json({ error: "content is required" }, { status: 422 });
-	}
+	const body = await parseJsonObjectBody(request);
+	if (isResponse(body)) return body;
 
-	const setting = await findPluginSettingForUser(id, auth.userId);
-	if (!setting) {
+	const content = validateMarkupContent(body.content);
+	if (isResponse(content)) return content;
+
+	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
+		const setting = await findPluginSetting(scopedDb, id);
+		if (!setting) return { kind: "not_found" } as const;
+
+		await scopedDb
+			.updateTable("plugin_settings")
+			.set({
+				markup: sql`jsonb_set(COALESCE(markup, '{}'::jsonb), ARRAY[${sizeOrError}::text], to_jsonb(${content}::text), true)`,
+				updated_at: new Date().toISOString(),
+			})
+			.where("id", "=", setting.id)
+			.execute();
+
+		return { kind: "ok" } as const;
+	});
+
+	if (result.kind === "not_found") {
 		return Response.json({ error: "Not found" }, { status: 404 });
 	}
 
-	const markup = isJsonObject(setting.markup) ? setting.markup : {};
-	await db
-		.updateTable("plugin_settings")
-		.set({
-			markup: { ...markup, [size]: body.content },
-			updated_at: new Date().toISOString(),
-		})
-		.where("id", "=", setting.id)
-		.where("user_id", "=", auth.userId)
-		.execute();
-
-	return Response.json({ data: { size, content: body.content } });
+	return Response.json({ data: { size: sizeOrError, content } });
 }

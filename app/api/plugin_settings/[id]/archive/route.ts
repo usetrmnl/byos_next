@@ -1,8 +1,11 @@
-import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import {
-	findPluginSettingForUser,
+	findPluginSetting,
 	requirePluginSettingsUser,
 } from "@/lib/trmnl/plugin-settings-store";
+import { jsonError } from "@/lib/trmnl/plugin-settings-validation";
+
+const MAX_ARCHIVE_BYTES = 256 * 1024;
 
 /**
  * GET /api/plugin_settings/{id}/archive
@@ -19,7 +22,9 @@ export async function GET(
 	if ("response" in auth) return auth.response;
 
 	const { id } = await params;
-	const setting = await findPluginSettingForUser(id, auth.userId);
+	const setting = await withExplicitUserScope(auth.userId, (scopedDb) =>
+		findPluginSetting(scopedDb, id),
+	);
 	if (!setting) {
 		return Response.json({ error: "Not found" }, { status: 404 });
 	}
@@ -43,10 +48,6 @@ export async function POST(
 	if ("response" in auth) return auth.response;
 
 	const { id } = await params;
-	const setting = await findPluginSettingForUser(id, auth.userId);
-	if (!setting) {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
 
 	const formData = await request.formData();
 	const file = formData.get("file") ?? formData.get("archive");
@@ -57,18 +58,33 @@ export async function POST(
 				? await file.text()
 				: "";
 
-	const updated = await db
-		.updateTable("plugin_settings")
-		.set({
-			settings_yaml: settingsYaml,
-			updated_at: new Date().toISOString(),
-		})
-		.where("id", "=", setting.id)
-		.where("user_id", "=", auth.userId)
-		.returningAll()
-		.executeTakeFirstOrThrow();
+	const byteLength = Buffer.byteLength(settingsYaml, "utf8");
+	if (byteLength > MAX_ARCHIVE_BYTES) {
+		return jsonError(
+			`settings_yaml exceeds ${MAX_ARCHIVE_BYTES} bytes (got ${byteLength})`,
+		);
+	}
 
-	return Response.json({
-		data: { settings_yaml: updated.settings_yaml ?? "" },
+	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
+		const setting = await findPluginSetting(scopedDb, id);
+		if (!setting) return { kind: "not_found" } as const;
+
+		const updated = await scopedDb
+			.updateTable("plugin_settings")
+			.set({
+				settings_yaml: settingsYaml,
+				updated_at: new Date().toISOString(),
+			})
+			.where("id", "=", setting.id)
+			.returningAll()
+			.executeTakeFirstOrThrow();
+
+		return { kind: "ok", value: updated.settings_yaml ?? "" } as const;
 	});
+
+	if (result.kind === "not_found") {
+		return Response.json({ error: "Not found" }, { status: 404 });
+	}
+
+	return Response.json({ data: { settings_yaml: result.value } });
 }

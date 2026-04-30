@@ -1,6 +1,7 @@
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { formatPluginSettingDetails } from "@/lib/trmnl/plugin-settings";
 import {
-	findPluginSettingForUser,
+	findPluginSetting,
 	requirePluginSettingsUser,
 } from "@/lib/trmnl/plugin-settings-store";
 
@@ -13,7 +14,10 @@ export async function GET(
 	if ("response" in auth) return auth.response;
 
 	const { id } = await params;
-	const setting = await findPluginSettingForUser(id, auth.userId);
+	const setting = await withExplicitUserScope(auth.userId, (scopedDb) =>
+		findPluginSetting(scopedDb, id),
+	);
+
 	if (!setting) {
 		return Response.json({ error: "Not found" }, { status: 404 });
 	}

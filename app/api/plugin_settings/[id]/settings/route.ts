@@ -1,10 +1,23 @@
-import { db } from "@/lib/database/db";
-import { isJsonObject } from "@/lib/trmnl/plugin-settings";
+import { sql } from "kysely";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import {
-	findPluginSettingForUser,
+	findPluginSetting,
 	requirePluginSettingsUser,
 } from "@/lib/trmnl/plugin-settings-store";
+import {
+	isResponse,
+	parseJsonObjectBody,
+	validateFields,
+} from "@/lib/trmnl/plugin-settings-validation";
 
+/**
+ * PATCH /api/plugin_settings/{id}/settings
+ *
+ * Merges `body.fields` into the existing `fields` JSONB at the top level.
+ * The merge is atomic via Postgres `||` so two concurrent PATCHes touching
+ * different keys both win — the previous read-modify-write pattern lost
+ * one of them.
+ */
 export async function PATCH(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
@@ -13,40 +26,33 @@ export async function PATCH(
 	if ("response" in auth) return auth.response;
 
 	const { id } = await params;
-	const body = await request.json();
-	if (!isJsonObject(body.fields)) {
-		return Response.json(
-			{ error: "fields must be a JSON object" },
-			{ status: 422 },
-		);
-	}
-	if (
-		Object.values(body.fields).some(
-			(value) => value !== null && typeof value !== "string",
-		)
-	) {
-		return Response.json(
-			{ error: "field values must be strings" },
-			{ status: 422 },
-		);
-	}
 
-	const setting = await findPluginSettingForUser(id, auth.userId);
-	if (!setting) {
+	const body = await parseJsonObjectBody(request);
+	if (isResponse(body)) return body;
+
+	const fields = validateFields(body.fields);
+	if (isResponse(fields)) return fields;
+
+	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
+		const setting = await findPluginSetting(scopedDb, id);
+		if (!setting) return { kind: "not_found" } as const;
+
+		const updated = await scopedDb
+			.updateTable("plugin_settings")
+			.set({
+				fields: sql`COALESCE(fields, '{}'::jsonb) || ${JSON.stringify(fields)}::jsonb`,
+				updated_at: new Date().toISOString(),
+			})
+			.where("id", "=", setting.id)
+			.returningAll()
+			.executeTakeFirstOrThrow();
+
+		return { kind: "ok", value: updated.fields } as const;
+	});
+
+	if (result.kind === "not_found") {
 		return Response.json({ error: "Not found" }, { status: 404 });
 	}
 
-	const fields = isJsonObject(setting.fields) ? setting.fields : {};
-	const updated = await db
-		.updateTable("plugin_settings")
-		.set({
-			fields: { ...fields, ...body.fields },
-			updated_at: new Date().toISOString(),
-		})
-		.where("id", "=", setting.id)
-		.where("user_id", "=", auth.userId)
-		.returningAll()
-		.executeTakeFirstOrThrow();
-
-	return Response.json({ data: updated.fields });
+	return Response.json({ data: result.value });
 }

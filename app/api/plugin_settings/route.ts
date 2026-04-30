@@ -1,10 +1,15 @@
 import crypto from "node:crypto";
-import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import {
 	formatPluginSetting,
 	isNumericPluginSettingId,
 } from "@/lib/trmnl/plugin-settings";
 import { requirePluginSettingsUser } from "@/lib/trmnl/plugin-settings-store";
+import {
+	isResponse,
+	parseJsonObjectBody,
+	parsePaginationParams,
+} from "@/lib/trmnl/plugin-settings-validation";
 
 /**
  * GET /api/plugin_settings
@@ -18,18 +23,31 @@ export async function GET(request: Request) {
 
 	const { searchParams } = new URL(request.url);
 	const pluginId = searchParams.get("plugin_id");
-	let query = db
-		.selectFrom("plugin_settings")
-		.selectAll()
-		.where("user_id", "=", auth.userId)
-		.orderBy("created_at", "desc");
+	const { limit, offset } = parsePaginationParams(searchParams);
 
-	if (pluginId && isNumericPluginSettingId(pluginId)) {
-		query = query.where("plugin_id", "=", Number(pluginId));
-	}
+	const settings = await withExplicitUserScope(
+		auth.userId,
+		async (scopedDb) => {
+			let query = scopedDb
+				.selectFrom("plugin_settings")
+				.selectAll()
+				.orderBy("created_at", "desc")
+				.orderBy("id", "desc")
+				.limit(limit)
+				.offset(offset);
 
-	const settings = await query.execute();
-	return Response.json({ data: settings.map(formatPluginSetting) });
+			if (pluginId && isNumericPluginSettingId(pluginId)) {
+				query = query.where("plugin_id", "=", Number(pluginId));
+			}
+
+			return query.execute();
+		},
+	);
+
+	return Response.json({
+		data: settings.map(formatPluginSetting),
+		meta: { page: Math.floor(offset / limit) + 1, page_size: limit },
+	});
 }
 
 /**
@@ -42,7 +60,9 @@ export async function POST(request: Request) {
 	const auth = await requirePluginSettingsUser();
 	if ("response" in auth) return auth.response;
 
-	const body = await request.json();
+	const body = await parseJsonObjectBody(request);
+	if (isResponse(body)) return body;
+
 	const name = typeof body.name === "string" ? body.name.trim() : "";
 	const pluginId =
 		typeof body.plugin_id === "number"
@@ -56,17 +76,19 @@ export async function POST(request: Request) {
 		);
 	}
 
-	const setting = await db
-		.insertInto("plugin_settings")
-		.values({
-			uuid: crypto.randomUUID(),
-			user_id: auth.userId,
-			name,
-			plugin_id: pluginId,
-			strategy: typeof body.strategy === "string" ? body.strategy : "webhook",
-		})
-		.returningAll()
-		.executeTakeFirstOrThrow();
+	const setting = await withExplicitUserScope(auth.userId, (scopedDb) =>
+		scopedDb
+			.insertInto("plugin_settings")
+			.values({
+				uuid: crypto.randomUUID(),
+				user_id: auth.userId,
+				name,
+				plugin_id: pluginId,
+				strategy: typeof body.strategy === "string" ? body.strategy : "webhook",
+			})
+			.returningAll()
+			.executeTakeFirstOrThrow(),
+	);
 
 	return Response.json({ data: formatPluginSetting(setting) });
 }
