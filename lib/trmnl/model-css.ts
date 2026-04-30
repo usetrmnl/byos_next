@@ -14,7 +14,7 @@
  */
 
 import type { CSSProperties } from "react";
-import type { TrmnlModel } from "@/lib/trmnl/registry";
+import type { TrmnlModel } from "@/lib/trmnl/types";
 
 type CssVarEntry = [string, string];
 

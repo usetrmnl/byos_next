@@ -1,6 +1,6 @@
 import { getBrowser } from "@/lib/recipes/chrome-pool";
 import { injectTrmnlCssIntoHtml } from "@/lib/trmnl/model-css";
-import type { TrmnlModel } from "@/lib/trmnl/registry";
+import type { TrmnlModel } from "@/lib/trmnl/types";
 
 /**
  * Render a complete HTML document to a PNG buffer using Puppeteer.

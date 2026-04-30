@@ -37,8 +37,11 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/device-profile";
-import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/registry";
+import {
+	DEFAULT_MODEL_NAME,
+	type TrmnlModel,
+	type TrmnlPalette,
+} from "@/lib/trmnl/types";
 import type { Device, Mixup, Playlist } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatTimezone, timezones } from "@/utils/helpers";

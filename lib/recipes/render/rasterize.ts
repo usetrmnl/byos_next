@@ -8,7 +8,7 @@ import {
 	getTrmnlModelClassName,
 	getTrmnlModelStyle,
 } from "@/lib/trmnl/model-css";
-import type { TrmnlModel } from "@/lib/trmnl/registry";
+import type { TrmnlModel } from "@/lib/trmnl/types";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 /**

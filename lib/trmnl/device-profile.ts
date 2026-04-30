@@ -8,21 +8,14 @@
  * don't drift from upstream.
  */
 
+import { findModel, findPalette } from "./registry";
 import {
-	findModel,
-	findPalette,
+	DEFAULT_MODEL_NAME,
+	type DeviceProfile,
 	type TrmnlModel,
-	type TrmnlPalette,
-} from "./registry";
+} from "./types";
 
-export const DEFAULT_MODEL_NAME = "og_plus";
-
-export type DeviceProfile = {
-	model: TrmnlModel;
-	palette: TrmnlPalette | null;
-	/** True when we couldn't resolve the requested model and fell back. */
-	fallback: boolean;
-};
+export { DEFAULT_MODEL_NAME, type DeviceProfile };
 
 /**
  * Minimal TrmnlModel used when the registry lookup fails entirely (e.g. cold

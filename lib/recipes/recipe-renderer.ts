@@ -5,7 +5,7 @@ import {
 	renderDeviceImage,
 } from "@/lib/render/device-image";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
-import type { TrmnlModel } from "@/lib/trmnl/registry";
+import type { TrmnlModel } from "@/lib/trmnl/types";
 import {
 	customFieldsToParamDefinitions,
 	fetchLiquidRecipeSettings,

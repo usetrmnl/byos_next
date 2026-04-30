@@ -1,4 +1,4 @@
-import type { TrmnlPalette } from "./registry";
+import type { TrmnlPalette } from "./types";
 
 export type RGB = {
 	r: number;
