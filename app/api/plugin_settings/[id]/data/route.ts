@@ -1,8 +1,6 @@
 import { db } from "@/lib/database/db";
-import { checkDbConnection } from "@/lib/database/utils";
 import { isJsonObject } from "@/lib/trmnl/plugin-settings";
 import {
-	findPluginSettingByUuid,
 	findPluginSettingForUser,
 	requirePluginSettingsUser,
 } from "@/lib/trmnl/plugin-settings-store";
@@ -40,6 +38,9 @@ export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const auth = await requirePluginSettingsUser();
+	if ("response" in auth) return auth.response;
+
 	const { id } = await params;
 	const body = await request.json();
 	if (!isJsonObject(body.merge_variables)) {
@@ -49,12 +50,7 @@ export async function POST(
 		);
 	}
 
-	const { ready } = await checkDbConnection();
-	if (!ready) {
-		return Response.json({ error: "Database unavailable" }, { status: 503 });
-	}
-
-	const setting = await findPluginSettingByUuid(id);
+	const setting = await findPluginSettingForUser(id, auth.userId);
 	if (!setting) {
 		return Response.json({ error: "Not found" }, { status: 404 });
 	}
@@ -68,7 +64,8 @@ export async function POST(
 			merge_variables: body.merge_variables,
 			updated_at: new Date().toISOString(),
 		})
-		.where("uuid", "=", id)
+		.where("id", "=", setting.id)
+		.where("user_id", "=", auth.userId)
 		.returningAll()
 		.executeTakeFirstOrThrow();
 

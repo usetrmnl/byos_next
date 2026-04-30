@@ -45,12 +45,3 @@ export async function findPluginSettingForUser(
 	return query.executeTakeFirst();
 }
 
-export async function findPluginSettingByUuid(
-	uuid: string,
-): Promise<PluginSettingRow | undefined> {
-	return db
-		.selectFrom("plugin_settings")
-		.selectAll()
-		.where("uuid", "=", uuid)
-		.executeTakeFirst();
-}
