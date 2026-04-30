@@ -1,5 +1,41 @@
+import { z } from "zod";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
-import { WikipediaData } from "./getData";
+import getWikipediaData, { WikipediaData } from "./getData";
+
+export const paramsSchema = z.object({});
+
+export const dataSchema = z.object({
+	title: z.string().default("no data received"),
+	extract: z.string().default("Article content is unavailable."),
+	thumbnail: z
+		.object({
+			source: z.string().optional(),
+			width: z.number().optional(),
+			height: z.number().optional(),
+		})
+		.optional(),
+	content_urls: z
+		.object({
+			desktop: z.object({ page: z.string() }),
+		})
+		.optional(),
+	pageid: z.number().optional(),
+	fullurl: z.string().optional(),
+	canonicalurl: z.string().optional(),
+	displaytitle: z.string().optional(),
+	description: z.string().optional(),
+	ns: z.number().optional(),
+	contentmodel: z.string().optional(),
+	pagelanguage: z.string().optional(),
+	pagelanguagedir: z.string().optional(),
+	touched: z.string().optional(),
+	lastrevid: z.number().optional(),
+	length: z.number().optional(),
+	editurl: z.string().optional(),
+	type: z.string().optional(),
+	categories: z.array(z.string()).optional(),
+});
 
 export default async function Wikipedia({
 	title = "no data received",
@@ -161,3 +197,31 @@ export default async function Wikipedia({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<
+	typeof paramsSchema,
+	typeof dataSchema
+> = {
+	meta: {
+		slug: "wikipedia",
+		title: "Wikipedia Article",
+		description: "A component that displays random Wikipedia articles.",
+		published: true,
+		tags: ["tailwind", "text", "api", "live-data", "advanced"],
+		author: { name: "Mangle Kuo", github: "ghcpuman902" },
+		category: "display-components",
+		version: "0.1.0",
+		createdAt: "2025-03-01T00:00:00Z",
+		updatedAt: "2025-03-13T00:00:00Z",
+		renderSettings: { doubleSizeForSharperText: true },
+	},
+	paramsSchema,
+	dataSchema,
+	getData: async () => {
+		const data = await getWikipediaData();
+		return data as z.infer<typeof dataSchema>;
+	},
+	Component: ({ width, height, data }) => (
+		<Wikipedia {...(data as WikipediaData)} width={width} height={height} />
+	),
+};

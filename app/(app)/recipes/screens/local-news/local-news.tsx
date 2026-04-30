@@ -1,5 +1,53 @@
+import { z } from "zod";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
-import { compactNumber, type LocalNewsData, type NewsStory } from "./getData";
+import getLocalNews, {
+	compactNumber,
+	type LocalNewsData,
+	type NewsStory,
+} from "./getData";
+
+export const paramsSchema = z.object({
+	location: z
+		.string()
+		.default("San Francisco")
+		.describe("City or place name to fetch nearby headlines for")
+		.meta({ title: "Location", placeholder: "Paris" }),
+	topic: z
+		.string()
+		.default("top stories")
+		.describe("News query to combine with the location")
+		.meta({ title: "Topic", placeholder: "technology" }),
+	locale: z
+		.string()
+		.default("en-US")
+		.describe("Google News locale such as en-US, fr-FR, or en-GB")
+		.meta({ title: "Locale", placeholder: "en-US" }),
+});
+
+export const dataSchema = z.object({
+	location: z.string().default("San Francisco"),
+	topic: z.string().default("top stories"),
+	locale: z.string().default("en-US"),
+	subreddit: z.string().default("sanfrancisco"),
+	generatedAt: z.string().default("Now"),
+	stories: z
+		.array(
+			z.object({
+				title: z.string(),
+				source: z.string(),
+				url: z.string(),
+				publishedAt: z.string(),
+				age: z.string(),
+				summary: z.string(),
+				score: z.number(),
+				comments: z.number(),
+				author: z.string(),
+				domain: z.string(),
+			}),
+		)
+		.default([]),
+});
 
 type LocalNewsProps = Partial<LocalNewsData> & {
 	width?: number;
@@ -140,3 +188,36 @@ export default function LocalNews({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<
+	typeof paramsSchema,
+	typeof dataSchema
+> = {
+	meta: {
+		slug: "local-news",
+		title: "Local News",
+		description:
+			"A premium local news dashboard powered by Google News RSS. Shows the latest headlines for a configurable location and topic.",
+		published: true,
+		tags: ["tailwind", "news", "api", "live-data", "configurable", "premium"],
+		author: { name: "rbouteiller", github: "" },
+		category: "display-components",
+		version: "0.1.0",
+		createdAt: "2026-04-26T00:00:00Z",
+		updatedAt: "2026-04-26T00:00:00Z",
+		renderSettings: { doubleSizeForSharperText: true },
+	},
+	paramsSchema,
+	dataSchema,
+	getData: async (params) => {
+		const data = await getLocalNews(params);
+		return data as z.infer<typeof dataSchema>;
+	},
+	Component: ({ width, height, data }) => (
+		<LocalNews
+			{...(data as Partial<LocalNewsData>)}
+			width={width}
+			height={height}
+		/>
+	),
+};

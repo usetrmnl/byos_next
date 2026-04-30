@@ -1,6 +1,11 @@
+import { z } from "zod";
 import fontData from "@/components/bitmap-font/bitmap-font.json";
 import { BitmapText } from "@/components/bitmap-font/bitmap-text";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
+
+export const paramsSchema = z.object({});
+export const dataSchema = paramsSchema;
 
 export default function SimpleText({
 	width = 800,
@@ -38,3 +43,24 @@ export default function SimpleText({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<typeof paramsSchema> = {
+	meta: {
+		slug: "simple-text",
+		title: "Simple Text",
+		description: "A simple text component.",
+		published: true,
+		tags: ["bitmap", "text"],
+		author: { name: "Mangle Kuo", github: "ghcpuman902" },
+		category: "display-components",
+		version: "0.1.0",
+		createdAt: "2025-03-01T00:00:00Z",
+		updatedAt: "2025-03-01T00:00:00Z",
+		renderSettings: { doubleSizeForSharperText: true },
+	},
+	paramsSchema,
+	dataSchema,
+	Component: ({ width, height }) => (
+		<SimpleText width={width} height={height} />
+	),
+};

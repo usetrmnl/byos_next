@@ -110,13 +110,12 @@ function buildSummary(child: RedditChild["data"]): string {
 	const flair = child.link_flair_text ? `[${child.link_flair_text}] ` : "";
 	const text = (child.selftext || "").replace(/\s+/g, " ").trim();
 	if (text) return `${flair}${text}`;
-	if (!child.is_self && child.url) return `${flair}Link → ${child.domain ?? ""}`;
+	if (!child.is_self && child.url)
+		return `${flair}Link → ${child.domain ?? ""}`;
 	return flair.trim();
 }
 
-async function fetchSubreddit(
-	subreddit: string,
-): Promise<RedditChild[]> {
+async function fetchSubreddit(subreddit: string): Promise<RedditChild[]> {
 	const url = `https://www.reddit.com/r/${subreddit}/hot.json?limit=15&raw_json=1`;
 	const response = await fetch(url, {
 		headers: {
@@ -151,15 +150,13 @@ async function fetchLocalNews(
 				url: d.permalink
 					? `https://www.reddit.com${d.permalink}`
 					: d.url || "https://reddit.com",
-				publishedAt: created
-					? formatDate(new Date(created * 1000))
-					: "Today",
+				publishedAt: created ? formatDate(new Date(created * 1000)) : "Today",
 				age: formatAge(created),
 				summary: buildSummary(d),
 				score: d.score ?? 0,
 				comments: d.num_comments ?? 0,
 				author: d.author ?? "unknown",
-				domain: d.is_self ? "self" : d.domain ?? "link",
+				domain: d.is_self ? "self" : (d.domain ?? "link"),
 			};
 		})
 		.filter((s) => s.title.length > 0)
