@@ -44,4 +44,3 @@ export async function findPluginSettingForUser(
 
 	return query.executeTakeFirst();
 }
-

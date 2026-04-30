@@ -1,31 +1,21 @@
 import { sql } from "kysely";
-import { connection } from "next/server";
-import screens from "@/app/(app)/recipes/screens.json";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
-
-type ScreenConfig = {
-	title: string;
-	published: boolean;
-	description?: string;
-	author?: {
-		name?: string;
-		github?: string;
-	};
-	category?: string;
-	version?: string;
-	[key: string]: unknown;
-};
-
-const DEV_SYNC_INTERVAL_MS = 1000;
-
-let devSyncPromise: Promise<void> | null = null;
-let lastDevSyncAt = 0;
+import { reactRecipeLoaders } from "./screens.generated";
+import type { AnyRecipeDefinition } from "./types";
 
 /**
- * Upsert all react recipes from screens.json into the recipes table.
- * Recipes are inserted with user_id = NULL (global/shared).
- * After syncing, backfills mixup_slots.recipe_id from recipe_slug.
+ * Seed the `recipes` table from the in-process React recipe registry.
+ *
+ * The DB row exists only as a stable identity for foreign keys
+ * (`mixup_slots.recipe_id`, etc.) and as a catalog row for the sidebar.
+ * The runtime metadata (title, description, paramsSchema, …) is read
+ * directly from each recipe's `definition` export, NOT from
+ * `recipes.metadata`. We still write a metadata blob for legacy callers
+ * and to keep the catalog query simple.
+ *
+ * This is invoked manually via `pnpm sync:recipes`. Production deploys
+ * should run it once after build. There is no request-time sync.
  */
 export async function syncReactRecipes(): Promise<{
 	synced: number;
@@ -37,26 +27,32 @@ export async function syncReactRecipes(): Promise<{
 		return { synced: 0, backfilled: 0 };
 	}
 
-	const entries = Object.entries(screens as Record<string, ScreenConfig>);
-
 	let synced = 0;
 
-	for (const [slug, config] of entries) {
-		// Store the full screens.json config as metadata so the renderer can
-		// read it from the DB instead of importing screens.json at runtime.
-		const metadata = JSON.stringify(config);
+	for (const slug of Object.keys(reactRecipeLoaders)) {
+		const mod = await reactRecipeLoaders[slug]();
+		const definition = mod.definition;
+		if (!definition) {
+			console.warn(
+				`[syncReactRecipes] Skipping ${slug} — no \`definition\` export.`,
+			);
+			continue;
+		}
+
+		const meta = definition.meta;
+		const metadata = JSON.stringify(buildLegacyMetadata(definition));
 
 		await db
 			.insertInto("recipes")
 			.values({
 				slug,
 				type: sql`'react'::recipe_type`,
-				name: config.title,
-				description: config.description ?? null,
-				author: config.author?.name ?? null,
-				author_github: config.author?.github ?? null,
-				category: config.category ?? null,
-				version: config.version ?? null,
+				name: meta.title,
+				description: meta.description ?? null,
+				author: meta.author?.name ?? null,
+				author_github: meta.author?.github ?? null,
+				category: meta.category ?? null,
+				version: meta.version ?? null,
 				user_id: null,
 				metadata,
 			} as never)
@@ -65,12 +61,12 @@ export async function syncReactRecipes(): Promise<{
 					.columns(["slug"])
 					.where("user_id", "is", null)
 					.doUpdateSet({
-						name: config.title,
-						description: config.description ?? null,
-						author: config.author?.name ?? null,
-						author_github: config.author?.github ?? null,
-						category: config.category ?? null,
-						version: config.version ?? null,
+						name: meta.title,
+						description: meta.description ?? null,
+						author: meta.author?.name ?? null,
+						author_github: meta.author?.github ?? null,
+						category: meta.category ?? null,
+						version: meta.version ?? null,
 						metadata,
 						updated_at: new Date().toISOString(),
 					} as never),
@@ -80,7 +76,6 @@ export async function syncReactRecipes(): Promise<{
 		synced++;
 	}
 
-	// Backfill mixup_slots.recipe_id from recipe_slug
 	const backfillResult = await sql`
 		UPDATE mixup_slots
 		SET recipe_id = recipes.id
@@ -99,30 +94,30 @@ export async function syncReactRecipes(): Promise<{
 }
 
 /**
- * Keep the DB-backed recipe catalog in sync with local React screens during
- * development, without adding request-time writes in production.
+ * Compose a JSON blob for `recipes.metadata` that captures enough
+ * information for the sidebar / mixup picker to keep working without
+ * needing to load the recipe module. The runtime never reads this — it
+ * goes straight to the registry.
  */
-export async function syncReactRecipesInDevelopment(): Promise<void> {
-	if (process.env.NODE_ENV !== "development") return;
-
-	await connection();
-
-	const now = Date.now();
-	if (devSyncPromise) {
-		await devSyncPromise;
-		return;
-	}
-	if (now - lastDevSyncAt < DEV_SYNC_INTERVAL_MS) return;
-
-	lastDevSyncAt = now;
-	devSyncPromise = syncReactRecipes()
-		.then(() => undefined)
-		.catch((error) => {
-			console.warn("[syncReactRecipes] Dev auto-sync failed", error);
-		})
-		.finally(() => {
-			devSyncPromise = null;
-		});
-
-	await devSyncPromise;
+function buildLegacyMetadata(definition: AnyRecipeDefinition): {
+	title: string;
+	description?: string;
+	published?: boolean;
+	tags?: string[];
+	category?: string;
+	version?: string;
+	author?: { name?: string; github?: string };
+	system?: boolean;
+} {
+	const m = definition.meta;
+	return {
+		title: m.title,
+		description: m.description,
+		published: m.published,
+		tags: m.tags,
+		category: m.category,
+		version: m.version,
+		author: m.author,
+		system: m.system,
+	};
 }

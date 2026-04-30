@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cache, Suspense, use } from "react";
-import { fetchRecipes } from "@/app/actions/mixup";
 import {
 	getScreenParams,
 	updateScreenParams,
@@ -17,6 +16,7 @@ import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { Badge } from "@/components/ui/badge";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
+import { listAllRecipes } from "@/lib/recipes/catalog";
 import LiquidPreview from "@/lib/recipes/liquid-preview";
 import {
 	customFieldsToParamDefinitions,
@@ -48,7 +48,7 @@ async function refreshData(slug: string) {
 
 export async function generateStaticParams() {
 	try {
-		const recipes = await fetchRecipes();
+		const recipes = await listAllRecipes();
 		if (recipes.length > 0) {
 			return recipes.map((recipe) => ({ slug: recipe.slug }));
 		}
