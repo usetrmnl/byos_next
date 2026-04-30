@@ -1,5 +1,6 @@
+import type { Kysely } from "kysely";
 import { getCurrentUserId } from "@/lib/auth/get-user";
-import { db } from "@/lib/database/db";
+import type { DB } from "@/lib/database/db.d";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	isNumericPluginSettingId,
@@ -29,18 +30,22 @@ export async function requirePluginSettingsUser(): Promise<
 	return { userId };
 }
 
-export async function findPluginSettingForUser(
+/**
+ * Look up a plugin setting by its public id (BIGINT) or uuid (TEXT).
+ *
+ * Must be called inside `withExplicitUserScope` — RLS policies on
+ * `plugin_settings` filter by `app.current_user_id`, so the row will only
+ * be returned when it belongs to the scope's user. The route layer should
+ * never re-add a `where("user_id", "=", ...)` clause; that's the bug RLS
+ * is meant to make impossible.
+ */
+export async function findPluginSetting(
+	scopedDb: Kysely<DB>,
 	identifier: string,
-	userId: string,
 ): Promise<PluginSettingRow | undefined> {
-	let query = db
-		.selectFrom("plugin_settings")
-		.selectAll()
-		.where("user_id", "=", userId);
+	const query = scopedDb.selectFrom("plugin_settings").selectAll();
 
-	query = isNumericPluginSettingId(identifier)
-		? query.where("id", "=", identifier)
-		: query.where("uuid", "=", identifier);
-
-	return query.executeTakeFirst();
+	return isNumericPluginSettingId(identifier)
+		? query.where("id", "=", identifier).executeTakeFirst()
+		: query.where("uuid", "=", identifier).executeTakeFirst();
 }
