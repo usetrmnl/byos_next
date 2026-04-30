@@ -1,528 +1,66 @@
-import React, { cache, createElement } from "react";
-import sharp from "sharp";
+import { createElement } from "react";
 import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
-import { getScreenParams } from "@/app/actions/screens-params";
-import { db } from "@/lib/database/db";
-import { withExplicitUserScope } from "@/lib/database/scoped-db";
-import { checkDbConnection } from "@/lib/database/utils";
-import { renderHtmlToImage } from "@/lib/recipes/html-screenshot";
-import {
-	customFieldsToParamDefinitions,
-	fetchLiquidRecipeSettings,
-	isLiquidRecipe,
-	renderLiquidRecipe,
-} from "@/lib/recipes/liquid-renderer";
 import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
 } from "@/lib/render/device-image";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
-import {
-	getTrmnlModelClassName,
-	getTrmnlModelStyle,
-} from "@/lib/trmnl/model-css";
 import type { TrmnlModel } from "@/lib/trmnl/registry";
-import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
-import { renderWithSatori } from "./renderers/satori";
-import { renderWithTakumi } from "./renderers/takumi";
-import { syncReactRecipesInDevelopment } from "./sync-react-recipes";
+import {
+	customFieldsToParamDefinitions,
+	fetchLiquidRecipeSettings,
+	isLiquidRecipe,
+	renderLiquidRecipe,
+} from "./liquid-renderer";
+import {
+	type RasterizeFormat,
+	type RasterizeResults,
+	rasterize,
+} from "./render/rasterize";
+import { resolveReactRecipe } from "./runtime/react";
 
-// Logging utility shared between recipe renderers
-export const logger = {
-	info: (message: string) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			console.log(message);
-		}
-	},
-	error: (message: string, error?: unknown) => {
-		if (error) {
-			console.error(message, error);
-		} else {
-			console.error(message);
-		}
-	},
-	success: (message: string) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			console.log(`✅ ${message}`);
-		}
-	},
-	warn: (message: string, error?: unknown) => {
-		if (process.env.NODE_ENV !== "production" || process.env.DEBUG === "true") {
-			if (error) {
-				console.warn(message, error);
-			} else {
-				console.warn(message);
-			}
-		}
-	},
-};
+/**
+ * Thin orchestrator. The heavy lifting now lives in:
+ *   - `lib/recipes/registry.ts`        (built-in React recipe lookup)
+ *   - `lib/recipes/runtime/react.ts`   (params + data resolution)
+ *   - `lib/recipes/render/rasterize.ts` (PNG / bitmap pipeline)
+ *   - `lib/recipes/liquid-renderer.ts` (TRMNL-plugin liquid path)
+ *
+ * Two top-level entry points: `renderRecipeToImage` and
+ * `renderRecipeForDevice`. Both branch React vs liquid internally so API
+ * routes don't need to know the difference.
+ */
 
-export type ComponentProps = Record<string, unknown> & {
-	width?: number;
-	height?: number;
-};
-
-function wrapWithTrmnlCss(
-	element: React.ReactElement,
-	model: TrmnlModel | null,
-	width: number,
-	height: number,
-): React.ReactElement {
-	const className = getTrmnlModelClassName(model);
-	const vars = getTrmnlModelStyle(model);
-	if (!className && !vars) return element;
-	return createElement(
-		"div",
-		{
-			className: className || undefined,
-			style: { width, height, display: "flex", ...vars },
-		},
-		element,
-	);
-}
-
-export type RecipeParamType = "string" | "number" | "boolean";
-
-export type RecipeParamDefinition = {
-	label: string;
-	type: RecipeParamType;
-	description?: string;
-	default?: unknown;
-	placeholder?: string;
-};
-
-export type RecipeParamDefinitions = Record<string, RecipeParamDefinition>;
-
-export type RecipeConfig = {
-	title: string;
-	published?: boolean;
-	description?: string;
-	componentPath?: string;
-	hasDataFetch?: boolean;
-	props?: Record<string, unknown>;
-	params?: RecipeParamDefinitions;
-	tags?: string[];
-	renderSettings?: {
-		doubleSizeForSharperText?: boolean;
-		applyEdgeSnap?: boolean;
-		[key: string]: boolean | string | number | undefined;
-	};
-	[key: string]: unknown;
-};
-
-// Re-export constants from shared file
 export { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from "./constants";
+export { logger } from "./logger";
+export { getReactRecipeDefinition, listReactRecipes } from "./registry";
+export { getRendererType } from "./render/rasterize";
+export { resolveReactRecipe } from "./runtime/react";
+export type { RecipeMeta } from "./types";
+export type {
+	RecipeParamDefinition,
+	RecipeParamDefinitions,
+	RecipeParamType,
+} from "./zod-form";
 
-// Utility to check if we're in build phase
 export const isBuildPhase = (): boolean =>
 	process.env.NEXT_PHASE === "phase-production-build";
 
-// Helper to add dimensions to props
-export const addDimensionsToProps = (
-	props: ComponentProps,
-	width: number,
-	height: number,
-): ComponentProps => ({
-	...props,
-	width,
-	height,
-});
-
-// Get renderer type from environment variable (defaults to "takumi")
-export const getRendererType = (): "takumi" | "satori" | "browser" => {
-	const renderer = process.env.REACT_RENDERER?.toLowerCase();
-	if (renderer === "satori") return "satori";
-	if (renderer === "browser") return "browser";
-	return "takumi";
-};
-
-export const fetchRecipeConfig = cache(
-	async (slug: string, userId?: string): Promise<RecipeConfig | null> => {
-		await syncReactRecipesInDevelopment();
-
-		const { ready } = await checkDbConnection();
-		if (!ready) return null;
-
-		const runQuery = (conn: typeof db, sharedOnly = false) => {
-			let query = conn
-				.selectFrom("recipes")
-				.select(["metadata"])
-				.where("slug", "=", slug)
-				.where("type", "=", "react");
-
-			if (sharedOnly) {
-				query = query.where("user_id", "is", null);
-			}
-
-			return query.executeTakeFirst();
-		};
-
-		const row = userId
-			? await withExplicitUserScope(userId, runQuery)
-			: await runQuery(db, true);
-
-		if (!row?.metadata) return null;
-
-		const config =
-			typeof row.metadata === "string"
-				? (JSON.parse(row.metadata) as RecipeConfig)
-				: (row.metadata as unknown as RecipeConfig);
-
-		if (!config.published && process.env.NODE_ENV === "production") {
-			return null;
-		}
-
-		return config;
-	},
-);
-
-export const fetchRecipeComponent = cache(async (slug: string) => {
-	try {
-		const { default: Component } = await import(
-			`@/app/(app)/recipes/screens/${slug}/${slug}.tsx`
-		);
-		return Component;
-	} catch (error) {
-		logger.error(`Error loading component for ${slug}:`, error);
-		return null;
-	}
-});
-
-type FetchPropsOptions = {
-	validateFetchedData?: (slug: string, data: unknown) => boolean;
-};
-
-export const fetchRecipeProps = cache(
-	async (
-		slug: string,
-		config: RecipeConfig,
-		options?: FetchPropsOptions,
-		userId?: string,
-	): Promise<ComponentProps> => {
-		const params = config.params
-			? await getScreenParams(slug, config.params, userId)
-			: {};
-
-		let props: ComponentProps = {
-			...(config.props || {}),
-			...(Object.keys(params).length > 0 ? { params } : {}),
-		};
-
-		if (isBuildPhase()) {
-			return props;
-		}
-
-		if (!config.hasDataFetch) {
-			return props;
-		}
-
-		try {
-			const { default: fetchDataFunction } = (await import(
-				`@/app/(app)/recipes/screens/${slug}/getData.ts`
-			)) as {
-				default: (params?: Record<string, unknown>) => Promise<ComponentProps>;
-			};
-
-			// Set a timeout for data fetching to prevent hanging
-			const fetchPromise = fetchDataFunction(params);
-			const timeoutPromise = new Promise((_, reject) => {
-				setTimeout(() => reject(new Error("Data fetch timeout")), 10000);
-			});
-
-			// Race between the fetch and the timeout
-			const fetchedData = await Promise.race([
-				fetchPromise,
-				timeoutPromise,
-			]).catch((error) => {
-				logger.error(`Data fetch error for ${slug}:`, error);
-				return null;
-			});
-
-			// Validate fetched data when a validator is provided
-			const isValid =
-				fetchedData &&
-				typeof fetchedData === "object" &&
-				(!options?.validateFetchedData ||
-					options.validateFetchedData(slug, fetchedData));
-
-			if (isValid) {
-				props = fetchedData as ComponentProps;
-			} else {
-				logger.warn(`Invalid or missing data for ${slug}`);
-			}
-		} catch (error) {
-			logger.error(`Error fetching data for ${slug}:`, error);
-		}
-
-		return props;
-	},
-);
-
-export const getRecipeImageOptions = (
-	config: RecipeConfig | null,
-	width: number,
-	height: number,
-) => {
-	const useDoubling = config?.renderSettings?.doubleSizeForSharperText ?? false;
-	const scaleFactor = useDoubling ? 2 : 1;
-
-	return {
-		width: width * scaleFactor,
-		height: height * scaleFactor,
-	};
-};
-
-type RenderFormats = Array<"bitmap" | "png">;
-
-type RenderOptions = {
+type RenderRecipeArgs = {
 	slug: string;
-	Component?: React.ComponentType<ComponentProps> | null;
-	props?: ComponentProps;
-	config: RecipeConfig | null;
 	imageWidth: number;
 	imageHeight: number;
-	formats?: RenderFormats;
-	grayscale?: number; // Number of gray levels: 2, 4, or 16
-	html?: string; // When set, uses Puppeteer screenshot instead of Takumi/Satori
-	cookies?: string; // Cookie header to forward to browser renderer
-	/**
-	 * TRMNL model declaration. When provided, its `css.classes` and
-	 * `css.variables` are applied to the rasterizer input so plugin layouts
-	 * authored against the TRMNL framework CSS render the same as on-device.
-	 */
+	formats?: RasterizeFormat[];
+	grayscale?: number;
+	userId?: string | null;
+	cookies?: string;
 	model?: TrmnlModel | null;
-	/** Optional palette override; forwarded to the browser renderer URL. */
 	paletteId?: string | null;
 };
 
-type RenderResults = {
-	bitmap: Buffer | null;
-	png: Buffer | null;
-};
-
-const getDefaultRenderResults = (): RenderResults => ({
-	bitmap: null,
-	png: null,
-});
-
-export const renderRecipeOutputs = cache(
-	async ({
-		slug,
-		Component,
-		props,
-		config,
-		imageWidth,
-		imageHeight,
-		formats = ["bitmap", "png"],
-		grayscale,
-		html,
-		cookies,
-		model,
-		paletteId,
-	}: RenderOptions): Promise<RenderResults> => {
-		const results = getDefaultRenderResults();
-		const needsPng = formats.includes("png");
-		const needsBitmap = formats.includes("bitmap");
-
-		if (!needsPng && !needsBitmap) return results;
-
-		const imageOptions = getRecipeImageOptions(config, imageWidth, imageHeight);
-		const rendererType = getRendererType();
-
-		// Render PNG once and reuse it for png/bitmap outputs.
-		let pngBuffer: Buffer;
-		try {
-			if (html) {
-				pngBuffer = await renderHtmlToImage(
-					html,
-					imageOptions.width,
-					imageOptions.height,
-					model ?? null,
-				);
-			} else if (Component && props) {
-				if (rendererType === "browser") {
-					const { renderWithBrowser } = await import("./renderers/browser");
-					const scaleFactor = imageOptions.width / imageWidth;
-					pngBuffer = await renderWithBrowser(
-						slug,
-						imageWidth,
-						imageHeight,
-						scaleFactor,
-						cookies,
-						{ model: model?.name ?? null, paletteId: paletteId ?? null },
-					);
-				} else {
-					const rawElement = createElement(Component, props);
-					// Satori/Takumi don't apply external stylesheets, so framework
-					// selectors (.screen--<model>) silently no-op. CSS variables on
-					// inline styles DO propagate to descendants — wrap with the
-					// model's vars + className so anything reading var(--screen-w)
-					// resolves correctly.
-					const element = wrapWithTrmnlCss(
-						rawElement,
-						model ?? null,
-						imageOptions.width,
-						imageOptions.height,
-					);
-					pngBuffer =
-						rendererType === "satori"
-							? await renderWithSatori(
-									element,
-									imageOptions.width,
-									imageOptions.height,
-								)
-							: await renderWithTakumi(
-									element,
-									imageOptions.width,
-									imageOptions.height,
-								);
-				}
-			} else {
-				logger.error(`No Component or html provided for ${slug}`);
-				return results;
-			}
-		} catch (error) {
-			logger.error(`Error generating PNG for ${slug}:`, error);
-			return results;
-		}
-
-		if (needsPng) {
-			results.png =
-				imageOptions.width !== imageWidth
-					? await sharp(pngBuffer)
-							.resize(imageWidth, imageHeight)
-							.png()
-							.toBuffer()
-					: pngBuffer;
-		}
-
-		if (needsBitmap) {
-			try {
-				results.bitmap = await renderBmp(pngBuffer, {
-					ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
-					width: imageWidth,
-					height: imageHeight,
-					applyEdgeSnap: config?.renderSettings?.applyEdgeSnap ?? true,
-					...(grayscale !== undefined && { grayscale }),
-				});
-			} catch (error) {
-				logger.error(`Error generating bitmap for ${slug}:`, error);
-			}
-		}
-
-		return results;
-	},
-);
-
-type BuildRecipeResult = {
-	config: RecipeConfig | null;
-	Component: React.ComponentType<ComponentProps> | null;
-	props: ComponentProps;
-	html?: string;
-	element: React.ReactElement | null;
-};
-
 /**
- * Build a liquid recipe element by rendering the liquid template.
- */
-async function buildLiquidRecipeElement(
-	slug: string,
-	userId?: string,
-): Promise<BuildRecipeResult> {
-	// Load stored custom field overrides from screen_configs
-	let customFieldOverrides: Record<string, unknown> | undefined;
-	const settings = await fetchLiquidRecipeSettings(slug, userId);
-	if (settings?.custom_fields?.length) {
-		const definitions = customFieldsToParamDefinitions(settings.custom_fields);
-		customFieldOverrides = await getScreenParams(slug, definitions, userId);
-	}
-
-	const result = await renderLiquidRecipe(slug, customFieldOverrides, userId);
-
-	if (!result) {
-		return {
-			config: null,
-			Component: null,
-			props: {},
-			element: createElement(NotFoundScreen, { slug }),
-		};
-	}
-
-	return {
-		config: null,
-		Component: null,
-		props: {},
-		html: result.html,
-		element: null,
-	};
-}
-
-export const buildRecipeElement = async ({
-	slug,
-	userId,
-	validateProps,
-}: {
-	slug: string;
-	userId?: string | null;
-	validateProps?: (slug: string, props: ComponentProps) => boolean;
-}): Promise<BuildRecipeResult> => {
-	// First try React recipe from the DB metadata cache.
-	const config = await fetchRecipeConfig(slug, userId ?? undefined);
-	const Component = config ? await fetchRecipeComponent(slug) : null;
-
-	if (config && Component) {
-		const props = await fetchRecipeProps(
-			slug,
-			config,
-			{
-				validateFetchedData: validateProps
-					? (recipeSlug: string, data: unknown) => {
-							return (
-								typeof data === "object" &&
-								data !== null &&
-								validateProps(recipeSlug, data as ComponentProps)
-							);
-						}
-					: undefined,
-			},
-			userId ?? undefined,
-		);
-
-		if (validateProps && !validateProps(slug, props)) {
-			return {
-				config,
-				Component: null,
-				props,
-				element: createElement(NotFoundScreen, { slug }),
-			};
-		}
-
-		return {
-			config,
-			Component,
-			props,
-			element: createElement(Component, props),
-		};
-	}
-
-	// Try liquid recipe from DB
-	if (await isLiquidRecipe(slug, userId ?? undefined)) {
-		return buildLiquidRecipeElement(slug, userId ?? undefined);
-	}
-
-	// Not found
-	return {
-		config: null,
-		Component: null,
-		props: {},
-		element: createElement(NotFoundScreen, { slug }),
-	};
-};
-
-/**
- * High-level helper: resolve a recipe (react or liquid) and render to image outputs.
- * Encapsulates buildRecipeElement + renderRecipeOutputs so API routes don't
- * need to branch on recipe type.
+ * Resolve a recipe (React or liquid) and rasterize it. Returns
+ * `{ bitmap: null, png: null }` when nothing renders.
  */
 export async function renderRecipeToImage({
 	slug,
@@ -534,24 +72,20 @@ export async function renderRecipeToImage({
 	cookies,
 	model,
 	paletteId,
-}: {
-	slug: string;
-	imageWidth: number;
-	imageHeight: number;
-	formats?: RenderFormats;
-	grayscale?: number;
-	userId?: string | null;
-	cookies?: string;
-	model?: TrmnlModel | null;
-	paletteId?: string | null;
-}): Promise<RenderResults> {
-	const result = await buildRecipeElement({ slug, userId });
-
-	if (result.html) {
-		return renderRecipeOutputs({
+}: RenderRecipeArgs): Promise<RasterizeResults> {
+	// React path
+	const resolved = await resolveReactRecipe(slug, userId ?? undefined);
+	if (resolved) {
+		const { definition, params, data } = resolved;
+		const element = createElement(definition.Component, {
+			width: imageWidth,
+			height: imageHeight,
+			params,
+			data,
+		});
+		return rasterize({
 			slug,
-			html: result.html,
-			config: null,
+			element,
 			imageWidth,
 			imageHeight,
 			formats,
@@ -559,29 +93,32 @@ export async function renderRecipeToImage({
 			cookies,
 			model,
 			paletteId,
+			renderSettings: definition.meta.renderSettings ?? null,
 		});
 	}
 
-	const ComponentToRender = result.Component ?? (() => result.element);
-	const propsWithDimensions = addDimensionsToProps(
-		result.props,
-		imageWidth,
-		imageHeight,
-	);
+	// Liquid path
+	if (await isLiquidRecipe(slug, userId ?? undefined)) {
+		const html = await buildLiquidHtml(slug, userId ?? undefined);
+		if (html === null) {
+			return rasterizeNotFound({ slug, imageWidth, imageHeight, formats });
+		}
+		return rasterize({
+			slug,
+			html,
+			imageWidth,
+			imageHeight,
+			formats,
+			grayscale,
+			cookies,
+			model,
+			paletteId,
+			renderSettings: null,
+		});
+	}
 
-	return renderRecipeOutputs({
-		slug,
-		Component: ComponentToRender,
-		props: propsWithDimensions,
-		config: result.config,
-		imageWidth,
-		imageHeight,
-		formats,
-		grayscale,
-		cookies,
-		model,
-		paletteId,
-	});
+	// Unknown slug
+	return rasterizeNotFound({ slug, imageWidth, imageHeight, formats });
 }
 
 export async function renderRecipeForDevice({
@@ -606,9 +143,47 @@ export async function renderRecipeForDevice({
 		paletteId: profile.palette?.id ?? null,
 	});
 
-	if (!renders.png) {
-		return null;
-	}
-
+	if (!renders.png) return null;
 	return renderDeviceImage({ png: renders.png, profile });
+}
+
+async function buildLiquidHtml(
+	slug: string,
+	userId?: string,
+): Promise<string | null> {
+	let customFieldOverrides: Record<string, unknown> | undefined;
+	const settings = await fetchLiquidRecipeSettings(slug, userId);
+	if (settings?.custom_fields?.length) {
+		const definitions = customFieldsToParamDefinitions(settings.custom_fields);
+		const { getScreenParams } = await import("@/app/actions/screens-params");
+		customFieldOverrides = await getScreenParams(slug, definitions, userId);
+	}
+	const result = await renderLiquidRecipe(slug, customFieldOverrides, userId);
+	return result?.html ?? null;
+}
+
+async function rasterizeNotFound({
+	slug,
+	imageWidth,
+	imageHeight,
+	formats,
+}: {
+	slug: string;
+	imageWidth: number;
+	imageHeight: number;
+	formats: RasterizeFormat[];
+}): Promise<RasterizeResults> {
+	const element = createElement(NotFoundScreen, {
+		slug,
+		width: imageWidth,
+		height: imageHeight,
+	});
+	return rasterize({
+		slug,
+		element,
+		imageWidth,
+		imageHeight,
+		formats,
+		renderSettings: null,
+	});
 }

@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
 import { cache } from "react";
-import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
@@ -8,10 +7,8 @@ import {
 	DEFAULT_IMAGE_WIDTH,
 	logger,
 	renderRecipeForDevice,
-	renderRecipeOutputs,
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
-import { renderDeviceImage } from "@/lib/render/device-image";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import {
 	type DeviceProfile,
@@ -119,7 +116,7 @@ export async function GET(
 		logger.error("Error generating image:", error);
 
 		// Instead of returning an error, return the NotFoundScreen as a fallback
-		return await renderFallbackBitmap("Error occurred");
+		return await renderFallbackBitmap();
 	}
 }
 
@@ -183,17 +180,14 @@ const renderRecipeBitmap = cache(
 	},
 );
 
-const renderFallbackBitmap = cache(async (slug: string = "not-found") => {
+const renderFallbackBitmap = cache(async () => {
 	try {
-		const renders = await renderRecipeOutputs({
-			slug,
-			Component: NotFoundScreen,
-			props: { slug },
-			config: null,
+		const renders = await renderRecipeToImage({
+			slug: "not-found",
 			imageWidth: DEFAULT_IMAGE_WIDTH,
 			imageHeight: DEFAULT_IMAGE_HEIGHT,
 			formats: ["bitmap"],
-			grayscale: 2, // Default to 2 levels for fallback
+			grayscale: 2,
 		});
 
 		if (!renders.bitmap) {
@@ -219,21 +213,15 @@ const renderFallbackBitmap = cache(async (slug: string = "not-found") => {
 
 async function renderFallbackDeviceImage(profile: DeviceProfile) {
 	try {
-		const renders = await renderRecipeOutputs({
+		const image = await renderRecipeForDevice({
 			slug: "not-found",
-			Component: NotFoundScreen,
-			props: { slug: "not-found" },
-			config: null,
-			imageWidth: profile.model.width,
-			imageHeight: profile.model.height,
-			formats: ["png"],
+			profile,
 		});
 
-		if (!renders.png) {
-			throw new Error("Missing PNG buffer for fallback");
+		if (!image?.buffer.length) {
+			throw new Error("Missing device image buffer for fallback");
 		}
 
-		const image = await renderDeviceImage({ png: renders.png, profile });
 		return new Response(new Uint8Array(image.buffer), {
 			headers: getImageResponseHeaders(image),
 		});
