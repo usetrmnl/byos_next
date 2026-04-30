@@ -203,7 +203,7 @@ export default async function getData(
 	try {
 		const cached = unstable_cache(
 			() => fetchLocalNews(normalized),
-			["local-news-reddit", normalized.location, normalized.topic],
+			["local-news-reddit", normalized.location],
 			{
 				tags: ["local-news", normalized.location],
 				revalidate: 600,
