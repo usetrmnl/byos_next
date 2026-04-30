@@ -1,22 +1,15 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import { selectDisplayForDevice } from "@/lib/display/select";
 import { logError, logInfo } from "@/lib/logger";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/recipe-renderer";
-import {
-	buildDeviceImageFilename,
-	buildDeviceImageUrl,
-} from "@/lib/render/device-image-url";
-import { getDeviceProfile } from "@/lib/trmnl/device-profile";
+import { buildDeviceImageFilename } from "@/lib/render/device-image-url";
 import type { Device } from "@/lib/types";
 import { parseRequestHeaders } from "../utils";
 
 /**
  * GET /api/display/current
- * Fetch the current screen for a device
+ * Fetch the current screen for a device.
  *
  * Headers:
  * - Access-Token (required): Device API Key
@@ -27,10 +20,7 @@ export async function GET(request: Request) {
 
 	if (!apiKey) {
 		return NextResponse.json(
-			{
-				status: 401,
-				error: "Access-Token header is required",
-			},
+			{ status: 401, error: "Access-Token header is required" },
 			{ status: 401 },
 		);
 	}
@@ -42,10 +32,7 @@ export async function GET(request: Request) {
 			metadata: { apiKey },
 		});
 		return NextResponse.json(
-			{
-				status: 503,
-				error: "Database not available",
-			},
+			{ status: 503, error: "Database not available" },
 			{ status: 503 },
 		);
 	}
@@ -59,51 +46,18 @@ export async function GET(request: Request) {
 
 		if (!device) {
 			return NextResponse.json(
-				{
-					status: 404,
-					error: "Device not found",
-				},
+				{ status: 404, error: "Device not found" },
 				{ status: 404 },
 			);
 		}
 
 		const deviceData = device as unknown as Device;
-		const baseUrl = `${headers.hostUrl}/api/bitmap`;
-		const screenToDisplay = deviceData.screen || "not-found";
-		const orientation = deviceData.screen_orientation || "landscape";
-		const profile = await getDeviceProfile(
-			deviceData.model,
-			deviceData.palette_id,
-		);
-		const deviceWidth =
-			headers.width ||
-			profile.model.width ||
-			(orientation === "landscape"
-				? deviceData.screen_width || DEFAULT_IMAGE_WIDTH
-				: deviceData.screen_height || DEFAULT_IMAGE_HEIGHT);
-		const deviceHeight =
-			headers.height ||
-			profile.model.height ||
-			(orientation === "landscape"
-				? deviceData.screen_height || DEFAULT_IMAGE_HEIGHT
-				: deviceData.screen_width || DEFAULT_IMAGE_WIDTH);
-
-		// Get grayscale levels (default to 2 if not set)
-		const grayscaleLevels =
-			deviceData.grayscale === 2 ||
-			deviceData.grayscale === 4 ||
-			deviceData.grayscale === 16
-				? deviceData.grayscale
-				: 2;
-
-		const imageUrl = buildDeviceImageUrl({
-			baseUrl,
-			imagePath: screenToDisplay,
-			profile,
-			query: `width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`,
+		const selection = await selectDisplayForDevice(deviceData, {
+			hostUrl: headers.hostUrl,
+			width: headers.width,
+			height: headers.height,
 		});
 
-		// Calculate refresh rate from schedule or use default
 		const refreshSchedule = deviceData.refresh_schedule as {
 			default_refresh_rate: number;
 		} | null;
@@ -113,7 +67,7 @@ export async function GET(request: Request) {
 			source: "api/display/current",
 			metadata: {
 				deviceId: deviceData.friendly_id,
-				screen: screenToDisplay,
+				screen: selection.screen,
 			},
 		});
 
@@ -121,8 +75,12 @@ export async function GET(request: Request) {
 			{
 				status: 200,
 				refresh_rate: refreshRate,
-				image_url: imageUrl,
-				filename: buildDeviceImageFilename(screenToDisplay, "current", profile),
+				image_url: selection.imageUrl,
+				filename: buildDeviceImageFilename(
+					selection.screen,
+					"current",
+					selection.profile,
+				),
 				rendered_at: deviceData.last_update_time || new Date().toISOString(),
 			},
 			{ status: 200 },
@@ -133,10 +91,7 @@ export async function GET(request: Request) {
 			metadata: { apiKey },
 		});
 		return NextResponse.json(
-			{
-				status: 500,
-				error: "Internal server error",
-			},
+			{ status: 500, error: "Internal server error" },
 			{ status: 500 },
 		);
 	}

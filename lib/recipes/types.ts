@@ -74,11 +74,10 @@ export type RecipeDefinition<
 export type AnyRecipeDefinition = RecipeDefinition<any, any>;
 
 /**
- * Module shape returned by recipe loaders. `definition` is optional during
- * the migration window — un-migrated recipes still load via the legacy
- * renderer (which uses the `default` component export and `screens.json`
- * metadata). Other exports (e.g. `paramsSchema`, `dataSchema`, `default`,
- * helper utilities) are intentionally allowed.
+ * Module shape returned by recipe loaders. The runtime requires
+ * `definition` — recipes without one are flagged at load time. Arbitrary
+ * other exports (helpers, the legacy `default` component) are allowed
+ * because recipe files are free to expose internal symbols.
  */
 export type RecipeModule = {
 	definition?: AnyRecipeDefinition;
