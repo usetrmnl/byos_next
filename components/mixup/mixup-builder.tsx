@@ -337,12 +337,19 @@ export function MixupBuilder({
 								const isActive = activeSlot === slot.id;
 
 								return (
-									<button
-										type="button"
+									<div
 										key={slot.id}
+										role="button"
+										tabIndex={0}
 										onClick={() => setActiveSlot(slot.id)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" || e.key === " ") {
+												e.preventDefault();
+												setActiveSlot(slot.id);
+											}
+										}}
 										className={cn(
-											"flex w-full items-center gap-3 px-4 py-3 text-left transition-colors",
+											"flex w-full items-center gap-3 px-4 py-3 text-left transition-colors cursor-pointer",
 											isActive ? "bg-primary/5" : "hover:bg-muted/40",
 										)}
 									>
@@ -388,7 +395,7 @@ export function MixupBuilder({
 												)}
 											</div>
 										</div>
-									</button>
+									</div>
 								);
 							})}
 						</div>
