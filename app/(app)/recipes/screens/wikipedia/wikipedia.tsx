@@ -37,7 +37,7 @@ export const dataSchema = z.object({
 	categories: z.array(z.string()).optional(),
 });
 
-export default async function Wikipedia({
+export default function Wikipedia({
 	title = "no data received",
 	extract = "Article content is unavailable.",
 	thumbnail,
@@ -48,7 +48,6 @@ export default async function Wikipedia({
 	width = 800,
 	height = 480,
 }: WikipediaData & { width?: number; height?: number }) {
-	"use cache";
 	// Sanitize the data to ensure we only work with valid inputs
 	const safeTitle =
 		title ||
