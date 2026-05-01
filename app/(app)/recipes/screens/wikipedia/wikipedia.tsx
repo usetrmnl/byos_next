@@ -78,13 +78,17 @@ export default function Wikipedia({
 		if (!safeExtract) return "";
 
 		// Base length for truncation - adjusted based on thumbnail presence
-		const baseLength = hasValidThumbnail
+		// and the actual canvas size (a 1872×1404 e-reader fits ~3× the text
+		// of an 800×480 device, so we let the extract grow with the canvas).
+		const canvasAreaScale = Math.max(1, (width * height) / (800 * 480));
+		const baseLengthRaw = hasValidThumbnail
 			? isHalfScreen
 				? 325
 				: 600
 			: isHalfScreen
 				? 400
 				: 800;
+		const baseLength = Math.round(baseLengthRaw * canvasAreaScale);
 
 		if (safeExtract.length <= baseLength) return safeExtract;
 
@@ -112,48 +116,57 @@ export default function Wikipedia({
 		hour12: true,
 	});
 
+	// Thumbnail target width grows with canvas — 240px on TRMNL OG (800w),
+	// up to ~30% of canvas width on bigger devices.
+	const thumbnailDisplayWidth = Math.max(240, Math.round(width * 0.18));
+	const thumbnailDisplayMaxHeight = Math.round(height * 0.5);
+
 	// Safe image dimensions calculation
 	const getImageDimensions = () => {
 		if (!hasValidThumbnail || !thumbnail)
-			return { width: "240px", height: "auto" };
+			return { width: `${thumbnailDisplayWidth}px`, height: "auto" };
 
 		try {
-			// At this point we've already validated that these values exist through hasValidThumbnail
-			// But to satisfy TypeScript, add additional safety checks
-			const width = typeof thumbnail.width === "number" ? thumbnail.width : 240;
-			const height =
+			const thumbWidth =
+				typeof thumbnail.width === "number" ? thumbnail.width : 240;
+			const thumbHeight =
 				typeof thumbnail.height === "number" ? thumbnail.height : 180;
-			const aspectRatio = height / width;
-			const displayWidth = 240;
-			const displayHeight = Math.round(displayWidth * aspectRatio);
+			const aspectRatio = thumbHeight / thumbWidth;
+			const displayHeight = Math.round(thumbnailDisplayWidth * aspectRatio);
 
-			// Impose reasonable limits
 			return {
-				width: `${displayWidth}px`,
-				height: `${Math.min(displayHeight, 400)}px`,
+				width: `${thumbnailDisplayWidth}px`,
+				height: `${Math.min(displayHeight, thumbnailDisplayMaxHeight)}px`,
 			};
 		} catch (error) {
 			console.error("Error calculating image dimensions:", error);
-			return { width: "240px", height: "auto" };
+			return { width: `${thumbnailDisplayWidth}px`, height: "auto" };
 		}
 	};
 
 	const imageDimensions = getImageDimensions();
 
 	return (
-		<PreSatori useDoubling={true} width={width} height={height}>
+		<PreSatori width={width} height={height}>
 			<div className="flex flex-col w-full h-full bg-white text-black">
-				<div className="flex-none p-4 border-b border-black">
-					<h1 className={` ${isHalfScreen ? "text-4xl" : "text-5xl"}`}>
+				<div className="flex-none p-4 lg:p-8 2xl:p-12 border-b border-black">
+					<h1
+						className={
+							isHalfScreen ? "text-4xl" : "text-5xl lg:text-7xl 2xl:text-8xl"
+						}
+					>
 						{safeTitle}
 					</h1>
 				</div>
-				<div className="flex flex-col flex-1 p-4 pb-0 sm:flex-row">
-					<div className="text-2xl flex flex-grow tracking-tight leading-none">
+				<div className="flex flex-col flex-1 p-4 lg:p-8 2xl:p-12 pb-0 sm:flex-row">
+					<div className="text-2xl lg:text-4xl 2xl:text-5xl flex flex-grow tracking-tight leading-tight lg:leading-snug">
 						{truncatedExtract}
 					</div>
 					{hasValidThumbnail && thumbnail?.source && !isHalfScreen && (
-						<div className="pt-8 sm:pt-0 sm:pr-4 w-full sm:w-[240px] items-center justify-center">
+						<div
+							className="pt-8 sm:pt-0 sm:pr-4 lg:pr-8 w-full items-center justify-center flex-none"
+							style={{ width: imageDimensions.width }}
+						>
 							<picture>
 								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}
 								<source srcSet={thumbnail.source} type="image/webp" />
@@ -165,8 +178,6 @@ export default function Wikipedia({
 									style={{
 										width: imageDimensions.width,
 										height: imageDimensions.height,
-										maxWidth: "240px",
-										maxHeight: "320px",
 										objectFit: "contain",
 										filter: "grayscale(100%) contrast(0.9) brightness(1.05)",
 									}}
@@ -175,8 +186,8 @@ export default function Wikipedia({
 						</div>
 					)}
 				</div>
-				<div className="flex-none p-4 pt-2 flex flex-col">
-					<div className="text-base font-geneva9 flex justify-between w-full ">
+				<div className="flex-none p-4 lg:p-8 2xl:p-12 pt-2 lg:pt-4 flex flex-col">
+					<div className="text-base lg:text-2xl 2xl:text-3xl font-geneva9 flex justify-between w-full ">
 						<span>{safeContentUrl}</span>
 						<span>
 							{safeDescription && safeDescription.length > 100
@@ -185,7 +196,7 @@ export default function Wikipedia({
 						</span>
 					</div>
 
-					<div className="w-full flex flex-col sm:flex-row  sm:justify-between items-center text-2xl text-white p-2 rounded-xl bg-gray-500">
+					<div className="w-full flex flex-col sm:flex-row sm:justify-between items-center text-2xl lg:text-3xl 2xl:text-4xl text-white p-2 lg:p-4 rounded-xl bg-gray-500">
 						<span>Wikipedia • Random Article</span>
 						<span>
 							{formattedDate && <span>Generated: {formattedDate}</span>}

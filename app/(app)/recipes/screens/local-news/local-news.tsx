@@ -111,28 +111,44 @@ export default function LocalNews({
 	const totalScore = stories.reduce((acc, s) => acc + (s.score ?? 0), 0);
 	const totalComments = stories.reduce((acc, s) => acc + (s.comments ?? 0), 0);
 
+	// Larger canvases (TRMNL X 1872×1404, e-readers) get more secondary posts +
+	// longer summary truncation. The truncate caps grow with available width
+	// so text fills the column width at every device size.
+	const titleCap = isHalfScreen ? 90 : width >= 1280 ? 220 : 130;
+	const summaryCap = isHalfScreen ? 140 : width >= 1280 ? 420 : 240;
+	const secondaryTitleCap = isHalfScreen ? 80 : width >= 1280 ? 160 : 95;
+	const secondarySummaryCap = width >= 1280 ? 220 : 120;
+
 	return (
-		<PreSatori width={width} height={height}>
-			<div className="flex h-full w-full flex-col bg-white p-4 text-black">
+		<PreSatori useDoubling={true} width={width} height={height}>
+			<div className="flex h-full w-full flex-col bg-white p-4 lg:p-6 2xl:p-10 gap-3 lg:gap-5 2xl:gap-8 text-black">
 				{/* Lead post */}
-				<div className="flex flex-col rounded-xl border-2 border-black p-3">
-					<div className="flex items-center justify-between font-geneva9 text-base uppercase tracking-[0.18em]">
+				<div className="flex flex-col rounded-xl border-2 border-black p-3 lg:p-5 2xl:p-8">
+					<div className="flex items-center justify-between font-geneva9 text-base lg:text-xl 2xl:text-2xl uppercase tracking-[0.18em]">
 						<span>r/{truncate(sub, 22)} · top</span>
 						<span>{lead.age} ago</span>
 					</div>
 					<div
-						className={`mt-1 font-inter leading-[0.98] ${isHalfScreen ? "text-xl" : "text-3xl"}`}
+						className={
+							isHalfScreen
+								? "mt-1 font-inter text-xl leading-[0.98]"
+								: "mt-1 lg:mt-3 font-inter text-3xl lg:text-5xl 2xl:text-6xl leading-[1.05]"
+						}
 					>
-						{truncate(lead.title, isHalfScreen ? 90 : 130)}
+						{truncate(lead.title, titleCap)}
 					</div>
 					{lead.summary ? (
 						<div
-							className={`mt-2 font-inter leading-tight ${isHalfScreen ? "text-sm" : "text-base"}`}
+							className={
+								isHalfScreen
+									? "mt-2 font-inter text-sm leading-tight"
+									: "mt-2 lg:mt-4 font-inter text-base lg:text-2xl 2xl:text-3xl leading-snug"
+							}
 						>
-							{truncate(lead.summary, isHalfScreen ? 140 : 240)}
+							{truncate(lead.summary, summaryCap)}
 						</div>
 					) : null}
-					<div className="mt-2 flex items-center justify-between border-t border-black pt-2 font-geneva9 text-sm uppercase tracking-[0.1em]">
+					<div className="mt-2 lg:mt-4 flex items-center justify-between border-t border-black pt-2 lg:pt-4 font-geneva9 text-sm lg:text-lg 2xl:text-xl uppercase tracking-[0.1em]">
 						<span>
 							▲ {compactNumber(lead.score)} · 💬 {compactNumber(lead.comments)}
 						</span>
@@ -144,31 +160,33 @@ export default function LocalNews({
 
 				{/* Secondary posts */}
 				<div
-					className={`mt-3 flex flex-1 ${isHalfScreen ? "flex-col gap-2" : "flex-row gap-2"}`}
+					className={
+						isHalfScreen
+							? "flex flex-1 flex-col gap-2"
+							: "flex flex-1 flex-row gap-2 lg:gap-4 2xl:gap-6"
+					}
 				>
 					{secondary.map((story, index) => (
 						<div
 							key={`${story.title}-${index}`}
-							className="flex flex-1 flex-col rounded-xl border border-black p-2"
+							className="flex flex-1 flex-col rounded-xl border border-black p-2 lg:p-4 2xl:p-6"
 						>
-							<div className="flex items-center justify-between font-geneva9 text-xs uppercase tracking-[0.1em]">
+							<div className="flex items-center justify-between font-geneva9 text-xs lg:text-base 2xl:text-lg uppercase tracking-[0.1em]">
 								<span>
 									{String(index + 2).padStart(2, "0")} · ▲{" "}
 									{compactNumber(story.score)}
 								</span>
 								<span>{story.age}</span>
 							</div>
-							<div
-								className={`mt-1 font-inter leading-[1.05] ${isHalfScreen ? "text-base" : "text-base"}`}
-							>
-								{truncate(story.title, isHalfScreen ? 80 : 95)}
+							<div className="mt-1 lg:mt-3 font-inter text-base lg:text-2xl 2xl:text-3xl leading-[1.1]">
+								{truncate(story.title, secondaryTitleCap)}
 							</div>
 							{story.summary ? (
-								<div className="mt-1 font-inter text-xs leading-tight">
-									{truncate(story.summary, 120)}
+								<div className="mt-1 lg:mt-3 font-inter text-xs lg:text-base 2xl:text-lg leading-tight">
+									{truncate(story.summary, secondarySummaryCap)}
 								</div>
 							) : null}
-							<div className="mt-auto pt-1 font-geneva9 text-xs uppercase tracking-[0.08em]">
+							<div className="mt-auto pt-1 lg:pt-3 font-geneva9 text-xs lg:text-base 2xl:text-lg uppercase tracking-[0.08em]">
 								💬 {compactNumber(story.comments)} ·{" "}
 								{truncate(story.domain, 22)}
 							</div>
@@ -177,7 +195,7 @@ export default function LocalNews({
 				</div>
 
 				{/* Footer */}
-				<div className="mt-3 flex w-full flex-row justify-between items-center rounded-xl bg-gray-500 p-2 text-xl text-white">
+				<div className="flex w-full flex-row justify-between items-center rounded-xl bg-gray-500 p-2 lg:p-4 text-xl lg:text-3xl 2xl:text-4xl text-white">
 					<div>
 						{stories.length} posts · ▲ {compactNumber(totalScore)} · 💬{" "}
 						{compactNumber(totalComments)}
