@@ -70,7 +70,6 @@ export type RecipeDefinition<
  * Loosely typed alias used by registry code that handles arbitrary
  * definitions without knowing each recipe's schema generics.
  */
-// biome-ignore lint/suspicious/noExplicitAny: registry handles heterogeneous schemas
 export type AnyRecipeDefinition = RecipeDefinition<any, any>;
 
 /**
@@ -81,7 +80,6 @@ export type AnyRecipeDefinition = RecipeDefinition<any, any>;
  */
 export type RecipeModule = {
 	definition?: AnyRecipeDefinition;
-	// biome-ignore lint/suspicious/noExplicitAny: recipe modules export arbitrary helpers
 	[key: string]: any;
 };
 

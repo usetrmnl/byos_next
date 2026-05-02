@@ -231,7 +231,6 @@ export function Graph({
 				}}
 			>
 				<div style={{ display: "flex" }}>
-					{/* biome-ignore lint/performance/noImgElement: Using data URI SVG, Next.js Image doesn't support this */}
 					<img
 						src={`data:image/svg+xml;utf8,${encodeURIComponent(svgString)}`}
 						alt="Line graph"
