@@ -11,6 +11,11 @@ interface DeviceFrameProps {
 	size?: "sm" | "md" | "lg";
 	/** Portrait flips the screen aspect ratio. */
 	portrait?: boolean;
+	/**
+	 * When set (e.g. `800 / 480`), overrides the default TRMNL aspect ratio.
+	 * Use for previews that simulate a specific device resolution.
+	 */
+	screenAspectRatio?: string;
 	className?: string;
 	/** Render without the outer shadow (useful when nested in a card). */
 	flat?: boolean;
@@ -40,13 +45,16 @@ export function DeviceFrame({
 	children,
 	size = "md",
 	portrait = false,
+	screenAspectRatio,
 	className,
 	flat = false,
 }: DeviceFrameProps) {
 	const styles = sizeStyles[size];
-	const ratio = portrait
-		? `${DEFAULT_IMAGE_HEIGHT} / ${DEFAULT_IMAGE_WIDTH}`
-		: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`;
+	const ratio =
+		screenAspectRatio ??
+		(portrait
+			? `${DEFAULT_IMAGE_HEIGHT} / ${DEFAULT_IMAGE_WIDTH}`
+			: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`);
 
 	return (
 		<div

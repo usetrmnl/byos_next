@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
 import tools from "@/app/(app)/tools/tools.json";
-import { fetchRecipes } from "@/app/actions/mixup";
 import { ClientMainLayout } from "@/components/client-main-layout";
 import { auth } from "@/lib/auth/auth";
 import {
@@ -9,7 +8,7 @@ import {
 	preloadDevices,
 	preloadSystemLogs,
 } from "@/lib/getInitData";
-import { syncReactRecipes } from "@/lib/recipes/sync-react-recipes";
+import { listAllRecipes } from "@/lib/recipes/catalog";
 
 const AUTH_ENABLED = process.env.AUTH_ENABLED !== "false";
 
@@ -58,14 +57,14 @@ export default async function MainLayout({
 	preloadSystemLogs();
 	preloadDevices();
 
-	// Sync react recipes from screens.json into the database
-	await syncReactRecipes();
-
-	// Fetch recipes from DB (filtered by published in production)
-	const allRecipes = await fetchRecipes();
-	const recipeSidebarItems = allRecipes
-		.sort((a, b) => a.name.localeCompare(b.name))
-		.map((r) => ({ slug: r.slug, name: r.name }));
+	// Sidebar lists built-in React recipes (registry) + installed liquid
+	// recipes (DB). No request-time sync needed — built-ins always show
+	// up even on a cold-install database.
+	const allRecipes = await listAllRecipes();
+	const recipeSidebarItems = allRecipes.map((r) => ({
+		slug: r.slug,
+		name: r.name,
+	}));
 
 	const toolsComponents = Object.entries(tools)
 		.filter(

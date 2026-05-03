@@ -144,11 +144,13 @@ Create `.env.local` (for `pnpm dev`) or `.env` (for Docker Compose) with the key
 
 ## Recipes
 Visit `/recipes` to browse screens and compare direct vs. bitmap rendering. To add one:
-1. Create a folder under `app/recipes/screens`.
-2. Add your component and data fetching logic.
-3. Register it in `app/recipes/screens.json`.
+1. Create a folder under `app/(app)/recipes/screens/<slug>/`.
+2. Add `<slug>.tsx` exporting `paramsSchema`, `dataSchema`, and a
+   `definition` of type `RecipeDefinition<P, D>`.
+3. That's it — the recipe index regenerates on `pnpm dev` and the
+   sidebar picks it up automatically.
 
-See `docs/recipes.md` for more detail.
+See `docs/recipes.md` for the full pattern, including data fetching.
 
 ## Documentation
 - API endpoints and payloads: `docs/api.md`

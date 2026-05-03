@@ -1,4 +1,18 @@
+import { z } from "zod";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
+
+const DEFAULT_IMAGE_URL = "https://byos-nextjs.vercel.app/album/london.png";
+
+export const paramsSchema = z.object({
+	imageUrl: z
+		.string()
+		.url()
+		.default(DEFAULT_IMAGE_URL)
+		.describe("URL of the image to display in the album")
+		.meta({ title: "Image URL", placeholder: "https://example.com/image.png" }),
+});
+export const dataSchema = paramsSchema;
 
 interface AlbumProps {
 	width?: number;
@@ -13,8 +27,7 @@ export default async function Album({
 	height = 480,
 	params,
 }: AlbumProps) {
-	const imageUrl =
-		params?.imageUrl || "https://byos-nextjs.vercel.app/album/london.png";
+	const imageUrl = params?.imageUrl || DEFAULT_IMAGE_URL;
 
 	return (
 		<PreSatori width={width} height={height}>
@@ -54,3 +67,23 @@ export default async function Album({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<typeof paramsSchema> = {
+	meta: {
+		slug: "album",
+		title: "Album",
+		description: "Photos with a clock.",
+		published: true,
+		tags: ["bitmap", "text", "configurable"],
+		author: { name: "Mangle Kuo", github: "ghcpuman902" },
+		category: "display-components",
+		version: "0.2.0",
+		createdAt: "2025-03-01T00:00:00Z",
+		updatedAt: "2025-03-01T00:00:00Z",
+	},
+	paramsSchema,
+	dataSchema,
+	Component: ({ width, height, params }) => (
+		<Album width={width} height={height} params={params} />
+	),
+};

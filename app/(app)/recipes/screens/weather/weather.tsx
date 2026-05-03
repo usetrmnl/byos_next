@@ -1,4 +1,7 @@
+import { z } from "zod";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
+import getWeatherDataInternal from "./getData";
 import {
 	CloudIcon,
 	FogIcon,
@@ -15,6 +18,31 @@ import {
 	tempUp,
 	windIcon,
 } from "./icons";
+
+export const paramsSchema = z.object({
+	location: z
+		.string()
+		.default("San Francisco")
+		.describe("City or place name to fetch weather for")
+		.meta({ title: "Location", placeholder: "San Francisco" }),
+});
+
+export const dataSchema = z.object({
+	temperature: z.string().default("Loading..."),
+	feelsLike: z.string().default("Loading..."),
+	humidity: z.string().default("Loading..."),
+	windSpeed: z.string().default("Loading..."),
+	description: z.string().default("Loading..."),
+	location: z.string().default("Loading..."),
+	lastUpdated: z.string().default("Loading..."),
+	highTemp: z.string().default("Loading..."),
+	lowTemp: z.string().default("Loading..."),
+	pressure: z.string().default("Loading..."),
+	sunset: z.string().default("Loading..."),
+	sunrise: z.string().default("Loading..."),
+	latitude: z.number().default(0),
+	longitude: z.number().default(0),
+});
 
 interface WeatherProps {
 	temperature?: string;
@@ -134,3 +162,31 @@ export default function Weather({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<
+	typeof paramsSchema,
+	typeof dataSchema
+> = {
+	meta: {
+		slug: "weather",
+		title: "Weather Forecast",
+		description:
+			"A component that displays current weather data from Open-Meteo API. Supports configurable locations via latitude/longitude or location name.",
+		published: true,
+		tags: ["tailwind", "weather", "api", "live-data", "configurable"],
+		author: { name: "rbouteiller", github: "" },
+		category: "display-components",
+		version: "0.1.0",
+		createdAt: "2025-03-01T00:00:00Z",
+		updatedAt: "2025-03-01T00:00:00Z",
+	},
+	paramsSchema,
+	dataSchema,
+	getData: async (params) => {
+		const data = await getWeatherDataInternal({ location: params.location });
+		return data as z.infer<typeof dataSchema>;
+	},
+	Component: ({ width, height, data }) => (
+		<Weather {...data} width={width} height={height} />
+	),
+};

@@ -14,6 +14,8 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
+import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -63,14 +65,11 @@ const calculateRefreshPerDay = (
 	return Math.max(0, refreshesPerDay);
 };
 
-const getGrayscaleLevels = (grayscale: number | null | undefined): number => {
-	if (grayscale === 2 || grayscale === 4 || grayscale === 16) return grayscale;
-	return 2;
-};
-
 interface DeviceViewProps {
 	device: Device & { status?: string; type?: string };
 	playlistScreens: { screen: string; duration: number }[];
+	trmnlModels: TrmnlModel[];
+	trmnlPalettes: TrmnlPalette[];
 }
 
 function PanelHeader({
@@ -112,6 +111,8 @@ function MetaPair({
 export default function DeviceView({
 	device,
 	playlistScreens,
+	trmnlModels,
+	trmnlPalettes,
 }: DeviceViewProps) {
 	const [firmwareInfo, setFirmwareInfo] = useState<FirmwareInfo | null>(null);
 
@@ -146,7 +147,28 @@ export default function DeviceView({
 	const deviceHeight = isPortrait
 		? device.screen_width || DEFAULT_IMAGE_WIDTH
 		: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const grayscaleLevels = getGrayscaleLevels(device.grayscale);
+	const grayscaleLevels = normalizeGrayscale(device.grayscale);
+	const selectedModel =
+		trmnlModels.find((model) => model.name === device.model) ??
+		trmnlModels.find((model) => model.name === "og_plus") ??
+		trmnlModels[0];
+	const selectedPalette =
+		trmnlPalettes.find((palette) => palette.id === device.palette_id) ??
+		trmnlPalettes.find(
+			(palette) => palette.id === selectedModel?.palette_ids[0],
+		);
+	const imageExtension = getModelImageExtension(selectedModel);
+	const profileQuery = new URLSearchParams({
+		width: String(deviceWidth),
+		height: String(deviceHeight),
+		grayscale: String(grayscaleLevels),
+	});
+	if (selectedModel?.name) {
+		profileQuery.set("model", selectedModel.name);
+	}
+	if (selectedPalette?.id) {
+		profileQuery.set("palette_id", selectedPalette.id);
+	}
 
 	const status: "online" | "offline" =
 		device.status === "online" ? "online" : "offline";
@@ -162,10 +184,10 @@ export default function DeviceView({
 	const isMixup =
 		device.display_mode === DeviceDisplayMode.MIXUP && device.mixup_id;
 	const heroSrc = isPlaylist
-		? `/api/bitmap/${playlistScreens[0].screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`
+		? `/api/bitmap/${playlistScreens[0].screen || "simple-text"}.${imageExtension}?${profileQuery}`
 		: isMixup
-			? `/api/bitmap/mixup/${device.mixup_id}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`
-			: `/api/bitmap/${device?.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}`;
+			? `/api/bitmap/mixup/${device.mixup_id}.${imageExtension}?${profileQuery}`
+			: `/api/bitmap/${device?.screen || "simple-text"}.${imageExtension}?${profileQuery}`;
 
 	return (
 		<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
@@ -219,7 +241,7 @@ export default function DeviceView({
 								>
 									<DeviceFrame size="sm" portrait={isPortrait} flat>
 										<Image
-											src={`/api/bitmap/${screen.screen || "simple-text"}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+											src={`/api/bitmap/${screen.screen || "simple-text"}.${imageExtension}?${profileQuery}`}
 											alt={`Frame ${i + 1}`}
 											fill
 											className="absolute inset-0 h-full w-full object-cover"
@@ -407,4 +429,12 @@ export default function DeviceView({
 			</div>
 		</div>
 	);
+}
+
+function getModelImageExtension(model: TrmnlModel | undefined): string {
+	if (!model) return "png";
+	if (model.mime_type === "image/webp") return "webp";
+	if (model.mime_type === "image/bmp") return "bmp";
+	if (model.mime_type === "image/jpeg") return "jpg";
+	return "png";
 }

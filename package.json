@@ -1,13 +1,15 @@
 {
 	"name": "byos-nextjs",
-	"version": "0.2.2",
+	"version": "0.2.3",
 	"private": true,
 	"scripts": {
 		"screenshots": "node scripts/take-screenshots.mjs",
 		"generate:sql": "node scripts/generate-sql-statements.js && pnpm format",
 		"generate:types": "kysely-codegen --dialect postgres --include-pattern='public.*' --out-file lib/database/db.d.ts",
-		"prebuild": "pnpm generate:sql",
-		"dev": "pnpm generate:sql && next dev --turbopack",
+		"generate:types:trmnl": "openapi-typescript lib/trmnl/openapi.yaml -o lib/trmnl/types.gen.ts && biome format --write lib/trmnl/types.gen.ts",
+		"generate:recipes": "node scripts/generate-recipes-index.mjs && biome format --write lib/recipes/screens.generated.ts",
+		"prebuild": "pnpm generate:sql && pnpm generate:recipes",
+		"dev": "pnpm generate:sql && pnpm generate:recipes && next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
 		"lint": "biome check ./app ./components ./lib ./utils ./hooks",
@@ -86,6 +88,7 @@
 		"eslint-config-next": "16.1.6",
 		"eslint-plugin-react-hooks": "^7.0.1",
 		"kysely-codegen": "^0.20.0",
+		"openapi-typescript": "^7.13.0",
 		"shadcn": "^4.4.0",
 		"tailwindcss": "^4.2.4",
 		"typescript": "^6.0.3"

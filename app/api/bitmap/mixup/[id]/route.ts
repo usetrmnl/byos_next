@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import sharp from "sharp";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
@@ -10,6 +11,9 @@ import {
 	logger,
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
+import { renderDeviceImage } from "@/lib/render/device-image";
+import { stripImageExtension } from "@/lib/render/device-image-url";
+import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
@@ -18,7 +22,7 @@ export async function GET(
 ) {
 	try {
 		const { id } = await params;
-		const mixupId = id.replace(".bmp", "");
+		const mixupId = stripImageExtension(id);
 
 		// Get width, height, and grayscale from query parameters
 		const { searchParams } = new URL(req.url);
@@ -40,46 +44,89 @@ export async function GET(
 			return new Response("Database not available", { status: 503 });
 		}
 
-		if (!accessToken) {
-			return new Response("Access token is required", { status: 401 });
+		// Two auth paths:
+		//  1. Device callback — `access_token` query param or `Access-Token` header
+		//     matches a device whose `mixup_id` is this one.
+		//  2. Browser/admin — signed-in user owns the mixup. Used by the UI
+		//     (mixup-list, device-view, device-edit-form) which can't add an
+		//     access_token to <img> srcs.
+		let userId: string | null = null;
+		let profileSource: {
+			model: string | null;
+			palette_id: string | null;
+		} | null = null;
+
+		if (accessToken) {
+			const device = await db
+				.selectFrom("devices")
+				.select(["user_id", "mixup_id", "model", "palette_id"])
+				.where("api_key", "=", accessToken)
+				.executeTakeFirst();
+
+			if (!device || device.mixup_id !== mixupId || !device.user_id) {
+				return new Response("Mixup not found", { status: 404 });
+			}
+			userId = device.user_id;
+			profileSource = { model: device.model, palette_id: device.palette_id };
+		} else {
+			const sessionUserId = await getCurrentUserId();
+			if (!sessionUserId) {
+				return new Response("Access token is required", { status: 401 });
+			}
+			const owned = await withExplicitUserScope(sessionUserId, (scopedDb) =>
+				scopedDb
+					.selectFrom("mixups")
+					.select("id")
+					.where("id", "=", mixupId)
+					.executeTakeFirst(),
+			);
+			if (!owned) {
+				return new Response("Mixup not found", { status: 404 });
+			}
+			userId = sessionUserId;
+			// No device context — fall back to the user's first mixup-bound device
+			// for profile, else null (getDeviceProfile handles null model).
+			const fallbackDevice = await db
+				.selectFrom("devices")
+				.select(["model", "palette_id"])
+				.where("user_id", "=", sessionUserId)
+				.where("mixup_id", "=", mixupId)
+				.executeTakeFirst();
+			profileSource = {
+				model: fallbackDevice?.model ?? null,
+				palette_id: fallbackDevice?.palette_id ?? null,
+			};
 		}
 
-		const device = await db
-			.selectFrom("devices")
-			.select(["user_id", "mixup_id"])
-			.where("api_key", "=", accessToken)
-			.executeTakeFirst();
-
-		if (!device || device.mixup_id !== mixupId || !device.user_id) {
-			return new Response("Mixup not found", { status: 404 });
-		}
+		const profile = await getDeviceProfile(
+			profileSource.model,
+			profileSource.palette_id,
+		);
 
 		// Fetch mixup and its slots (join with recipes to get slug)
-		const [mixup, slots] = await withExplicitUserScope(
-			device.user_id,
-			(scopedDb) =>
-				Promise.all([
-					scopedDb
-						.selectFrom("mixups")
-						.selectAll()
-						.where("id", "=", mixupId)
-						.executeTakeFirst(),
-					scopedDb
-						.selectFrom("mixup_slots")
-						.leftJoin("recipes", "recipes.id", "mixup_slots.recipe_id")
-						.select([
-							"mixup_slots.id",
-							"mixup_slots.mixup_id",
-							"mixup_slots.slot_id",
-							"mixup_slots.recipe_slug",
-							"mixup_slots.recipe_id",
-							"mixup_slots.order_index",
-							"recipes.slug as resolved_slug",
-						])
-						.where("mixup_slots.mixup_id", "=", mixupId)
-						.orderBy("mixup_slots.order_index", "asc")
-						.execute(),
-				]),
+		const [mixup, slots] = await withExplicitUserScope(userId, (scopedDb) =>
+			Promise.all([
+				scopedDb
+					.selectFrom("mixups")
+					.selectAll()
+					.where("id", "=", mixupId)
+					.executeTakeFirst(),
+				scopedDb
+					.selectFrom("mixup_slots")
+					.leftJoin("recipes", "recipes.id", "mixup_slots.recipe_id")
+					.select([
+						"mixup_slots.id",
+						"mixup_slots.mixup_id",
+						"mixup_slots.slot_id",
+						"mixup_slots.recipe_slug",
+						"mixup_slots.recipe_id",
+						"mixup_slots.order_index",
+						"recipes.slug as resolved_slug",
+					])
+					.where("mixup_slots.mixup_id", "=", mixupId)
+					.orderBy("mixup_slots.order_index", "asc")
+					.execute(),
+			]),
 		);
 
 		if (!mixup) {
@@ -103,20 +150,34 @@ export async function GET(
 			`Rendering mixup ${mixupId} with layout ${mixup.layout_id} and ${slots.length} slots`,
 		);
 
-		// Render the mixup composite
-		const compositeBuffer = await renderMixupComposite(
+		const compositedPng = await renderMixupCompositePng(
 			layout.slots,
 			assignments,
 			width,
 			height,
-			grayscaleLevels,
-			device.user_id,
+			userId,
 		);
+		const image =
+			profile.model.mime_type === "image/bmp"
+				? {
+						buffer: await renderBmp(compositedPng, {
+							ditheringMethod: DitheringMethod.ATKINSON,
+							width,
+							height,
+							grayscale: grayscaleLevels,
+						}),
+						mime_type: "image/bmp",
+						size_limit_exceeded: false,
+					}
+				: await renderDeviceImage({ png: compositedPng, profile });
 
-		return new Response(new Uint8Array(compositeBuffer), {
+		return new Response(new Uint8Array(image.buffer), {
 			headers: {
-				"Content-Type": "image/bmp",
-				"Content-Length": compositeBuffer.length.toString(),
+				"Content-Type": image.mime_type,
+				"Content-Length": image.buffer.length.toString(),
+				...(image.size_limit_exceeded
+					? { "X-TRMNL-Image-Size-Limit-Exceeded": "true" }
+					: {}),
 			},
 		});
 	} catch (error) {
@@ -152,14 +213,13 @@ async function renderSlot(
 }
 
 /**
- * Render all slots and composite them into a final bitmap
+ * Render all slots and composite them into a final PNG
  */
-async function renderMixupComposite(
+async function renderMixupCompositePng(
 	slots: LayoutSlot[],
 	assignments: Record<string, string | null>,
 	width: number,
 	height: number,
-	grayscaleLevels: number,
 	userId: string,
 ): Promise<Buffer> {
 	// Render all slots in parallel
@@ -210,13 +270,5 @@ async function renderMixupComposite(
 		.png()
 		.toBuffer();
 
-	// Convert to BMP with dithering
-	const bmpBuffer = await renderBmp(compositedPng, {
-		ditheringMethod: DitheringMethod.ATKINSON,
-		width,
-		height,
-		grayscale: grayscaleLevels,
-	});
-
-	return bmpBuffer;
+	return compositedPng;
 }

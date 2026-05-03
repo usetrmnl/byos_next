@@ -30,17 +30,29 @@ function parseCookies(
  * page can freely reference cross-origin images. This is only safe because
  * the page is our own same-origin Next.js route.
  */
+export type RenderWithBrowserOptions = {
+	model?: string | null;
+	paletteId?: string | null;
+};
+
 export async function renderWithBrowser(
 	slug: string,
 	width: number,
 	height: number,
 	scale = 1,
 	cookies?: string,
+	options: RenderWithBrowserOptions = {},
 ): Promise<Buffer> {
 	const port = process.env.PORT || 3000;
 	const baseUrl =
 		process.env.NEXT_PUBLIC_BASE_URL ?? `http://127.0.0.1:${port}`;
-	const url = `${baseUrl}/recipes/${slug}/preview?width=${width}&height=${height}`;
+	const params = new URLSearchParams({
+		width: String(width),
+		height: String(height),
+	});
+	if (options.model) params.set("model", options.model);
+	if (options.paletteId) params.set("palette_id", options.paletteId);
+	const url = `${baseUrl}/recipes/${slug}/preview?${params.toString()}`;
 
 	const browser = await getBrowser("trusted");
 	const page = await browser.newPage();
