@@ -575,25 +575,30 @@ paths:
     parameters:
     - name: id
       in: path
-      description: Plugin setting ID
+      description: Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth)
       required: true
       schema:
-        type: integer
+        type: string
     get:
       summary: Download a plugin setting archive
       tags:
       - Plugin Settings
       description: |
-        This endpoint is available for unauthenticated requests.
-
-        When unauthenticated, any published recipe may be archived.
-
-        When authenticated, the requesting user's private plugins are also archivable.
+        Numeric IDs require bearer auth. UUIDs act as capability URLs and may
+        be called without authentication.
       security:
       - bearer_auth: []
+      - {}
       responses:
         '200':
           description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    "$ref": "#/components/schemas/PluginSettingArchive"
         '404':
           description: Not Found
           content:
@@ -612,16 +617,17 @@ paths:
       - Plugin Settings
       security:
       - bearer_auth: []
+      - {}
       parameters: []
       responses:
         '401':
-          description: Unauthorized
+          description: Unauthorized (numeric id without session)
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
         '422':
-          description: Unprocessable Entity
+          description: Archive too large or invalid
           content:
             application/json:
               schema:
@@ -639,26 +645,38 @@ paths:
         content:
           multipart/form-data:
             schema:
-              type: file
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                archive:
+                  type: string
+                  format: binary
+              description: Provide the archive under `file` (preferred) or `archive`.
         required: true
         description: Plugin setting archive file
   "/api/plugin_settings/{id}/data":
     parameters:
     - name: id
       in: path
-      description: Plugin setting ID or UUID
+      description: Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth)
       required: true
       schema:
         type: string
     get:
       summary: Get the data of a plugin setting
+      description: |
+        Numeric IDs require bearer auth. UUIDs act as capability URLs and may
+        be called without authentication — knowing the UUID is sufficient.
       tags:
       - Plugin Settings
       security:
       - bearer_auth: []
+      - {}
       responses:
         '401':
-          description: Unauthorized
+          description: Unauthorized (numeric id without session)
           content:
             application/json:
               schema:
@@ -672,34 +690,39 @@ paths:
                 properties:
                   data:
                     type: object
+                    additionalProperties: true
         '404':
           description: Not found
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
-        '422':
-          description: Data is not available
+        '503':
+          description: Database unavailable
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
     post:
       summary: Update data for a plugin setting
+      description: |
+        Numeric IDs require bearer auth. UUIDs act as capability URLs and may
+        be called without authentication — this is the TRMNL webhook contract.
       tags:
       - Plugin Settings
       security:
       - bearer_auth: []
+      - {}
       parameters: []
       responses:
         '401':
-          description: Unauthorized
+          description: Unauthorized (numeric id without session)
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
         '200':
-          description: Success with UUID (no auth required)
+          description: Success
           content:
             application/json:
               schema:
@@ -707,6 +730,7 @@ paths:
                 properties:
                   data:
                     type: object
+                    additionalProperties: true
         '404':
           description: Not found
           content:
@@ -723,29 +747,46 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                merge_variables: {}
-              required:
-              - merge_variables
-              additionalProperties: false
+              "$ref": "#/components/schemas/PluginSettingDataParams"
         required: true
         description: The value of `merge_variables` must be a JSON object
   "/api/plugin_settings/{id}/image":
     parameters:
     - name: id
       in: path
-      description: Plugin setting UUID
+      description: Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth)
       required: true
       schema:
         type: string
     post:
-      summary: Upload an image for a webhook_image plugin
+      summary: Upload an image icon for a plugin setting
+      description: |
+        Multipart upload of a raster image (PNG/JPEG/WebP/GIF). The bytes are
+        stored inline as a `data:` URL in `icon_url`. SVG is rejected because
+        a script-bearing SVG inside a `data:` URL becomes XSS as soon as a
+        client renders it outside a strictly inert path.
       tags:
       - Plugin Settings
+      security:
+      - bearer_auth: []
+      - {}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                file:
+                  type: string
+                  format: binary
+              description: Provide the bytes under `image` (preferred) or `file`.
       responses:
         '200':
-          description: Success with home_assistant_screenshot plugin
+          description: Success
           content:
             application/json:
               schema:
@@ -754,71 +795,87 @@ paths:
                   data:
                     type: object
                     properties:
-                      message:
+                      icon_url:
                         type: string
+                        nullable: true
+                      icon_content_type:
+                        type: string
+                        nullable: true
+        '401':
+          description: Unauthorized (numeric id without session)
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
         '404':
           description: Not found
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
         '422':
-          description: Image too large
-        '503':
-          description: Storage service unavailable
-        '429':
-          description: Rate limited
-  "/api/plugin_settings/{plugin_setting_id}/markup/{size}":
+          description: Image too large or unrecognized format
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+  "/api/plugin_settings/{id}/markup/{size}":
     get:
       summary: Read markup for a size
       tags:
       - Plugin Settings - Markup
       security:
       - bearer_auth: []
+      - {}
       parameters:
-      - name: plugin_setting_id
+      - name: id
         in: path
         required: true
-        description: Plugin setting UUID
+        description: Plugin setting numeric ID (requires auth) or UUID (capability URL)
         schema:
           type: string
       - name: size
         in: path
         required: true
-        description: Markup size (e.g. markup_full)
+        description: Markup size (markup_full, markup_quadrant, markup_half_horizontal, markup_half_vertical)
         schema:
           type: string
       responses:
         '401':
-          description: Unauthorized
+          description: Unauthorized (numeric id without session)
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
         '200':
-          description: Returns markup content
+          description: Returns markup content (text/plain)
         '422':
           description: Invalid size
         '404':
-          description: UUID belonging to another user
+          description: Not found
     put:
       summary: Write markup for a size
       tags:
       - Plugin Settings - Markup
       security:
       - bearer_auth: []
+      - {}
       parameters:
-      - name: plugin_setting_id
+      - name: id
         in: path
         required: true
-        description: Plugin setting UUID
+        description: Plugin setting numeric ID (requires auth) or UUID (capability URL)
         schema:
           type: string
       - name: size
         in: path
         required: true
-        description: Markup size (e.g. markup_full)
+        description: Markup size (markup_full, markup_quadrant, markup_half_horizontal, markup_half_vertical)
         schema:
           type: string
       responses:
         '401':
-          description: Unauthorized
+          description: Unauthorized (numeric id without session)
           content:
             application/json:
               schema:
@@ -826,7 +883,7 @@ paths:
         '200':
           description: Markup written successfully
         '422':
-          description: Invalid size
+          description: Invalid size or oversized content
       requestBody:
         content:
           application/json:
@@ -838,23 +895,24 @@ paths:
               required:
               - content
         required: true
-  "/api/plugin_settings/{plugin_setting_id}/settings":
+  "/api/plugin_settings/{id}/settings":
     patch:
       summary: Update plugin settings fields
       tags:
       - Plugin Settings - Settings
       security:
       - bearer_auth: []
+      - {}
       parameters:
-      - name: plugin_setting_id
+      - name: id
         in: path
         required: true
-        description: Plugin setting UUID
+        description: Plugin setting numeric ID (requires auth) or UUID (capability URL)
         schema:
           type: string
       responses:
         '401':
-          description: Unauthorized
+          description: Unauthorized (numeric id without session)
           content:
             application/json:
               schema:
@@ -864,7 +922,7 @@ paths:
         '422':
           description: Non-string field values
         '404':
-          description: Unknown UUID
+          description: Not found
       requestBody:
         content:
           application/json:
@@ -873,6 +931,9 @@ paths:
               properties:
                 fields:
                   type: object
+                  additionalProperties:
+                    type: string
+                    nullable: true
               required:
               - fields
         required: true
@@ -950,24 +1011,25 @@ paths:
       - Plugin Settings
       security:
       - bearer_auth: []
+      - {}
       parameters:
       - name: id
         in: path
         required: true
-        description: Plugin setting UUID
+        description: Plugin setting numeric ID (requires auth) or UUID (capability URL)
         schema:
           type: string
       responses:
         '401':
-          description: Unauthorized
+          description: Unauthorized (numeric id without session)
           content:
             application/json:
               schema:
                 "$ref": "#/components/schemas/Error"
         '200':
-          description: Returns plugin details with sizes
+          description: Returns plugin details with markup sizes
         '404':
-          description: UUID belonging to another user
+          description: Not found
   "/api/plugin_settings/{id}":
     delete:
       summary: Delete a plugin setting
@@ -975,16 +1037,17 @@ paths:
       - Plugin Settings
       security:
       - bearer_auth: []
+      - {}
       parameters:
       - name: id
         in: path
         required: true
-        description: ID of the plugin setting to delete
+        description: Plugin setting numeric ID (requires auth) or UUID (capability URL)
         schema:
-          type: integer
+          type: string
       responses:
         '401':
-          description: Unauthorized
+          description: Unauthorized (numeric id without session)
           content:
             application/json:
               schema:
@@ -1323,14 +1386,14 @@ components:
     PluginSettingDataParams:
       type: object
       additionalProperties: false
+      required:
+      - merge_variables
       properties:
         merge_variables:
-          type: content
-          required: true
-          example: true
-        error:
-          type: string
-          required: false
+          type: object
+          additionalProperties: true
+          description: Arbitrary JSON object merged into the plugin setting's
+            `merge_variables` (whole-replace).
     User:
       type: object
       additionalProperties: false

@@ -768,26 +768,23 @@ export interface paths {
 			query?: never;
 			header?: never;
 			path: {
-				/** @description Plugin setting ID */
-				id: number;
+				/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth) */
+				id: string;
 			};
 			cookie?: never;
 		};
 		/**
 		 * Download a plugin setting archive
-		 * @description This endpoint is available for unauthenticated requests.
-		 *
-		 *     When unauthenticated, any published recipe may be archived.
-		 *
-		 *     When authenticated, the requesting user's private plugins are also archivable.
+		 * @description Numeric IDs require bearer auth. UUIDs act as capability URLs and may
+		 *     be called without authentication.
 		 */
 		get: {
 			parameters: {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting ID */
-					id: number;
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth) */
+					id: string;
 				};
 				cookie?: never;
 			};
@@ -798,7 +795,11 @@ export interface paths {
 					headers: {
 						[name: string]: unknown;
 					};
-					content?: never;
+					content: {
+						"application/json": {
+							data?: components["schemas"]["PluginSettingArchive"];
+						};
+					};
 				};
 				/** @description Not Found */
 				404: {
@@ -827,15 +828,20 @@ export interface paths {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting ID */
-					id: number;
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth) */
+					id: string;
 				};
 				cookie?: never;
 			};
 			/** @description Plugin setting archive file */
 			requestBody: {
 				content: {
-					"multipart/form-data": Record<string, never>;
+					"multipart/form-data": {
+						/** Format: binary */
+						file?: string;
+						/** Format: binary */
+						archive?: string;
+					};
 				};
 			};
 			responses: {
@@ -850,7 +856,7 @@ export interface paths {
 						};
 					};
 				};
-				/** @description Unauthorized */
+				/** @description Unauthorized (numeric id without session) */
 				401: {
 					headers: {
 						[name: string]: unknown;
@@ -859,7 +865,7 @@ export interface paths {
 						"application/json": components["schemas"]["Error"];
 					};
 				};
-				/** @description Unprocessable Entity */
+				/** @description Archive too large or invalid */
 				422: {
 					headers: {
 						[name: string]: unknown;
@@ -881,18 +887,22 @@ export interface paths {
 			query?: never;
 			header?: never;
 			path: {
-				/** @description Plugin setting ID or UUID */
+				/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth) */
 				id: string;
 			};
 			cookie?: never;
 		};
-		/** Get the data of a plugin setting */
+		/**
+		 * Get the data of a plugin setting
+		 * @description Numeric IDs require bearer auth. UUIDs act as capability URLs and may
+		 *     be called without authentication — knowing the UUID is sufficient.
+		 */
 		get: {
 			parameters: {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting ID or UUID */
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth) */
 					id: string;
 				};
 				cookie?: never;
@@ -906,11 +916,13 @@ export interface paths {
 					};
 					content: {
 						"application/json": {
-							data?: Record<string, never>;
+							data?: {
+								[key: string]: unknown;
+							};
 						};
 					};
 				};
-				/** @description Unauthorized */
+				/** @description Unauthorized (numeric id without session) */
 				401: {
 					headers: {
 						[name: string]: unknown;
@@ -928,8 +940,8 @@ export interface paths {
 						"application/json": components["schemas"]["Error"];
 					};
 				};
-				/** @description Data is not available */
-				422: {
+				/** @description Database unavailable */
+				503: {
 					headers: {
 						[name: string]: unknown;
 					};
@@ -940,13 +952,17 @@ export interface paths {
 			};
 		};
 		put?: never;
-		/** Update data for a plugin setting */
+		/**
+		 * Update data for a plugin setting
+		 * @description Numeric IDs require bearer auth. UUIDs act as capability URLs and may
+		 *     be called without authentication — this is the TRMNL webhook contract.
+		 */
 		post: {
 			parameters: {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting ID or UUID */
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth) */
 					id: string;
 				};
 				cookie?: never;
@@ -954,24 +970,24 @@ export interface paths {
 			/** @description The value of `merge_variables` must be a JSON object */
 			requestBody: {
 				content: {
-					"application/json": {
-						merge_variables: unknown;
-					};
+					"application/json": components["schemas"]["PluginSettingDataParams"];
 				};
 			};
 			responses: {
-				/** @description Success with UUID (no auth required) */
+				/** @description Success */
 				200: {
 					headers: {
 						[name: string]: unknown;
 					};
 					content: {
 						"application/json": {
-							data?: Record<string, never>;
+							data?: {
+								[key: string]: unknown;
+							};
 						};
 					};
 				};
-				/** @description Unauthorized */
+				/** @description Unauthorized (numeric id without session) */
 				401: {
 					headers: {
 						[name: string]: unknown;
@@ -1011,27 +1027,42 @@ export interface paths {
 			query?: never;
 			header?: never;
 			path: {
-				/** @description Plugin setting UUID */
+				/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth) */
 				id: string;
 			};
 			cookie?: never;
 		};
 		get?: never;
 		put?: never;
-		/** Upload an image for a webhook_image plugin */
+		/**
+		 * Upload an image icon for a plugin setting
+		 * @description Multipart upload of a raster image (PNG/JPEG/WebP/GIF). The bytes are
+		 *     stored inline as a `data:` URL in `icon_url`. SVG is rejected because
+		 *     a script-bearing SVG inside a `data:` URL becomes XSS as soon as a
+		 *     client renders it outside a strictly inert path.
+		 */
 		post: {
 			parameters: {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting UUID */
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL — no auth) */
 					id: string;
 				};
 				cookie?: never;
 			};
-			requestBody?: never;
+			requestBody: {
+				content: {
+					"multipart/form-data": {
+						/** Format: binary */
+						image?: string;
+						/** Format: binary */
+						file?: string;
+					};
+				};
+			};
 			responses: {
-				/** @description Success with home_assistant_screenshot plugin */
+				/** @description Success */
 				200: {
 					headers: {
 						[name: string]: unknown;
@@ -1039,9 +1070,19 @@ export interface paths {
 					content: {
 						"application/json": {
 							data?: {
-								message?: string;
+								icon_url?: string | null;
+								icon_content_type?: string | null;
 							};
 						};
+					};
+				};
+				/** @description Unauthorized (numeric id without session) */
+				401: {
+					headers: {
+						[name: string]: unknown;
+					};
+					content: {
+						"application/json": components["schemas"]["Error"];
 					};
 				};
 				/** @description Not found */
@@ -1049,28 +1090,18 @@ export interface paths {
 					headers: {
 						[name: string]: unknown;
 					};
-					content?: never;
+					content: {
+						"application/json": components["schemas"]["Error"];
+					};
 				};
-				/** @description Image too large */
+				/** @description Image too large or unrecognized format */
 				422: {
 					headers: {
 						[name: string]: unknown;
 					};
-					content?: never;
-				};
-				/** @description Rate limited */
-				429: {
-					headers: {
-						[name: string]: unknown;
+					content: {
+						"application/json": components["schemas"]["Error"];
 					};
-					content?: never;
-				};
-				/** @description Storage service unavailable */
-				503: {
-					headers: {
-						[name: string]: unknown;
-					};
-					content?: never;
 				};
 			};
 		};
@@ -1080,7 +1111,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	"/api/plugin_settings/{plugin_setting_id}/markup/{size}": {
+	"/api/plugin_settings/{id}/markup/{size}": {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1093,23 +1124,23 @@ export interface paths {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting UUID */
-					plugin_setting_id: string;
-					/** @description Markup size (e.g. markup_full) */
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL) */
+					id: string;
+					/** @description Markup size (markup_full, markup_quadrant, markup_half_horizontal, markup_half_vertical) */
 					size: string;
 				};
 				cookie?: never;
 			};
 			requestBody?: never;
 			responses: {
-				/** @description Returns markup content */
+				/** @description Returns markup content (text/plain) */
 				200: {
 					headers: {
 						[name: string]: unknown;
 					};
 					content?: never;
 				};
-				/** @description Unauthorized */
+				/** @description Unauthorized (numeric id without session) */
 				401: {
 					headers: {
 						[name: string]: unknown;
@@ -1118,7 +1149,7 @@ export interface paths {
 						"application/json": components["schemas"]["Error"];
 					};
 				};
-				/** @description UUID belonging to another user */
+				/** @description Not found */
 				404: {
 					headers: {
 						[name: string]: unknown;
@@ -1140,9 +1171,9 @@ export interface paths {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting UUID */
-					plugin_setting_id: string;
-					/** @description Markup size (e.g. markup_full) */
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL) */
+					id: string;
+					/** @description Markup size (markup_full, markup_quadrant, markup_half_horizontal, markup_half_vertical) */
 					size: string;
 				};
 				cookie?: never;
@@ -1162,7 +1193,7 @@ export interface paths {
 					};
 					content?: never;
 				};
-				/** @description Unauthorized */
+				/** @description Unauthorized (numeric id without session) */
 				401: {
 					headers: {
 						[name: string]: unknown;
@@ -1171,7 +1202,7 @@ export interface paths {
 						"application/json": components["schemas"]["Error"];
 					};
 				};
-				/** @description Invalid size */
+				/** @description Invalid size or oversized content */
 				422: {
 					headers: {
 						[name: string]: unknown;
@@ -1187,7 +1218,7 @@ export interface paths {
 		patch?: never;
 		trace?: never;
 	};
-	"/api/plugin_settings/{plugin_setting_id}/settings": {
+	"/api/plugin_settings/{id}/settings": {
 		parameters: {
 			query?: never;
 			header?: never;
@@ -1206,15 +1237,17 @@ export interface paths {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting UUID */
-					plugin_setting_id: string;
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL) */
+					id: string;
 				};
 				cookie?: never;
 			};
 			requestBody: {
 				content: {
 					"application/json": {
-						fields: Record<string, never>;
+						fields: {
+							[key: string]: string | null;
+						};
 					};
 				};
 			};
@@ -1226,7 +1259,7 @@ export interface paths {
 					};
 					content?: never;
 				};
-				/** @description Unauthorized */
+				/** @description Unauthorized (numeric id without session) */
 				401: {
 					headers: {
 						[name: string]: unknown;
@@ -1235,7 +1268,7 @@ export interface paths {
 						"application/json": components["schemas"]["Error"];
 					};
 				};
-				/** @description Unknown UUID */
+				/** @description Not found */
 				404: {
 					headers: {
 						[name: string]: unknown;
@@ -1360,21 +1393,21 @@ export interface paths {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description Plugin setting UUID */
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL) */
 					id: string;
 				};
 				cookie?: never;
 			};
 			requestBody?: never;
 			responses: {
-				/** @description Returns plugin details with sizes */
+				/** @description Returns plugin details with markup sizes */
 				200: {
 					headers: {
 						[name: string]: unknown;
 					};
 					content?: never;
 				};
-				/** @description Unauthorized */
+				/** @description Unauthorized (numeric id without session) */
 				401: {
 					headers: {
 						[name: string]: unknown;
@@ -1383,7 +1416,7 @@ export interface paths {
 						"application/json": components["schemas"]["Error"];
 					};
 				};
-				/** @description UUID belonging to another user */
+				/** @description Not found */
 				404: {
 					headers: {
 						[name: string]: unknown;
@@ -1416,8 +1449,8 @@ export interface paths {
 				query?: never;
 				header?: never;
 				path: {
-					/** @description ID of the plugin setting to delete */
-					id: number;
+					/** @description Plugin setting numeric ID (requires auth) or UUID (capability URL) */
+					id: string;
 				};
 				cookie?: never;
 			};
@@ -1430,7 +1463,7 @@ export interface paths {
 					};
 					content?: never;
 				};
-				/** @description Unauthorized */
+				/** @description Unauthorized (numeric id without session) */
 				401: {
 					headers: {
 						[name: string]: unknown;
@@ -1706,9 +1739,10 @@ export interface components {
 			plugin_id?: number;
 		};
 		PluginSettingDataParams: {
-			/** @example true */
-			merge_variables?: Record<string, never>;
-			error?: string;
+			/** @description Arbitrary JSON object merged into the plugin setting's `merge_variables` (whole-replace). */
+			merge_variables: {
+				[key: string]: unknown;
+			};
 		};
 		User: {
 			/** @example 42 */
