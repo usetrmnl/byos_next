@@ -1,9 +1,6 @@
 import { sql } from "kysely";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
-import {
-	findPluginSetting,
-	requirePluginSettingsUser,
-} from "@/lib/trmnl/plugin-settings-store";
+import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
 import {
 	isResponse,
 	parseJsonObjectBody,
@@ -22,10 +19,9 @@ export async function PATCH(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
-
 	const { id } = await params;
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
 
 	const body = await parseJsonObjectBody(request);
 	if (isResponse(body)) return body;
@@ -33,26 +29,17 @@ export async function PATCH(
 	const fields = validateFields(body.fields);
 	if (isResponse(fields)) return fields;
 
-	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
-		const setting = await findPluginSetting(scopedDb, id);
-		if (!setting) return { kind: "not_found" } as const;
-
-		const updated = await scopedDb
+	const updated = await withExplicitUserScope(access.userId, (scopedDb) =>
+		scopedDb
 			.updateTable("plugin_settings")
 			.set({
 				fields: sql`COALESCE(fields, '{}'::jsonb) || ${JSON.stringify(fields)}::jsonb`,
 				updated_at: new Date().toISOString(),
 			})
-			.where("id", "=", setting.id)
+			.where("id", "=", access.setting.id)
 			.returningAll()
-			.executeTakeFirstOrThrow();
+			.executeTakeFirstOrThrow(),
+	);
 
-		return { kind: "ok", value: updated.fields } as const;
-	});
-
-	if (result.kind === "not_found") {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
-
-	return Response.json({ data: result.value });
+	return Response.json({ data: updated.fields });
 }

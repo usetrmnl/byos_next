@@ -1,9 +1,6 @@
 import { sql } from "kysely";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
-import {
-	findPluginSetting,
-	requirePluginSettingsUser,
-} from "@/lib/trmnl/plugin-settings-store";
+import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
 import {
 	isResponse,
 	parseJsonObjectBody,
@@ -12,27 +9,20 @@ import {
 
 /**
  * GET /api/plugin_settings/{id}/data
- * Get the data of a plugin setting
  *
- * Proxies to TRMNL API
+ * UUID-based access works without a session (capability URL); numeric ids
+ * still require session auth. See `requirePluginSettingsAccess`.
  */
 export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	void request;
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
-
 	const { id } = await params;
-	const setting = await withExplicitUserScope(auth.userId, (scopedDb) =>
-		findPluginSetting(scopedDb, id),
-	);
-	if (!setting) {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
 
-	return Response.json({ data: setting.merge_variables });
+	return Response.json({ data: access.setting.merge_variables });
 }
 
 /**
@@ -48,40 +38,31 @@ export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
-
 	const { id } = await params;
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
+
 	const body = await parseJsonObjectBody(request);
 	if (isResponse(body)) return body;
 
 	const mergeVariables = validateMergeVariables(body.merge_variables);
 	if (isResponse(mergeVariables)) return mergeVariables;
 
-	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
-		const setting = await findPluginSetting(scopedDb, id);
-		if (!setting) return { kind: "not_found" } as const;
-		if (setting.read_only) return { kind: "read_only" } as const;
+	if (access.setting.read_only) {
+		return Response.json({ error: "Data cannot be modified" }, { status: 422 });
+	}
 
-		const updated = await scopedDb
+	const updated = await withExplicitUserScope(access.userId, (scopedDb) =>
+		scopedDb
 			.updateTable("plugin_settings")
 			.set({
 				merge_variables: sql`${JSON.stringify(mergeVariables)}::jsonb`,
 				updated_at: new Date().toISOString(),
 			})
-			.where("id", "=", setting.id)
+			.where("id", "=", access.setting.id)
 			.returningAll()
-			.executeTakeFirstOrThrow();
+			.executeTakeFirstOrThrow(),
+	);
 
-		return { kind: "ok", value: updated.merge_variables } as const;
-	});
-
-	if (result.kind === "not_found") {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
-	if (result.kind === "read_only") {
-		return Response.json({ error: "Data cannot be modified" }, { status: 422 });
-	}
-
-	return Response.json({ data: result.value });
+	return Response.json({ data: updated.merge_variables });
 }

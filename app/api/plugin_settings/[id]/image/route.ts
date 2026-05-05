@@ -1,12 +1,10 @@
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
-import {
-	findPluginSetting,
-	requirePluginSettingsUser,
-} from "@/lib/trmnl/plugin-settings-store";
+import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
 import {
 	ALLOWED_IMAGE_MIME_TYPES,
 	jsonError,
 	MAX_INLINE_IMAGE_BYTES,
+	rejectOversizedRequest,
 	sniffImageMimeType,
 } from "@/lib/trmnl/plugin-settings-validation";
 
@@ -17,16 +15,22 @@ import {
  * `icon_url` so the URL the API returns is genuinely useful (browsers can
  * render it directly) without needing a separate object store. The route
  * sniffs magic bytes to verify the declared content type — clients can't
- * post a binary while claiming `image/png`.
+ * post a binary while claiming `image/png`. SVG is rejected because a
+ * script-bearing SVG inside a `data:` URL becomes XSS the moment a client
+ * renders it outside a strictly inert path.
  */
 export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
+	// Reject oversized uploads at the headers stage — `formData()` would
+	// otherwise buffer the whole body into memory before we could check.
+	const oversized = rejectOversizedRequest(request, MAX_INLINE_IMAGE_BYTES);
+	if (oversized) return oversized;
 
 	const { id } = await params;
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
 
 	const formData = await request.formData();
 	const image = formData.get("image") ?? formData.get("file");
@@ -50,36 +54,23 @@ export async function POST(
 
 	const dataUrl = `data:${sniffed};base64,${Buffer.from(bytes).toString("base64")}`;
 
-	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
-		const setting = await findPluginSetting(scopedDb, id);
-		if (!setting) return { kind: "not_found" } as const;
-
-		const updated = await scopedDb
+	const updated = await withExplicitUserScope(access.userId, (scopedDb) =>
+		scopedDb
 			.updateTable("plugin_settings")
 			.set({
 				icon_url: dataUrl,
 				icon_content_type: sniffed,
 				updated_at: new Date().toISOString(),
 			})
-			.where("id", "=", setting.id)
+			.where("id", "=", access.setting.id)
 			.returningAll()
-			.executeTakeFirstOrThrow();
-
-		return {
-			kind: "ok",
-			icon_url: updated.icon_url,
-			icon_content_type: updated.icon_content_type,
-		} as const;
-	});
-
-	if (result.kind === "not_found") {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
+			.executeTakeFirstOrThrow(),
+	);
 
 	return Response.json({
 		data: {
-			icon_url: result.icon_url,
-			icon_content_type: result.icon_content_type,
+			icon_url: updated.icon_url,
+			icon_content_type: updated.icon_content_type,
 		},
 	});
 }

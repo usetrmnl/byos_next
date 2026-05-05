@@ -1,53 +1,45 @@
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
+import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
 import {
-	findPluginSetting,
-	requirePluginSettingsUser,
-} from "@/lib/trmnl/plugin-settings-store";
-import { jsonError } from "@/lib/trmnl/plugin-settings-validation";
-
-const MAX_ARCHIVE_BYTES = 256 * 1024;
+	jsonError,
+	MAX_ARCHIVE_BYTES,
+	rejectOversizedRequest,
+} from "@/lib/trmnl/plugin-settings-validation";
 
 /**
  * GET /api/plugin_settings/{id}/archive
- * Download a plugin setting archive
- *
- * Proxies to TRMNL API
+ * Download a plugin setting archive.
  */
 export async function GET(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	void request;
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
-
 	const { id } = await params;
-	const setting = await withExplicitUserScope(auth.userId, (scopedDb) =>
-		findPluginSetting(scopedDb, id),
-	);
-	if (!setting) {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
 
 	return Response.json({
-		data: { settings_yaml: setting.settings_yaml ?? "" },
+		data: { settings_yaml: access.setting.settings_yaml ?? "" },
 	});
 }
 
 /**
  * POST /api/plugin_settings/{id}/archive
- * Upload a plugin setting archive
- *
- * Proxies to TRMNL API
+ * Upload a plugin setting archive.
  */
 export async function POST(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
+	// Headers-stage reject so `formData()` can't be tricked into buffering an
+	// oversized payload before we've authorized the request.
+	const oversized = rejectOversizedRequest(request, MAX_ARCHIVE_BYTES);
+	if (oversized) return oversized;
 
 	const { id } = await params;
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
 
 	const formData = await request.formData();
 	const file = formData.get("file") ?? formData.get("archive");
@@ -65,26 +57,19 @@ export async function POST(
 		);
 	}
 
-	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
-		const setting = await findPluginSetting(scopedDb, id);
-		if (!setting) return { kind: "not_found" } as const;
-
-		const updated = await scopedDb
+	const updated = await withExplicitUserScope(access.userId, (scopedDb) =>
+		scopedDb
 			.updateTable("plugin_settings")
 			.set({
 				settings_yaml: settingsYaml,
 				updated_at: new Date().toISOString(),
 			})
-			.where("id", "=", setting.id)
+			.where("id", "=", access.setting.id)
 			.returningAll()
-			.executeTakeFirstOrThrow();
+			.executeTakeFirstOrThrow(),
+	);
 
-		return { kind: "ok", value: updated.settings_yaml ?? "" } as const;
+	return Response.json({
+		data: { settings_yaml: updated.settings_yaml ?? "" },
 	});
-
-	if (result.kind === "not_found") {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
-
-	return Response.json({ data: { settings_yaml: result.value } });
 }

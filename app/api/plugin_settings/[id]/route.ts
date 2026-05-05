@@ -1,40 +1,25 @@
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
-import {
-	findPluginSetting,
-	requirePluginSettingsUser,
-} from "@/lib/trmnl/plugin-settings-store";
+import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
 
 /**
  * DELETE /api/plugin_settings/{id}
  * Delete a plugin setting
- *
- * Proxies to TRMNL API
  */
 export async function DELETE(
 	request: Request,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
 	void request;
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
-
 	const { id } = await params;
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
 
-	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
-		const setting = await findPluginSetting(scopedDb, id);
-		if (!setting) return { found: false } as const;
-
-		await scopedDb
+	await withExplicitUserScope(access.userId, (scopedDb) =>
+		scopedDb
 			.deleteFrom("plugin_settings")
-			.where("id", "=", setting.id)
-			.execute();
-
-		return { found: true } as const;
-	});
-
-	if (!result.found) {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
+			.where("id", "=", access.setting.id)
+			.execute(),
+	);
 
 	return new Response(null, { status: 204 });
 }

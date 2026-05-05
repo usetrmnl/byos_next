@@ -35,12 +35,17 @@ export const MAX_MERGE_VARIABLES_KEYS = 256;
 export const MAX_LIST_PAGE_SIZE = 200;
 export const DEFAULT_LIST_PAGE_SIZE = 50;
 
+/**
+ * Inline upload allow-list. SVG is intentionally excluded: we serve icons as
+ * `data:` URLs, and an SVG can carry script — the same data URL becomes an
+ * XSS payload the moment any client renders it outside a strictly inert
+ * `<img>` path. Stick to raster formats.
+ */
 export const ALLOWED_IMAGE_MIME_TYPES = [
 	"image/png",
 	"image/jpeg",
 	"image/webp",
 	"image/gif",
-	"image/svg+xml",
 ] as const;
 
 export type AllowedImageMimeType = (typeof ALLOWED_IMAGE_MIME_TYPES)[number];
@@ -48,6 +53,33 @@ export type AllowedImageMimeType = (typeof ALLOWED_IMAGE_MIME_TYPES)[number];
 const ALLOWED_IMAGE_MIME_SET = new Set<string>(ALLOWED_IMAGE_MIME_TYPES);
 
 export const MAX_INLINE_IMAGE_BYTES = 1 * 1024 * 1024;
+
+export const MAX_ARCHIVE_BYTES = 256 * 1024;
+
+/**
+ * Reject oversized requests *before* any framework helper buffers the body
+ * into memory. `request.formData()` reads the entire multipart payload,
+ * which on an exposed deployment with `AUTH_ENABLED=false` would let an
+ * attacker burn arbitrary RAM by lying about file size in form fields.
+ *
+ * `Content-Length` can be missing or wrong, so this is a fast-path reject;
+ * the post-parse byte check is still the source of truth.
+ */
+export function rejectOversizedRequest(
+	request: Request,
+	maxBytes: number,
+): Response | null {
+	const header = request.headers.get("content-length");
+	if (!header) return null;
+	const declared = Number.parseInt(header, 10);
+	if (!Number.isFinite(declared) || declared < 0) return null;
+	if (declared > maxBytes) {
+		return jsonError(
+			`Request body exceeds ${maxBytes} bytes (Content-Length: ${declared})`,
+		);
+	}
+	return null;
+}
 
 export type ValidationError = { error: string; status: 422 };
 
@@ -216,13 +248,7 @@ export function sniffImageMimeType(
 			return "image/gif";
 		}
 	}
-	// SVG: text-based, look for "<svg" or "<?xml" + "<svg" within the first KB
-	const head = new TextDecoder("utf-8", { fatal: false }).decode(
-		bytes.slice(0, Math.min(bytes.length, 1024)),
-	);
-	if (/<svg[\s>]/i.test(head)) {
-		return "image/svg+xml";
-	}
+	// SVG is intentionally not sniffed — see ALLOWED_IMAGE_MIME_TYPES for why.
 	return null;
 }
 

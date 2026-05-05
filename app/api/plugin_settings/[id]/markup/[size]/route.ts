@@ -1,10 +1,7 @@
 import { sql } from "kysely";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { isJsonObject } from "@/lib/trmnl/plugin-settings";
-import {
-	findPluginSetting,
-	requirePluginSettingsUser,
-} from "@/lib/trmnl/plugin-settings-store";
+import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
 import {
 	isResponse,
 	parseJsonObjectBody,
@@ -17,21 +14,16 @@ export async function GET(
 	{ params }: { params: Promise<{ id: string; size: string }> },
 ) {
 	void request;
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
-
 	const { id, size } = await params;
 	const sizeOrError = validateMarkupSize(size);
 	if (isResponse(sizeOrError)) return sizeOrError;
 
-	const setting = await withExplicitUserScope(auth.userId, (scopedDb) =>
-		findPluginSetting(scopedDb, id),
-	);
-	if (!setting) {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
 
-	const markup = isJsonObject(setting.markup) ? setting.markup : {};
+	const markup = isJsonObject(access.setting.markup)
+		? access.setting.markup
+		: {};
 	return new Response(String(markup[sizeOrError] ?? ""), {
 		headers: { "Content-Type": "text/plain; charset=utf-8" },
 	});
@@ -49,12 +41,12 @@ export async function PUT(
 	request: Request,
 	{ params }: { params: Promise<{ id: string; size: string }> },
 ) {
-	const auth = await requirePluginSettingsUser();
-	if ("response" in auth) return auth.response;
-
 	const { id, size } = await params;
 	const sizeOrError = validateMarkupSize(size);
 	if (isResponse(sizeOrError)) return sizeOrError;
+
+	const access = await requirePluginSettingsAccess(id);
+	if (access.kind === "response") return access.response;
 
 	const body = await parseJsonObjectBody(request);
 	if (isResponse(body)) return body;
@@ -62,25 +54,16 @@ export async function PUT(
 	const content = validateMarkupContent(body.content);
 	if (isResponse(content)) return content;
 
-	const result = await withExplicitUserScope(auth.userId, async (scopedDb) => {
-		const setting = await findPluginSetting(scopedDb, id);
-		if (!setting) return { kind: "not_found" } as const;
-
-		await scopedDb
+	await withExplicitUserScope(access.userId, (scopedDb) =>
+		scopedDb
 			.updateTable("plugin_settings")
 			.set({
 				markup: sql`jsonb_set(COALESCE(markup, '{}'::jsonb), ARRAY[${sizeOrError}::text], to_jsonb(${content}::text), true)`,
 				updated_at: new Date().toISOString(),
 			})
-			.where("id", "=", setting.id)
-			.execute();
-
-		return { kind: "ok" } as const;
-	});
-
-	if (result.kind === "not_found") {
-		return Response.json({ error: "Not found" }, { status: 404 });
-	}
+			.where("id", "=", access.setting.id)
+			.execute(),
+	);
 
 	return Response.json({ data: { size: sizeOrError, content } });
 }
