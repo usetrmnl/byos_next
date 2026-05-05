@@ -78,9 +78,27 @@ export async function selectDisplayForDevice(
 	const grayscaleLevels = normalizeGrayscale(device.grayscale);
 	const screen = device.screen || "not-found";
 
-	const baseQueryParams = `width=${width}&height=${height}&grayscale=${grayscaleLevels}${
-		hints.base64 ? "&base64=true" : ""
-	}`;
+	// Image URLs must be self-contained. If the URL only carried width/
+	// height/grayscale, the bitmap route would fall back to inferring model
+	// and palette from request headers — and a fetch from a browser, a
+	// caching proxy, or any tool that doesn't replay the device's headers
+	// would render against the wrong profile. `model` and `palette_id` go
+	// into the URL so the right profile is selected purely from the URL.
+	const params = new URLSearchParams({
+		width: String(width),
+		height: String(height),
+		grayscale: String(grayscaleLevels),
+	});
+	if (profile.model.name) {
+		params.set("model", profile.model.name);
+	}
+	if (profile.palette?.id) {
+		params.set("palette_id", profile.palette.id);
+	}
+	if (hints.base64) {
+		params.set("base64", "true");
+	}
+	const baseQueryParams = params.toString();
 
 	const imageUrl = buildDeviceImageUrl({
 		baseUrl: `${hints.hostUrl}/api/bitmap`,

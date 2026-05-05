@@ -29,6 +29,8 @@ export async function GET(
 		const widthParam = searchParams.get("width");
 		const heightParam = searchParams.get("height");
 		const grayscaleParam = searchParams.get("grayscale");
+		const modelOverride = searchParams.get("model");
+		const paletteOverride = searchParams.get("palette_id");
 		const accessToken =
 			searchParams.get("access_token") ?? req.headers.get("Access-Token");
 
@@ -98,9 +100,13 @@ export async function GET(
 			};
 		}
 
+		// Query-string overrides win — keeps mixup preview URLs self-contained
+		// the same way `/api/bitmap` URLs are. Without this, a `<img>` whose URL
+		// includes `model` and `palette_id` would still render against the
+		// device-row defaults.
 		const profile = await getDeviceProfile(
-			profileSource.model,
-			profileSource.palette_id,
+			modelOverride ?? profileSource.model,
+			paletteOverride ?? profileSource.palette_id,
 		);
 
 		// Fetch mixup and its slots (join with recipes to get slug)
@@ -157,6 +163,8 @@ export async function GET(
 			height,
 			userId,
 		);
+		// Dispatch on profile MIME — model/palette_id are URL query params, so
+		// the same URL always picks the same renderer.
 		const image =
 			profile.model.mime_type === "image/bmp"
 				? {

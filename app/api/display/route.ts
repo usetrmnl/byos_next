@@ -48,9 +48,15 @@ export async function GET(request: Request) {
 		const profile = await getDeviceProfile(headers.model);
 		const width = headers.width || profile.model.width;
 		const height = headers.height || profile.model.height;
-		const noDbQueryParams = `width=${width}&height=${height}&grayscale=2${
-			headers.base64 ? "&base64=true" : ""
-		}`;
+		const noDbParams = new URLSearchParams({
+			width: String(width),
+			height: String(height),
+			grayscale: "2",
+		});
+		if (profile.model.name) noDbParams.set("model", profile.model.name);
+		if (profile.palette?.id) noDbParams.set("palette_id", profile.palette.id);
+		if (headers.base64) noDbParams.set("base64", "true");
+		const noDbQueryParams = noDbParams.toString();
 
 		return buildDisplayResponse(
 			buildDeviceImageUrl({

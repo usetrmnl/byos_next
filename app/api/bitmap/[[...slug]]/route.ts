@@ -65,6 +65,12 @@ export async function GET(
 			paletteId: paletteParam,
 		});
 
+		// The bitmap URL is server-emitted by `/api/display` via
+		// `buildDeviceImageUrl`, which derives the extension from the resolved
+		// profile. Profile + extension are both pinned by the URL (model and
+		// palette_id are query params), so dispatch on profile MIME alone:
+		// PNG/WebP profiles use the device-image renderer, BMP profiles use
+		// the legacy bitmap renderer.
 		if (profile.model.mime_type !== "image/bmp") {
 			const image = await renderRecipeForDevice({
 				slug: recipeSlug,
