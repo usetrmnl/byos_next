@@ -35,17 +35,12 @@ export const MAX_MERGE_VARIABLES_KEYS = 256;
 export const MAX_LIST_PAGE_SIZE = 200;
 export const DEFAULT_LIST_PAGE_SIZE = 50;
 
-/**
- * Inline upload allow-list. SVG is intentionally excluded: we serve icons as
- * `data:` URLs, and an SVG can carry script — the same data URL becomes an
- * XSS payload the moment any client renders it outside a strictly inert
- * `<img>` path. Stick to raster formats.
- */
 export const ALLOWED_IMAGE_MIME_TYPES = [
 	"image/png",
 	"image/jpeg",
 	"image/webp",
 	"image/gif",
+	"image/svg+xml",
 ] as const;
 
 export type AllowedImageMimeType = (typeof ALLOWED_IMAGE_MIME_TYPES)[number];
@@ -248,7 +243,13 @@ export function sniffImageMimeType(
 			return "image/gif";
 		}
 	}
-	// SVG is intentionally not sniffed — see ALLOWED_IMAGE_MIME_TYPES for why.
+	// SVG: text-based, look for "<svg" within the first KB.
+	const head = new TextDecoder("utf-8", { fatal: false }).decode(
+		bytes.slice(0, Math.min(bytes.length, 1024)),
+	);
+	if (/<svg[\s>]/i.test(head)) {
+		return "image/svg+xml";
+	}
 	return null;
 }
 

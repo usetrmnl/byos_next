@@ -15,9 +15,7 @@ import {
  * `icon_url` so the URL the API returns is genuinely useful (browsers can
  * render it directly) without needing a separate object store. The route
  * sniffs magic bytes to verify the declared content type — clients can't
- * post a binary while claiming `image/png`. SVG is rejected because a
- * script-bearing SVG inside a `data:` URL becomes XSS the moment a client
- * renders it outside a strictly inert path.
+ * post a binary while claiming `image/png`.
  */
 export async function POST(
 	request: Request,
