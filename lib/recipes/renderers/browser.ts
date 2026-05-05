@@ -26,6 +26,12 @@ function parseCookies(
  * Render a React recipe by navigating to its preview URL on this Next.js
  * server and capturing a PNG.
  *
+ * Each render runs in its own ephemeral browser context (Chrome's incognito
+ * equivalent), so cookies set for the caller's session never leak into
+ * later renders sharing the pooled Browser. Without this isolation an
+ * authenticated render could carry session cookies into an anonymous
+ * device-image render fired moments later.
+ *
  * Uses the "trusted" Chrome profile — web security is disabled so the preview
  * page can freely reference cross-origin images. This is only safe because
  * the page is our own same-origin Next.js route.
@@ -55,7 +61,8 @@ export async function renderWithBrowser(
 	const url = `${baseUrl}/recipes/${slug}/preview?${params.toString()}`;
 
 	const browser = await getBrowser("trusted");
-	const page = await browser.newPage();
+	const context = await browser.createBrowserContext();
+	const page = await context.newPage();
 
 	try {
 		if (cookies) {
@@ -67,7 +74,8 @@ export async function renderWithBrowser(
 				domain,
 				path: "/",
 			}));
-			await browser.setCookie(...cookiesToSet);
+			// Cookies are set on the per-render context — they go away with it.
+			await context.setCookie(...cookiesToSet);
 		}
 
 		// Force light mode — headless Chrome can default to dark, which breaks
@@ -84,6 +92,15 @@ export async function renderWithBrowser(
 		const screenshot = await page.screenshot({ type: "png" });
 		return Buffer.from(screenshot);
 	} finally {
-		await page.close();
+		try {
+			await page.close();
+		} catch {
+			// page.close can race with context.close; the latter is the real cleanup.
+		}
+		try {
+			await context.close();
+		} catch {
+			// If the browser is already gone, the pool will reopen on next call.
+		}
 	}
 }
