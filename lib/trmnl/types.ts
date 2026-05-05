@@ -47,6 +47,12 @@ export type TrmnlPalette = {
 	 */
 	colors?: string[];
 	grayscale_bit_depth?: number;
+	/**
+	 * Bits per RGB channel for continuous-color palettes (4 = RGB444 / 12-bit,
+	 * 8 = RGB888 / 24-bit). Drives per-channel rounding instead of LAB-distance
+	 * quantization against a finite color list.
+	 */
+	channel_bit_depth?: number;
 	[key: string]: unknown;
 };
 

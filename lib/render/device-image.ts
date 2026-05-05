@@ -122,6 +122,42 @@ async function transformToDeviceCanvas(
 	return rotated.png().toBuffer();
 }
 
+/**
+ * Per-channel rounding for continuous-color palettes (RGB444, etc).
+ *
+ * For `color-12bit` the device only stores 4 bits per channel, so we snap
+ * each channel to the nearest of 16 levels (0, 17, 34, …, 255). For 8-bit
+ * channels (color-24bit) this is a no-op. We deliberately don't run
+ * Floyd-Steinberg here: the perceptual benefit at 12 bpp is small and the
+ * device firmware does its own dithering on receive.
+ */
+async function quantizeChannels(
+	png: Buffer,
+	channelBitDepth: number,
+): Promise<Buffer> {
+	if (channelBitDepth >= 8) {
+		return png;
+	}
+
+	const source = await sharp(png)
+		.removeAlpha()
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	const { width, height, channels } = source.info;
+
+	const levels = 1 << channelBitDepth;
+	const step = 255 / (levels - 1);
+	const output = Buffer.alloc(source.data.length);
+
+	for (let i = 0; i < source.data.length; i++) {
+		const value = source.data[i] ?? 0;
+		const level = Math.round(value / step);
+		output[i] = clampByte(Math.round(level * step));
+	}
+
+	return sharp(output, { raw: { width, height, channels } }).png().toBuffer();
+}
+
 async function quantizeToPalette(
 	png: Buffer,
 	paletteColors: RGB[],
@@ -212,13 +248,26 @@ export async function renderDeviceImage({
 	profile,
 }: RenderDeviceImageInput): Promise<RenderDeviceImageResult> {
 	const transformed = await transformToDeviceCanvas(png, profile);
-	const paletteColors = resolvePaletteColors(
-		profile.palette ?? { id: "", name: "" },
-	);
-	const quantized =
-		paletteColors && profile.model.bit_depth < 24
-			? await quantizeToPalette(transformed, paletteColors)
-			: transformed;
+	const palette = profile.palette ?? { id: "", name: "" };
+	const paletteColors = resolvePaletteColors(palette);
+
+	// Three quantization paths:
+	//   1. Discrete palette (BW, color-6a, etc.) — LAB-distance match + dither.
+	//   2. Continuous palette (color-12bit) — per-channel rounding to RGB444.
+	//   3. Continuous 24-bit or no palette — pass through full color.
+	let quantized: Buffer;
+	if (paletteColors && profile.model.bit_depth < 24) {
+		quantized = await quantizeToPalette(transformed, paletteColors);
+	} else if (
+		paletteColors === null &&
+		typeof palette.channel_bit_depth === "number" &&
+		palette.channel_bit_depth < 8
+	) {
+		quantized = await quantizeChannels(transformed, palette.channel_bit_depth);
+	} else {
+		quantized = transformed;
+	}
+
 	const { buffer, sizeLimitExceeded } = await encode(
 		quantized,
 		profile.model.mime_type,

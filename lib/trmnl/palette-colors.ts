@@ -61,9 +61,25 @@ function resolveGrayscaleColors(grays: number): RGB[] {
 	});
 }
 
+/**
+ * Resolve the palette to a discrete color list when one applies, or `null`
+ * when the palette is continuous (color-12bit / color-24bit) — those are
+ * encoded by `channel_bit_depth` and handled by the renderer's per-channel
+ * quantization path, NOT by nearest-neighbor LAB matching against a finite
+ * list. The previous shape (`grays: 2`) collapsed continuous palettes to
+ * black and white because the resolver had no way to tell continuous from
+ * 1-bit grayscale.
+ */
 export function resolvePaletteColors(palette: TrmnlPalette): RGB[] | null {
 	if (palette.colors?.length) {
 		return resolveDiscreteColors(palette);
+	}
+
+	const channelBitDepth = palette.channel_bit_depth;
+	if (typeof channelBitDepth === "number" && channelBitDepth >= 4) {
+		// Continuous color (4-bit-per-channel or higher) — caller should not
+		// quantize against a discrete list, only optionally per-channel-round.
+		return null;
 	}
 
 	if (typeof palette.grays === "number" && palette.grays > 1) {
