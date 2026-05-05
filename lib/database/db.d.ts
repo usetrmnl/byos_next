@@ -111,6 +111,18 @@ export interface Devices {
 	 * Screen width in pixels
 	 */
 	screen_width: Generated<number | null>;
+	/**
+	 * Quiet-hours end as minutes since midnight (TRMNL convention).
+	 */
+	sleep_end_time: number | null;
+	/**
+	 * Whether the device honors the configured quiet-hours window.
+	 */
+	sleep_mode_enabled: Generated<boolean>;
+	/**
+	 * Quiet-hours start as minutes since midnight (TRMNL convention).
+	 */
+	sleep_start_time: number | null;
 	timezone: Generated<string>;
 	updated_at: Generated<Timestamp | null>;
 	user_id: string | null;
