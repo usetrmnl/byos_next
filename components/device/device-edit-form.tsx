@@ -532,6 +532,28 @@ export default function DeviceEditForm({
 									<ToggleGroupItem value="16">16</ToggleGroupItem>
 								</ToggleGroup>
 							</Field>
+
+							{editedDevice.supports_temperature_profile && (
+								<Field
+									label="Temperature profile"
+									hint="Try A then B if the display looks washed out."
+								>
+									<ToggleGroup
+										type="single"
+										value={editedDevice.temperature_profile ?? "default"}
+										onValueChange={(value) => {
+											if (value) onSelectChange("temperature_profile", value);
+										}}
+										variant="outline"
+										className="grid w-fit grid-cols-4"
+									>
+										<ToggleGroupItem value="default">Default</ToggleGroupItem>
+										<ToggleGroupItem value="a">A</ToggleGroupItem>
+										<ToggleGroupItem value="b">B</ToggleGroupItem>
+										<ToggleGroupItem value="c">C</ToggleGroupItem>
+									</ToggleGroup>
+								</Field>
+							)}
 						</TabsContent>
 
 						<TabsContent value="refresh" className="mt-4 space-y-4">

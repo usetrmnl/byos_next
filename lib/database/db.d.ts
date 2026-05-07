@@ -111,6 +111,14 @@ export interface Devices {
 	 * Screen width in pixels
 	 */
 	screen_width: Generated<number | null>;
+	/**
+	 * TRUE when the device sent the `temperature-profile: true` request header on its last /api/display call. NULL until the device has been seen.
+	 */
+	supports_temperature_profile: Generated<boolean | null>;
+	/**
+	 * Display tuning profile sent to the firmware in the /api/display response (default|a|b|c).
+	 */
+	temperature_profile: Generated<string>;
 	timezone: Generated<string>;
 	updated_at: Generated<Timestamp | null>;
 	user_id: string | null;

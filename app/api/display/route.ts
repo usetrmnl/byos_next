@@ -196,6 +196,9 @@ export async function GET(request: Request) {
 			// portrait-native, so a landscape orientation needs a 90° rotation.
 			// 0 = portrait (no rotation), 1 = landscape (90°).
 			image_rotate: orientation === "landscape" ? 1 : 0,
+			// Display tuning profile. Firmware reads this only when it sent
+			// `temperature-profile: true` in the request.
+			temperature_profile: device.temperature_profile ?? "default",
 		};
 
 		if (

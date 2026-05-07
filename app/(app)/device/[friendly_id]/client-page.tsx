@@ -283,6 +283,7 @@ export default function DeviceClientPage({
 				screen_height: editedDevice.screen_height,
 				screen_orientation: editedDevice.screen_orientation,
 				grayscale: editedDevice.grayscale,
+				temperature_profile: editedDevice.temperature_profile,
 			});
 
 			if (result.success) {
