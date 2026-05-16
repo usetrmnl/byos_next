@@ -9,10 +9,10 @@ import {
 	SunIcon,
 	SunriseIcon,
 	SunsetIcon,
-	ThunderIcon,
 	TempDown,
 	TempIcon,
 	TempUp,
+	ThunderIcon,
 	WindIcon,
 } from "./icons";
 
