@@ -1,17 +1,12 @@
 name: Docker Build and Publish
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - "*.md"
-      - "docs/**"
-  workflow_dispatch:
   release:
     types: [published]
 
 env:
   REGISTRY_GITHUB: ghcr.io
+  REGISTRY_DOCKERHUB: docker.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
