@@ -95,6 +95,7 @@
 		"onlyBuiltDependencies": [
 			"@biomejs/biome",
 			"@tailwindcss/oxide",
+			"sharp",
 			"unrs-resolver"
 		]
 	}
