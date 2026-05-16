@@ -47,7 +47,12 @@ export function parseICS(
 			while (next && next.compare(icalEnd) <= 0 && safetyCount < 500) {
 				safetyCount++;
 				if (next.compare(icalStart) >= 0) {
-					if (maxRecurrences !== undefined && maxRecurrences > 0 && occurrenceCount >= maxRecurrences) break;
+					if (
+						maxRecurrences !== undefined &&
+						maxRecurrences > 0 &&
+						occurrenceCount >= maxRecurrences
+					)
+						break;
 					occurrenceCount++;
 					const occurrence = event.getOccurrenceDetails(next);
 					results.push({
