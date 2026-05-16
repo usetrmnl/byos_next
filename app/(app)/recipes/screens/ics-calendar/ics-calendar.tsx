@@ -55,48 +55,62 @@ function getFontClasses(
 
 function ColumnView({
 	column,
-	isLast,
 	colCount,
 	fontSize,
 }: {
 	column: CalendarColumn;
-	isLast: boolean;
 	colCount: number;
 	fontSize: string;
 }) {
 	const { header, body, padding } = getFontClasses(colCount, fontSize);
 
-	// Pattern: exactly mirrors responsive-example panel — "flex-1 flex flex-col"
-	// NO overflow-hidden, NO min-w-0, NO flex-shrink-0 (absent from all working recipes)
 	return (
-		<div
-			className={`flex-1 flex flex-col${!isLast ? " border-r border-solid border-black" : ""}`}
-		>
-			{/* Header: natural height from padding, like weather's header divs */}
+		// flex-1 flex flex-col — mirrors responsive-example panel exactly.
+		// NO borders: the reset injects border-0 (shorthand) which overrides border-b/border-r
+		// (directional) in Takumi's CSS processing. Use bg-black separators instead.
+		<div className="flex-1 flex flex-col">
+			{/* Dark header bar — same pattern as weather's bg-gray-500 footer (proven to work).
+			    bg-black wins over bg-transparent in twMerge (same group, last wins). */}
 			<div
-				className={`border-b border-solid border-black ${padding} font-blockkie ${header} leading-tight`}
+				className={`bg-black text-white ${padding} font-blockkie ${header} leading-tight`}
 			>
 				{column.name}
 			</div>
 
-			{/* Content: flex-1 fills remaining column height */}
+			{/* White content area — flex-1 fills remaining column height */}
 			<div className={`flex-1 ${padding}`}>
 				{column.error ? (
-					<div className={`${body} mt-1`}>Error: {column.error}</div>
+					<div className={`${body}`}>Error: {column.error}</div>
 				) : column.dayGroups.length === 0 ? (
-					<div className={`${body} mt-1`}>No upcoming events</div>
+					<div className={`${body}`}>No upcoming events</div>
 				) : (
-					column.dayGroups.map((group) => (
-						<div key={group.dateISO} className="mt-2">
-							<div className={`${body} font-bold leading-tight mb-1`}>
+					column.dayGroups.map((group, gi) => (
+						// paddingTop via inline style bypasses twMerge entirely —
+						// inline styles are preserved by pre-satori and override all class styles.
+						// This avoids the m-0 reset shorthand conflicting with mt-* classes.
+						<div
+							key={group.dateISO}
+							style={{ paddingTop: gi > 0 ? "8px" : "0px" }}
+						>
+							<div className={`${body} font-bold leading-tight`}>
 								{group.dateLabel}
 							</div>
 							{group.events.map((event, i) => (
-								<div key={i} className="flex flex-row gap-1 leading-tight mb-1">
+								<div
+									key={i}
+									className="flex flex-row leading-tight"
+									style={{ paddingTop: "2px" }}
+								>
 									<span className="text-xs leading-tight">
 										{formatTimeRange(event.start, event.end, event.allDay)}
 									</span>
-									<span className={`${body} leading-tight`}>{event.title}</span>
+									{/* paddingLeft via inline style — avoids gap class cascade issues */}
+									<span
+										className={`${body} leading-tight`}
+										style={{ paddingLeft: "4px" }}
+									>
+										{event.title}
+									</span>
 								</div>
 							))}
 						</div>
@@ -118,8 +132,7 @@ export default function IcsCalendar({
 		<PreSatori width={width} height={height}>
 			{/* Root: identical to weather.tsx and responsive-example.tsx */}
 			<div className="flex flex-col w-full h-full bg-white text-black">
-				{/* Columns container: mirrors responsive-example "flex-1 flex flex-col md:flex-row"
-				    fixed to flex-row — dimensions are known, no responsive needed */}
+				{/* Columns container: flex-1 first, then direction — matches responsive-example */}
 				<div className="flex-1 flex flex-row">
 					{columns.length === 0 ? (
 						<div className="flex-1 flex items-center justify-center text-2xl font-blockkie">
@@ -127,20 +140,32 @@ export default function IcsCalendar({
 						</div>
 					) : (
 						columns.map((col, i) => (
-							<ColumnView
-								key={i}
-								column={col}
-								isLast={i === columns.length - 1}
-								colCount={columns.length}
-								fontSize={fontSize}
-							/>
+							// React.Fragment with key to insert separator between columns
+							<div
+								key={col.name || i}
+								className="flex-1 flex flex-row"
+								// flex-row here so the separator + column sit side by side
+							>
+								{i > 0 && (
+									// 1px black column separator using bg-black + inline width.
+									// bg-black wins over bg-transparent reset (same twMerge group).
+									// flex-row parent's default align-items:stretch makes it full height.
+									// NO border CSS — avoids the border-0 reset override bug.
+									<div className="bg-black" style={{ width: "1px" }} />
+								)}
+								<ColumnView
+									column={col}
+									colCount={columns.length}
+									fontSize={fontSize}
+								/>
+							</div>
 						))
 					)}
 				</div>
 
-				{/* Footer: explicit padding like responsive-example "h-20", NOT flex-shrink-0 */}
+				{/* Dark footer bar — same pattern as responsive-example's bg-purple-500 footer */}
 				{fetchedAt && (
-					<div className="border-t border-solid border-black px-2 py-1 flex flex-row justify-end">
+					<div className="bg-black text-white px-2 py-1 flex flex-row justify-end">
 						<span className="text-xs">Updated {fetchedAt}</span>
 					</div>
 				)}
