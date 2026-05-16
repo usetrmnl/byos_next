@@ -72,7 +72,12 @@ export async function getPendingMigrations(): Promise<PendingMigration[]> {
 		const appliedNames = new Set(appliedRows.rows.map((r) => r.name));
 
 		return Object.entries(SQL_STATEMENTS)
-			.filter(([key]) => key !== "validate_schema" && !appliedNames.has(key))
+			.filter(
+				([key]) =>
+					key !== "validate_schema" &&
+					key !== "0012_create_schema_migrations" &&
+					!appliedNames.has(key),
+			)
 			.map(([key, stmt]) => ({
 				key,
 				title: stmt.title,

@@ -4,6 +4,8 @@ import { PageTemplate } from "@/components/common/page-template";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DbInitializer } from "@/components/dashboard/db-initializer";
 import { Badge } from "@/components/ui/badge";
+import { auth } from "@/lib/auth/auth";
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { getInitData } from "@/lib/getInitData";
 import DashboardClientPage from "./client-page";
 
@@ -11,8 +13,10 @@ import DashboardClientPage from "./client-page";
 const DashboardData = async () => {
 	// Get data from the centralized getInitData
 	// Since this is cached, it won't cause duplicate requests
-	const { devices, systemLogs, dbStatus, pendingMigrations } =
-		await getInitData();
+	const [{ devices, systemLogs, dbStatus, pendingMigrations }, currentUser] =
+		await Promise.all([getInitData(), getCurrentUser().catch(() => null)]);
+	// auth is null when AUTH_ENABLED=false (single-user installs always get admin access)
+	const isAdmin = !auth || currentUser?.role === "admin";
 	if (!dbStatus.ready) {
 		return (
 			<>
@@ -117,7 +121,7 @@ const DashboardData = async () => {
 
 	return (
 		<>
-			{pendingMigrations.length > 0 && (
+			{pendingMigrations.length > 0 && isAdmin && (
 				<div className="mt-4 rounded-lg border bg-card shadow-sm">
 					<DbInitializer
 						mode="migrate"
