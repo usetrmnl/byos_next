@@ -19,7 +19,8 @@ interface CalendarParams {
 	calendarName3?: string;
 	calendarName4?: string;
 	calendarName5?: string;
-	daysAhead?: number | string;
+	maxEvents?: number | string;
+	fontSize?: string;
 }
 
 export interface CalendarColumn {
@@ -31,6 +32,7 @@ export interface CalendarColumn {
 export interface CalendarData {
 	columns: CalendarColumn[];
 	fetchedAt: string;
+	fontSize: string;
 }
 
 async function fetchAndParseCalendar(
@@ -38,6 +40,7 @@ async function fetchAndParseCalendar(
 	name: string | undefined,
 	rangeStart: Date,
 	rangeEnd: Date,
+	maxEvents: number,
 ): Promise<CalendarColumn> {
 	try {
 		const response = await fetch(url, {
@@ -64,7 +67,8 @@ async function fetchAndParseCalendar(
 		}
 		const resolvedName =
 			name?.trim() || extractCalendarName(icsText) || "Calendar";
-		const events = parseICS(icsText, rangeStart, rangeEnd);
+		const allEvents = parseICS(icsText, rangeStart, rangeEnd);
+		const events = allEvents.slice(0, maxEvents);
 		const dayGroups = groupEventsByDay(events);
 
 		return { name: resolvedName, dayGroups };
@@ -77,14 +81,19 @@ async function fetchAndParseCalendar(
 async function buildCalendarData(
 	params?: CalendarParams,
 ): Promise<CalendarData> {
-	const daysAhead = Math.max(
-		1,
-		Math.min(30, Number(params?.daysAhead ?? 7) || 7),
+	const maxEvents = Math.max(
+		5,
+		Math.min(50, Number(params?.maxEvents ?? 15) || 15),
 	);
+	const fontSize = ["small", "medium", "large"].includes(params?.fontSize ?? "")
+		? (params!.fontSize as string)
+		: "medium";
+
 	const now = new Date();
 	const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+	// 2-year lookahead ensures the iterator always finds enough upcoming events
 	const rangeEnd = new Date(
-		rangeStart.getTime() + daysAhead * 24 * 60 * 60 * 1000,
+		rangeStart.getTime() + 730 * 24 * 60 * 60 * 1000,
 	);
 
 	const entries: Array<{ url: string; name?: string }> = [
@@ -95,29 +104,22 @@ async function buildCalendarData(
 		{ url: params?.calendarUrl5 ?? "", name: params?.calendarName5 },
 	].filter((e) => e.url.trim().length > 0);
 
+	const fetchedAt = now.toLocaleTimeString("en-US", {
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+
 	if (entries.length === 0) {
-		return {
-			columns: [],
-			fetchedAt: now.toLocaleTimeString("en-US", {
-				hour: "2-digit",
-				minute: "2-digit",
-			}),
-		};
+		return { columns: [], fetchedAt, fontSize };
 	}
 
 	const columns = await Promise.all(
 		entries.map((e) =>
-			fetchAndParseCalendar(e.url, e.name, rangeStart, rangeEnd),
+			fetchAndParseCalendar(e.url, e.name, rangeStart, rangeEnd, maxEvents),
 		),
 	);
 
-	return {
-		columns,
-		fetchedAt: now.toLocaleTimeString("en-US", {
-			hour: "2-digit",
-			minute: "2-digit",
-		}),
-	};
+	return { columns, fetchedAt, fontSize };
 }
 
 const getCachedCalendarData = unstable_cache(
