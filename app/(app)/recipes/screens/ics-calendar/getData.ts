@@ -21,6 +21,8 @@ interface CalendarParams {
 	calendarName5?: string;
 	maxEvents?: number | string;
 	fontSize?: string;
+	lookAheadDays?: number | string;
+	maxRecurrences?: number | string;
 }
 
 export interface CalendarColumn {
@@ -41,6 +43,7 @@ async function fetchAndParseCalendar(
 	rangeStart: Date,
 	rangeEnd: Date,
 	maxEvents: number,
+	maxRecurrences?: number,
 ): Promise<CalendarColumn> {
 	try {
 		const response = await fetch(url, {
@@ -67,7 +70,7 @@ async function fetchAndParseCalendar(
 		}
 		const resolvedName =
 			name?.trim() || extractCalendarName(icsText) || "Calendar";
-		const allEvents = parseICS(icsText, rangeStart, rangeEnd);
+		const allEvents = parseICS(icsText, rangeStart, rangeEnd, maxRecurrences);
 		const events = allEvents.slice(0, maxEvents);
 		const dayGroups = groupEventsByDay(events);
 
@@ -89,10 +92,21 @@ async function buildCalendarData(
 		? (params?.fontSize as string)
 		: "medium";
 
+	// lookAheadDays: 0 or blank = use 2-year fallback ("infinite")
+	const lookAheadDays = Math.max(0, Number(params?.lookAheadDays ?? 0) || 0);
+	// maxRecurrences: 0 or blank = no per-event limit (pass undefined to parseICS)
+	const rawMaxRecurrences = Math.max(
+		0,
+		Number(params?.maxRecurrences ?? 0) || 0,
+	);
+	const maxRecurrences = rawMaxRecurrences > 0 ? rawMaxRecurrences : undefined;
+
 	const now = new Date();
 	const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-	// 2-year lookahead ensures the iterator always finds enough upcoming events
-	const rangeEnd = new Date(rangeStart.getTime() + 730 * 24 * 60 * 60 * 1000);
+	const rangeEnd = new Date(
+		rangeStart.getTime() +
+			(lookAheadDays > 0 ? lookAheadDays : 730) * 24 * 60 * 60 * 1000,
+	);
 
 	const entries: Array<{ url: string; name?: string }> = [
 		{ url: params?.calendarUrl1 ?? "", name: params?.calendarName1 },
@@ -113,7 +127,14 @@ async function buildCalendarData(
 
 	const columns = await Promise.all(
 		entries.map((e) =>
-			fetchAndParseCalendar(e.url, e.name, rangeStart, rangeEnd, maxEvents),
+			fetchAndParseCalendar(
+				e.url,
+				e.name,
+				rangeStart,
+				rangeEnd,
+				maxEvents,
+				maxRecurrences,
+			),
 		),
 	);
 

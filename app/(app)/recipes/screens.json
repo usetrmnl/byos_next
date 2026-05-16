@@ -287,6 +287,20 @@
 				"description": "Text size across the calendar columns: small, medium, or large",
 				"default": "medium",
 				"placeholder": "medium"
+			},
+			"lookAheadDays": {
+				"type": "number",
+				"label": "Look-ahead limit (days)",
+				"description": "Only show events within this many days. 0 or blank = no limit (2-year window). e.g. 30 for 1 month, 90 for 3 months.",
+				"default": 0,
+				"placeholder": "0"
+			},
+			"maxRecurrences": {
+				"type": "number",
+				"label": "Max recurrences per event",
+				"description": "Max instances of any single recurring event. 0 or blank = no limit. e.g. 3 to show only the next 3 instances of a weekly meeting.",
+				"default": 0,
+				"placeholder": "0"
 			}
 		},
 		"tags": [
