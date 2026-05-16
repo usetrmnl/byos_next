@@ -121,11 +121,14 @@ const DashboardData = async () => {
 				<div className="mt-4 rounded-lg border bg-card shadow-sm">
 					<DbInitializer
 						mode="migrate"
+						connectionUrl={dbStatus.PostgresUrl}
 						pendingMigrationKeys={pendingMigrations.map((m) => m.key)}
 					/>
 				</div>
 			)}
-			<DashboardClientPage devices={devices} systemLogs={systemLogs} />
+			<div className={pendingMigrations.length > 0 ? "mt-6" : undefined}>
+				<DashboardClientPage devices={devices} systemLogs={systemLogs} />
+			</div>
 		</>
 	);
 };
