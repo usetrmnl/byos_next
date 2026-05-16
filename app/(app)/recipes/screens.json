@@ -190,5 +190,107 @@
 		},
 		"version": "1.0.0",
 		"category": "system-components"
+	},
+	"ics-calendar": {
+		"title": "ICS Multi-Column Calendar",
+		"published": true,
+		"createdAt": "2026-05-16T00:00:00Z",
+		"updatedAt": "2026-05-16T00:00:00Z",
+		"description": "Displays up to 5 ICS/iCalendar feeds as side-by-side schedule columns. Only columns with configured URLs are shown. Supports recurring events.",
+		"componentPath": "./screens/ics-calendar",
+		"hasDataFetch": true,
+		"props": {
+			"columns": [],
+			"fetchedAt": ""
+		},
+		"params": {
+			"calendarUrl1": {
+				"type": "string",
+				"label": "Calendar 1 URL",
+				"description": "ICS/iCalendar URL for the first calendar column",
+				"default": "",
+				"placeholder": "https://example.com/calendar.ics"
+			},
+			"calendarName1": {
+				"type": "string",
+				"label": "Calendar 1 Name",
+				"description": "Display name for calendar 1 (auto-detected from ICS if empty)",
+				"default": "",
+				"placeholder": "Work"
+			},
+			"calendarUrl2": {
+				"type": "string",
+				"label": "Calendar 2 URL",
+				"description": "ICS/iCalendar URL for the second calendar column",
+				"default": "",
+				"placeholder": "https://example.com/calendar2.ics"
+			},
+			"calendarName2": {
+				"type": "string",
+				"label": "Calendar 2 Name",
+				"description": "Display name for calendar 2 (auto-detected from ICS if empty)",
+				"default": "",
+				"placeholder": "Personal"
+			},
+			"calendarUrl3": {
+				"type": "string",
+				"label": "Calendar 3 URL",
+				"description": "ICS/iCalendar URL for the third calendar column",
+				"default": "",
+				"placeholder": "https://example.com/calendar3.ics"
+			},
+			"calendarName3": {
+				"type": "string",
+				"label": "Calendar 3 Name",
+				"description": "Display name for calendar 3 (auto-detected from ICS if empty)",
+				"default": "",
+				"placeholder": "Family"
+			},
+			"calendarUrl4": {
+				"type": "string",
+				"label": "Calendar 4 URL",
+				"description": "ICS/iCalendar URL for the fourth calendar column",
+				"default": "",
+				"placeholder": "https://example.com/calendar4.ics"
+			},
+			"calendarName4": {
+				"type": "string",
+				"label": "Calendar 4 Name",
+				"description": "Display name for calendar 4 (auto-detected from ICS if empty)",
+				"default": "",
+				"placeholder": "Team"
+			},
+			"calendarUrl5": {
+				"type": "string",
+				"label": "Calendar 5 URL",
+				"description": "ICS/iCalendar URL for the fifth calendar column",
+				"default": "",
+				"placeholder": "https://example.com/calendar5.ics"
+			},
+			"calendarName5": {
+				"type": "string",
+				"label": "Calendar 5 Name",
+				"description": "Display name for calendar 5 (auto-detected from ICS if empty)",
+				"default": "",
+				"placeholder": "Holidays"
+			},
+			"daysAhead": {
+				"type": "number",
+				"label": "Days ahead to show",
+				"description": "How many days of upcoming events to fetch (1-30)",
+				"default": 7,
+				"placeholder": "7"
+			}
+		},
+		"tags": ["calendar", "ics", "api", "live-data", "configurable", "multi-column"],
+		"author": {
+			"name": "Daniel Ferraro",
+			"github": "DanielF737"
+		},
+		"renderSettings": {
+			"doubleSizeForSharperText": false
+		},
+		"version": "0.1.0",
+		"category": "display-components"
 	}
 }
