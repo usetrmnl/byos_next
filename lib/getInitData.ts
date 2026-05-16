@@ -43,6 +43,7 @@ export type InitialData = {
  */
 export const getInitData = cache(async (): Promise<InitialData> => {
 	const dbStatus = await getDbStatus();
+	// Not user-scoped — schema-level check, RLS does not apply here
 	const pendingMigrations = dbStatus.ready ? await getPendingMigrations() : [];
 
 	// Default empty values if DB is not ready
