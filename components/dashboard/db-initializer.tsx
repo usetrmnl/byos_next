@@ -192,8 +192,12 @@ export function DbInitializer({
 	const executeAll = () => {
 		if (!connectionUrl) return;
 
-		// Initialize all statements to loading state
-		const initialState = Object.keys(SQL_STATEMENTS).reduce((acc, key) => {
+		const keysToShow =
+			mode === "migrate" && pendingMigrationKeys.length > 0
+				? pendingMigrationKeys
+				: Object.keys(SQL_STATEMENTS);
+
+		const initialState = keysToShow.reduce((acc, key) => {
 			acc[key as keyof typeof SQL_STATEMENTS] = {
 				status: "loading",
 				result: [],
@@ -246,7 +250,14 @@ export function DbInitializer({
 	const getExecutionSummary = () => {
 		if (!executionState) return null;
 
-		const statuses = Object.values(executionState).map((item) => item.status);
+		const keysToCount =
+			mode === "migrate" && pendingMigrationKeys.length > 0
+				? pendingMigrationKeys
+				: Object.keys(SQL_STATEMENTS);
+		const statuses = keysToCount.map(
+			(key) =>
+				executionState[key as keyof typeof SQL_STATEMENTS]?.status ?? "idle",
+		);
 		const successCount = statuses.filter(
 			(status) => status === "success",
 		).length;
@@ -304,7 +315,9 @@ export function DbInitializer({
 						className={`text-sm mt-1 ${allSucceeded ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}
 					>
 						{allSucceeded
-							? "All database operations completed successfully. You can refresh the page to apply changes."
+							? mode === "migrate"
+								? "Migrations applied successfully. Refresh the page to apply changes."
+								: "All database operations completed successfully. You can refresh the page to apply changes."
 							: "Some operations failed. Please check the errors and try again."}
 					</div>
 				)}
@@ -314,7 +327,7 @@ export function DbInitializer({
 
 	return (
 		<div className="p-6">
-			{mode === "migrate" && (
+			{mode === "migrate" && pendingMigrationKeys.length > 0 && (
 				<div className="mb-4">
 					<h3 className="font-bold text-lg tracking-tight">
 						{pendingMigrationKeys.length} pending migration
