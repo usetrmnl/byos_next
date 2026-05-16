@@ -39,8 +39,10 @@ export function DbInitializer({
 	const [copyAnimation, setCopyAnimation] = useState<string | null>(null);
 	const router = useRouter();
 
+	const isMigrateMode = mode === "migrate" && pendingMigrationKeys.length > 0;
+
 	const displayEntries = (
-		mode === "migrate" && pendingMigrationKeys.length > 0
+		isMigrateMode
 			? Object.entries(SQL_STATEMENTS).filter(([key]) =>
 					pendingMigrationKeys.includes(key),
 				)
@@ -107,10 +109,9 @@ export function DbInitializer({
 	const allStatementsSucceeded = () => {
 		if (!executionState) return false;
 
-		const keysToCheck =
-			mode === "migrate" && pendingMigrationKeys.length > 0
-				? pendingMigrationKeys
-				: Object.keys(SQL_STATEMENTS);
+		const keysToCheck = isMigrateMode
+			? pendingMigrationKeys
+			: Object.keys(SQL_STATEMENTS);
 		const statuses: SqlExecutionStatus[] = keysToCheck.map(
 			(key) =>
 				executionState[key as keyof typeof SQL_STATEMENTS]?.status ?? "idle",
@@ -192,12 +193,13 @@ export function DbInitializer({
 	const executeAll = () => {
 		if (!connectionUrl) return;
 
-		const keysToShow =
-			mode === "migrate" && pendingMigrationKeys.length > 0
-				? pendingMigrationKeys
-				: Object.keys(SQL_STATEMENTS);
+		// The server action always runs all migrations (skipping already-applied ones).
+		// loadingKeys only determines which entries show a spinner optimistically.
+		const loadingKeys = isMigrateMode
+			? pendingMigrationKeys
+			: Object.keys(SQL_STATEMENTS);
 
-		const initialState = keysToShow.reduce((acc, key) => {
+		const initialState = loadingKeys.reduce((acc, key) => {
 			acc[key as keyof typeof SQL_STATEMENTS] = {
 				status: "loading",
 				result: [],
@@ -250,10 +252,9 @@ export function DbInitializer({
 	const getExecutionSummary = () => {
 		if (!executionState) return null;
 
-		const keysToCount =
-			mode === "migrate" && pendingMigrationKeys.length > 0
-				? pendingMigrationKeys
-				: Object.keys(SQL_STATEMENTS);
+		const keysToCount = isMigrateMode
+			? pendingMigrationKeys
+			: Object.keys(SQL_STATEMENTS);
 		const statuses = keysToCount.map(
 			(key) =>
 				executionState[key as keyof typeof SQL_STATEMENTS]?.status ?? "idle",
@@ -315,7 +316,7 @@ export function DbInitializer({
 						className={`text-sm mt-1 ${allSucceeded ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}`}
 					>
 						{allSucceeded
-							? mode === "migrate"
+							? isMigrateMode
 								? "Migrations applied successfully. Refresh the page to apply changes."
 								: "All database operations completed successfully. You can refresh the page to apply changes."
 							: "Some operations failed. Please check the errors and try again."}
@@ -327,7 +328,7 @@ export function DbInitializer({
 
 	return (
 		<div className="p-6">
-			{mode === "migrate" && pendingMigrationKeys.length > 0 && (
+			{isMigrateMode && (
 				<div className="mb-4">
 					<h3 className="font-bold text-lg tracking-tight">
 						{pendingMigrationKeys.length} pending migration
@@ -353,10 +354,10 @@ export function DbInitializer({
 							<Play className="h-4 w-4" />
 						)}
 						{isPending
-							? mode === "migrate"
+							? isMigrateMode
 								? "Applying…"
 								: "Initializing…"
-							: mode === "migrate"
+							: isMigrateMode
 								? "Apply migrations"
 								: "Initialize database"}
 					</Button>
