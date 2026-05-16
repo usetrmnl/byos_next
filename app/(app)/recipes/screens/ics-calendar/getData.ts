@@ -92,9 +92,7 @@ async function buildCalendarData(
 		? (params?.fontSize as string)
 		: "medium";
 
-	// lookAheadDays: 0 or blank = use 2-year fallback ("infinite")
 	const lookAheadDays = Math.max(0, Number(params?.lookAheadDays ?? 0) || 0);
-	// maxRecurrences: 0 or blank = no per-event limit (pass undefined to parseICS)
 	const rawMaxRecurrences = Math.max(
 		0,
 		Number(params?.maxRecurrences ?? 0) || 0,

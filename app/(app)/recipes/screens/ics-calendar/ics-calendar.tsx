@@ -52,10 +52,6 @@ function getFontClasses(
 	return { header: "text-base", body: "text-xs", padding: "p-1" };
 }
 
-// All column JSX is inlined here — NOT in a sub-component.
-// Pre-satori's tw-prop transform only reaches static JSX children.
-// Elements inside React sub-components are rendered after pre-satori finishes,
-// so they never receive the tw prop and Takumi ignores all their Tailwind classes.
 export default function IcsCalendar({
 	columns = [],
 	fetchedAt = "",
@@ -79,21 +75,15 @@ export default function IcsCalendar({
 							);
 							return (
 								<div key={col.name || i} className="flex-1 flex flex-row">
-									{/* 2px separator between columns — bg-black wins over bg-transparent reset */}
 									{i > 0 && (
 										<div className="bg-black" style={{ width: "2px" }} />
 									)}
-
-									{/* Column — inlined directly so pre-satori transforms every element */}
 									<div className="flex-1 flex flex-col">
-										{/* Dark header bar: bg-black proven to work in weather recipe */}
 										<div
 											className={`bg-black text-white ${padding} font-blockkie ${header} leading-tight`}
 										>
 											{col.name}
 										</div>
-
-										{/* Events area */}
 										<div className={`flex-1 ${padding}`}>
 											{col.error ? (
 												<div className={body}>Error: {col.error}</div>
@@ -101,8 +91,6 @@ export default function IcsCalendar({
 												<div className={body}>No upcoming events</div>
 											) : (
 												col.dayGroups.map((group, gi) => (
-													// Inline style for spacing — bypasses twMerge cascade issue
-													// where m-0 reset shorthand would override mt-* class.
 													<div
 														key={group.dateISO}
 														style={{ paddingTop: gi > 0 ? "8px" : "0px" }}
