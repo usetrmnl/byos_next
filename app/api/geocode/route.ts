@@ -22,29 +22,30 @@ export async function GET(request: Request) {
 
 	const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q.trim())}&count=10&language=en&format=json`;
 
-	let response: Response;
 	try {
-		response = await fetch(url, {
+		const response = await fetch(url, {
 			headers: { Accept: "application/json" },
-			next: { revalidate: 60 },
+			next: { revalidate: 0 },
 		});
-	} catch {
+
+		if (!response.ok) {
+			console.error(`Geocoding API error: ${response.status} ${response.statusText}`);
+			return NextResponse.json({ error: "Geocoding API error" }, { status: 502 });
+		}
+
+		const data: GeocodingResponse = await response.json();
+		const results = (data.results ?? []).map((r) => ({
+			name: r.name,
+			country: r.country,
+			admin1: r.admin1,
+			latitude: r.latitude,
+			longitude: r.longitude,
+			displayName: [r.name, r.admin1, r.country].filter(Boolean).join(", "),
+		}));
+
+		return NextResponse.json({ results });
+	} catch (error) {
+		console.error("Geocoding fetch failed:", error);
 		return NextResponse.json({ error: "Geocoding API error" }, { status: 502 });
 	}
-
-	if (!response.ok) {
-		return NextResponse.json({ error: "Geocoding API error" }, { status: 502 });
-	}
-
-	const data: GeocodingResponse = await response.json();
-	const results = (data.results ?? []).map((r) => ({
-		name: r.name,
-		country: r.country,
-		admin1: r.admin1,
-		latitude: r.latitude,
-		longitude: r.longitude,
-		displayName: [r.name, r.admin1, r.country].filter(Boolean).join(", "),
-	}));
-
-	return NextResponse.json({ results });
 }
