@@ -352,7 +352,8 @@ export default async function getData(
 	const parsed = parseLocationParam(rawLocation);
 
 	let finalLatitude: number | undefined = params?.latitude ?? parsed.latitude;
-	let finalLongitude: number | undefined = params?.longitude ?? parsed.longitude;
+	let finalLongitude: number | undefined =
+		params?.longitude ?? parsed.longitude;
 	let finalLocationName = parsed.locationName;
 
 	try {
