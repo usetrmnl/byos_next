@@ -37,9 +37,13 @@ export function parseICS(
 		if (!event.startDate) continue;
 
 		if (event.isRecurring()) {
-			const iterator = event.iterator(icalStart);
+			// Do NOT fast-forward with iterator(icalStart) — it skips UNTIL/EXDATE
+			// validation for past occurrences, producing phantom events from expired series.
+			const iterator = event.iterator();
 			let next: ICAL.Time | null = iterator.next();
-			while (next && next.compare(icalEnd) <= 0) {
+			let safetyCount = 0;
+			while (next && next.compare(icalEnd) <= 0 && safetyCount < 500) {
+				safetyCount++;
 				if (next.compare(icalStart) >= 0) {
 					const occurrence = event.getOccurrenceDetails(next);
 					results.push({
