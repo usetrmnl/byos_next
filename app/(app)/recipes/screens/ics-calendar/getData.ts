@@ -46,6 +46,9 @@ async function fetchAndParseCalendar(
     }
 
     const icsText = await response.text();
+    if (!icsText.includes("BEGIN:VCALENDAR")) {
+      return { name: name || "Calendar", dayGroups: [], error: "URL did not return a valid ICS calendar" };
+    }
     const resolvedName = name?.trim() || extractCalendarName(icsText) || "Calendar";
     const events = parseICS(icsText, rangeStart, rangeEnd);
     const dayGroups = groupEventsByDay(events);
@@ -58,7 +61,7 @@ async function fetchAndParseCalendar(
 }
 
 async function buildCalendarData(params?: CalendarParams): Promise<CalendarData> {
-  const daysAhead = Number(params?.daysAhead ?? 7);
+  const daysAhead = Math.max(1, Math.min(30, Number(params?.daysAhead ?? 7) || 7));
   const now = new Date();
   const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const rangeEnd = new Date(rangeStart.getTime() + daysAhead * 24 * 60 * 60 * 1000);

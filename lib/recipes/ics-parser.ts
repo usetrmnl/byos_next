@@ -37,7 +37,7 @@ export function parseICS(
     if (!event.startDate) continue;
 
     if (event.isRecurring()) {
-      const iterator = event.iterator();
+      const iterator = event.iterator(icalStart);
       let next: ICAL.Time | null = iterator.next();
       while (next && next.compare(icalEnd) <= 0) {
         if (next.compare(icalStart) >= 0) {
