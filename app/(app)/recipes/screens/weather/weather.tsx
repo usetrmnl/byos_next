@@ -58,21 +58,48 @@ export default function Weather({
 	const statIconSize = isNarrow ? 32 : isCompact ? 40 : 48;
 
 	const weatherStats = [
-		{ label: "Feels Like", value: `${feelsLike}°C`, icon: <TempIcon size={statIconSize} /> },
-		{ label: "Humidity", value: `${humidity}%`, icon: <HumidityIcon size={statIconSize} /> },
-		{ label: "Wind Speed", value: `${windSpeed} km/h`, icon: <WindIcon size={statIconSize} /> },
-		{ label: "Pressure", value: `${pressure} hPa`, icon: <PressureIcon size={statIconSize} /> },
-		{ label: "Sunrise", value: `${sunrise}`, icon: <SunriseIcon size={statIconSize} /> },
-		{ label: "Sunset", value: `${sunset}`, icon: <SunsetIcon size={statIconSize} /> },
+		{
+			label: "Feels Like",
+			value: `${feelsLike}°C`,
+			icon: <TempIcon size={statIconSize} />,
+		},
+		{
+			label: "Humidity",
+			value: `${humidity}%`,
+			icon: <HumidityIcon size={statIconSize} />,
+		},
+		{
+			label: "Wind Speed",
+			value: `${windSpeed} km/h`,
+			icon: <WindIcon size={statIconSize} />,
+		},
+		{
+			label: "Pressure",
+			value: `${pressure} hPa`,
+			icon: <PressureIcon size={statIconSize} />,
+		},
+		{
+			label: "Sunrise",
+			value: `${sunrise}`,
+			icon: <SunriseIcon size={statIconSize} />,
+		},
+		{
+			label: "Sunset",
+			value: `${sunset}`,
+			icon: <SunsetIcon size={statIconSize} />,
+		},
 	];
 
 	const getWeatherIcon = (desc: string, size: number) => {
 		const lowerDesc = desc.toLowerCase();
-		if (lowerDesc.includes("rain") || lowerDesc.includes("drizzle")) return <RainIcon size={size} />;
+		if (lowerDesc.includes("rain") || lowerDesc.includes("drizzle"))
+			return <RainIcon size={size} />;
 		if (lowerDesc.includes("snow")) return <SnowIcon size={size} />;
 		if (lowerDesc.includes("cloud")) return <CloudIcon size={size} />;
-		if (lowerDesc.includes("clear") || lowerDesc.includes("sun")) return <SunIcon size={size} />;
-		if (lowerDesc.includes("fog") || lowerDesc.includes("mist")) return <FogIcon size={size} />;
+		if (lowerDesc.includes("clear") || lowerDesc.includes("sun"))
+			return <SunIcon size={size} />;
+		if (lowerDesc.includes("fog") || lowerDesc.includes("mist"))
+			return <FogIcon size={size} />;
 		if (lowerDesc.includes("thunder")) return <ThunderIcon size={size} />;
 		return <CloudIcon size={size} />;
 	};
@@ -80,26 +107,30 @@ export default function Weather({
 	const headerPadding = isNarrow ? "p-2" : "p-4";
 	const tempClass = isNarrow ? "text-5xl" : isCompact ? "text-7xl" : "text-9xl";
 	const statsGridClass = isNarrow
-		? "grid-cols-2 gap-1"
-		: isCompact
 		? "grid-cols-2 gap-2"
-		: "grid-cols-3 gap-4";
-	const statPadding = isNarrow ? "p-1" : "p-2";
-	const statTextClass = isNarrow ? "text-xs" : isCompact ? "text-xl" : "text-3xl";
+		: isCompact
+			? "grid-cols-2 gap-2"
+			: "grid-cols-3 gap-4";
+	const statPadding = isNarrow ? "p-0.5" : "p-2";
+	const statTextClass = isNarrow
+		? "text-sm"
+		: isCompact
+			? "text-xl"
+			: "text-3xl";
 	const footerClass = isNarrow
 		? "flex-col text-xs p-1"
 		: isCompact
-		? "flex-col text-lg p-2"
-		: "flex-row justify-between text-2xl p-2";
+			? "flex-col text-lg p-2"
+			: "flex-row justify-between text-2xl p-2";
 	const outerPadding = isNarrow ? "p-2" : "p-4";
 
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="flex flex-col w-full h-full bg-white text-black">
-				<div className={`flex flex-row ${headerPadding} items-center justify-between`}>
-					<h2 className={`font-inter ${tempClass}`}>
-						{temperature}°C
-					</h2>
+				<div
+					className={`flex flex-row ${headerPadding} items-center justify-between`}
+				>
+					<h2 className={`font-inter ${tempClass}`}>{temperature}°C</h2>
 					<div className="flex flex-col items-center justify-center">
 						{getWeatherIcon(description, iconSize)}
 						{!isCompact && (
@@ -117,10 +148,13 @@ export default function Weather({
 						{weatherStats.map((stat, index) => (
 							<div
 								key={index}
-								className="rounded-xl border border-black flex-1 flex flex-row items-center"
+								className="rounded-xl flex-1 flex flex-row items-center"
+								style={{ border: "2px solid black" }}
 							>
 								<div className={`${statPadding} max-h-16`}>{stat.icon}</div>
-								<div className="flex flex-col ml-1">
+								<div
+									className={`flex flex-col ${isNarrow ? "ml-0.5" : "ml-1"}`}
+								>
 									<div className={`leading-none m-0 ${statTextClass}`}>
 										{stat.label}
 									</div>
@@ -131,7 +165,9 @@ export default function Weather({
 							</div>
 						))}
 					</div>
-					<div className={`w-full flex ${footerClass} items-center text-white rounded-xl bg-gray-500`}>
+					<div
+						className={`w-full flex ${footerClass} items-center text-white rounded-xl bg-gray-500`}
+					>
 						<div>{location}</div>
 						<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
 					</div>

@@ -1,6 +1,10 @@
 import { cache } from "react";
 import { withUserScope } from "@/lib/database/scoped-db";
-import { getDbStatus, getPendingMigrations, type PendingMigration } from "@/lib/database/utils";
+import {
+	getDbStatus,
+	getPendingMigrations,
+	type PendingMigration,
+} from "@/lib/database/utils";
 import type {
 	Device,
 	Mixup,
