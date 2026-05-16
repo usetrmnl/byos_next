@@ -44,6 +44,7 @@ interface MixupBuilderProps {
 }
 
 const spanLabel = (slot: LayoutSlot) => {
+	if (slot.hint) return slot.hint;
 	const spanSize = (slot.colSpan ?? 1) * (slot.rowSpan ?? 1);
 	return spanSize > 1 ? `${spanSize} quarters` : "1 quarter";
 };
@@ -73,7 +74,7 @@ const LayoutTile = ({
 				<div
 					className="grid h-full w-full gap-0.5"
 					style={{
-						gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+						gridTemplateColumns: `repeat(${layout.gridCols ?? 2}, minmax(0, 1fr))`,
 						gridTemplateRows: "repeat(2, minmax(0, 1fr))",
 					}}
 				>
@@ -243,7 +244,7 @@ export function MixupBuilder({
 								<div
 									className="grid h-full w-full"
 									style={{
-										gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+										gridTemplateColumns: `repeat(${currentLayout.gridCols ?? 2}, minmax(0, 1fr))`,
 										gridTemplateRows: "repeat(2, minmax(0, 1fr))",
 									}}
 								>

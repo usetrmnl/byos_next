@@ -12,6 +12,7 @@ export enum MixupLayoutId {
 	LEFT_RAIL = "left-rail",
 	VERTICAL_HALVES = "vertical-halves",
 	HORIZONTAL_HALVES = "horizontal-halves",
+	TWO_THIRDS_LEFT = "left-two-thirds",
 }
 
 export enum DeviceDisplayMode {
@@ -39,6 +40,7 @@ export type LayoutSlot = {
 export type LayoutOption = {
 	id: MixupLayoutId;
 	slots: LayoutSlot[];
+	gridCols?: number;
 };
 
 // Relative layout slot definition (proportions from 0 to 1)
@@ -61,6 +63,7 @@ type RelativeLayoutSlot = {
 type RelativeLayoutOption = {
 	id: MixupLayoutId;
 	slots: RelativeLayoutSlot[];
+	gridCols?: number;
 };
 
 // Layout definitions using relative proportions (0-1)
@@ -214,6 +217,34 @@ const RELATIVE_LAYOUT_OPTIONS: RelativeLayoutOption[] = [
 			},
 		],
 	},
+	{
+		id: MixupLayoutId.TWO_THIRDS_LEFT,
+		gridCols: 3,
+		slots: [
+			{
+				id: "left",
+				label: "Left panel",
+				colSpan: 2,
+				rowSpan: 2,
+				hint: "2/3 width",
+				relX: 0,
+				relY: 0,
+				relWidth: 2 / 3,
+				relHeight: 1,
+			},
+			{
+				id: "right",
+				label: "Right panel",
+				colSpan: 1,
+				rowSpan: 2,
+				hint: "1/3 width",
+				relX: 2 / 3,
+				relY: 0,
+				relWidth: 1 / 3,
+				relHeight: 1,
+			},
+		],
+	},
 ];
 
 /**
@@ -249,6 +280,7 @@ export const getLayoutById = (
 	return {
 		id: relativeLayout.id,
 		slots,
+		gridCols: relativeLayout.gridCols,
 	};
 };
 
@@ -273,6 +305,7 @@ export const LAYOUT_OPTIONS: LayoutOption[] = RELATIVE_LAYOUT_OPTIONS.map(
 		return {
 			id: relativeLayout.id,
 			slots,
+			gridCols: relativeLayout.gridCols,
 		};
 	},
 );
