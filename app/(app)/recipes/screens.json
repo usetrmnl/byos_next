@@ -274,15 +274,29 @@
 				"default": "",
 				"placeholder": "Holidays"
 			},
-			"daysAhead": {
+			"maxEvents": {
 				"type": "number",
-				"label": "Days ahead to show",
-				"description": "How many days of upcoming events to fetch (1-30)",
-				"default": 7,
-				"placeholder": "7"
+				"label": "Events per calendar",
+				"description": "How many upcoming events to show per column (5–50)",
+				"default": 15,
+				"placeholder": "15"
+			},
+			"fontSize": {
+				"type": "string",
+				"label": "Font size",
+				"description": "Text size across the calendar columns: small, medium, or large",
+				"default": "medium",
+				"placeholder": "medium"
 			}
 		},
-		"tags": ["calendar", "ics", "api", "live-data", "configurable", "multi-column"],
+		"tags": [
+			"calendar",
+			"ics",
+			"api",
+			"live-data",
+			"configurable",
+			"multi-column"
+		],
 		"author": {
 			"name": "Daniel Ferraro",
 			"github": "DanielF737"
