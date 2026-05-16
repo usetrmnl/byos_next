@@ -11,7 +11,8 @@ import DashboardClientPage from "./client-page";
 const DashboardData = async () => {
 	// Get data from the centralized getInitData
 	// Since this is cached, it won't cause duplicate requests
-	const { devices, systemLogs, dbStatus } = await getInitData();
+	const { devices, systemLogs, dbStatus, pendingMigrations } =
+		await getInitData();
 	if (!dbStatus.ready) {
 		return (
 			<>
@@ -114,7 +115,19 @@ const DashboardData = async () => {
 		);
 	}
 
-	return <DashboardClientPage devices={devices} systemLogs={systemLogs} />;
+	return (
+		<>
+			{pendingMigrations.length > 0 && (
+				<div className="mt-4 rounded-lg border bg-card shadow-sm">
+					<DbInitializer
+						mode="migrate"
+						pendingMigrationKeys={pendingMigrations.map((m) => m.key)}
+					/>
+				</div>
+			)}
+			<DashboardClientPage devices={devices} systemLogs={systemLogs} />
+		</>
+	);
 };
 
 export default async function Dashboard() {
