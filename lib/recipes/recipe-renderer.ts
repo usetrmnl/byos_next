@@ -51,7 +51,7 @@ export type ComponentProps = Record<string, unknown> & {
 	height?: number;
 };
 
-export type RecipeParamType = "string" | "number" | "boolean";
+export type RecipeParamType = "string" | "number" | "boolean" | "location";
 
 export type RecipeParamDefinition = {
 	label: string;

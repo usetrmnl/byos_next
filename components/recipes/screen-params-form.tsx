@@ -10,6 +10,7 @@ import type {
 	RecipeParamDefinition,
 	RecipeParamDefinitions,
 } from "@/lib/recipes/recipe-renderer";
+import { LocationSearchField } from "@/components/recipes/location-search-field";
 
 type Props = {
 	slug: string;
@@ -69,6 +70,15 @@ const renderField = (
 	switch (definition.type) {
 		case "number":
 			return <Input type="number" {...commonProps} />;
+		case "location":
+			return (
+				<LocationSearchField
+					id={key}
+					value={value}
+					placeholder={definition.placeholder}
+					onChange={(val) => onChange(key, val)}
+				/>
+			);
 		default:
 			return <Input type="text" {...commonProps} />;
 	}
