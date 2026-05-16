@@ -36,6 +36,12 @@ export function LocationSearchField({ id, value, placeholder, onChange }: Locati
     setInputValue(parseDisplayName(value));
   }, [value]);
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   const handleInput = (text: string) => {
     setInputValue(text);
     onChange(text);
