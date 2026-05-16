@@ -7,54 +7,93 @@ interface IcsCalendarProps extends Partial<CalendarData> {
 }
 
 function formatTime(isoString: string): string {
-	const d = new Date(isoString);
-	return d.toLocaleTimeString("en-US", {
+	return new Date(isoString).toLocaleTimeString("en-US", {
 		hour: "numeric",
 		minute: "2-digit",
 		hour12: true,
 	});
 }
 
+function formatTimeRange(
+	startISO: string,
+	endISO: string,
+	allDay: boolean,
+): string {
+	if (allDay) return "all day";
+	if (!endISO || startISO === endISO) return formatTime(startISO);
+	const startStr = formatTime(startISO);
+	const endStr = formatTime(endISO);
+	return startStr === endStr ? startStr : `${startStr} – ${endStr}`;
+}
+
+// Returns Tailwind classes based on font size preference and column count.
+// Legibility floor: text-xs (12px) — never smaller on an 800×480 e-ink display.
+function getFontClasses(
+	colCount: number,
+	fontSize: string,
+): { header: string; body: string; padding: string } {
+	if (fontSize === "large") {
+		if (colCount <= 2)
+			return { header: "text-2xl", body: "text-base", padding: "p-2" };
+		if (colCount === 3)
+			return { header: "text-xl", body: "text-sm", padding: "p-2" };
+		return { header: "text-lg", body: "text-xs", padding: "p-1" };
+	}
+	if (fontSize === "small") {
+		if (colCount <= 2)
+			return { header: "text-lg", body: "text-sm", padding: "p-2" };
+		if (colCount === 3)
+			return { header: "text-base", body: "text-xs", padding: "p-1" };
+		return { header: "text-sm", body: "text-xs", padding: "p-1" };
+	}
+	// medium (default)
+	if (colCount <= 2)
+		return { header: "text-xl", body: "text-sm", padding: "p-2" };
+	if (colCount === 3)
+		return { header: "text-lg", body: "text-xs", padding: "p-2" };
+	return { header: "text-base", body: "text-xs", padding: "p-1" };
+}
+
 function ColumnView({
 	column,
 	isLast,
 	colCount,
+	fontSize,
 }: {
 	column: CalendarColumn;
 	isLast: boolean;
 	colCount: number;
+	fontSize: string;
 }) {
-	const headerSize =
-		colCount <= 2 ? "text-xl" : colCount === 3 ? "text-lg" : "text-base";
-	const daySize = colCount <= 2 ? "text-sm" : "text-xs";
-	const eventTitleSize = colCount <= 2 ? "text-sm" : "text-xs";
-	const timeSize = "text-xs";
-	const padding = colCount <= 3 ? "p-2" : "p-1";
+	const { header, body, padding } = getFontClasses(colCount, fontSize);
 
 	return (
+		// min-w-0 prevents content from forcing this column wider than its flex-1 share.
+		// overflow-hidden clips text that would otherwise break out of the column.
+		// Do NOT add h-full here — the parent flex-1 already controls height.
 		<div
-			className={`flex flex-col flex-1 h-full overflow-hidden ${!isLast ? "border-r border-black" : ""}`}
+			className={`flex flex-col flex-1 min-w-0 overflow-hidden${!isLast ? " border-r border-black" : ""}`}
 		>
+			{/* flex-shrink-0 ensures the header never collapses under long event lists */}
 			<div
-				className={`border-b border-black ${padding} font-blockkie ${headerSize} truncate leading-tight`}
+				className={`flex-shrink-0 border-b border-black ${padding} font-blockkie ${header} leading-tight`}
+				style={{ overflow: "hidden" }}
 			>
 				{column.name}
 			</div>
 
-			<div className={`flex flex-col flex-1 overflow-hidden ${padding} gap-0`}>
+			<div className={`flex flex-col flex-1 overflow-hidden ${padding}`}>
 				{column.error ? (
-					<div className={`${daySize} text-gray-500 mt-1`}>
+					<div className={`${body} text-gray-500 mt-1`}>
 						Error: {column.error}
 					</div>
 				) : column.dayGroups.length === 0 ? (
-					<div className={`${daySize} text-gray-400 mt-1`}>
-						No upcoming events
-					</div>
+					<div className={`${body} text-gray-400 mt-1`}>No upcoming events</div>
 				) : (
 					column.dayGroups.map((group) => (
-						<div key={group.dateISO} className="mb-1">
+						<div key={group.dateISO} className="mb-1 flex-shrink-0">
 							<div
-								className={`${daySize} font-bold leading-tight border-b border-gray-300 mb-0.5`}
+								className={`${body} font-bold leading-tight border-b border-gray-300 mb-0.5`}
 							>
 								{group.dateLabel}
 							</div>
@@ -63,12 +102,18 @@ function ColumnView({
 									key={i}
 									className="flex flex-row gap-1 leading-tight mb-0.5"
 								>
-									<span
-										className={`${timeSize} text-gray-500 shrink-0 w-12 text-right`}
-									>
-										{event.allDay ? "all day" : formatTime(event.start)}
+									<span className="text-xs text-gray-500 shrink-0 leading-tight">
+										{formatTimeRange(event.start, event.end, event.allDay)}
 									</span>
-									<span className={`${eventTitleSize} truncate flex-1`}>
+									<span
+										className={`${body} leading-tight`}
+										style={{
+											overflow: "hidden",
+											textOverflow: "ellipsis",
+											whiteSpace: "nowrap",
+											flex: 1,
+										}}
+									>
 										{event.title}
 									</span>
 								</div>
@@ -84,12 +129,14 @@ function ColumnView({
 export default function IcsCalendar({
 	columns = [],
 	fetchedAt = "",
+	fontSize = "medium",
 	width = 800,
 	height = 480,
 }: IcsCalendarProps) {
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="flex flex-col w-full h-full bg-white text-black">
+				{/* flex-1 + overflow-hidden: this div fills all space between root and footer */}
 				<div className="flex flex-row flex-1 overflow-hidden">
 					{columns.length === 0 ? (
 						<div className="flex items-center justify-center w-full h-full text-gray-400 text-2xl font-blockkie">
@@ -102,13 +149,14 @@ export default function IcsCalendar({
 								column={col}
 								isLast={i === columns.length - 1}
 								colCount={columns.length}
+								fontSize={fontSize}
 							/>
 						))
 					)}
 				</div>
 
 				{fetchedAt && (
-					<div className="border-t border-gray-200 px-2 py-0.5 flex flex-row justify-end">
+					<div className="flex-shrink-0 border-t border-gray-200 px-2 py-0.5 flex flex-row justify-end">
 						<span className="text-xs text-gray-400">Updated {fetchedAt}</span>
 					</div>
 				)}
