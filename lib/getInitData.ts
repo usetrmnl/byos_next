@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { withUserScope } from "@/lib/database/scoped-db";
-import { getDbStatus } from "@/lib/database/utils";
+import { getDbStatus, getPendingMigrations, type PendingMigration } from "@/lib/database/utils";
 import type {
 	Device,
 	Mixup,
@@ -18,6 +18,7 @@ export type InitialData = {
 	systemLogs: SystemLog[];
 	uniqueSources: string[];
 	totalLogs: number;
+	pendingMigrations: PendingMigration[];
 	dbStatus: {
 		ready: boolean;
 		error?: string;
@@ -42,6 +43,7 @@ export type InitialData = {
  */
 export const getInitData = cache(async (): Promise<InitialData> => {
 	const dbStatus = await getDbStatus();
+	const pendingMigrations = dbStatus.ready ? await getPendingMigrations() : [];
 
 	// Default empty values if DB is not ready
 	let devices: Device[] = [];
@@ -124,6 +126,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 		systemLogs,
 		uniqueSources,
 		totalLogs,
+		pendingMigrations,
 		dbStatus,
 	};
 });
