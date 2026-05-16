@@ -46,3 +46,39 @@ export async function getDbStatus() {
 	const status = await checkDbConnection();
 	return status;
 }
+
+export type PendingMigration = {
+	key: string;
+	title: string;
+	description: string;
+};
+
+export async function getPendingMigrations(): Promise<PendingMigration[]> {
+	try {
+		const tableCheck = await sql<{ count: string }>`
+			SELECT COUNT(*) as count
+			FROM information_schema.tables
+			WHERE table_schema = 'public' AND table_name = 'schema_migrations'
+		`.execute(db);
+
+		if (Number(tableCheck.rows[0]?.count ?? 0) === 0) {
+			return [];
+		}
+
+		const appliedRows = await sql<{ name: string }>`
+			SELECT name FROM schema_migrations
+		`.execute(db);
+
+		const appliedNames = new Set(appliedRows.rows.map((r) => r.name));
+
+		return Object.entries(SQL_STATEMENTS)
+			.filter(([key]) => key !== "validate_schema" && !appliedNames.has(key))
+			.map(([key, stmt]) => ({
+				key,
+				title: stmt.title,
+				description: stmt.description,
+			}));
+	} catch {
+		return [];
+	}
+}
