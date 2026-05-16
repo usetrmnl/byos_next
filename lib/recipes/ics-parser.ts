@@ -17,6 +17,7 @@ export function parseICS(
 	icsText: string,
 	rangeStart: Date,
 	rangeEnd: Date,
+	maxRecurrences?: number,
 ): CalendarEvent[] {
 	let jcalData: ReturnType<typeof ICAL.parse>;
 	try {
@@ -42,9 +43,12 @@ export function parseICS(
 			const iterator = event.iterator();
 			let next: ICAL.Time | null = iterator.next();
 			let safetyCount = 0;
+			let occurrenceCount = 0;
 			while (next && next.compare(icalEnd) <= 0 && safetyCount < 500) {
 				safetyCount++;
 				if (next.compare(icalStart) >= 0) {
+					if (maxRecurrences !== undefined && maxRecurrences > 0 && occurrenceCount >= maxRecurrences) break;
+					occurrenceCount++;
 					const occurrence = event.getOccurrenceDetails(next);
 					results.push({
 						title: occurrence.item.summary?.trim() || "Untitled",
