@@ -137,9 +137,9 @@
 		},
 		"params": {
 			"location": {
-				"type": "string",
+				"type": "location",
 				"label": "Location",
-				"description": "City or place name to fetch weather for",
+				"description": "Search and select your city or suburb",
 				"default": "San Francisco"
 			}
 		},

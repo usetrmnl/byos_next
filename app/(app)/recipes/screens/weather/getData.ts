@@ -91,6 +91,25 @@ function getWeatherDescription(code: number): string {
 	return weatherCodes[code] || "Unknown";
 }
 
+function parseLocationParam(location: string): {
+	locationName: string;
+	latitude?: number;
+	longitude?: number;
+} {
+	const sepIdx = location.indexOf("||");
+	if (sepIdx === -1) {
+		return { locationName: location };
+	}
+	const displayName = location.slice(0, sepIdx);
+	const coords = location.slice(sepIdx + 2).split(",");
+	const lat = Number.parseFloat(coords[0]);
+	const lon = Number.parseFloat(coords[1]);
+	if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+		return { locationName: displayName, latitude: lat, longitude: lon };
+	}
+	return { locationName: displayName };
+}
+
 /**
  * Geocode a location name to coordinates
  */
@@ -329,18 +348,17 @@ const getCachedWeatherData = unstable_cache(
 export default async function getData(
 	params?: WeatherParams,
 ): Promise<WeatherData> {
-	const locationName = params?.location || "San Francisco";
-	const latitude = params?.latitude;
-	const longitude = params?.longitude;
+	const rawLocation = params?.location || "San Francisco";
+	const parsed = parseLocationParam(rawLocation);
 
-	let finalLatitude: number | undefined = latitude;
-	let finalLongitude: number | undefined = longitude;
-	let finalLocationName = locationName;
+	let finalLatitude: number | undefined = params?.latitude ?? parsed.latitude;
+	let finalLongitude: number | undefined = params?.longitude ?? parsed.longitude;
+	let finalLocationName = parsed.locationName;
 
 	try {
 		// If location name is provided but no coordinates, try to geocode
-		if (locationName && !latitude && !longitude) {
-			const geocoded = await geocodeLocation(locationName);
+		if (finalLocationName && !finalLatitude && !finalLongitude) {
+			const geocoded = await geocodeLocation(finalLocationName);
 			if (geocoded) {
 				finalLatitude = geocoded.latitude;
 				finalLongitude = geocoded.longitude;
