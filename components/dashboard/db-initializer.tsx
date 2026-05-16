@@ -21,7 +21,15 @@ import { SQL_STATEMENTS } from "@/lib/database/sql-statements";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
-export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
+export function DbInitializer({
+	connectionUrl,
+	mode = "initialize",
+	pendingMigrationKeys = [],
+}: {
+	connectionUrl?: string;
+	mode?: "initialize" | "migrate";
+	pendingMigrationKeys?: string[];
+}) {
 	const [isPending, startTransition] = useTransition();
 	const [copied, setCopied] = useState<string | null>(null);
 	const [copyError, setCopyError] = useState<string | null>(null);
@@ -30,6 +38,17 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const [copyAnimation, setCopyAnimation] = useState<string | null>(null);
 	const router = useRouter();
+
+	const displayEntries = (
+		mode === "migrate" && pendingMigrationKeys.length > 0
+			? Object.entries(SQL_STATEMENTS).filter(([key]) =>
+					pendingMigrationKeys.includes(key),
+				)
+			: Object.entries(SQL_STATEMENTS)
+	) as [
+		keyof typeof SQL_STATEMENTS,
+		(typeof SQL_STATEMENTS)[keyof typeof SQL_STATEMENTS],
+	][];
 
 	const toggleExpand = () => {
 		setIsExpanded(!isExpanded);
@@ -88,14 +107,18 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 	const allStatementsSucceeded = () => {
 		if (!executionState) return false;
 
-		const statuses = Object.values(executionState).map((item) => item.status);
-		// Consider both "success" and "warning" as successful executions
-		const allSuccess = statuses.every(
-			(status) => status === "success" || status === "warning",
+		const keysToCheck =
+			mode === "migrate" && pendingMigrationKeys.length > 0
+				? pendingMigrationKeys
+				: Object.keys(SQL_STATEMENTS);
+		const statuses: SqlExecutionStatus[] = keysToCheck.map(
+			(key) =>
+				executionState[key as keyof typeof SQL_STATEMENTS]?.status ?? "idle",
 		);
-		const noLoading = !statuses.includes("loading");
-
-		return allSuccess && noLoading;
+		const hasLoading = statuses.some((s) => s === "loading");
+		return (
+			!hasLoading && statuses.every((s) => s === "success" || s === "warning")
+		);
 	};
 
 	// Handle page refresh
@@ -162,7 +185,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 		return sql;
 	};
 
-	const allSql = Object.entries(SQL_STATEMENTS)
+	const allSql = displayEntries
 		.map(([key, item]) => generateCompleteSql(key, item))
 		.join("\n\n");
 
@@ -291,6 +314,18 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 
 	return (
 		<div className="p-6">
+			{mode === "migrate" && (
+				<div className="mb-4">
+					<h3 className="font-bold text-lg tracking-tight">
+						{pendingMigrationKeys.length} pending migration
+						{pendingMigrationKeys.length !== 1 ? "s" : ""}
+					</h3>
+					<p className="text-sm text-muted-foreground mt-1">
+						New migrations are available. Apply them to keep the database schema
+						in sync with the application.
+					</p>
+				</div>
+			)}
 			{connectionUrl && (
 				<div className="flex flex-wrap items-center gap-3 mb-4">
 					<Button
@@ -304,7 +339,13 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 						) : (
 							<Play className="h-4 w-4" />
 						)}
-						{isPending ? "Initializing…" : "Initialize database"}
+						{isPending
+							? mode === "migrate"
+								? "Applying…"
+								: "Initializing…"
+							: mode === "migrate"
+								? "Apply migrations"
+								: "Initialize database"}
 					</Button>
 
 					{allStatementsSucceeded() && (
@@ -377,7 +418,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 					<div className="sql-content min-h-[200px] overflow-hidden transition-all duration-300 ease-in-out">
 						<pre className="overflow-auto p-4">
 							<code>
-								{Object.entries(SQL_STATEMENTS).map(([key, item], index) => {
+								{displayEntries.map(([key, item], index) => {
 									const execution =
 										executionState?.[key as keyof typeof SQL_STATEMENTS];
 									const status = execution?.status || "idle";
@@ -497,7 +538,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 												</div>
 											)}
 
-											{index < Object.entries(SQL_STATEMENTS).length - 1 && (
+											{index < displayEntries.length - 1 && (
 												<div className="border-b my-4" />
 											)}
 										</div>
