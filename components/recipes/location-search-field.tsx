@@ -21,6 +21,18 @@ interface GeoResult {
 	longitude: number;
 }
 
+interface OpenMeteoResult {
+	name: string;
+	country: string;
+	admin1?: string;
+	latitude: number;
+	longitude: number;
+}
+
+interface OpenMeteoGeoResponse {
+	results?: OpenMeteoResult[];
+}
+
 interface LocationSearchFieldProps {
 	id: string;
 	value: unknown;
@@ -72,11 +84,18 @@ export function LocationSearchField({
 			setLoading(true);
 			try {
 				const res = await fetch(
-					`/api/geocode?q=${encodeURIComponent(text.trim())}`,
+					`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(text.trim())}&count=10&language=en&format=json`,
 				);
 				if (res.ok) {
-					const data = await res.json();
-					setResults(data.results ?? []);
+					const data: OpenMeteoGeoResponse = await res.json();
+					const mapped: GeoResult[] = (data.results ?? []).map((r) => ({
+						displayName: [r.name, r.admin1, r.country]
+							.filter(Boolean)
+							.join(", "),
+						latitude: r.latitude,
+						longitude: r.longitude,
+					}));
+					setResults(mapped);
 					setOpen(true);
 				}
 			} finally {
