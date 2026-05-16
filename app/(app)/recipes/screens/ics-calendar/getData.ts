@@ -92,9 +92,7 @@ async function buildCalendarData(
 	const now = new Date();
 	const rangeStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 	// 2-year lookahead ensures the iterator always finds enough upcoming events
-	const rangeEnd = new Date(
-		rangeStart.getTime() + 730 * 24 * 60 * 60 * 1000,
-	);
+	const rangeEnd = new Date(rangeStart.getTime() + 730 * 24 * 60 * 60 * 1000);
 
 	const entries: Array<{ url: string; name?: string }> = [
 		{ url: params?.calendarUrl1 ?? "", name: params?.calendarName1 },
