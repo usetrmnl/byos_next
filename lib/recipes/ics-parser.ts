@@ -54,7 +54,7 @@ export function parseICS(
       }
     } else {
       const startJS = event.startDate.toJSDate();
-      if (startJS >= rangeStart && startJS <= rangeEnd) {
+      if (startJS >= rangeStart && startJS < rangeEnd) {
         results.push({
           title: event.summary?.trim() || "Untitled",
           start: event.startDate.toJSDate().toISOString(),
@@ -99,7 +99,7 @@ export function groupEventsByDay(events: CalendarEvent[]): DayGroup[] {
 
   const result: DayGroup[] = [];
   for (const [iso, evts] of map) {
-    const d = new Date(`${iso}T00:00:00`);
+    const d = new Date(`${iso}T00:00:00Z`);
     result.push({
       dateISO: iso,
       dateLabel: d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" }),
