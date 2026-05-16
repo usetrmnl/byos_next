@@ -86,7 +86,7 @@ async function buildCalendarData(
 		Math.min(50, Number(params?.maxEvents ?? 15) || 15),
 	);
 	const fontSize = ["small", "medium", "large"].includes(params?.fontSize ?? "")
-		? (params!.fontSize as string)
+		? (params?.fontSize as string)
 		: "medium";
 
 	const now = new Date();
