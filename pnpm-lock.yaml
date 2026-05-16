@@ -3,12 +3,6 @@ lockfileVersion: '9.0'
 settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
-  onlyBuiltDependencies:
-    - '@biomejs/biome'
-    - '@tailwindcss/oxide'
-    - msw
-    - sharp
-    - unrs-resolver
 
 importers:
 
