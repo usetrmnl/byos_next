@@ -26,8 +26,6 @@ function formatTimeRange(
 	return startStr === endStr ? startStr : `${startStr} – ${endStr}`;
 }
 
-// Returns Tailwind classes based on font size preference and column count.
-// Legibility floor: text-xs (12px) — never smaller on an 800×480 e-ink display.
 function getFontClasses(
 	colCount: number,
 	fontSize: string,
@@ -46,7 +44,6 @@ function getFontClasses(
 			return { header: "text-base", body: "text-xs", padding: "p-1" };
 		return { header: "text-sm", body: "text-xs", padding: "p-1" };
 	}
-	// medium (default)
 	if (colCount <= 2)
 		return { header: "text-xl", body: "text-sm", padding: "p-2" };
 	if (colCount === 3)
@@ -68,41 +65,30 @@ function ColumnView({
 	const { header, body, padding } = getFontClasses(colCount, fontSize);
 
 	return (
-		// min-w-0 prevents content from forcing this column wider than its flex-1 share.
-		// overflow-hidden clips text that would otherwise break out of the column.
-		// Do NOT add h-full here — the parent flex-1 already controls height.
 		<div
-			className={`flex flex-col flex-1 min-w-0 overflow-hidden${!isLast ? " border-r border-black" : ""}`}
+			className={`flex flex-col flex-1 min-w-0 overflow-hidden${!isLast ? " border-r border-solid border-black" : ""}`}
 		>
-			{/* flex-shrink-0 ensures the header never collapses under long event lists */}
 			<div
-				className={`flex-shrink-0 border-b border-black ${padding} font-blockkie ${header} leading-tight`}
+				className={`flex-shrink-0 border-b border-solid border-black ${padding} font-blockkie ${header} leading-tight`}
 				style={{ overflow: "hidden" }}
 			>
 				{column.name}
 			</div>
 
-			<div className={`flex flex-col flex-1 overflow-hidden ${padding}`}>
+			<div className={`flex flex-col flex-1 ${padding}`}>
 				{column.error ? (
-					<div className={`${body} text-gray-500 mt-1`}>
-						Error: {column.error}
-					</div>
+					<div className={`${body} text-black mt-1`}>Error: {column.error}</div>
 				) : column.dayGroups.length === 0 ? (
-					<div className={`${body} text-gray-400 mt-1`}>No upcoming events</div>
+					<div className={`${body} text-black mt-1`}>No upcoming events</div>
 				) : (
 					column.dayGroups.map((group) => (
-						<div key={group.dateISO} className="mb-1 flex-shrink-0">
-							<div
-								className={`${body} font-bold leading-tight border-b border-gray-300 mb-0.5`}
-							>
+						<div key={group.dateISO} className="flex-shrink-0 mt-2">
+							<div className={`${body} font-bold leading-tight mb-1`}>
 								{group.dateLabel}
 							</div>
 							{group.events.map((event, i) => (
-								<div
-									key={i}
-									className="flex flex-row gap-1 leading-tight mb-0.5"
-								>
-									<span className="text-xs text-gray-500 shrink-0 leading-tight">
+								<div key={i} className="flex flex-row gap-1 leading-tight mb-1">
+									<span className="text-xs text-black shrink-0 leading-tight">
 										{formatTimeRange(event.start, event.end, event.allDay)}
 									</span>
 									<span
@@ -136,10 +122,9 @@ export default function IcsCalendar({
 	return (
 		<PreSatori width={width} height={height}>
 			<div className="flex flex-col w-full h-full bg-white text-black">
-				{/* flex-1 + overflow-hidden: this div fills all space between root and footer */}
 				<div className="flex flex-row flex-1 overflow-hidden">
 					{columns.length === 0 ? (
-						<div className="flex items-center justify-center w-full h-full text-gray-400 text-2xl font-blockkie">
+						<div className="flex items-center justify-center w-full h-full text-black text-2xl font-blockkie">
 							No calendars configured
 						</div>
 					) : (
@@ -156,8 +141,8 @@ export default function IcsCalendar({
 				</div>
 
 				{fetchedAt && (
-					<div className="flex-shrink-0 border-t border-gray-200 px-2 py-0.5 flex flex-row justify-end">
-						<span className="text-xs text-gray-400">Updated {fetchedAt}</span>
+					<div className="flex-shrink-0 border-t border-solid border-black px-2 py-1 flex flex-row justify-end">
+						<span className="text-xs text-black">Updated {fetchedAt}</span>
 					</div>
 				)}
 			</div>
