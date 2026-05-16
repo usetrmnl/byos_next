@@ -33,6 +33,7 @@ export type JsonValue = JsonArray | JsonObject | JsonPrimitive;
 export type MixupLayoutId =
 	| "horizontal-halves"
 	| "left-rail"
+	| "left-two-thirds"
 	| "quarters"
 	| "top-banner"
 	| "vertical-halves";

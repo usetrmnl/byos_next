@@ -928,6 +928,11 @@ CREATE POLICY mixup_slots_delete_policy ON mixup_slots
 GRANT SELECT, INSERT, UPDATE, DELETE ON playlist_items TO byos_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON mixup_slots TO byos_app;`,
 	},
+	"0015_add_left_two_thirds_layout": {
+		title: "Add left-two-thirds layout",
+		description: "Adds the 'left-two-thirds' value to the mixup_layout_id enum",
+		sql: `ALTER TYPE mixup_layout_id ADD VALUE IF NOT EXISTS 'left-two-thirds';`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:
