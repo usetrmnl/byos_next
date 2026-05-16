@@ -99,7 +99,7 @@ importers:
         specifier: ^7.9.0
         version: 7.9.0
       ical.js:
-        specifier: ^2.2.1
+        specifier: 2.2.1
         version: 2.2.1
       jimp:
         specifier: ^1.6.1
