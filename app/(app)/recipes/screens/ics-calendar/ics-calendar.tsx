@@ -26,6 +26,7 @@ function formatTimeRange(
 	return startStr === endStr ? startStr : `${startStr} – ${endStr}`;
 }
 
+// Legibility floor: text-xs (12px) on 800×480 e-ink.
 function getFontClasses(
 	colCount: number,
 	fontSize: string,
@@ -44,6 +45,7 @@ function getFontClasses(
 			return { header: "text-base", body: "text-xs", padding: "p-1" };
 		return { header: "text-sm", body: "text-xs", padding: "p-1" };
 	}
+	// medium (default)
 	if (colCount <= 2)
 		return { header: "text-xl", body: "text-sm", padding: "p-2" };
 	if (colCount === 3)
@@ -64,44 +66,37 @@ function ColumnView({
 }) {
 	const { header, body, padding } = getFontClasses(colCount, fontSize);
 
+	// Pattern: exactly mirrors responsive-example panel — "flex-1 flex flex-col"
+	// NO overflow-hidden, NO min-w-0, NO flex-shrink-0 (absent from all working recipes)
 	return (
 		<div
-			className={`flex flex-col flex-1 min-w-0 overflow-hidden${!isLast ? " border-r border-solid border-black" : ""}`}
+			className={`flex-1 flex flex-col${!isLast ? " border-r border-solid border-black" : ""}`}
 		>
+			{/* Header: natural height from padding, like weather's header divs */}
 			<div
-				className={`flex-shrink-0 border-b border-solid border-black ${padding} font-blockkie ${header} leading-tight`}
-				style={{ overflow: "hidden" }}
+				className={`border-b border-solid border-black ${padding} font-blockkie ${header} leading-tight`}
 			>
 				{column.name}
 			</div>
 
-			<div className={`flex flex-col flex-1 ${padding}`}>
+			{/* Content: flex-1 fills remaining column height */}
+			<div className={`flex-1 ${padding}`}>
 				{column.error ? (
-					<div className={`${body} text-black mt-1`}>Error: {column.error}</div>
+					<div className={`${body} mt-1`}>Error: {column.error}</div>
 				) : column.dayGroups.length === 0 ? (
-					<div className={`${body} text-black mt-1`}>No upcoming events</div>
+					<div className={`${body} mt-1`}>No upcoming events</div>
 				) : (
 					column.dayGroups.map((group) => (
-						<div key={group.dateISO} className="flex-shrink-0 mt-2">
+						<div key={group.dateISO} className="mt-2">
 							<div className={`${body} font-bold leading-tight mb-1`}>
 								{group.dateLabel}
 							</div>
 							{group.events.map((event, i) => (
 								<div key={i} className="flex flex-row gap-1 leading-tight mb-1">
-									<span className="text-xs text-black shrink-0 leading-tight">
+									<span className="text-xs leading-tight">
 										{formatTimeRange(event.start, event.end, event.allDay)}
 									</span>
-									<span
-										className={`${body} leading-tight`}
-										style={{
-											overflow: "hidden",
-											textOverflow: "ellipsis",
-											whiteSpace: "nowrap",
-											flex: 1,
-										}}
-									>
-										{event.title}
-									</span>
+									<span className={`${body} leading-tight`}>{event.title}</span>
 								</div>
 							))}
 						</div>
@@ -121,10 +116,13 @@ export default function IcsCalendar({
 }: IcsCalendarProps) {
 	return (
 		<PreSatori width={width} height={height}>
+			{/* Root: identical to weather.tsx and responsive-example.tsx */}
 			<div className="flex flex-col w-full h-full bg-white text-black">
-				<div className="flex flex-row flex-1 overflow-hidden">
+				{/* Columns container: mirrors responsive-example "flex-1 flex flex-col md:flex-row"
+				    fixed to flex-row — dimensions are known, no responsive needed */}
+				<div className="flex-1 flex flex-row">
 					{columns.length === 0 ? (
-						<div className="flex items-center justify-center w-full h-full text-black text-2xl font-blockkie">
+						<div className="flex-1 flex items-center justify-center text-2xl font-blockkie">
 							No calendars configured
 						</div>
 					) : (
@@ -140,9 +138,10 @@ export default function IcsCalendar({
 					)}
 				</div>
 
+				{/* Footer: explicit padding like responsive-example "h-20", NOT flex-shrink-0 */}
 				{fetchedAt && (
-					<div className="flex-shrink-0 border-t border-solid border-black px-2 py-1 flex flex-row justify-end">
-						<span className="text-xs text-black">Updated {fetchedAt}</span>
+					<div className="border-t border-solid border-black px-2 py-1 flex flex-row justify-end">
+						<span className="text-xs">Updated {fetchedAt}</span>
 					</div>
 				)}
 			</div>
