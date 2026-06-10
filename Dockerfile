@@ -18,6 +18,7 @@ RUN corepack enable pnpm
 FROM base AS deps
 
 COPY package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml ./
 
 RUN pnpm install --frozen-lockfile --prod=false \
     && rm -rf ~/.npm ~/.pnpm-store /root/.cache
