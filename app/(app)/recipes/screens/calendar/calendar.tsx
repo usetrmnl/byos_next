@@ -51,25 +51,23 @@ export default function Calendar({
 	width = 800,
 	height = 480,
 }: CalendarProps) {
-	const GUT = 46;
-	const HEADER = 28;
-	const ALLDAY = allDayItems.length ? 36 : 0;
-	const FOOTER = 16;
+	const GUT = 50;
+	const HEADER = 32;
+	const ALLDAY = allDayItems.length ? 46 : 0;
+	const FOOTER = 20;
+	const PAD = 14; // vertical inset so first/last hour clears the borders
 	const colW = (width - GUT) / 7;
 	const gridW = colW * 7;
 	const bodyH = height - HEADER - ALLDAY - FOOTER;
+	const usableH = bodyH - 2 * PAD;
 	const range = Math.max(1, dayEndHour - dayStartHour);
+	const y = (h: number) => PAD + ((h - dayStartHour) / range) * usableH;
 
 	return (
 		<PreSatori width={width} height={height}>
 			<div
 				className="bg-white text-black"
-				style={{
-					display: "flex",
-					flexDirection: "column",
-					width,
-					height,
-				}}
+				style={{ display: "flex", flexDirection: "column", width, height }}
 			>
 				{/* Day header */}
 				<div style={{ display: "flex", height: HEADER }}>
@@ -83,7 +81,7 @@ export default function Calendar({
 								display: "flex",
 								alignItems: "center",
 								justifyContent: "center",
-								fontSize: 13,
+								fontSize: 17,
 								borderLeft: "1px solid #000",
 							}}
 						>
@@ -101,8 +99,8 @@ export default function Calendar({
 								display: "flex",
 								alignItems: "center",
 								justifyContent: "flex-end",
-								paddingRight: 4,
-								fontSize: 9,
+								paddingRight: 5,
+								fontSize: 11,
 							}}
 						>
 							all-day
@@ -122,11 +120,11 @@ export default function Calendar({
 									style={{
 										position: "absolute",
 										left: a.dayIndex * colW + 2,
-										top: 2 + (i % 3) * 11,
+										top: 3 + (i % 3) * 15,
 										width: a.span * colW - 4,
-										height: 10,
-										fontSize: 8,
-										paddingLeft: 3,
+										height: 14,
+										fontSize: 11,
+										paddingLeft: 4,
 										display: "flex",
 										alignItems: "center",
 										overflow: "hidden",
@@ -148,9 +146,9 @@ export default function Calendar({
 								key={h}
 								style={{
 									position: "absolute",
-									top: ((h - dayStartHour) / range) * bodyH - 6,
-									right: 4,
-									fontSize: 9,
+									top: y(h) - 8,
+									right: 5,
+									fontSize: 12,
 								}}
 							>
 								{fmtHour(h)}
@@ -163,14 +161,7 @@ export default function Calendar({
 							<div
 								key={`l${h}`}
 								className="bg-black"
-								style={{
-									position: "absolute",
-									left: 0,
-									top: ((h - dayStartHour) / range) * bodyH,
-									width: gridW,
-									height: 1,
-									opacity: 0.25,
-								}}
+								style={{ position: "absolute", left: 0, top: y(h), width: gridW, height: 1, opacity: 0.25 }}
 							/>
 						))}
 						{/* Column separators */}
@@ -182,28 +173,35 @@ export default function Calendar({
 							/>
 						))}
 						{/* Timed events */}
-						{timedItems.map((e, i) => (
-							<div
-								key={i}
-								className="bg-black text-white"
-								style={{
-									position: "absolute",
-									left: e.dayIndex * colW + 2,
-									top: e.topPct * bodyH,
-									width: colW - 4,
-									height: Math.max(11, e.heightPct * bodyH),
-									fontSize: 9,
-									padding: "1px 3px",
-									display: "flex",
-									flexDirection: "column",
-									overflow: "hidden",
-									borderRadius: 2,
-								}}
-							>
-								<div style={{ fontSize: 8, lineHeight: 1 }}>{e.timeLabel}</div>
-								<div style={{ lineHeight: 1.05 }}>{clip(e.title, 15)}</div>
-							</div>
-						))}
+						{timedItems.map((e, i) => {
+							const top = PAD + e.topPct * usableH;
+							const h = Math.min(
+								bodyH - PAD - top,
+								Math.max(16, e.heightPct * usableH),
+							);
+							return (
+								<div
+									key={i}
+									className="bg-black text-white"
+									style={{
+										position: "absolute",
+										left: e.dayIndex * colW + 2,
+										top,
+										width: colW - 4,
+										height: h,
+										fontSize: 12,
+										padding: "1px 4px",
+										display: "flex",
+										flexDirection: "column",
+										overflow: "hidden",
+										borderRadius: 2,
+									}}
+								>
+									<div style={{ fontSize: 10, lineHeight: 1.1 }}>{e.timeLabel}</div>
+									<div style={{ lineHeight: 1.1 }}>{clip(e.title, 14)}</div>
+								</div>
+							);
+						})}
 					</div>
 				</div>
 
@@ -216,7 +214,7 @@ export default function Calendar({
 						justifyContent: message ? "center" : "flex-end",
 						paddingLeft: 8,
 						paddingRight: 8,
-						fontSize: 9,
+						fontSize: 11,
 						borderTop: "1px solid #000",
 					}}
 				>
