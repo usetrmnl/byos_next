@@ -93,15 +93,15 @@ export default function HackerNews({
 				}}
 			>
 				<div
-					className="font-geneva9"
+					className="font-blockKie"
 					style={{ fontSize: 18, lineHeight: 1.25, overflow: "hidden" }}
 				>
 					{s.rank}. {clip(s.title, 80)}
 				</div>
-				<div className="font-geneva9" style={{ fontSize: 13.5, marginTop: 5 }}>
+				<div className="font-blockKie" style={{ fontSize: 13.5, marginTop: 5 }}>
 					{s.score} pts · {s.comments} comments
 				</div>
-				<div className="font-geneva9" style={{ fontSize: 13.5 }}>
+				<div className="font-blockKie" style={{ fontSize: 13.5 }}>
 					{clip(s.domain, 30)}
 				</div>
 			</div>
@@ -125,7 +125,7 @@ export default function HackerNews({
 	return (
 		<PreSatori useDoubling={true} width={width} height={height}>
 			<div
-				className="bg-white text-black font-geneva9"
+				className="bg-white text-black font-blockKie"
 				style={{ display: "flex", flexDirection: "column", width, height }}
 			>
 				{/* Header */}
@@ -138,10 +138,10 @@ export default function HackerNews({
 						padding: "0 12px",
 					}}
 				>
-					<div className="font-geneva9" style={{ fontSize: 18 }}>
+					<div className="font-blockKie" style={{ fontSize: 18 }}>
 						Hacker News
 					</div>
-					<div className="font-geneva9" style={{ fontSize: 13.5 }}>
+					<div className="font-blockKie" style={{ fontSize: 13.5 }}>
 						{message
 							? ""
 							: `Top ${count}${updatedLabel ? `  ·  ${updatedLabel}` : ""}`}
@@ -150,7 +150,7 @@ export default function HackerNews({
 
 				{message ? (
 					<div
-						className="font-geneva9"
+						className="font-blockKie"
 						style={{
 							flex: 1,
 							display: "flex",
