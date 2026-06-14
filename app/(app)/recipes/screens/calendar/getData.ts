@@ -88,8 +88,50 @@ function fmtRange(sh: number, sm: number, eh: number, em: number): string {
 	return `${start}–${stamp(eh, em)}${ampm(eh)}`;
 }
 
+// Block SSRF to loopback / private / link-local hosts (recipe params can be
+// user-supplied when auth is enabled).
+function isSafeUrl(raw: string): boolean {
+	let u: URL;
+	try {
+		u = new URL(raw);
+	} catch {
+		return false;
+	}
+	if (u.protocol !== "http:" && u.protocol !== "https:") return false;
+	const host = u.hostname.toLowerCase();
+	if (
+		host === "localhost" ||
+		host === "0.0.0.0" ||
+		host === "::1" ||
+		host.endsWith(".localhost") ||
+		host.endsWith(".internal") ||
+		host.endsWith(".local")
+	) {
+		return false;
+	}
+	const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+	if (v4) {
+		const a = Number(v4[1]);
+		const b = Number(v4[2]);
+		if (
+			a === 0 ||
+			a === 10 ||
+			a === 127 ||
+			(a === 169 && b === 254) ||
+			(a === 172 && b >= 16 && b <= 31) ||
+			(a === 192 && b === 168) ||
+			(a === 100 && b >= 64 && b <= 127)
+		) {
+			return false;
+		}
+	}
+	// IPv6 unique-local (fc00::/7) and link-local (fe80::/10).
+	if (host.includes(":") && /^(f[cd]|fe[89ab])/.test(host)) return false;
+	return true;
+}
+
 async function fetchIcs(url: string): Promise<string | null> {
-	if (!/^https?:\/\//i.test(url)) return null;
+	if (!isSafeUrl(url)) return null;
 	const ctrl = new AbortController();
 	const timer = setTimeout(() => ctrl.abort(), 7000);
 	try {
@@ -158,12 +200,16 @@ export default async function getData(
 	for (let i = 0; i < 7; i++) {
 		const p = tzParts(new Date(anchor + i * DAY_MS), tz);
 		dayKeys.push(p.ymd);
-		const wd = WEEKDAYS[new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()];
+		const wd =
+			WEEKDAYS[new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()];
 		days.push({ weekday: wd, dayNum: p.day, isToday: i === 0 });
 	}
 
 	const tzLabel =
-		new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" })
+		new Intl.DateTimeFormat("en-US", {
+			timeZone: tz,
+			timeZoneName: "shortOffset",
+		})
 			.formatToParts(now)
 			.find((p) => p.type === "timeZoneName")?.value || "";
 	const updatedLabel = new Intl.DateTimeFormat("en-US", {
@@ -213,18 +259,41 @@ export default async function getData(
 			continue;
 		}
 
-		type Raw = { start: { toJSDate(): Date; isDate: boolean }; end: { toJSDate(): Date }; summary: string };
+		type Raw = {
+			start: { toJSDate(): Date; isDate: boolean };
+			end: { toJSDate(): Date };
+			summary: string;
+		};
 		const raw: Raw[] = [
-			...(parsed.events as { startDate: Raw["start"]; endDate: Raw["end"]; summary: string }[]).map(
-				(e) => ({ start: e.startDate, end: e.endDate, summary: e.summary }),
-			),
-			...(parsed.occurrences as { startDate: Raw["start"]; endDate: Raw["end"]; item: { summary: string } }[]).map(
-				(o) => ({ start: o.startDate, end: o.endDate, summary: o.item.summary }),
-			),
+			...(
+				parsed.events as {
+					startDate: Raw["start"];
+					endDate: Raw["end"];
+					summary: string;
+				}[]
+			).map((e) => ({
+				start: e.startDate,
+				end: e.endDate,
+				summary: e.summary,
+			})),
+			...(
+				parsed.occurrences as {
+					startDate: Raw["start"];
+					endDate: Raw["end"];
+					item: { summary: string };
+				}[]
+			).map((o) => ({
+				start: o.startDate,
+				end: o.endDate,
+				summary: o.item.summary,
+			})),
 		];
 
 		for (const ev of raw) {
-			const title = (ev.summary || "(busy)").toString().replace(/\s+/g, " ").trim();
+			const title = (ev.summary || "(busy)")
+				.toString()
+				.replace(/\s+/g, " ")
+				.trim();
 			const start = ev.start.toJSDate();
 			const end = ev.end.toJSDate();
 			const durationMs = end.getTime() - start.getTime();
