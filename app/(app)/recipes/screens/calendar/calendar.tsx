@@ -70,7 +70,9 @@ export default function Calendar({
 	const winEnd = dayEndHour * 60;
 	const spanMin = Math.max(1, winEnd - winStart);
 	const yMin = (min: number) =>
-		PAD + ((Math.min(Math.max(min, winStart), winEnd) - winStart) / spanMin) * usableH;
+		PAD +
+		((Math.min(Math.max(min, winStart), winEnd) - winStart) / spanMin) *
+			usableH;
 
 	const footer = message
 		? message
@@ -142,7 +144,13 @@ export default function Calendar({
 								<div
 									key={i}
 									className="bg-black"
-									style={{ position: "absolute", left: i * colW, top: 0, width: 1, height: ALLDAY }}
+									style={{
+										position: "absolute",
+										left: i * colW,
+										top: 0,
+										width: 1,
+										height: ALLDAY,
+									}}
 								/>
 							))}
 							{allDayItems.map((a, i) => (
@@ -171,12 +179,23 @@ export default function Calendar({
 				)}
 
 				{/* Body: time gutter + day grid */}
-				<div style={{ display: "flex", height: bodyH, borderTop: "1px solid #000" }}>
+				<div
+					style={{
+						display: "flex",
+						height: bodyH,
+						borderTop: "1px solid #000",
+					}}
+				>
 					<div style={{ width: GUT, position: "relative", height: bodyH }}>
 						{hours.map((h) => (
 							<div
 								key={h}
-								style={{ position: "absolute", top: yMin(h * 60) - 9, right: 4, fontSize: 13 }}
+								style={{
+									position: "absolute",
+									top: yMin(h * 60) - 9,
+									right: 4,
+									fontSize: 13,
+								}}
 							>
 								{fmtHour(h)}
 							</div>
@@ -188,7 +207,14 @@ export default function Calendar({
 							<div
 								key={`l${h}`}
 								className="bg-black"
-								style={{ position: "absolute", left: 0, top: yMin(h * 60), width: gridW, height: 1, opacity: 0.25 }}
+								style={{
+									position: "absolute",
+									left: 0,
+									top: yMin(h * 60),
+									width: gridW,
+									height: 1,
+									opacity: 0.25,
+								}}
 							/>
 						))}
 						{/* Column separators */}
@@ -196,7 +222,13 @@ export default function Calendar({
 							<div
 								key={`c${i}`}
 								className="bg-black"
-								style={{ position: "absolute", left: Math.min(i * colW, gridW - 1), top: 0, width: 1, height: bodyH }}
+								style={{
+									position: "absolute",
+									left: Math.min(i * colW, gridW - 1),
+									top: 0,
+									width: 1,
+									height: bodyH,
+								}}
 							/>
 						))}
 						{/* Timed events (side-by-side lanes when overlapping) */}
@@ -225,7 +257,9 @@ export default function Calendar({
 											borderRadius: 3,
 										}}
 									>
-										<div style={{ overflow: "hidden" }}>{clip(e.title, 26)}</div>
+										<div style={{ overflow: "hidden" }}>
+											{clip(e.title, 26)}
+										</div>
 										<div style={{ fontSize: 12 }}>{e.timeLabel}</div>
 									</div>
 								);
