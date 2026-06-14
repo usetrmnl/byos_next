@@ -1,4 +1,37 @@
 {
+	"hacker-news": {
+		"title": "Hacker News",
+		"published": true,
+		"createdAt": "2026-06-14T00:00:00Z",
+		"updatedAt": "2026-06-14T00:00:00Z",
+		"description": "Top Hacker News stories, each with a QR code to open it on your phone.",
+		"componentPath": "./screens/hacker-news",
+		"hasDataFetch": true,
+		"props": {},
+		"params": {
+			"storyCount": {
+				"type": "number",
+				"label": "Number of stories",
+				"description": "How many top stories to show (1-10).",
+				"default": 6
+			},
+			"qrTarget": {
+				"type": "string",
+				"label": "QR links to",
+				"description": "'article' (default) or 'comments' for the HN discussion.",
+				"default": "article",
+				"placeholder": "article"
+			}
+		},
+		"tags": ["tailwind", "news", "api", "live-data", "configurable", "qr"],
+		"author": {
+			"name": "Mikkel Bergmann",
+			"github": "mikkel-bergmann"
+		},
+		"renderSettings": { "doubleSizeForSharperText": true },
+		"version": "0.1.0",
+		"category": "display-components"
+	},
 	"simple-text": {
 		"title": "Simple Text",
 		"published": true,
