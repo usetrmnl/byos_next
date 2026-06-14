@@ -86,9 +86,9 @@ export default function HackerNews({
 					flex: 1,
 					display: "flex",
 					flexDirection: "column",
-					justifyContent: "center",
+					justifyContent: "flex-start",
 					overflow: "hidden",
-					padding: "0 10px",
+					padding: "2px 10px 0",
 				}}
 			>
 				<div style={{ fontSize: 19, lineHeight: 1.14, overflow: "hidden" }}>
