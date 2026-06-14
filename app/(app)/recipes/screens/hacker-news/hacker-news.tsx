@@ -53,6 +53,7 @@ export default function HackerNews({
 				justifyContent: "center",
 				backgroundColor: "#fff",
 				flexShrink: 0,
+				alignSelf: "center",
 			}}
 		>
 			<svg
@@ -73,7 +74,7 @@ export default function HackerNews({
 			style={{
 				flex: 1,
 				display: "flex",
-				alignItems: "center",
+				alignItems: "flex-start",
 				border: "2px solid #000",
 				borderRadius: 10,
 				padding: 6,
