@@ -30,12 +30,18 @@ export default function HackerNews({
 	height = 480,
 }: HackerNewsProps) {
 	const HEADER = 30;
-	const PADX = 8;
 	const GAP = 6;
-	const bodyH = height - HEADER;
 	const count = Math.max(1, stories.length);
-	const cardH = Math.floor(bodyH / count) - GAP;
-	const qr = Math.max(40, cardH - 8);
+
+	// Two columns; QR hugs the outer edge of each (left col → left, right col → right).
+	const leftCount = Math.ceil(count / 2);
+	const left = stories.slice(0, leftCount);
+	const right = stories.slice(leftCount);
+	const rows = Math.max(1, leftCount);
+
+	const bodyH = height - HEADER;
+	const cardH = (bodyH - GAP * (rows + 1)) / rows;
+	const qr = Math.min(132, Math.max(56, Math.floor(cardH) - 16));
 
 	const qrBlock = (s: Story) => (
 		<div
@@ -46,6 +52,7 @@ export default function HackerNews({
 				alignItems: "center",
 				justifyContent: "center",
 				backgroundColor: "#fff",
+				flexShrink: 0,
 			}}
 		>
 			<svg
@@ -57,6 +64,55 @@ export default function HackerNews({
 				<title>QR</title>
 				<path d={s.qrPath} fill="#000" />
 			</svg>
+		</div>
+	);
+
+	const card = (s: Story, side: "left" | "right") => (
+		<div
+			key={s.rank}
+			style={{
+				flex: 1,
+				display: "flex",
+				alignItems: "center",
+				border: "2px solid #000",
+				borderRadius: 10,
+				padding: 6,
+				overflow: "hidden",
+			}}
+		>
+			{side === "left" ? qrBlock(s) : null}
+			<div
+				style={{
+					flex: 1,
+					display: "flex",
+					flexDirection: "column",
+					justifyContent: "center",
+					overflow: "hidden",
+					padding: "0 10px",
+				}}
+			>
+				<div style={{ fontSize: 19, lineHeight: 1.14, overflow: "hidden" }}>
+					{s.rank}. {clip(s.title, 80)}
+				</div>
+				<div style={{ fontSize: 13, marginTop: 4 }}>
+					{s.score} pts · {s.comments} comments
+				</div>
+				<div style={{ fontSize: 13 }}>{clip(s.domain, 30)}</div>
+			</div>
+			{side === "right" ? qrBlock(s) : null}
+		</div>
+	);
+
+	const column = (items: Story[], side: "left" | "right") => (
+		<div
+			style={{
+				flex: 1,
+				display: "flex",
+				flexDirection: "column",
+				gap: GAP,
+			}}
+		>
+			{items.map((s) => card(s, side))}
 		</div>
 	);
 
@@ -100,55 +156,13 @@ export default function HackerNews({
 					<div
 						style={{
 							display: "flex",
-							flexDirection: "column",
-							padding: `0 ${PADX}px`,
+							flex: 1,
+							gap: GAP,
+							padding: `0 ${GAP}px ${GAP}px`,
 						}}
 					>
-						{stories.map((s, i) => {
-							const qrLeft = i % 2 === 1; // ranks 2,4,6 on the left
-							return (
-								<div
-									key={s.rank}
-									style={{
-										display: "flex",
-										alignItems: "center",
-										height: cardH,
-										marginBottom: GAP,
-										border: "2px solid #000",
-										borderRadius: 10,
-										padding: 5,
-										overflow: "hidden",
-									}}
-								>
-									{qrLeft ? qrBlock(s) : null}
-									<div
-										style={{
-											flex: 1,
-											display: "flex",
-											flexDirection: "column",
-											justifyContent: "center",
-											overflow: "hidden",
-											padding: "0 12px",
-										}}
-									>
-										<div
-											style={{
-												fontSize: 18,
-												lineHeight: 1.12,
-												overflow: "hidden",
-											}}
-										>
-											{s.rank}. {clip(s.title, 84)}
-										</div>
-										<div style={{ fontSize: 13, marginTop: 3 }}>
-											{s.score} pts · {s.comments} comments ·{" "}
-											{clip(s.domain, 30)}
-										</div>
-									</div>
-									{qrLeft ? null : qrBlock(s)}
-								</div>
-							);
-						})}
+						{column(left, "left")}
+						{column(right, "right")}
 					</div>
 				)}
 			</div>
