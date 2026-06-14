@@ -92,13 +92,18 @@ export default function HackerNews({
 					padding: "2px 10px 0",
 				}}
 			>
-				<div style={{ fontSize: 19, lineHeight: 1.14, overflow: "hidden" }}>
+				<div
+					className="font-geneva9"
+					style={{ fontSize: 18, lineHeight: 1.25, overflow: "hidden" }}
+				>
 					{s.rank}. {clip(s.title, 80)}
 				</div>
-				<div style={{ fontSize: 13, marginTop: 4 }}>
+				<div className="font-geneva9" style={{ fontSize: 13.5, marginTop: 5 }}>
 					{s.score} pts · {s.comments} comments
 				</div>
-				<div style={{ fontSize: 13 }}>{clip(s.domain, 30)}</div>
+				<div className="font-geneva9" style={{ fontSize: 13.5 }}>
+					{clip(s.domain, 30)}
+				</div>
 			</div>
 			{side === "right" ? qrBlock(s) : null}
 		</div>
@@ -133,8 +138,10 @@ export default function HackerNews({
 						padding: "0 12px",
 					}}
 				>
-					<div style={{ fontSize: 19 }}>Hacker News</div>
-					<div style={{ fontSize: 12 }}>
+					<div className="font-geneva9" style={{ fontSize: 18 }}>
+						Hacker News
+					</div>
+					<div className="font-geneva9" style={{ fontSize: 13.5 }}>
 						{message
 							? ""
 							: `Top ${count}${updatedLabel ? `  ·  ${updatedLabel}` : ""}`}
@@ -143,6 +150,7 @@ export default function HackerNews({
 
 				{message ? (
 					<div
+						className="font-geneva9"
 						style={{
 							flex: 1,
 							display: "flex",
