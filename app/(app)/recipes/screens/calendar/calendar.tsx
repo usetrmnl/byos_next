@@ -56,10 +56,10 @@ export default function Calendar({
 	width = 800,
 	height = 480,
 }: CalendarProps) {
-	const GUT = 38;
+	const GUT = 40;
 	const HEADER = 54;
-	const ALLDAY = allDayItems.length ? 46 : 0;
-	const FOOTER = 20;
+	const ALLDAY = allDayItems.length ? 48 : 0;
+	const FOOTER = 22;
 	const PAD = 14; // vertical inset so first/last hour clears the borders
 	const colW = (width - GUT) / 7;
 	const gridW = colW * 7;
@@ -72,27 +72,21 @@ export default function Calendar({
 	const yMin = (min: number) =>
 		PAD + ((Math.min(Math.max(min, winStart), winEnd) - winStart) / spanMin) * usableH;
 
+	const footer = message
+		? message
+		: [tzLabel, updatedLabel && `Updated ${updatedLabel}`]
+				.filter(Boolean)
+				.join("    ·    ");
+
 	return (
-		<PreSatori width={width} height={height}>
+		<PreSatori useDoubling={true} width={width} height={height}>
 			<div
 				className="bg-white text-black"
 				style={{ display: "flex", flexDirection: "column", width, height }}
 			>
 				{/* Day header */}
 				<div style={{ display: "flex", height: HEADER }}>
-					<div
-						style={{
-							width: GUT,
-							display: "flex",
-							alignItems: "flex-end",
-							justifyContent: "flex-end",
-							paddingRight: 4,
-							paddingBottom: 3,
-							fontSize: 8,
-						}}
-					>
-						{tzLabel}
-					</div>
+					<div style={{ width: GUT }} />
 					{days.map((d, i) => (
 						<div
 							key={i}
@@ -105,24 +99,24 @@ export default function Calendar({
 								borderLeft: "1px solid #000",
 							}}
 						>
-							<div style={{ fontSize: 11, marginBottom: 2 }}>{d.weekday}</div>
+							<div style={{ fontSize: 13, marginBottom: 2 }}>{d.weekday}</div>
 							{d.isToday ? (
 								<div
 									className="bg-black text-white"
 									style={{
-										width: 28,
-										height: 28,
-										borderRadius: 14,
+										width: 30,
+										height: 30,
+										borderRadius: 15,
 										display: "flex",
 										alignItems: "center",
 										justifyContent: "center",
-										fontSize: 17,
+										fontSize: 18,
 									}}
 								>
 									{d.dayNum}
 								</div>
 							) : (
-								<div style={{ fontSize: 21 }}>{d.dayNum}</div>
+								<div style={{ fontSize: 22 }}>{d.dayNum}</div>
 							)}
 						</div>
 					))}
@@ -138,7 +132,7 @@ export default function Calendar({
 								alignItems: "center",
 								justifyContent: "flex-end",
 								paddingRight: 4,
-								fontSize: 10,
+								fontSize: 12,
 							}}
 						>
 							all-day
@@ -158,18 +152,18 @@ export default function Calendar({
 									style={{
 										position: "absolute",
 										left: a.dayIndex * colW + 2,
-										top: 3 + (i % 3) * 15,
+										top: 3 + (i % 3) * 16,
 										width: a.span * colW - 4,
-										height: 14,
-										fontSize: 11,
-										paddingLeft: 4,
+										height: 16,
+										fontSize: 13,
+										paddingLeft: 5,
 										display: "flex",
 										alignItems: "center",
 										overflow: "hidden",
 										borderRadius: 2,
 									}}
 								>
-									{clip(a.title, Math.round(a.span * 14))}
+									{clip(a.title, Math.round(a.span * 13))}
 								</div>
 							))}
 						</div>
@@ -182,7 +176,7 @@ export default function Calendar({
 						{hours.map((h) => (
 							<div
 								key={h}
-								style={{ position: "absolute", top: yMin(h * 60) - 8, right: 4, fontSize: 11 }}
+								style={{ position: "absolute", top: yMin(h * 60) - 9, right: 4, fontSize: 13 }}
 							>
 								{fmtHour(h)}
 							</div>
@@ -210,7 +204,7 @@ export default function Calendar({
 							.filter((e) => e.endMin > winStart && e.startMin < winEnd)
 							.map((e, i) => {
 								const top = yMin(e.startMin);
-								const h = Math.max(18, yMin(e.endMin) - top);
+								const h = Math.max(20, yMin(e.endMin) - top);
 								const sub = (colW - 3) / e.lanes;
 								return (
 									<div
@@ -222,9 +216,9 @@ export default function Calendar({
 											top,
 											width: sub - 1,
 											height: h,
-											fontSize: 12,
-											lineHeight: 1.1,
-											padding: "1px 4px",
+											fontSize: 14,
+											lineHeight: 1.12,
+											padding: "2px 4px",
 											display: "flex",
 											flexDirection: "column",
 											overflow: "hidden",
@@ -232,7 +226,7 @@ export default function Calendar({
 										}}
 									>
 										<div style={{ overflow: "hidden" }}>{clip(e.title, 26)}</div>
-										<div style={{ fontSize: 10 }}>{e.timeLabel}</div>
+										<div style={{ fontSize: 12 }}>{e.timeLabel}</div>
 									</div>
 								);
 							})}
@@ -248,11 +242,11 @@ export default function Calendar({
 						justifyContent: message ? "center" : "flex-end",
 						paddingLeft: 8,
 						paddingRight: 8,
-						fontSize: 11,
+						fontSize: 13,
 						borderTop: "1px solid #000",
 					}}
 				>
-					{message ? message : updatedLabel ? `Updated ${updatedLabel}` : ""}
+					{footer}
 				</div>
 			</div>
 		</PreSatori>

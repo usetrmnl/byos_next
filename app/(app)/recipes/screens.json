@@ -41,7 +41,7 @@
 			"name": "Mikkel Bergmann",
 			"github": "mikkel-bergmann"
 		},
-		"renderSettings": {},
+		"renderSettings": { "doubleSizeForSharperText": true },
 		"version": "0.1.0",
 		"category": "display-components"
 	},
