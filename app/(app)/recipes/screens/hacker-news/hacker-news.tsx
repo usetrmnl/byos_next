@@ -98,10 +98,10 @@ export default function HackerNews({
 				>
 					{s.rank}. {clip(s.title, 80)}
 				</div>
-				<div className="font-blockKie" style={{ fontSize: 13.5, marginTop: 5 }}>
+				<div className="font-blockKie" style={{ fontSize: 16, marginTop: 5 }}>
 					{s.score} pts · {s.comments} comments
 				</div>
-				<div className="font-blockKie" style={{ fontSize: 13.5 }}>
+				<div className="font-blockKie" style={{ fontSize: 16 }}>
 					{clip(s.domain, 30)}
 				</div>
 			</div>
@@ -141,7 +141,7 @@ export default function HackerNews({
 					<div className="font-blockKie" style={{ fontSize: 18 }}>
 						Hacker News
 					</div>
-					<div className="font-blockKie" style={{ fontSize: 13.5 }}>
+					<div className="font-blockKie" style={{ fontSize: 16 }}>
 						{message
 							? ""
 							: `Top ${count}${updatedLabel ? `  ·  ${updatedLabel}` : ""}`}
