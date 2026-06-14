@@ -1,7 +1,8 @@
 import { PreSatori } from "@/utils/pre-satori";
 
 interface DayHeader {
-	label: string;
+	weekday: string;
+	dayNum: number;
 	isToday: boolean;
 }
 interface AllDayItem {
@@ -11,8 +12,10 @@ interface AllDayItem {
 }
 interface TimedItem {
 	dayIndex: number;
-	topPct: number;
-	heightPct: number;
+	startMin: number;
+	endMin: number;
+	lane: number;
+	lanes: number;
 	title: string;
 	timeLabel: string;
 }
@@ -24,6 +27,7 @@ interface CalendarProps {
 	timedItems?: TimedItem[];
 	dayStartHour?: number;
 	dayEndHour?: number;
+	tzLabel?: string;
 	updatedLabel?: string;
 	message?: string;
 	width?: number;
@@ -46,13 +50,14 @@ export default function Calendar({
 	timedItems = [],
 	dayStartHour = 7,
 	dayEndHour = 22,
+	tzLabel = "",
 	updatedLabel = "",
 	message,
 	width = 800,
 	height = 480,
 }: CalendarProps) {
-	const GUT = 50;
-	const HEADER = 32;
+	const GUT = 38;
+	const HEADER = 54;
 	const ALLDAY = allDayItems.length ? 46 : 0;
 	const FOOTER = 20;
 	const PAD = 14; // vertical inset so first/last hour clears the borders
@@ -60,8 +65,12 @@ export default function Calendar({
 	const gridW = colW * 7;
 	const bodyH = height - HEADER - ALLDAY - FOOTER;
 	const usableH = bodyH - 2 * PAD;
-	const range = Math.max(1, dayEndHour - dayStartHour);
-	const y = (h: number) => PAD + ((h - dayStartHour) / range) * usableH;
+
+	const winStart = dayStartHour * 60;
+	const winEnd = dayEndHour * 60;
+	const spanMin = Math.max(1, winEnd - winStart);
+	const yMin = (min: number) =>
+		PAD + ((Math.min(Math.max(min, winStart), winEnd) - winStart) / spanMin) * usableH;
 
 	return (
 		<PreSatori width={width} height={height}>
@@ -71,21 +80,50 @@ export default function Calendar({
 			>
 				{/* Day header */}
 				<div style={{ display: "flex", height: HEADER }}>
-					<div style={{ width: GUT }} />
+					<div
+						style={{
+							width: GUT,
+							display: "flex",
+							alignItems: "flex-end",
+							justifyContent: "flex-end",
+							paddingRight: 4,
+							paddingBottom: 3,
+							fontSize: 8,
+						}}
+					>
+						{tzLabel}
+					</div>
 					{days.map((d, i) => (
 						<div
 							key={i}
-							className={d.isToday ? "bg-black text-white" : "text-black"}
 							style={{
 								width: colW,
 								display: "flex",
+								flexDirection: "column",
 								alignItems: "center",
 								justifyContent: "center",
-								fontSize: 17,
 								borderLeft: "1px solid #000",
 							}}
 						>
-							{d.label}
+							<div style={{ fontSize: 11, marginBottom: 2 }}>{d.weekday}</div>
+							{d.isToday ? (
+								<div
+									className="bg-black text-white"
+									style={{
+										width: 28,
+										height: 28,
+										borderRadius: 14,
+										display: "flex",
+										alignItems: "center",
+										justifyContent: "center",
+										fontSize: 17,
+									}}
+								>
+									{d.dayNum}
+								</div>
+							) : (
+								<div style={{ fontSize: 21 }}>{d.dayNum}</div>
+							)}
 						</div>
 					))}
 				</div>
@@ -99,8 +137,8 @@ export default function Calendar({
 								display: "flex",
 								alignItems: "center",
 								justifyContent: "flex-end",
-								paddingRight: 5,
-								fontSize: 11,
+								paddingRight: 4,
+								fontSize: 10,
 							}}
 						>
 							all-day
@@ -131,7 +169,7 @@ export default function Calendar({
 										borderRadius: 2,
 									}}
 								>
-									{clip(a.title, Math.round(a.span * 13))}
+									{clip(a.title, Math.round(a.span * 14))}
 								</div>
 							))}
 						</div>
@@ -144,12 +182,7 @@ export default function Calendar({
 						{hours.map((h) => (
 							<div
 								key={h}
-								style={{
-									position: "absolute",
-									top: y(h) - 8,
-									right: 5,
-									fontSize: 12,
-								}}
+								style={{ position: "absolute", top: yMin(h * 60) - 8, right: 4, fontSize: 11 }}
 							>
 								{fmtHour(h)}
 							</div>
@@ -161,7 +194,7 @@ export default function Calendar({
 							<div
 								key={`l${h}`}
 								className="bg-black"
-								style={{ position: "absolute", left: 0, top: y(h), width: gridW, height: 1, opacity: 0.25 }}
+								style={{ position: "absolute", left: 0, top: yMin(h * 60), width: gridW, height: 1, opacity: 0.25 }}
 							/>
 						))}
 						{/* Column separators */}
@@ -172,36 +205,37 @@ export default function Calendar({
 								style={{ position: "absolute", left: Math.min(i * colW, gridW - 1), top: 0, width: 1, height: bodyH }}
 							/>
 						))}
-						{/* Timed events */}
-						{timedItems.map((e, i) => {
-							const top = PAD + e.topPct * usableH;
-							const h = Math.min(
-								bodyH - PAD - top,
-								Math.max(16, e.heightPct * usableH),
-							);
-							return (
-								<div
-									key={i}
-									className="bg-black text-white"
-									style={{
-										position: "absolute",
-										left: e.dayIndex * colW + 2,
-										top,
-										width: colW - 4,
-										height: h,
-										fontSize: 12,
-										padding: "1px 4px",
-										display: "flex",
-										flexDirection: "column",
-										overflow: "hidden",
-										borderRadius: 2,
-									}}
-								>
-									<div style={{ fontSize: 10, lineHeight: 1.1 }}>{e.timeLabel}</div>
-									<div style={{ lineHeight: 1.1 }}>{clip(e.title, 14)}</div>
-								</div>
-							);
-						})}
+						{/* Timed events (side-by-side lanes when overlapping) */}
+						{timedItems
+							.filter((e) => e.endMin > winStart && e.startMin < winEnd)
+							.map((e, i) => {
+								const top = yMin(e.startMin);
+								const h = Math.max(18, yMin(e.endMin) - top);
+								const sub = (colW - 3) / e.lanes;
+								return (
+									<div
+										key={i}
+										className="bg-black text-white"
+										style={{
+											position: "absolute",
+											left: e.dayIndex * colW + 2 + e.lane * sub,
+											top,
+											width: sub - 1,
+											height: h,
+											fontSize: 12,
+											lineHeight: 1.1,
+											padding: "1px 4px",
+											display: "flex",
+											flexDirection: "column",
+											overflow: "hidden",
+											borderRadius: 3,
+										}}
+									>
+										<div style={{ overflow: "hidden" }}>{clip(e.title, 26)}</div>
+										<div style={{ fontSize: 10 }}>{e.timeLabel}</div>
+									</div>
+								);
+							})}
 					</div>
 				</div>
 

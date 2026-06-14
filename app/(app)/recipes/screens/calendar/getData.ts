@@ -11,7 +11,8 @@ type CalendarParams = {
 };
 
 interface DayHeader {
-	label: string;
+	weekday: string;
+	dayNum: number;
 	isToday: boolean;
 }
 interface AllDayItem {
@@ -21,14 +22,17 @@ interface AllDayItem {
 }
 interface TimedItem {
 	dayIndex: number;
-	topPct: number;
-	heightPct: number;
+	startMin: number;
+	endMin: number;
+	lane: number;
+	lanes: number;
 	title: string;
 	timeLabel: string;
 }
 
 export interface CalendarData {
 	tz: string;
+	tzLabel: string;
 	dayStartHour: number;
 	dayEndHour: number;
 	hours: number[];
@@ -40,7 +44,7 @@ export interface CalendarData {
 }
 
 const DAY_MS = 86_400_000;
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 // Wall-clock parts of an instant in a given IANA timezone.
 function tzParts(date: Date, tz: string) {
@@ -73,10 +77,15 @@ function toHour(v: unknown, def: number): number {
 	return Math.min(23, Math.max(0, Math.round(n)));
 }
 
-function fmtHM(h: number, m: number): string {
-	const ap = h < 12 ? "a" : "p";
-	const hh = h % 12 === 0 ? 12 : h % 12;
-	return m === 0 ? `${hh}${ap}` : `${hh}:${String(m).padStart(2, "0")}${ap}`;
+const ampm = (h: number) => (h < 12 ? "a" : "p");
+const h12 = (h: number) => (h % 12 === 0 ? 12 : h % 12);
+const stamp = (h: number, m: number) =>
+	m === 0 ? `${h12(h)}` : `${h12(h)}:${String(m).padStart(2, "0")}`;
+
+// Compact range like "10–11a", "10:30–11:30a", "11a–12p".
+function fmtRange(sh: number, sm: number, eh: number, em: number): string {
+	const start = stamp(sh, sm) + (ampm(sh) === ampm(eh) ? "" : ampm(sh));
+	return `${start}–${stamp(eh, em)}${ampm(eh)}`;
 }
 
 async function fetchIcs(url: string): Promise<string | null> {
@@ -93,6 +102,39 @@ async function fetchIcs(url: string): Promise<string | null> {
 		return null;
 	} finally {
 		clearTimeout(timer);
+	}
+}
+
+// Side-by-side columns for overlapping events within a single day.
+function assignLanes(evs: TimedItem[]): void {
+	evs.sort((a, b) => a.startMin - b.startMin || a.endMin - b.endMin);
+	let i = 0;
+	while (i < evs.length) {
+		let j = i;
+		let clusterEnd = evs[i].endMin;
+		while (j + 1 < evs.length && evs[j + 1].startMin < clusterEnd) {
+			j++;
+			clusterEnd = Math.max(clusterEnd, evs[j].endMin);
+		}
+		const colEnds: number[] = [];
+		for (let k = i; k <= j; k++) {
+			const e = evs[k];
+			let placed = false;
+			for (let c = 0; c < colEnds.length; c++) {
+				if (e.startMin >= colEnds[c]) {
+					e.lane = c;
+					colEnds[c] = e.endMin;
+					placed = true;
+					break;
+				}
+			}
+			if (!placed) {
+				e.lane = colEnds.length;
+				colEnds.push(e.endMin);
+			}
+		}
+		for (let k = i; k <= j; k++) evs[k].lanes = colEnds.length;
+		i = j + 1;
 	}
 }
 
@@ -117,9 +159,13 @@ export default async function getData(
 		const p = tzParts(new Date(anchor + i * DAY_MS), tz);
 		dayKeys.push(p.ymd);
 		const wd = WEEKDAYS[new Date(Date.UTC(p.year, p.month - 1, p.day)).getUTCDay()];
-		days.push({ label: `${wd} ${p.month}/${p.day}`, isToday: i === 0 });
+		days.push({ weekday: wd, dayNum: p.day, isToday: i === 0 });
 	}
 
+	const tzLabel =
+		new Intl.DateTimeFormat("en-US", { timeZone: tz, timeZoneName: "shortOffset" })
+			.formatToParts(now)
+			.find((p) => p.type === "timeZoneName")?.value || "";
 	const updatedLabel = new Intl.DateTimeFormat("en-US", {
 		timeZone: tz,
 		hour: "numeric",
@@ -129,6 +175,7 @@ export default async function getData(
 
 	const base: CalendarData = {
 		tz,
+		tzLabel,
 		dayStartHour,
 		dayEndHour,
 		hours,
@@ -151,9 +198,6 @@ export default async function getData(
 
 	const winStart = new Date(anchor - DAY_MS);
 	const winEnd = new Date(anchor + 7 * DAY_MS);
-	const winStartMin = dayStartHour * 60;
-	const winEndMin = dayEndHour * 60;
-	const span = winEndMin - winStartMin;
 
 	const allDayItems: AllDayItem[] = [];
 	const timedItems: TimedItem[] = [];
@@ -187,7 +231,6 @@ export default async function getData(
 			const sp = tzParts(start, tz);
 			const startIdx = dayKeys.indexOf(sp.ymd);
 
-			// All-day or multi-day events go in the all-day band.
 			if (ev.start.isDate || durationMs >= 20 * 3600 * 1000) {
 				const from = startIdx >= 0 ? startIdx : 0;
 				const dayCount = Math.max(1, Math.round(durationMs / DAY_MS));
@@ -201,19 +244,54 @@ export default async function getData(
 			const ep = tzParts(end, tz);
 			const startMin = sp.minutes;
 			const endMin = ep.ymd === sp.ymd ? ep.minutes : 24 * 60;
-			if (endMin <= winStartMin || startMin >= winEndMin) continue; // outside visible hours
-
-			const top = (Math.max(startMin, winStartMin) - winStartMin) / span;
-			const bottom = (Math.min(endMin, winEndMin) - winStartMin) / span;
 			timedItems.push({
 				dayIndex: startIdx,
-				topPct: Math.max(0, top),
-				heightPct: Math.max(0.04, bottom - top),
+				startMin,
+				endMin: Math.max(endMin, startMin + 15),
+				lane: 0,
+				lanes: 1,
 				title,
-				timeLabel: fmtHM(sp.hour, sp.minute),
+				timeLabel: fmtRange(sp.hour, sp.minute, ep.hour, ep.minute),
 			});
 		}
 	}
 
-	return { ...base, allDayItems, timedItems };
+	// Lay out overlaps per day into side-by-side lanes.
+	for (let d = 0; d < 7; d++) {
+		assignLanes(timedItems.filter((e) => e.dayIndex === d));
+	}
+
+	// Auto-fit the visible hours to the events (e-ink is short — keep rows tall
+	// and readable instead of cramming the whole configured day range).
+	let vStart = Math.max(dayStartHour, 8);
+	let vEnd = Math.min(dayEndHour, 18);
+	if (timedItems.length) {
+		let lo = 24 * 60;
+		let hi = 0;
+		for (const e of timedItems) {
+			lo = Math.min(lo, e.startMin);
+			hi = Math.max(hi, e.endMin);
+		}
+		vStart = Math.max(dayStartHour, Math.floor(lo / 60));
+		vEnd = Math.min(dayEndHour, Math.ceil(hi / 60));
+	}
+	if (vEnd - vStart < 6) {
+		vEnd = Math.min(dayEndHour, vStart + 6);
+		vStart = Math.max(dayStartHour, vEnd - 6);
+	}
+	if (vEnd <= vStart) {
+		vStart = dayStartHour;
+		vEnd = dayEndHour;
+	}
+	const visHours: number[] = [];
+	for (let h = vStart; h <= vEnd; h++) visHours.push(h);
+
+	return {
+		...base,
+		dayStartHour: vStart,
+		dayEndHour: vEnd,
+		hours: visHours,
+		allDayItems,
+		timedItems,
+	};
 }
