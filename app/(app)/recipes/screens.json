@@ -141,6 +141,18 @@
 				"label": "Location",
 				"description": "City or place name to fetch weather for",
 				"default": "San Francisco"
+			},
+			"latitude": {
+				"type": "number",
+				"label": "Latitude",
+				"description": "Optional exact latitude; when set with longitude, skips geocoding",
+				"default": 0
+			},
+			"longitude": {
+				"type": "number",
+				"label": "Longitude",
+				"description": "Optional exact longitude; when set with latitude, skips geocoding",
+				"default": 0
 			}
 		},
 		"tags": ["tailwind", "weather", "api", "live-data", "configurable"],
