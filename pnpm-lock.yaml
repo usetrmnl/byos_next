@@ -98,6 +98,9 @@ importers:
       d3:
         specifier: ^7.9.0
         version: 7.9.0
+      ical-expander:
+        specifier: ^3.2.0
+        version: 3.2.0
       jimp:
         specifier: ^1.6.1
         version: 1.6.1
@@ -3529,6 +3532,13 @@ packages:
   human-signals@8.0.1:
     resolution: {integrity: sha512-eKCa6bwnJhvxj14kZk5NCPc6Hb6BdsU9DZcOnmQKSnO1VKrfV0zCvtttPZUsBvjmNDn8rpcJfpwSYnHBjc95MQ==}
     engines: {node: '>=18.18.0'}
+
+  ical-expander@3.2.0:
+    resolution: {integrity: sha512-QhU7l1X7rcbVVekpIHy7Vm7dvFcMl+PoNPhn13oB3RK3YjdZo3+uT/yx9OJopo0anX5cEGUyzsWRvagZk8gOSw==}
+    engines: {node: '>=4'}
+
+  ical.js@1.5.0:
+    resolution: {integrity: sha512-7ZxMkogUkkaCx810yp0ZGKvq1ZpRgJeornPttpoxe6nYZ3NLesZe1wWMXDdwTkj/b5NtXT+Y16Aakph/ao98ZQ==}
 
   iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}
@@ -8781,6 +8791,12 @@ snapshots:
   human-signals@2.1.0: {}
 
   human-signals@8.0.1: {}
+
+  ical-expander@3.2.0:
+    dependencies:
+      ical.js: 1.5.0
+
+  ical.js@1.5.0: {}
 
   iconv-lite@0.6.3:
     dependencies:

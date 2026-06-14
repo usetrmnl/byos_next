@@ -1,4 +1,50 @@
 {
+	"calendar": {
+		"title": "Calendar",
+		"published": true,
+		"createdAt": "2026-06-14T00:00:00Z",
+		"updatedAt": "2026-06-14T00:00:00Z",
+		"description": "Weekly calendar grid from one or more iCal (.ics) feeds — e.g. a Google Calendar secret address.",
+		"componentPath": "./screens/calendar",
+		"hasDataFetch": true,
+		"props": {},
+		"params": {
+			"icsUrl": {
+				"type": "string",
+				"label": "iCal URL(s)",
+				"description": "Google Calendar → Settings → Integrate calendar → 'Secret address in iCal format'. One URL per line for multiple calendars.",
+				"default": "",
+				"placeholder": "https://calendar.google.com/calendar/ical/.../basic.ics"
+			},
+			"timezone": {
+				"type": "string",
+				"label": "Timezone (IANA)",
+				"description": "e.g. Australia/Sydney, America/New_York",
+				"default": "Australia/Sydney",
+				"placeholder": "Australia/Sydney"
+			},
+			"dayStartHour": {
+				"type": "number",
+				"label": "Day start hour (0-23)",
+				"description": "First hour shown on the timeline.",
+				"default": 7
+			},
+			"dayEndHour": {
+				"type": "number",
+				"label": "Day end hour (0-23)",
+				"description": "Last hour shown on the timeline.",
+				"default": 22
+			}
+		},
+		"tags": ["calendar", "api", "live-data", "configurable"],
+		"author": {
+			"name": "Mikkel Bergmann",
+			"github": "mikkel-bergmann"
+		},
+		"renderSettings": {},
+		"version": "0.1.0",
+		"category": "display-components"
+	},
 	"simple-text": {
 		"title": "Simple Text",
 		"published": true,
