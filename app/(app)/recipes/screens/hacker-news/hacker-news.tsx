@@ -120,7 +120,7 @@ export default function HackerNews({
 	return (
 		<PreSatori useDoubling={true} width={width} height={height}>
 			<div
-				className="bg-white text-black"
+				className="bg-white text-black font-geneva9"
 				style={{ display: "flex", flexDirection: "column", width, height }}
 			>
 				{/* Header */}
