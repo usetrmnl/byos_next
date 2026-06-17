@@ -18,6 +18,29 @@ interface WeatherData {
 	sunrise: string;
 	latitude: number;
 	longitude: number;
+	suggestion?: string;
+}
+
+/**
+ * Build a short "what to wear / bring" tip from raw conditions.
+ * Jumper when it's cool (<18°C) or cool-ish and windy (>=20 km/h, <20°C);
+ * plus rain/snow and hot-day alerts.
+ */
+function buildSuggestion(tempC: number, windKmh: number, code: number): string {
+	const tips: string[] = [];
+	const rain =
+		(code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
+	const snow = (code >= 71 && code <= 77) || code === 85 || code === 86;
+	const jumper = tempC < 18 || (windKmh >= 20 && tempC < 20);
+
+	if (snow) tips.push("Snow about — rug up warm");
+	else if (rain) tips.push("Rain likely — take an umbrella");
+
+	if (jumper) tips.push("Cool — wear a jumper");
+	else if (tempC >= 30) tips.push("Hot — hat & water");
+
+	if (tips.length === 0) tips.push("Mild — t-shirt weather");
+	return tips.slice(0, 2).join("  ·  ");
 }
 
 type WeatherParams = {
@@ -245,6 +268,11 @@ async function getWeatherData(
 			sunrise: formatTime(daily.sunrise[0]),
 			latitude: latitude || 0,
 			longitude: longitude || 0,
+			suggestion: buildSuggestion(
+				current.temperature_2m,
+				current.wind_speed_10m,
+				current.weather_code,
+			),
 		};
 	} catch (error) {
 		// Silently handle prerendering errors - fetch() rejects during prerendering
