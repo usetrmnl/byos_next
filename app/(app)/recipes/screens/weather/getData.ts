@@ -26,11 +26,18 @@ interface WeatherData {
  * Jumper when it's cool (<18°C) or cool-ish and windy (>=20 km/h, <20°C);
  * plus rain/snow and hot-day alerts.
  */
-function buildSuggestion(tempC: number, windKmh: number, code: number): string {
+function buildSuggestion(
+	tempC: number,
+	windKmh: number,
+	code: number,
+	rainChance = 0,
+): string {
 	const tips: string[] = [];
-	const rain =
+	const rainNow =
 		(code >= 51 && code <= 67) || (code >= 80 && code <= 82) || code >= 95;
 	const snow = (code >= 71 && code <= 77) || code === 85 || code === 86;
+	// Umbrella if it's raining now OR there's a decent chance of rain today.
+	const rain = rainNow || rainChance >= 40;
 	const jumper = tempC < 18 || (windKmh >= 20 && tempC < 20);
 
 	if (snow) tips.push("Snow about — rug up warm");
@@ -74,6 +81,7 @@ interface OpenMeteoResponse {
 		temperature_2m_min: number[];
 		sunset: string[];
 		sunrise: string[];
+		precipitation_probability_max: number[];
 	};
 }
 
@@ -192,7 +200,7 @@ async function getWeatherData(
 
 		// Fetch weather data from Open-Meteo API
 		const response = await fetch(
-			`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code&daily=temperature_2m_max,temperature_2m_min,sunset,sunrise&timezone=auto`,
+			`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,surface_pressure,weather_code&daily=temperature_2m_max,temperature_2m_min,sunset,sunrise,precipitation_probability_max&timezone=auto`,
 			{
 				headers: {
 					Accept: "application/json",
@@ -272,6 +280,7 @@ async function getWeatherData(
 				current.temperature_2m,
 				current.wind_speed_10m,
 				current.weather_code,
+				daily.precipitation_probability_max?.[0] ?? 0,
 			),
 		};
 	} catch (error) {
