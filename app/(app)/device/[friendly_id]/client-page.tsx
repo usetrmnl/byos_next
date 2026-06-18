@@ -307,6 +307,7 @@ export default function DeviceClientPage({
 				grayscale: editedDevice.grayscale,
 				model: editedDevice.model,
 				palette_id: editedDevice.palette_id,
+				temperature_profile: editedDevice.temperature_profile,
 			});
 
 			if (result.success) {

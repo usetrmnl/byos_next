@@ -29,6 +29,7 @@ export interface RequestHeaders {
 	model: string | null;
 	specialFunction: boolean;
 	base64: boolean;
+	supportsTemperatureProfile: boolean;
 	hostUrl: string;
 }
 
@@ -51,6 +52,7 @@ export const parseRequestHeaders = (request: Request): RequestHeaders => {
 		model: headers.get("Model")?.trim() || null,
 		specialFunction: headers.get("Special-Function") === "true",
 		base64: headers.get("BASE64") === "true",
+		supportsTemperatureProfile: headers.get("temperature-profile") === "true",
 		hostUrl:
 			(headers.get("x-forwarded-proto") || "http") +
 			"://" +
@@ -270,6 +272,7 @@ export const updateDeviceStatus = async (
 	if (device.timezone) {
 		updateData.timezone = device.timezone;
 	}
+	updateData.supports_temperature_profile = headers.supportsTemperatureProfile;
 
 	try {
 		await db

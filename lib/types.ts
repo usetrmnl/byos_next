@@ -47,7 +47,11 @@ export type Device = {
 	grayscale: number | null;
 	model: string | null;
 	palette_id: string | null;
+	temperature_profile: TemperatureProfile;
+	supports_temperature_profile: boolean | null;
 };
+
+export type TemperatureProfile = "default" | "a" | "b" | "c";
 
 export type Playlist = {
 	id: string;

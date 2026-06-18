@@ -224,6 +224,8 @@ export async function updateDevice(
 	if (device.model !== undefined) updateData.model = device.model || null;
 	if (device.palette_id !== undefined)
 		updateData.palette_id = device.palette_id || null;
+	if (device.temperature_profile !== undefined)
+		updateData.temperature_profile = device.temperature_profile;
 
 	updateData.updated_at = new Date().toISOString();
 
