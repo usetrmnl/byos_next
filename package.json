@@ -94,12 +94,5 @@
 		"shadcn": "^4.4.0",
 		"tailwindcss": "^4.2.4",
 		"typescript": "^6.0.3"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@biomejs/biome",
-			"@tailwindcss/oxide",
-			"unrs-resolver"
-		]
 	}
 }
