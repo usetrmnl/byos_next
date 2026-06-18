@@ -6,6 +6,42 @@ import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
 import type { Device } from "@/lib/types";
 
+const MINUTE_OF_DAY_MIN = 0;
+const MINUTE_OF_DAY_MAX = 23 * 60 + 59;
+
+function parseMinuteOfDay(
+	value: unknown,
+	field: string,
+): { ok: true; value: number | null } | { ok: false; response: NextResponse } {
+	if (value === null) {
+		return { ok: true, value: null };
+	}
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		return {
+			ok: false,
+			response: NextResponse.json(
+				{ error: `${field} must be a finite number of minutes since midnight` },
+				{ status: 422 },
+			),
+		};
+	}
+
+	const minute = Math.trunc(value);
+	if (minute < MINUTE_OF_DAY_MIN || minute > MINUTE_OF_DAY_MAX) {
+		return {
+			ok: false,
+			response: NextResponse.json(
+				{
+					error: `${field} must be between ${MINUTE_OF_DAY_MIN} and ${MINUTE_OF_DAY_MAX}`,
+				},
+				{ status: 422 },
+			),
+		};
+	}
+
+	return { ok: true, value: minute };
+}
+
 /**
  * GET /api/devices/{id}
  * Get the data of a specific device
@@ -35,14 +71,14 @@ export async function GET(
 	try {
 		// Try to find by numeric ID first, then by friendly_id
 		// RLS handles user filtering automatically
-		const numericId = Number.parseInt(id, 10);
+		const isNumericId = /^\d+$/.test(id);
 
 		const device = await withUserScope(async (scopedDb) => {
-			if (!Number.isNaN(numericId)) {
+			if (isNumericId) {
 				const byId = await scopedDb
 					.selectFrom("devices")
 					.selectAll()
-					.where("id", "=", numericId.toString())
+					.where("id", "=", id)
 					.executeTakeFirst();
 				if (byId) return byId;
 			}
@@ -89,6 +125,9 @@ export async function GET(
 			wifi_strength: deviceObj.rssi
 				? Math.min(100, Math.max(0, ((deviceObj.rssi + 100) / 70) * 100))
 				: null,
+			sleep_mode_enabled: deviceObj.sleep_mode_enabled,
+			sleep_start_time: deviceObj.sleep_start_time,
+			sleep_end_time: deviceObj.sleep_end_time,
 		};
 
 		logInfo("Device data request successful", {
@@ -160,24 +199,22 @@ export async function PATCH(
 	const input = body as Record<string, unknown>;
 	const updates: {
 		sleep_mode_enabled?: boolean;
-		sleep_start_time?: number;
-		sleep_end_time?: number;
+		sleep_start_time?: number | null;
+		sleep_end_time?: number | null;
 	} = {};
 
 	if (typeof input.sleep_mode_enabled === "boolean") {
 		updates.sleep_mode_enabled = input.sleep_mode_enabled;
 	}
-	if (
-		typeof input.sleep_start_time === "number" &&
-		Number.isFinite(input.sleep_start_time)
-	) {
-		updates.sleep_start_time = Math.trunc(input.sleep_start_time);
+	if (input.sleep_start_time !== undefined) {
+		const parsed = parseMinuteOfDay(input.sleep_start_time, "sleep_start_time");
+		if (!parsed.ok) return parsed.response;
+		updates.sleep_start_time = parsed.value;
 	}
-	if (
-		typeof input.sleep_end_time === "number" &&
-		Number.isFinite(input.sleep_end_time)
-	) {
-		updates.sleep_end_time = Math.trunc(input.sleep_end_time);
+	if (input.sleep_end_time !== undefined) {
+		const parsed = parseMinuteOfDay(input.sleep_end_time, "sleep_end_time");
+		if (!parsed.ok) return parsed.response;
+		updates.sleep_end_time = parsed.value;
 	}
 
 	try {
@@ -222,15 +259,9 @@ export async function PATCH(
 				id: Number.parseInt(updated.id.toString(), 10),
 				name: updated.name,
 				friendly_id: updated.friendly_id,
-				sleep_mode_enabled: (
-					updated as unknown as { sleep_mode_enabled: boolean }
-				).sleep_mode_enabled,
-				sleep_start_time: (
-					updated as unknown as { sleep_start_time: number | null }
-				).sleep_start_time,
-				sleep_end_time: (
-					updated as unknown as { sleep_end_time: number | null }
-				).sleep_end_time,
+				sleep_mode_enabled: updated.sleep_mode_enabled,
+				sleep_start_time: updated.sleep_start_time,
+				sleep_end_time: updated.sleep_end_time,
 			},
 		});
 	} catch (error) {

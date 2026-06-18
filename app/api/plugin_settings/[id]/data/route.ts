@@ -1,6 +1,9 @@
 import { sql } from "kysely";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
-import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
+import {
+	rejectReadOnlyPluginSetting,
+	requirePluginSettingsAccess,
+} from "@/lib/trmnl/plugin-settings-store";
 import {
 	isResponse,
 	parseJsonObjectBody,
@@ -41,16 +44,14 @@ export async function POST(
 	const { id } = await params;
 	const access = await requirePluginSettingsAccess(id);
 	if (access.kind === "response") return access.response;
+	const readOnly = rejectReadOnlyPluginSetting(access.setting);
+	if (readOnly) return readOnly;
 
 	const body = await parseJsonObjectBody(request);
 	if (isResponse(body)) return body;
 
 	const mergeVariables = validateMergeVariables(body.merge_variables);
 	if (isResponse(mergeVariables)) return mergeVariables;
-
-	if (access.setting.read_only) {
-		return Response.json({ error: "Data cannot be modified" }, { status: 422 });
-	}
 
 	const updated = await withExplicitUserScope(access.userId, (scopedDb) =>
 		scopedDb

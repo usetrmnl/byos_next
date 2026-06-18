@@ -1,7 +1,10 @@
 import { sql } from "kysely";
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { isJsonObject } from "@/lib/trmnl/plugin-settings";
-import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
+import {
+	rejectReadOnlyPluginSetting,
+	requirePluginSettingsAccess,
+} from "@/lib/trmnl/plugin-settings-store";
 import {
 	isResponse,
 	parseJsonObjectBody,
@@ -47,6 +50,8 @@ export async function PUT(
 
 	const access = await requirePluginSettingsAccess(id);
 	if (access.kind === "response") return access.response;
+	const readOnly = rejectReadOnlyPluginSetting(access.setting);
+	if (readOnly) return readOnly;
 
 	const body = await parseJsonObjectBody(request);
 	if (isResponse(body)) return body;

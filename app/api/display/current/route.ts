@@ -17,6 +17,7 @@ import { parseRequestHeaders } from "../utils";
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
 	const { apiKey } = headers;
+	const apiKeyPrefix = apiKey?.slice(0, 6);
 
 	if (!apiKey) {
 		return NextResponse.json(
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
 	if (!ready) {
 		logInfo("Database not available for /api/display/current", {
 			source: "api/display/current",
-			metadata: { apiKey },
+			metadata: { apiKey: apiKeyPrefix },
 		});
 		return NextResponse.json(
 			{ status: 503, error: "Database not available" },
@@ -88,7 +89,7 @@ export async function GET(request: Request) {
 	} catch (error) {
 		logError(error as Error, {
 			source: "api/display/current",
-			metadata: { apiKey },
+			metadata: { apiKey: apiKeyPrefix },
 		});
 		return NextResponse.json(
 			{ status: 500, error: "Internal server error" },

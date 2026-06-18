@@ -19,6 +19,17 @@ export type PluginSettingsAccess =
 	  }
 	| { kind: "response"; response: Response };
 
+export function rejectReadOnlyPluginSetting(
+	setting: Pick<PluginSettingRow, "read_only">,
+): Response | null {
+	return setting.read_only
+		? Response.json(
+				{ error: "Plugin setting cannot be modified" },
+				{ status: 422 },
+			)
+		: null;
+}
+
 /**
  * Resolve a plugin-settings request to `{ userId, setting }` while honoring
  * the TRMNL auth contract:

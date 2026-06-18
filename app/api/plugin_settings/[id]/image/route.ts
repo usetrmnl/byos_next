@@ -1,5 +1,8 @@
 import { withExplicitUserScope } from "@/lib/database/scoped-db";
-import { requirePluginSettingsAccess } from "@/lib/trmnl/plugin-settings-store";
+import {
+	rejectReadOnlyPluginSetting,
+	requirePluginSettingsAccess,
+} from "@/lib/trmnl/plugin-settings-store";
 import {
 	ALLOWED_IMAGE_MIME_TYPES,
 	jsonError,
@@ -29,6 +32,8 @@ export async function POST(
 	const { id } = await params;
 	const access = await requirePluginSettingsAccess(id);
 	if (access.kind === "response") return access.response;
+	const readOnly = rejectReadOnlyPluginSetting(access.setting);
+	if (readOnly) return readOnly;
 
 	const formData = await request.formData();
 	const image = formData.get("image") ?? formData.get("file");
