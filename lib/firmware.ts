@@ -94,6 +94,13 @@ export async function getLatestFirmware(): Promise<FirmwareRelease | null> {
 			publishedAt: data.published_at || new Date().toISOString(),
 		};
 
+		// Don't offer an update the device can't download: variant-partitioned
+		// buckets 404 the flat FW{version}.bin path, reboot-looping devices.
+		const reachable = await fetch(release.downloadUrl, { method: "HEAD" })
+			.then((r) => r.ok)
+			.catch(() => false);
+		if (!reachable) return null;
+
 		// Update cache
 		cachedRelease = release;
 		cacheTime = now;
