@@ -93,6 +93,7 @@ export async function renderRecipeToImage({
 			cookies,
 			model,
 			paletteId,
+			userId,
 			renderSettings: definition.meta.renderSettings ?? null,
 		});
 	}
@@ -124,27 +125,42 @@ export async function renderRecipeToImage({
 export async function renderRecipeForDevice({
 	slug,
 	profile,
+	width,
+	height,
 	userId,
 	cookies,
 }: {
 	slug: string;
 	profile: DeviceProfile;
+	width?: number;
+	height?: number;
 	userId?: string | null;
 	cookies?: string;
 }): Promise<RenderDeviceImageResult | null> {
+	const renderProfile =
+		width !== undefined || height !== undefined
+			? {
+					...profile,
+					model: {
+						...profile.model,
+						width: width ?? profile.model.width,
+						height: height ?? profile.model.height,
+					},
+				}
+			: profile;
 	const renders = await renderRecipeToImage({
 		slug,
-		imageWidth: profile.model.width,
-		imageHeight: profile.model.height,
+		imageWidth: renderProfile.model.width,
+		imageHeight: renderProfile.model.height,
 		formats: ["png"],
 		userId,
 		cookies,
-		model: profile.model,
-		paletteId: profile.palette?.id ?? null,
+		model: renderProfile.model,
+		paletteId: renderProfile.palette?.id ?? null,
 	});
 
 	if (!renders.png) return null;
-	return renderDeviceImage({ png: renders.png, profile });
+	return renderDeviceImage({ png: renders.png, profile: renderProfile });
 }
 
 async function buildLiquidHtml(

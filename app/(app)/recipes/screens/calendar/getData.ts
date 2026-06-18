@@ -1,3 +1,5 @@
+import dns from "node:dns/promises";
+import net from "node:net";
 import IcalExpander from "ical-expander";
 
 export const dynamic = "force-dynamic";
@@ -52,6 +54,8 @@ type RawCalendarEvent = {
 
 const DAY_MS = 86_400_000;
 const DEFAULT_TIMEZONE = "Australia/Sydney";
+const MAX_ICS_BYTES = 1024 * 1024;
+const MAX_ICS_URLS = 5;
 const WEEKDAYS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
 function safeTimezone(value: string | undefined): string {
@@ -136,9 +140,31 @@ function isPrivateIpv4(host: string): boolean {
 		a === 127 ||
 		(a === 169 && b === 254) ||
 		(a === 172 && b >= 16 && b <= 31) ||
+		(a === 192 && b === 0) ||
 		(a === 192 && b === 168) ||
-		(a === 100 && b >= 64 && b <= 127)
+		(a === 100 && b >= 64 && b <= 127) ||
+		(a === 198 && (b === 18 || b === 19)) ||
+		a >= 224
 	);
+}
+
+function isPrivateIpAddress(address: string): boolean {
+	const host = address.toLowerCase().replace(/^\[|\]$/g, "");
+	if (host.startsWith("::ffff:")) {
+		const mapped = host.slice("::ffff:".length);
+		return parseIpv4(mapped) ? isPrivateIpv4(mapped) : true;
+	}
+	if (parseIpv4(host)) return isPrivateIpv4(host);
+	if (net.isIP(host) === 6) {
+		return (
+			host === "::" ||
+			host === "::1" ||
+			host.startsWith("fc") ||
+			host.startsWith("fd") ||
+			/^fe[89ab]/.test(host)
+		);
+	}
+	return false;
 }
 
 function isSafeUrl(raw: string): boolean {
@@ -165,15 +191,66 @@ function isSafeUrl(raw: string): boolean {
 		const mapped = host.slice("::ffff:".length);
 		return parseIpv4(mapped) ? !isPrivateIpv4(mapped) : false;
 	}
-	if (isPrivateIpv4(host)) return false;
+	if (isPrivateIpAddress(host)) return false;
 
 	// IPv6 unique-local (fc00::/7) and link-local (fe80::/10).
 	if (host.includes(":") && /^(f[cd]|fe[89ab])/.test(host)) return false;
 	return true;
 }
 
+async function resolvesToPublicAddress(hostname: string): Promise<boolean> {
+	if (net.isIP(hostname)) return !isPrivateIpAddress(hostname);
+	try {
+		const addresses = await dns.lookup(hostname, { all: true, verbatim: true });
+		return (
+			addresses.length > 0 &&
+			addresses.every(({ address }) => !isPrivateIpAddress(address))
+		);
+	} catch {
+		return false;
+	}
+}
+
+async function readTextWithLimit(
+	response: Response,
+	maxBytes: number,
+): Promise<string | null> {
+	const declaredLength = response.headers.get("content-length");
+	if (declaredLength) {
+		const parsed = Number.parseInt(declaredLength, 10);
+		if (Number.isFinite(parsed) && parsed > maxBytes) return null;
+	}
+
+	if (!response.body) return null;
+	const reader = response.body.getReader();
+	const chunks: Uint8Array[] = [];
+	let total = 0;
+
+	while (true) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		if (!value) continue;
+		total += value.byteLength;
+		if (total > maxBytes) {
+			await reader.cancel();
+			return null;
+		}
+		chunks.push(value);
+	}
+
+	const bytes = new Uint8Array(total);
+	let offset = 0;
+	for (const chunk of chunks) {
+		bytes.set(chunk, offset);
+		offset += chunk.byteLength;
+	}
+	return new TextDecoder("utf-8", { fatal: false }).decode(bytes);
+}
+
 async function fetchIcs(url: string): Promise<string | null> {
 	if (!isSafeUrl(url)) return null;
+	const parsed = new URL(url);
+	if (!(await resolvesToPublicAddress(parsed.hostname))) return null;
 	const ctrl = new AbortController();
 	const timer = setTimeout(() => ctrl.abort(), 7000);
 	try {
@@ -182,7 +259,7 @@ async function fetchIcs(url: string): Promise<string | null> {
 			headers: { Accept: "text/calendar" },
 			redirect: "manual",
 		});
-		return res.ok ? await res.text() : null;
+		return res.ok ? await readTextWithLimit(res, MAX_ICS_BYTES) : null;
 	} catch {
 		return null;
 	} finally {
@@ -296,7 +373,8 @@ export default async function getData(
 	const urls = (params?.icsUrl || "")
 		.split(/[\n,]+/)
 		.map((url) => url.trim())
-		.filter(Boolean);
+		.filter(Boolean)
+		.slice(0, MAX_ICS_URLS);
 	if (urls.length === 0) {
 		return {
 			...base,

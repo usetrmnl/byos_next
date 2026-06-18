@@ -32,6 +32,7 @@ export type RasterizeOptions = {
 	renderSettings?: RasterizeRenderSettings | null;
 	model?: TrmnlModel | null;
 	paletteId?: string | null;
+	userId?: string | null;
 } & (
 	| {
 			html: string;
@@ -106,6 +107,7 @@ export async function rasterize(
 		renderSettings,
 		model,
 		paletteId,
+		userId,
 		cookies,
 	} = options;
 
@@ -129,14 +131,18 @@ export async function rasterize(
 			const rendererType = getRendererType();
 			if (rendererType === "browser") {
 				const { renderWithBrowser } = await import("../renderers/browser");
-				const scaleFactor = target.width / imageWidth;
 				pngBuffer = await renderWithBrowser(
 					slug,
 					imageWidth,
 					imageHeight,
-					scaleFactor,
 					cookies,
-					{ model: model?.name ?? null, paletteId: paletteId ?? null },
+					{
+						model: model?.name ?? null,
+						paletteId: paletteId ?? null,
+						userId,
+						captureWidth: target.width,
+						captureHeight: target.height,
+					},
 				);
 			} else {
 				const wrapped = wrapWithTrmnlCss(
@@ -152,14 +158,18 @@ export async function rasterize(
 			}
 		} else if ("browser" in options && options.browser) {
 			const { renderWithBrowser } = await import("../renderers/browser");
-			const scaleFactor = target.width / imageWidth;
 			pngBuffer = await renderWithBrowser(
 				slug,
 				imageWidth,
 				imageHeight,
-				scaleFactor,
 				cookies,
-				{ model: model?.name ?? null, paletteId: paletteId ?? null },
+				{
+					model: model?.name ?? null,
+					paletteId: paletteId ?? null,
+					userId,
+					captureWidth: target.width,
+					captureHeight: target.height,
+				},
 			);
 		} else {
 			console.error(`[rasterize:${slug}] No html or element provided`);

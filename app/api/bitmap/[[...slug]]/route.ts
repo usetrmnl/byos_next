@@ -14,11 +14,98 @@ import {
 	type DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
+import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import {
 	parseRequestHeaders,
 	type RequestHeaders,
 	resolveUserIdFromApiKey,
 } from "../../display/utils";
+
+const MAX_IMAGE_DIMENSION = 4096;
+const MAX_IMAGE_PIXELS = 6_000_000;
+
+type RequestedDimensions =
+	| { ok: true; width?: number; height?: number }
+	| { ok: false; response: Response };
+
+function parseDimension(
+	value: string | null,
+	label: string,
+): { ok: true; value?: number } | { ok: false; response: Response } {
+	if (value === null) return { ok: true };
+	if (!/^\d+$/.test(value)) {
+		return {
+			ok: false,
+			response: Response.json(
+				{ error: `${label} must be a positive integer` },
+				{ status: 422 },
+			),
+		};
+	}
+	const parsed = Number.parseInt(value, 10);
+	if (!Number.isFinite(parsed) || parsed <= 0) {
+		return {
+			ok: false,
+			response: Response.json(
+				{ error: `${label} must be a positive integer` },
+				{ status: 422 },
+			),
+		};
+	}
+	if (parsed > MAX_IMAGE_DIMENSION) {
+		return {
+			ok: false,
+			response: Response.json(
+				{ error: `${label} must be <= ${MAX_IMAGE_DIMENSION}` },
+				{ status: 422 },
+			),
+		};
+	}
+	return { ok: true, value: parsed };
+}
+
+function parseRequestedDimensions(
+	widthParam: string | null,
+	heightParam: string | null,
+): RequestedDimensions {
+	const width = parseDimension(widthParam, "width");
+	if (!width.ok) return width;
+	const height = parseDimension(heightParam, "height");
+	if (!height.ok) return height;
+	if (
+		width.value !== undefined &&
+		height.value !== undefined &&
+		width.value * height.value > MAX_IMAGE_PIXELS
+	) {
+		return {
+			ok: false,
+			response: Response.json(
+				{ error: `image area must be <= ${MAX_IMAGE_PIXELS} pixels` },
+				{ status: 422 },
+			),
+		};
+	}
+	return { ok: true, width: width.value, height: height.value };
+}
+
+function rejectOversizedArea(width: number, height: number): Response | null {
+	if (width * height <= MAX_IMAGE_PIXELS) return null;
+	return Response.json(
+		{ error: `image area must be <= ${MAX_IMAGE_PIXELS} pixels` },
+		{ status: 422 },
+	);
+}
+
+function parseGrayscale(value: string | null): number | Response {
+	if (value === null) return normalizeGrayscale(undefined);
+	if (!/^\d+$/.test(value)) {
+		return Response.json(
+			{ error: "grayscale must be a positive integer" },
+			{ status: 422 },
+		);
+	}
+	return normalizeGrayscale(Number.parseInt(value, 10));
+}
 
 export async function GET(
 	req: NextRequest,
@@ -39,18 +126,16 @@ export async function GET(
 		const modelParam = searchParams.get("model");
 		const paletteParam = searchParams.get("palette_id");
 
-		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
-		const height = heightParam
-			? parseInt(heightParam, 10)
-			: DEFAULT_IMAGE_HEIGHT;
-
-		// Validate width and height are positive numbers
-		const validWidth = width > 0 ? width : DEFAULT_IMAGE_WIDTH;
-		const validHeight = height > 0 ? height : DEFAULT_IMAGE_HEIGHT;
-		const grayscaleLevels = grayscaleParam ? parseInt(grayscaleParam, 10) : 2;
+		const requestedDimensions = parseRequestedDimensions(
+			widthParam,
+			heightParam,
+		);
+		if (!requestedDimensions.ok) return requestedDimensions.response;
+		const grayscaleLevels = parseGrayscale(grayscaleParam);
+		if (grayscaleLevels instanceof Response) return grayscaleLevels;
 
 		logger.info(
-			`Bitmap request for: ${bitmapPath} in ${validWidth}x${validHeight} with ${grayscaleLevels} gray levels`,
+			`Bitmap request for: ${bitmapPath} with ${grayscaleLevels} gray levels`,
 		);
 
 		// Resolve the device owner so DB queries are scoped to the right user
@@ -72,9 +157,15 @@ export async function GET(
 		// PNG/WebP profiles use the device-image renderer, BMP profiles use
 		// the legacy bitmap renderer.
 		if (profile.model.mime_type !== "image/bmp") {
+			const imageWidth = requestedDimensions.width ?? profile.model.width;
+			const imageHeight = requestedDimensions.height ?? profile.model.height;
+			const oversized = rejectOversizedArea(imageWidth, imageHeight);
+			if (oversized) return oversized;
 			const image = await renderRecipeForDevice({
 				slug: recipeSlug,
 				profile,
+				width: imageWidth,
+				height: imageHeight,
 				userId,
 				cookies: cookieHeader || undefined,
 			});
@@ -91,6 +182,10 @@ export async function GET(
 			});
 		}
 
+		const validWidth = requestedDimensions.width ?? DEFAULT_IMAGE_WIDTH;
+		const validHeight = requestedDimensions.height ?? DEFAULT_IMAGE_HEIGHT;
+		const oversized = rejectOversizedArea(validWidth, validHeight);
+		if (oversized) return oversized;
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeSlug,
 			validWidth,

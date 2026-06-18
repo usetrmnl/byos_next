@@ -44,17 +44,13 @@ function defaultDimensions(
 	device: Pick<Device, "screen_orientation" | "screen_width" | "screen_height">,
 ): { width: number; height: number } {
 	const orientation = device.screen_orientation || "landscape";
-	const fallbackWidth =
-		orientation === "landscape"
-			? device.screen_width || DEFAULT_IMAGE_WIDTH
-			: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const fallbackHeight =
-		orientation === "landscape"
-			? device.screen_height || DEFAULT_IMAGE_HEIGHT
-			: device.screen_width || DEFAULT_IMAGE_WIDTH;
+	const deviceWidth =
+		orientation === "landscape" ? device.screen_width : device.screen_height;
+	const deviceHeight =
+		orientation === "landscape" ? device.screen_height : device.screen_width;
 	return {
-		width: profile.model.width || fallbackWidth,
-		height: profile.model.height || fallbackHeight,
+		width: deviceWidth || profile.model.width || DEFAULT_IMAGE_WIDTH,
+		height: deviceHeight || profile.model.height || DEFAULT_IMAGE_HEIGHT,
 	};
 }
 

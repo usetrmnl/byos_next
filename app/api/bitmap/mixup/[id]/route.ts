@@ -14,7 +14,57 @@ import {
 import { renderDeviceImage } from "@/lib/render/device-image";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
+import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+
+const MAX_IMAGE_DIMENSION = 4096;
+const MAX_IMAGE_PIXELS = 6_000_000;
+
+function validateDimensions(width: number, height: number): Response | null {
+	if (
+		!Number.isFinite(width) ||
+		!Number.isFinite(height) ||
+		width <= 0 ||
+		height <= 0
+	) {
+		return new Response("width and height must be positive integers", {
+			status: 422,
+		});
+	}
+	if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+		return new Response(`width and height must be <= ${MAX_IMAGE_DIMENSION}`, {
+			status: 422,
+		});
+	}
+	if (width * height > MAX_IMAGE_PIXELS) {
+		return new Response(`image area must be <= ${MAX_IMAGE_PIXELS} pixels`, {
+			status: 422,
+		});
+	}
+	return null;
+}
+
+function parseDimensionParam(
+	value: string | null,
+	fallback: number,
+	label: string,
+): number | Response {
+	if (value === null) return fallback;
+	if (!/^\d+$/.test(value)) {
+		return new Response(`${label} must be a positive integer`, { status: 422 });
+	}
+	return Number.parseInt(value, 10);
+}
+
+function parseGrayscaleParam(value: string | null): number | Response {
+	if (value === null) return normalizeGrayscale(undefined);
+	if (!/^\d+$/.test(value)) {
+		return new Response("grayscale must be a positive integer", {
+			status: 422,
+		});
+	}
+	return normalizeGrayscale(Number.parseInt(value, 10));
+}
 
 export async function GET(
 	req: NextRequest,
@@ -34,11 +84,18 @@ export async function GET(
 		const accessToken =
 			searchParams.get("access_token") ?? req.headers.get("Access-Token");
 
-		const width = widthParam ? parseInt(widthParam, 10) : DEFAULT_IMAGE_WIDTH;
-		const height = heightParam
-			? parseInt(heightParam, 10)
-			: DEFAULT_IMAGE_HEIGHT;
-		const grayscaleLevels = grayscaleParam ? parseInt(grayscaleParam, 10) : 2;
+		const width = parseDimensionParam(widthParam, DEFAULT_IMAGE_WIDTH, "width");
+		if (width instanceof Response) return width;
+		const height = parseDimensionParam(
+			heightParam,
+			DEFAULT_IMAGE_HEIGHT,
+			"height",
+		);
+		if (height instanceof Response) return height;
+		const grayscaleLevels = parseGrayscaleParam(grayscaleParam);
+		if (grayscaleLevels instanceof Response) return grayscaleLevels;
+		const invalidDimensions = validateDimensions(width, height);
+		if (invalidDimensions) return invalidDimensions;
 
 		const { ready } = await checkDbConnection();
 		if (!ready) {

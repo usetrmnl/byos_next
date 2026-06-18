@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { resolveReactRecipe } from "@/lib/recipes/recipe-renderer";
+import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
 import {
 	getTrmnlModelClassName,
 	getTrmnlModelStyle,
@@ -17,6 +18,7 @@ export default async function RecipePreviewPage({
 		height?: string;
 		model?: string;
 		palette_id?: string;
+		render_token?: string;
 	}>;
 }) {
 	headers();
@@ -25,9 +27,11 @@ export default async function RecipePreviewPage({
 		width: widthParam,
 		height: heightParam,
 		model: modelParam,
+		render_token: renderToken,
 	} = await searchParams;
+	const userId = consumeBrowserRenderContext(renderToken);
 
-	const resolved = await resolveReactRecipe(slug);
+	const resolved = await resolveReactRecipe(slug, userId ?? undefined);
 	if (!resolved) notFound();
 
 	const width = widthParam ? Number.parseInt(widthParam, 10) : undefined;
