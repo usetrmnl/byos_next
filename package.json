@@ -6,8 +6,10 @@
 		"screenshots": "node scripts/take-screenshots.mjs",
 		"generate:sql": "node scripts/generate-sql-statements.js && pnpm format",
 		"generate:types": "kysely-codegen --dialect postgres --include-pattern='public.*' --out-file lib/database/db.d.ts",
-		"prebuild": "pnpm generate:sql",
-		"dev": "pnpm generate:sql && next dev --turbopack",
+		"generate:types:trmnl": "openapi-typescript lib/trmnl/openapi.yaml -o lib/trmnl/types.gen.ts && biome format --write lib/trmnl/types.gen.ts",
+		"generate:recipes": "node scripts/generate-recipes-index.mjs && biome format --write lib/recipes/screens.generated.ts",
+		"prebuild": "pnpm generate:sql && pnpm generate:recipes",
+		"dev": "pnpm generate:sql && pnpm generate:recipes && next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
 		"lint": "biome check ./app ./components ./lib ./utils ./hooks",
@@ -49,6 +51,7 @@
 		"clsx": "^2.1.1",
 		"cmdk": "1.1.1",
 		"d3": "^7.9.0",
+		"ical-expander": "^3.2.0",
 		"jimp": "^1.6.1",
 		"js-yaml": "^4.1.1",
 		"jszip": "^3.10.1",
@@ -87,15 +90,9 @@
 		"eslint-config-next": "16.1.6",
 		"eslint-plugin-react-hooks": "^7.0.1",
 		"kysely-codegen": "^0.20.0",
+		"openapi-typescript": "^7.13.0",
 		"shadcn": "^4.4.0",
 		"tailwindcss": "^4.2.4",
 		"typescript": "^6.0.3"
-	},
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@biomejs/biome",
-			"@tailwindcss/oxide",
-			"unrs-resolver"
-		]
 	}
 }

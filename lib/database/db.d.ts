@@ -111,6 +111,26 @@ export interface Devices {
 	 * Screen width in pixels
 	 */
 	screen_width: Generated<number | null>;
+	/**
+	 * Quiet-hours end as minutes since midnight (TRMNL convention).
+	 */
+	sleep_end_time: number | null;
+	/**
+	 * Whether the device honors the configured quiet-hours window.
+	 */
+	sleep_mode_enabled: Generated<boolean>;
+	/**
+	 * Quiet-hours start as minutes since midnight (TRMNL convention).
+	 */
+	sleep_start_time: number | null;
+	/**
+	 * TRUE when the device sent the `temperature-profile: true` request header on its last /api/display call. NULL until the device has been seen.
+	 */
+	supports_temperature_profile: Generated<boolean | null>;
+	/**
+	 * Display tuning profile sent to the firmware in the /api/display response (default|a|b|c).
+	 */
+	temperature_profile: Generated<string>;
 	timezone: Generated<string>;
 	updated_at: Generated<Timestamp | null>;
 	user_id: string | null;
@@ -152,6 +172,24 @@ export interface PlaylistItems {
 	playlist_id: string | null;
 	screen_id: string;
 	start_time: string | null;
+}
+
+export interface PluginSettings {
+	created_at: Generated<Timestamp | null>;
+	fields: Generated<JsonObject>;
+	icon_content_type: string | null;
+	icon_url: string | null;
+	id: Generated<Int8>;
+	markup: Generated<JsonObject>;
+	merge_variables: Generated<JsonObject>;
+	name: string;
+	plugin_id: number;
+	read_only: Generated<boolean>;
+	settings_yaml: string | null;
+	strategy: string | null;
+	updated_at: Generated<Timestamp | null>;
+	user_id: string;
+	uuid: string;
 }
 
 export interface Playlists {
@@ -256,6 +294,7 @@ export interface DB {
 	mixup_slots: MixupSlots;
 	mixups: Mixups;
 	playlist_items: PlaylistItems;
+	plugin_settings: PluginSettings;
 	playlists: Playlists;
 	recipe_files: RecipeFiles;
 	recipes: Recipes;

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import type { CustomError } from "@/lib/api/types";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
@@ -7,6 +7,9 @@ import { logError, logInfo } from "@/lib/logger";
 import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
 
 export async function GET(request: Request) {
+	// Tell the cache-components prerender the route is request-scoped so it
+	// doesn't try to evaluate the body at build time and bail on header reads.
+	await connection();
 	try {
 		const macAddress = request.headers.get("ID")?.toUpperCase();
 		const apiKey = request.headers.get("Access-Token");

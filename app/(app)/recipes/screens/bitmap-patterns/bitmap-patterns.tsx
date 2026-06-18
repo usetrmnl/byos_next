@@ -1,4 +1,9 @@
+import { z } from "zod";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
+
+export const paramsSchema = z.object({});
+export const dataSchema = paramsSchema;
 
 export default function BitmapPatterns({
 	width = 800,
@@ -128,3 +133,25 @@ export default function BitmapPatterns({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<typeof paramsSchema> = {
+	meta: {
+		slug: "bitmap-patterns",
+		title: "Bitmap Patterns",
+		description:
+			"Demonstrating using custom classes to create bitmap patterns. See /utils/pre-satori.ts for more details. Edit this recipe at /app/recipes/screens/bitmap-patterns.tsx",
+		published: true,
+		tags: ["bitmap", "patterns"],
+		author: { name: "Mangle Kuo", github: "ghcpuman902" },
+		category: "display-components",
+		version: "0.1.0",
+		createdAt: "2025-03-01T00:00:00Z",
+		updatedAt: "2025-03-01T00:00:00Z",
+		renderSettings: { applyEdgeSnap: false },
+	},
+	paramsSchema,
+	dataSchema,
+	Component: ({ width, height }) => (
+		<BitmapPatterns width={width} height={height} />
+	),
+};

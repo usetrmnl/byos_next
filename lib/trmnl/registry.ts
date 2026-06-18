@@ -20,47 +20,13 @@ const DATA_DIR = path.join(process.cwd(), "data", "trmnl");
 const TTL_MS = 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 10_000;
 
-export type RegistryResource = "models" | "palettes" | "categories" | "ips";
+export type {
+	RegistryResource,
+	TrmnlModel,
+	TrmnlPalette,
+} from "./types";
 
-export type TrmnlModel = {
-	name: string;
-	label: string;
-	description?: string;
-	width: number;
-	height: number;
-	colors: number;
-	bit_depth: number;
-	scale_factor: number;
-	rotation: number;
-	mime_type: string;
-	offset_x: number;
-	offset_y: number;
-	kind?: string;
-	palette_ids: string[];
-	preview_white_point?: string;
-	image_size_limit?: number;
-	image_upload_supported?: boolean;
-	css?: {
-		classes?: Record<string, string>;
-		variables?: Record<string, string>;
-	};
-};
-
-export type TrmnlPalette = {
-	id: string;
-	name: string;
-	grays?: number;
-	framework_class?: string;
-	/**
-	 * Hex color list for discrete-color palettes (color-3bwr, color-4bwry,
-	 * color-6a, color-7a, …). Absent for grayscale palettes (bw, gray-4,
-	 * gray-16, gray-256) where colors are derived from `grays` count, and
-	 * for the continuous palettes color-12bit / color-24bit.
-	 */
-	colors?: string[];
-	grayscale_bit_depth?: number;
-	[key: string]: unknown;
-};
+import type { RegistryResource, TrmnlModel, TrmnlPalette } from "./types";
 
 type WrappedList<T> = { data: T[] };
 

@@ -6,6 +6,8 @@ const serverExternalPackages = [
 	"@takumi-rs/helpers",
 	"@sparticuz/chromium-min",
 	"qrcode-generator",
+	"ical-expander",
+	"ical.js",
 ];
 
 const browserTracingIncludes: string[] = [];

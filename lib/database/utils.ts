@@ -2,6 +2,14 @@ import { sql } from "kysely";
 import { db } from "./db";
 import { SQL_STATEMENTS } from "./sql-statements";
 
+/**
+ * App and DB are required to stay in lockstep — a partial-migration deploy
+ * means the app is making assumptions the DB can't enforce yet, so we want
+ * a hard 503 across the board until migrations catch up. The validation
+ * query is auto-generated from every `CREATE TABLE` in `migrations/`, so
+ * adding a new table is a one-step change (write the migration, run
+ * `pnpm generate:sql`).
+ */
 export async function checkDbConnection(): Promise<{
 	ready: boolean;
 	error?: string;
@@ -10,12 +18,10 @@ export async function checkDbConnection(): Promise<{
 	try {
 		await sql`SELECT 1`.execute(db);
 
-		// Execute validation query - returns missing tables if any, empty if all exist
 		const result = await sql
 			.raw(SQL_STATEMENTS.validate_schema.sql)
 			.execute(db);
 
-		// If any rows returned, there are missing tables
 		if (result.rows.length > 0) {
 			const missingTables = result.rows.map(
 				(row) => (row as { missing_table: string }).missing_table,

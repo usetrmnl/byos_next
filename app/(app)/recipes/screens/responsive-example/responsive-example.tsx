@@ -1,4 +1,9 @@
+import { z } from "zod";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
+
+export const paramsSchema = z.object({});
+export const dataSchema = paramsSchema;
 
 interface ResponsiveExampleProps {
 	width?: number;
@@ -41,3 +46,23 @@ export default function ResponsiveExample({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<typeof paramsSchema> = {
+	meta: {
+		slug: "responsive-example",
+		title: "Responsive Example",
+		description: "A demonstration of responsive design using Tailwind CSS.",
+		published: true,
+		tags: ["tailwind", "responsive", "example"],
+		author: { name: "rbouteiller", github: "" },
+		category: "display-components",
+		version: "0.1.0",
+		createdAt: "2025-03-01T00:00:00Z",
+		updatedAt: "2025-03-01T00:00:00Z",
+	},
+	paramsSchema,
+	dataSchema,
+	Component: ({ width, height }) => (
+		<ResponsiveExample width={width} height={height} />
+	),
+};

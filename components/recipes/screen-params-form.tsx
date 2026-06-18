@@ -6,10 +6,15 @@ import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import type {
 	RecipeParamDefinition,
 	RecipeParamDefinitions,
-} from "@/lib/recipes/recipe-renderer";
+} from "@/lib/recipes/zod-form";
+
+type UpdateResult =
+	| { success: true }
+	| { success: false; error?: string; fieldErrors?: Record<string, string> };
 
 type Props = {
 	slug: string;
@@ -18,8 +23,7 @@ type Props = {
 	updateAction: (
 		slug: string,
 		params: Record<string, unknown>,
-		definitions?: RecipeParamDefinitions,
-	) => Promise<{ success: boolean; error?: string }>;
+	) => Promise<UpdateResult>;
 };
 
 type FormStatus = "idle" | "success" | "error";
@@ -37,6 +41,8 @@ const buildInitialState = (
 		}
 		if (definition.default !== undefined) {
 			state[key] = definition.default;
+		} else if (definition.type === "boolean") {
+			state[key] = false;
 		} else {
 			state[key] = "";
 		}
@@ -50,27 +56,52 @@ const renderField = (
 	value: unknown,
 	onChange: (key: string, value: unknown) => void,
 ) => {
-	const commonProps = {
-		id: key,
-		name: key,
-		value: typeof value === "string" || typeof value === "number" ? value : "",
-		onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-			const nextValue =
-				definition.type === "number"
-					? Number.isNaN(Number(event.target.value))
-						? ""
-						: Number(event.target.value)
-					: event.target.value;
-			onChange(key, nextValue);
-		},
-		placeholder: definition.placeholder,
-	};
-
 	switch (definition.type) {
+		case "boolean":
+			return (
+				<Switch
+					id={key}
+					name={key}
+					checked={value === true}
+					onCheckedChange={(checked) => onChange(key, checked)}
+				/>
+			);
 		case "number":
-			return <Input type="number" {...commonProps} />;
+			return (
+				<Input
+					type="number"
+					id={key}
+					name={key}
+					value={
+						typeof value === "string" || typeof value === "number" ? value : ""
+					}
+					placeholder={definition.placeholder}
+					onChange={(event: ChangeEvent<HTMLInputElement>) => {
+						const raw = event.target.value;
+						if (raw === "") {
+							onChange(key, "");
+							return;
+						}
+						const parsed = Number(raw);
+						onChange(key, Number.isNaN(parsed) ? "" : parsed);
+					}}
+				/>
+			);
 		default:
-			return <Input type="text" {...commonProps} />;
+			return (
+				<Input
+					type="text"
+					id={key}
+					name={key}
+					value={
+						typeof value === "string" || typeof value === "number" ? value : ""
+					}
+					placeholder={definition.placeholder}
+					onChange={(event: ChangeEvent<HTMLInputElement>) =>
+						onChange(key, event.target.value)
+					}
+				/>
+			);
 	}
 };
 
@@ -82,6 +113,7 @@ export function ScreenParamsForm({
 }: Props) {
 	const [formStatus, setFormStatus] = useState<FormStatus>("idle");
 	const [statusMessage, setStatusMessage] = useState<string>("");
+	const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 	const [isPending, startTransition] = useTransition();
 	const [values, setValues] = useState<Record<string, unknown>>(() =>
 		buildInitialState(paramsSchema, initialValues),
@@ -104,12 +136,14 @@ export function ScreenParamsForm({
 		event.preventDefault();
 		setFormStatus("idle");
 		setStatusMessage("");
+		setFieldErrors({});
 
 		startTransition(async () => {
-			const result = await updateAction(slug, values, paramsSchema);
+			const result = await updateAction(slug, values);
 			if (!result.success) {
 				setFormStatus("error");
 				setStatusMessage(result.error ?? "Unable to save configuration");
+				if (result.fieldErrors) setFieldErrors(result.fieldErrors);
 				return;
 			}
 			setFormStatus("success");
@@ -121,6 +155,7 @@ export function ScreenParamsForm({
 		setValues(initial);
 		setFormStatus("idle");
 		setStatusMessage("");
+		setFieldErrors({});
 	};
 
 	if (!hasParams) return null;
@@ -180,23 +215,31 @@ export function ScreenParamsForm({
 				</div>
 			</div>
 			<div className="grid gap-4 p-4 sm:grid-cols-2">
-				{entries.map(([key, definition]) => (
-					<div key={key} className="flex flex-col gap-1.5">
-						<div className="flex items-baseline justify-between gap-2">
-							<Label htmlFor={key} className="text-xs font-semibold">
-								{definition.label}
-							</Label>
-							{definition.description && (
-								<span className="truncate text-[11px] text-muted-foreground">
-									{definition.description}
+				{entries.map(([key, definition]) => {
+					const fieldError = fieldErrors[key];
+					return (
+						<div key={key} className="flex flex-col gap-1.5">
+							<div className="flex items-baseline justify-between gap-2">
+								<Label htmlFor={key} className="text-xs font-semibold">
+									{definition.label}
+								</Label>
+								{definition.description && (
+									<span className="truncate text-[11px] text-muted-foreground">
+										{definition.description}
+									</span>
+								)}
+							</div>
+							{renderField(key, definition, values[key], (field, val) =>
+								setValues((prev) => ({ ...prev, [field]: val })),
+							)}
+							{fieldError && (
+								<span className="text-[11px] text-destructive">
+									{fieldError}
 								</span>
 							)}
 						</div>
-						{renderField(key, definition, values[key], (field, val) =>
-							setValues((prev) => ({ ...prev, [field]: val })),
-						)}
-					</div>
-				))}
+					);
+				})}
 			</div>
 		</form>
 	);

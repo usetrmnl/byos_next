@@ -1,4 +1,39 @@
+import { z } from "zod";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
+import getHackerNewsData, { type HackerNewsData } from "./getData";
+
+export const paramsSchema = z.object({
+	storyCount: z
+		.number()
+		.default(6)
+		.describe("Number of top stories to show")
+		.meta({ title: "Number of stories" }),
+	qrTarget: z
+		.string()
+		.default("article")
+		.describe("QR code target: article or comments")
+		.meta({ title: "QR target", placeholder: "article" }),
+});
+
+export const dataSchema = z.object({
+	stories: z
+		.array(
+			z.object({
+				rank: z.number(),
+				title: z.string(),
+				score: z.number(),
+				comments: z.number(),
+				by: z.string(),
+				domain: z.string(),
+				qrPath: z.string(),
+				qrSize: z.number(),
+			}),
+		)
+		.default([]),
+	updatedLabel: z.string().default(""),
+	message: z.string().optional(),
+});
 
 interface Story {
 	rank: number;
@@ -178,3 +213,31 @@ export default function HackerNews({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<
+	typeof paramsSchema,
+	typeof dataSchema
+> = {
+	meta: {
+		slug: "hacker-news",
+		title: "Hacker News",
+		description: "Hacker News top stories with per-story QR codes.",
+		published: true,
+		tags: ["tailwind", "news", "api", "live-data", "configurable", "qr"],
+		author: { name: "mikkel-bergmann", github: "mikkel-bergmann" },
+		category: "display-components",
+		version: "0.1.0",
+		createdAt: "2026-06-14T00:00:00Z",
+		updatedAt: "2026-06-14T00:00:00Z",
+		renderSettings: { doubleSizeForSharperText: true },
+	},
+	paramsSchema,
+	dataSchema,
+	getData: async (params) => {
+		const data = await getHackerNewsData(params);
+		return data as z.infer<typeof dataSchema>;
+	},
+	Component: ({ width, height, data }) => (
+		<HackerNews {...(data as HackerNewsData)} width={width} height={height} />
+	),
+};
