@@ -5,6 +5,7 @@ const serverExternalPackages = [
 	"@takumi-rs/core",
 	"@takumi-rs/helpers",
 	"@sparticuz/chromium-min",
+	"qrcode-generator",
 ];
 
 const browserTracingIncludes: string[] = [];
