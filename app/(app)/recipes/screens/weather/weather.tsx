@@ -25,6 +25,20 @@ export const paramsSchema = z.object({
 		.default("San Francisco")
 		.describe("City or place name to fetch weather for")
 		.meta({ title: "Location", placeholder: "San Francisco" }),
+	latitude: z
+		.number()
+		.default(0)
+		.describe(
+			"Optional exact latitude; when set with longitude, skips geocoding",
+		)
+		.meta({ title: "Latitude" }),
+	longitude: z
+		.number()
+		.default(0)
+		.describe(
+			"Optional exact longitude; when set with latitude, skips geocoding",
+		)
+		.meta({ title: "Longitude" }),
 });
 
 export const dataSchema = z.object({
@@ -183,7 +197,11 @@ export const definition: RecipeDefinition<
 	paramsSchema,
 	dataSchema,
 	getData: async (params) => {
-		const data = await getWeatherDataInternal({ location: params.location });
+		const data = await getWeatherDataInternal({
+			location: params.location,
+			latitude: params.latitude,
+			longitude: params.longitude,
+		});
 		return data as z.infer<typeof dataSchema>;
 	},
 	Component: ({ width, height, data }) => (
