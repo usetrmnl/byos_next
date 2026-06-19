@@ -937,12 +937,12 @@
     },
     {
       "name": "seeed_e1002",
-      "label": "Seeed E1002 (2-bit)",
-      "description": "Seeed E1002 (2-bit)",
+      "label": "Seeed E1002",
+      "description": "Seeed E1002",
       "width": 800,
       "height": 480,
-      "colors": 4,
-      "bit_depth": 2,
+      "colors": 6,
+      "bit_depth": 4,
       "scale_factor": 1,
       "rotation": 0,
       "mime_type": "image/png",
@@ -950,8 +950,8 @@
       "offset_y": 0,
       "kind": "byod",
       "palette_ids": [
-        "bw",
-        "color-6a"
+        "color-6a",
+        "bw"
       ],
       "preview_white_point": "limited",
       "image_size_limit": 92160,
@@ -2331,6 +2331,171 @@
           [
             "--dither-pixel-ratio",
             "1.0"
+          ],
+          [
+            "--ui-scale",
+            "1.0"
+          ],
+          [
+            "--gap-scale",
+            "1.0"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "inkplate_6_color",
+      "label": "Inkplate 6COLOR",
+      "description": "Inkplate 6COLOR",
+      "width": 600,
+      "height": 448,
+      "colors": 8,
+      "bit_depth": 3,
+      "scale_factor": 0.75,
+      "rotation": 0,
+      "mime_type": "image/png",
+      "offset_x": 0,
+      "offset_y": 0,
+      "kind": "byod",
+      "palette_ids": [
+        "color-7a"
+      ],
+      "preview_white_point": "true_white",
+      "image_size_limit": 92160,
+      "image_upload_supported": true,
+      "css": {
+        "classes": {
+          "device": "screen--inkplate_6_color",
+          "size": "screen--md",
+          "density": "screen--density-1x"
+        },
+        "variables": [
+          [
+            "--screen-w",
+            "800px"
+          ],
+          [
+            "--screen-h",
+            "597px"
+          ],
+          [
+            "--pixel-ratio",
+            "0.75"
+          ],
+          [
+            "--dither-pixel-ratio",
+            "1.0"
+          ],
+          [
+            "--ui-scale",
+            "1.0"
+          ],
+          [
+            "--gap-scale",
+            "1.0"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "seeed_e1003",
+      "label": "Seeed E1003 (4-bit)",
+      "description": "Seeed E1003 (4-bit)",
+      "width": 1872,
+      "height": 1404,
+      "colors": 16,
+      "bit_depth": 4,
+      "scale_factor": 1.8,
+      "rotation": 0,
+      "mime_type": "image/png",
+      "offset_x": 0,
+      "offset_y": 0,
+      "kind": "byod",
+      "palette_ids": [
+        "gray-16",
+        "gray-4",
+        "bw"
+      ],
+      "preview_white_point": "true_white",
+      "image_size_limit": 92160,
+      "image_upload_supported": true,
+      "css": {
+        "classes": {
+          "device": "screen--seeed_e1003",
+          "size": "screen--lg",
+          "density": "screen--density-2x"
+        },
+        "variables": [
+          [
+            "--screen-w",
+            "1040px"
+          ],
+          [
+            "--screen-h",
+            "780px"
+          ],
+          [
+            "--pixel-ratio",
+            "1.8"
+          ],
+          [
+            "--dither-pixel-ratio",
+            "2.0"
+          ],
+          [
+            "--ui-scale",
+            "1.0"
+          ],
+          [
+            "--gap-scale",
+            "1.0"
+          ]
+        ]
+      }
+    },
+    {
+      "name": "seeed_e1004",
+      "label": "Seeed E1004",
+      "description": "Seeed E1004",
+      "width": 1600,
+      "height": 1200,
+      "colors": 16,
+      "bit_depth": 4,
+      "scale_factor": 1.5385,
+      "rotation": 90,
+      "mime_type": "image/png",
+      "offset_x": 0,
+      "offset_y": 0,
+      "kind": "byod",
+      "palette_ids": [
+        "bw",
+        "color-6a"
+      ],
+      "preview_white_point": "true_white",
+      "image_size_limit": 92160,
+      "image_upload_supported": true,
+      "css": {
+        "classes": {
+          "device": "screen--seeed_e1004",
+          "size": "screen--lg",
+          "density": "screen--density-2x"
+        },
+        "variables": [
+          [
+            "--screen-w",
+            "1040px"
+          ],
+          [
+            "--screen-h",
+            "780px"
+          ],
+          [
+            "--pixel-ratio",
+            "1.5385"
+          ],
+          [
+            "--dither-pixel-ratio",
+            "2.0"
           ],
           [
             "--ui-scale",
