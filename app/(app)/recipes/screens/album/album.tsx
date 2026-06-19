@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 
@@ -23,8 +27,8 @@ interface AlbumProps {
 }
 
 export default async function Album({
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 	params,
 }: AlbumProps) {
 	const imageUrl = params?.imageUrl || DEFAULT_IMAGE_URL;

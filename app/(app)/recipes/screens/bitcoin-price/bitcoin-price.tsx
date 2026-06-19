@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { Graph } from "@/components/common/graph";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getCryptoData from "./getData";
@@ -55,8 +60,8 @@ export default function CryptoPrice({
 	historicalPrices = [],
 	cryptoName = "Bitcoin",
 	cryptoImage,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: CryptoPriceProps) {
 	// Calculate if price change is positive or negative
 	const isPositive = !change24h.startsWith("-");
@@ -75,7 +80,7 @@ export default function CryptoPrice({
 		y: d.price,
 	}));
 
-	const isHalfScreen = width === 400 && height === 480;
+	const isHalfScreen = isHalfScreenLayout(width, height);
 
 	return (
 		<PreSatori width={width} height={height}>

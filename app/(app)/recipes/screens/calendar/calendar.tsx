@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getCalendarData, { type CalendarData } from "./getData";
@@ -93,8 +97,8 @@ export default function Calendar({
 	tzLabel = "",
 	updatedLabel = "",
 	message,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: CalendarProps) {
 	const gutter = 40;
 	const headerHeight = 54;

@@ -14,10 +14,10 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import { cn } from "@/lib/utils";
 
 type FormatKey = "bmp" | "png" | "react";
-const DEFAULT_MODEL_NAME = "og_plus";
 
 type PreviewModel = {
 	name: string;

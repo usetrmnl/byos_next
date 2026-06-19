@@ -35,6 +35,7 @@ const FETCH_TIMEOUT_MS = 10_000;
 function safeParseWithDefaults(
 	schema: z.ZodObject,
 	value: unknown,
+	context: string,
 ): Record<string, unknown> {
 	const candidate =
 		value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -42,6 +43,9 @@ function safeParseWithDefaults(
 	if (result.success) return result.data as Record<string, unknown>;
 	// Stored shape no longer matches the schema (e.g. field renamed). Fall
 	// back to the defaults-only object so the recipe still renders.
+	console.warn(`[recipe:${context}] Stored params failed schema validation`, {
+		issues: result.error.issues,
+	});
 	const defaults = schema.safeParse({});
 	return defaults.success ? (defaults.data as Record<string, unknown>) : {};
 }
@@ -104,6 +108,7 @@ export const resolveReactRecipe = cache(
 		const params = safeParseWithDefaults(
 			definition.paramsSchema,
 			storedOverrides,
+			slug,
 		);
 
 		let data: Record<string, unknown>;

@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getLocalNews, {
@@ -98,10 +103,10 @@ export default function LocalNews({
 	subreddit,
 	generatedAt = "Now",
 	stories = fallbackStories,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: LocalNewsProps) {
-	const isHalfScreen = width === 400 && height === 480;
+	const isHalfScreen = isHalfScreenLayout(width, height);
 	const lead = safeStory(stories[0]);
 	const secondary = stories
 		.slice(1, isHalfScreen ? 3 : 4)

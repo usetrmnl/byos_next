@@ -1,6 +1,10 @@
 import { z } from "zod";
 import fontData from "@/components/bitmap-font/bitmap-font.json";
 import { BitmapText } from "@/components/bitmap-font/bitmap-text";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 
@@ -27,8 +31,8 @@ function bitmapFontScaleForWidth(width: number): number {
 }
 
 export default function SimpleText({
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: {
 	width?: number;
 	height?: number;

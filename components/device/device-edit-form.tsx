@@ -32,11 +32,13 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { type DeviceSizePreset } from "@/lib/trmnl/device-presets";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import {
 	DEFAULT_MODEL_NAME,
@@ -46,14 +48,6 @@ import {
 import type { Device, Mixup, Playlist } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatTimezone, timezones } from "@/utils/helpers";
-
-const DEVICE_SIZE_PRESETS = {
-	"800x480": { width: 800, height: 480 },
-	"1872x1404": { width: 1872, height: 1404 },
-	custom: null,
-} as const;
-
-type DeviceSizePreset = keyof typeof DEVICE_SIZE_PRESETS;
 
 interface DeviceEditFormProps {
 	editedDevice: Device & { status?: string; type?: string };
@@ -278,7 +272,9 @@ export default function DeviceEditForm({
 									: "—"}
 							</MetaRow>
 							<MetaRow label="Refresh">
-								{editedDevice?.refresh_schedule?.default_refresh_rate || 300}s
+								{editedDevice?.refresh_schedule?.default_refresh_rate ||
+									UI_REFRESH_FALLBACK_SECONDS}
+								s
 							</MetaRow>
 						</div>
 					</div>
@@ -717,7 +713,8 @@ export default function DeviceEditForm({
 									name="refresh_schedule.default_refresh_rate"
 									type="number"
 									value={
-										editedDevice?.refresh_schedule?.default_refresh_rate || 300
+										editedDevice?.refresh_schedule?.default_refresh_rate ||
+										UI_REFRESH_FALLBACK_SECONDS
 									}
 									onChange={onInputChange}
 								/>

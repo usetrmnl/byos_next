@@ -15,13 +15,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { DEFAULT_DEVICE_SCREEN } from "@/lib/device/defaults";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
-
-const DEFAULT_SCREEN = "simple-text";
 
 interface DashboardClientPageProps {
 	devices: Device[];
@@ -245,7 +244,7 @@ function buildLatestScreenSrc(device: Device): string {
 		params.set("palette_id", paletteId);
 	}
 
-	return `/api/bitmap/${device.screen || DEFAULT_SCREEN}.png?${params.toString()}`;
+	return `/api/bitmap/${device.screen || DEFAULT_DEVICE_SCREEN}.png?${params.toString()}`;
 }
 
 function Stat({

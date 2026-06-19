@@ -2,11 +2,11 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { resolveReactRecipe } from "@/lib/recipes/recipe-renderer";
 import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
+import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import {
 	getTrmnlModelClassName,
 	getTrmnlModelStyle,
 } from "@/lib/trmnl/model-css";
-import { findModel } from "@/lib/trmnl/registry";
 
 export default async function RecipePreviewPage({
 	params,
@@ -27,6 +27,7 @@ export default async function RecipePreviewPage({
 		width: widthParam,
 		height: heightParam,
 		model: modelParam,
+		palette_id: paletteParam,
 		render_token: renderToken,
 	} = await searchParams;
 	const userId = consumeBrowserRenderContext(renderToken);
@@ -40,9 +41,12 @@ export default async function RecipePreviewPage({
 	const { definition, params: parsedParams, data } = resolved;
 	const Component = definition.Component;
 
-	const model = modelParam ? await findModel(modelParam) : null;
-	const className = getTrmnlModelClassName(model);
-	const style = getTrmnlModelStyle(model);
+	const profile =
+		modelParam || paletteParam
+			? await getDeviceProfile(modelParam, paletteParam)
+			: null;
+	const className = getTrmnlModelClassName(profile?.model);
+	const style = getTrmnlModelStyle(profile?.model);
 
 	const rendered = (
 		<Component
@@ -54,7 +58,10 @@ export default async function RecipePreviewPage({
 	);
 	if (!className && !style) return rendered;
 	return (
-		<div className={className || undefined} style={style}>
+		<div
+			className={className || undefined}
+			style={{ width, height, display: "flex", ...style }}
+		>
 			{rendered}
 		</div>
 	);

@@ -9,6 +9,7 @@ import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -43,7 +44,8 @@ const calculateRefreshPerDay = (
 ): number => {
 	if (!deviceData?.refresh_schedule) return 0;
 	const defaultRefreshRate =
-		deviceData.refresh_schedule.default_refresh_rate || 300;
+		deviceData.refresh_schedule.default_refresh_rate ||
+		UI_REFRESH_FALLBACK_SECONDS;
 	let refreshesPerDay = (24 * 60 * 60) / defaultRefreshRate;
 	if (
 		deviceData.refresh_schedule.time_ranges &&
@@ -415,7 +417,9 @@ export default function DeviceView({
 								: "Unknown"}
 						</MetaPair>
 						<MetaPair label="Default refresh">
-							{device?.refresh_schedule?.default_refresh_rate || 300}s
+							{device?.refresh_schedule?.default_refresh_rate ||
+								UI_REFRESH_FALLBACK_SECONDS}
+							s
 						</MetaPair>
 					</div>
 					<p className="border-t bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">

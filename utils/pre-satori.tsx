@@ -1,5 +1,10 @@
 import React from "react";
 import { extractFontFamily } from "@/lib/fonts";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { getRendererType } from "@/lib/recipes/render/rasterize";
 import { cn } from "@/lib/utils";
 import {
 	getResetStyles,
@@ -14,15 +19,11 @@ interface PreSatoriProps {
 	height?: number;
 	children: React.ReactNode;
 }
-export const getRendererType = (): "takumi" | "satori" => {
-	const renderer = process.env.REACT_RENDERER?.toLowerCase();
-	return renderer === "satori" ? "satori" : "takumi";
-};
 
 export const PreSatori: React.FC<PreSatoriProps> = ({
 	useDoubling = false,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 	children,
 }) => {
 	// Define a helper to recursively transform children.

@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 
@@ -9,8 +13,8 @@ export const dataSchema = z.object({
 
 export default function NotFoundScreen({
 	slug,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: {
 	slug?: string;
 	width?: number;
