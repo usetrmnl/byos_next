@@ -11,13 +11,73 @@ const META_THEME_COLORS = {
 	dark: "#09090b",
 };
 
+function getMetadataBase(): URL {
+	const raw = process.env.NEXT_PUBLIC_BASE_URL?.trim();
+	if (raw) {
+		try {
+			return new URL(raw);
+		} catch {
+			// fall through to the default below
+		}
+	}
+	return new URL("http://localhost:3000");
+}
+
+const APP_NAME = "TRMNL BYOS";
+const APP_DESCRIPTION =
+	"Self-hosted server and device management dashboard for TRMNL e-ink displays.";
+
 export const metadata: Metadata = {
-	title: "TRMNL BYOS",
-	description: "Device management dashboard",
-	icons: {
-		icon: "/trmnl-icons/trmnl-icon--black.svg",
-		apple: "/trmnl-icons/trmnl-icon--black.svg",
+	metadataBase: getMetadataBase(),
+	title: {
+		default: APP_NAME,
+		template: `%s · ${APP_NAME}`,
 	},
+	description: APP_DESCRIPTION,
+	applicationName: APP_NAME,
+	authors: [{ name: "usetrmnl", url: "https://github.com/usetrmnl/byos_next" }],
+	creator: "TRMNL",
+	publisher: "TRMNL",
+	category: "technology",
+	keywords: [
+		"TRMNL",
+		"BYOS",
+		"e-ink",
+		"eink",
+		"dashboard",
+		"self-hosted",
+		"device management",
+		"ESP32",
+	],
+	icons: {
+		icon: [
+			{ url: "/trmnl-icons/trmnl-icon--brand.svg", type: "image/svg+xml" },
+		],
+		shortcut: "/trmnl-icons/trmnl-icon--brand.svg",
+		apple: "/trmnl-icons/trmnl-icon--brand.svg",
+	},
+	manifest: "/manifest.webmanifest",
+	appleWebApp: {
+		capable: true,
+		title: APP_NAME,
+		statusBarStyle: "black-translucent",
+	},
+	formatDetection: { telephone: false },
+	openGraph: {
+		type: "website",
+		siteName: APP_NAME,
+		title: APP_NAME,
+		description: APP_DESCRIPTION,
+		url: "/",
+		locale: "en_US",
+	},
+	twitter: {
+		card: "summary_large_image",
+		title: APP_NAME,
+		description: APP_DESCRIPTION,
+	},
+	// Private admin dashboard — keep it out of search indexes.
+	robots: { index: false, follow: false },
 };
 
 export const viewport: Viewport = {

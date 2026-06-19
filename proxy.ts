@@ -14,8 +14,22 @@ const PUBLIC_API_PATHS = [
 	"/api/setup",
 ];
 
-// Paths that don't require authentication
-const PUBLIC_PATHS = ["/_next", "/favicon.ico", "/sign-in", "/sign-up", "/recover"];
+// Paths that don't require authentication.
+// Includes metadata routes (manifest, social card) and branding assets used as
+// favicons/app icons, which browsers and crawlers fetch without a session.
+const PUBLIC_PATHS = [
+	"/_next",
+	"/favicon.ico",
+	"/manifest.webmanifest",
+	"/opengraph-image",
+	"/twitter-image",
+	"/icon",
+	"/apple-icon",
+	"/trmnl-icons",
+	"/sign-in",
+	"/sign-up",
+	"/recover",
+];
 
 export async function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;
