@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth/auth";
-import { getCurrentUser } from "@/lib/auth/get-user";
+import { BYOS_MONO_USER_ID, getCurrentUser } from "@/lib/auth/get-user";
 import { logInfo } from "@/lib/logger";
 
 /**
@@ -13,7 +13,26 @@ export async function GET(request: Request) {
 		metadata: { hasAuthHeader: Boolean(request.headers.get("Authorization")) },
 	});
 
-	const user = auth ? await getCurrentUser().catch(() => null) : null;
+	if (!auth) {
+		return NextResponse.json(
+			{
+				data: {
+					id: BYOS_MONO_USER_ID,
+					name: "Local user",
+					email: "mono@byos.local",
+					first_name: "Local",
+					last_name: "user",
+					locale: "en",
+					time_zone: "UTC",
+					time_zone_iana: "UTC",
+					utc_offset: 0,
+				},
+			},
+			{ status: 200 },
+		);
+	}
+
+	const user = await getCurrentUser().catch(() => null);
 	if (!user) {
 		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 	}

@@ -222,7 +222,7 @@ export async function GET(request: Request) {
 						filename: null,
 						message: `Device ${newDevice.friendly_id} added to BYOS!`,
 					},
-					{ status: 500 },
+					{ status: 200 },
 				);
 			} catch (createError) {
 				// Create an error object with the error details
@@ -326,7 +326,7 @@ export async function GET(request: Request) {
 				filename: null,
 				message: `Device ${device.friendly_id} added to BYOS!`,
 			},
-			{ status: 500 },
+			{ status: 200 },
 		);
 	} catch (error) {
 		// The error object already contains the stack trace
