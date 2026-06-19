@@ -177,9 +177,9 @@ export function RecipePreviewStage({
 					const params = new URLSearchParams();
 					params.set("model", selectedModel.name);
 					if (selectedPaletteId) params.set("palette_id", selectedPaletteId);
+					params.set("width", String(simWidth));
+					params.set("height", String(simHeight));
 					if (selectedModel.mime_type === "image/bmp") {
-						params.set("width", String(simWidth));
-						params.set("height", String(simHeight));
 						params.set("grayscale", "2");
 					}
 					return `/api/bitmap/${slug}.${ext}?${params.toString()}`;
