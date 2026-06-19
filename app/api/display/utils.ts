@@ -5,6 +5,7 @@ import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	createDefaultRefreshSchedule,
+	DEFAULT_DEVICE_SCREEN,
 	DEFAULT_DEVICE_TIMEZONE,
 	DEVICE_SLEEP_REFRESH_SECONDS,
 	serializeRefreshSchedule,
@@ -23,7 +24,6 @@ import {
 	generateMockMacAddress,
 	timezones,
 } from "@/utils/helpers";
-import { DEFAULT_SCREEN } from "./route";
 
 // --- Types ---
 
@@ -423,7 +423,7 @@ export const findOrCreateDevice = async (
 							Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
 						).toISOString(),
 						timezone: DEFAULT_DEVICE_TIMEZONE,
-						screen: DEFAULT_SCREEN,
+						screen: DEFAULT_DEVICE_SCREEN,
 						model: headers.model,
 						user_id: currentUserId,
 					})
@@ -497,7 +497,7 @@ export const findOrCreateDevice = async (
 						Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
 					).toISOString(),
 					timezone: DEFAULT_DEVICE_TIMEZONE,
-					screen: DEFAULT_SCREEN,
+					screen: DEFAULT_DEVICE_SCREEN,
 					model: headers.model,
 					user_id: currentUserId,
 				})
@@ -544,16 +544,17 @@ export const buildErrorResponse = (
 	message: string,
 	baseUrl: string,
 	uniqueId: string,
+	status = 500,
 ) => {
-	const notFoundImageUrl = `${baseUrl}/not-found.bmp`;
+	const errorImageUrl = `${baseUrl}/error.bmp?message=${encodeURIComponent(message)}`;
 	return NextResponse.json(
 		{
-			status: 500,
+			status,
 			reset_firmware: true,
 			message,
-			image_url: notFoundImageUrl,
-			filename: `not-found_${uniqueId}.bmp`,
+			image_url: errorImageUrl,
+			filename: `error_${uniqueId}.bmp`,
 		},
-		{ status: 200 },
+		{ status },
 	);
 };

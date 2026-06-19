@@ -12,59 +12,11 @@ import {
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
 import { renderDeviceImage } from "@/lib/render/device-image";
+import { renderErrorImage } from "@/lib/render/error-image";
+import { parseImageRequest } from "@/lib/render/image-request";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
-
-const MAX_IMAGE_DIMENSION = 4096;
-const MAX_IMAGE_PIXELS = 6_000_000;
-
-function validateDimensions(width: number, height: number): Response | null {
-	if (
-		!Number.isFinite(width) ||
-		!Number.isFinite(height) ||
-		width <= 0 ||
-		height <= 0
-	) {
-		return new Response("width and height must be positive integers", {
-			status: 422,
-		});
-	}
-	if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
-		return new Response(`width and height must be <= ${MAX_IMAGE_DIMENSION}`, {
-			status: 422,
-		});
-	}
-	if (width * height > MAX_IMAGE_PIXELS) {
-		return new Response(`image area must be <= ${MAX_IMAGE_PIXELS} pixels`, {
-			status: 422,
-		});
-	}
-	return null;
-}
-
-function parseDimensionParam(
-	value: string | null,
-	fallback: number,
-	label: string,
-): number | Response {
-	if (value === null) return fallback;
-	if (!/^\d+$/.test(value)) {
-		return new Response(`${label} must be a positive integer`, { status: 422 });
-	}
-	return Number.parseInt(value, 10);
-}
-
-function parseGrayscaleParam(value: string | null): number | Response {
-	if (value === null) return normalizeGrayscale(undefined);
-	if (!/^\d+$/.test(value)) {
-		return new Response("grayscale must be a positive integer", {
-			status: 422,
-		});
-	}
-	return normalizeGrayscale(Number.parseInt(value, 10));
-}
 
 export async function GET(
 	req: NextRequest,
@@ -74,33 +26,28 @@ export async function GET(
 		const { id } = await params;
 		const mixupId = stripImageExtension(id);
 
-		// Get width, height, and grayscale from query parameters
 		const { searchParams } = new URL(req.url);
-		const widthParam = searchParams.get("width");
-		const heightParam = searchParams.get("height");
-		const grayscaleParam = searchParams.get("grayscale");
-		const modelOverride = searchParams.get("model");
-		const paletteOverride = searchParams.get("palette_id");
+		const imageRequest = parseImageRequest(searchParams, {
+			width: DEFAULT_IMAGE_WIDTH,
+			height: DEFAULT_IMAGE_HEIGHT,
+		});
+		if (imageRequest instanceof Response) return imageRequest;
 		const accessToken =
 			searchParams.get("access_token") ?? req.headers.get("Access-Token");
-
-		const width = parseDimensionParam(widthParam, DEFAULT_IMAGE_WIDTH, "width");
-		if (width instanceof Response) return width;
-		const height = parseDimensionParam(
-			heightParam,
-			DEFAULT_IMAGE_HEIGHT,
-			"height",
-		);
-		if (height instanceof Response) return height;
-		const grayscaleLevels = parseGrayscaleParam(grayscaleParam);
-		if (grayscaleLevels instanceof Response) return grayscaleLevels;
-		const invalidDimensions = validateDimensions(width, height);
-		if (invalidDimensions) return invalidDimensions;
+		const width = imageRequest.width ?? DEFAULT_IMAGE_WIDTH;
+		const height = imageRequest.height ?? DEFAULT_IMAGE_HEIGHT;
+		const grayscaleLevels = imageRequest.grayscaleLevels;
 
 		const { ready } = await checkDbConnection();
 		if (!ready) {
 			logger.error("Database not available for mixup rendering");
-			return new Response("Database not available", { status: 503 });
+			const image = await renderErrorImage({
+				message: "Database not available",
+				width,
+				height,
+				grayscale: grayscaleLevels,
+			});
+			return imageResponse(image, 503);
 		}
 
 		// Two auth paths:
@@ -143,18 +90,6 @@ export async function GET(
 				return new Response("Mixup not found", { status: 404 });
 			}
 			userId = sessionUserId;
-			// No device context — fall back to the user's first mixup-bound device
-			// for profile, else null (getDeviceProfile handles null model).
-			const fallbackDevice = await db
-				.selectFrom("devices")
-				.select(["model", "palette_id"])
-				.where("user_id", "=", sessionUserId)
-				.where("mixup_id", "=", mixupId)
-				.executeTakeFirst();
-			profileSource = {
-				model: fallbackDevice?.model ?? null,
-				palette_id: fallbackDevice?.palette_id ?? null,
-			};
 		}
 
 		// Query-string overrides win — keeps mixup preview URLs self-contained
@@ -162,8 +97,8 @@ export async function GET(
 		// includes `model` and `palette_id` would still render against the
 		// device-row defaults.
 		const profile = await getDeviceProfile(
-			modelOverride ?? profileSource.model,
-			paletteOverride ?? profileSource.palette_id,
+			imageRequest.modelName ?? profileSource?.model,
+			imageRequest.paletteId ?? profileSource?.palette_id,
 		);
 
 		// Fetch mixup and its slots (join with recipes to get slug)
@@ -181,7 +116,6 @@ export async function GET(
 						"mixup_slots.id",
 						"mixup_slots.mixup_id",
 						"mixup_slots.slot_id",
-						"mixup_slots.recipe_slug",
 						"mixup_slots.recipe_id",
 						"mixup_slots.order_index",
 						"recipes.slug as resolved_slug",
@@ -206,7 +140,7 @@ export async function GET(
 		// Build slot assignments map, preferring the normalized recipe_id relation.
 		const assignments: Record<string, string | null> = {};
 		for (const slot of slots) {
-			assignments[slot.slot_id] = slot.resolved_slug ?? slot.recipe_slug;
+			assignments[slot.slot_id] = slot.resolved_slug ?? null;
 		}
 
 		logger.info(
@@ -236,19 +170,30 @@ export async function GET(
 					}
 				: await renderDeviceImage({ png: compositedPng, profile });
 
-		return new Response(new Uint8Array(image.buffer), {
-			headers: {
-				"Content-Type": image.mime_type,
-				"Content-Length": image.buffer.length.toString(),
-				...(image.size_limit_exceeded
-					? { "X-TRMNL-Image-Size-Limit-Exceeded": "true" }
-					: {}),
-			},
-		});
+		return imageResponse(image);
 	} catch (error) {
 		logger.error("Error generating mixup image:", error);
-		return new Response("Error generating image", { status: 500 });
+		const image = await renderErrorImage({
+			message: error instanceof Error ? error.message : "Error generating image",
+		});
+		return imageResponse(image, 500);
 	}
+}
+
+function imageResponse(
+	image: { buffer: Buffer; mime_type: string; size_limit_exceeded?: boolean },
+	status = 200,
+): Response {
+	return new Response(new Uint8Array(image.buffer), {
+		status,
+		headers: {
+			"Content-Type": image.mime_type,
+			"Content-Length": image.buffer.length.toString(),
+			...(image.size_limit_exceeded
+				? { "X-TRMNL-Image-Size-Limit-Exceeded": "true" }
+				: {}),
+		},
+	});
 }
 
 /**

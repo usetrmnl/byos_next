@@ -1,7 +1,6 @@
 import type { RefreshSchedule } from "@/lib/types";
 
 export const DEFAULT_DEVICE_SCREEN = "simple-text";
-export const FALLBACK_DEVICE_SCREEN = "not-found";
 
 export const DEVICE_SETUP_REFRESH_SECONDS = 60;
 export const DISPLAY_FALLBACK_REFRESH_SECONDS = 180;

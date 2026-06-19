@@ -46,7 +46,7 @@ export const definition: RecipeDefinition<
 	meta: {
 		slug: "not-found",
 		title: "Not Found",
-		description: "Fallback screen rendered when a recipe can't be resolved.",
+		description: "System screen for explicitly showing a missing screen message.",
 		published: true,
 		tags: ["system"],
 		author: { name: "Mangle Kuo", github: "ghcpuman902" },

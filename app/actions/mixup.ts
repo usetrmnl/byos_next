@@ -37,7 +37,7 @@ export async function fetchMixups(): Promise<Mixup[]> {
  */
 export async function fetchMixupWithSlots(mixupId: string): Promise<{
 	mixup: Mixup | null;
-	slots: Array<MixupSlot & { resolved_recipe_id?: string | null }>;
+	slots: MixupSlot[];
 }> {
 	const { ready } = await checkDbConnection();
 
@@ -55,16 +55,13 @@ export async function fetchMixupWithSlots(mixupId: string): Promise<{
 				.executeTakeFirst(),
 			scopedDb
 				.selectFrom("mixup_slots")
-				.leftJoin("recipes", "recipes.slug", "mixup_slots.recipe_slug")
 				.select([
 					"mixup_slots.id",
 					"mixup_slots.mixup_id",
 					"mixup_slots.slot_id",
-					"mixup_slots.recipe_slug",
 					"mixup_slots.recipe_id",
 					"mixup_slots.order_index",
 					"mixup_slots.created_at",
-					"recipes.id as resolved_recipe_id",
 				])
 				.where("mixup_id", "=", mixupId)
 				.orderBy("order_index", "asc")
@@ -254,25 +251,10 @@ export async function saveMixupWithSlots(mixupData: {
 			// Insert new slots
 			const slotEntries = Object.entries(mixupData.assignments);
 			if (slotEntries.length > 0) {
-				const recipeIds = slotEntries
-					.map(([, recipeId]) => recipeId)
-					.filter((recipeId) => recipeId);
-				const recipeRows =
-					recipeIds.length > 0
-						? await trx
-								.selectFrom("recipes")
-								.select(["id", "slug"])
-								.where("id", "in", recipeIds)
-								.execute()
-						: [];
-				const slugById = new Map(
-					recipeRows.map((recipe) => [recipe.id, recipe.slug]),
-				);
 				const slotsToInsert = slotEntries.map(([slotId, recipeId], index) => ({
 					mixup_id: mixupId,
 					slot_id: slotId,
 					recipe_id: recipeId || null,
-					recipe_slug: recipeId ? (slugById.get(recipeId) ?? null) : null,
 					order_index: index,
 				}));
 

@@ -10,102 +10,20 @@ import {
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
 import { stripImageExtension } from "@/lib/render/device-image-url";
+import { renderErrorImage } from "@/lib/render/error-image";
+import {
+	parseImageRequest,
+	rejectOversizedImageArea,
+} from "@/lib/render/image-request";
 import {
 	type DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import {
 	parseRequestHeaders,
 	type RequestHeaders,
 	resolveUserIdFromApiKey,
 } from "../../display/utils";
-
-const MAX_IMAGE_DIMENSION = 4096;
-const MAX_IMAGE_PIXELS = 6_000_000;
-
-type RequestedDimensions =
-	| { ok: true; width?: number; height?: number }
-	| { ok: false; response: Response };
-
-function parseDimension(
-	value: string | null,
-	label: string,
-): { ok: true; value?: number } | { ok: false; response: Response } {
-	if (value === null) return { ok: true };
-	if (!/^\d+$/.test(value)) {
-		return {
-			ok: false,
-			response: Response.json(
-				{ error: `${label} must be a positive integer` },
-				{ status: 422 },
-			),
-		};
-	}
-	const parsed = Number.parseInt(value, 10);
-	if (!Number.isFinite(parsed) || parsed <= 0) {
-		return {
-			ok: false,
-			response: Response.json(
-				{ error: `${label} must be a positive integer` },
-				{ status: 422 },
-			),
-		};
-	}
-	if (parsed > MAX_IMAGE_DIMENSION) {
-		return {
-			ok: false,
-			response: Response.json(
-				{ error: `${label} must be <= ${MAX_IMAGE_DIMENSION}` },
-				{ status: 422 },
-			),
-		};
-	}
-	return { ok: true, value: parsed };
-}
-
-function parseRequestedDimensions(
-	widthParam: string | null,
-	heightParam: string | null,
-): RequestedDimensions {
-	const width = parseDimension(widthParam, "width");
-	if (!width.ok) return width;
-	const height = parseDimension(heightParam, "height");
-	if (!height.ok) return height;
-	if (
-		width.value !== undefined &&
-		height.value !== undefined &&
-		width.value * height.value > MAX_IMAGE_PIXELS
-	) {
-		return {
-			ok: false,
-			response: Response.json(
-				{ error: `image area must be <= ${MAX_IMAGE_PIXELS} pixels` },
-				{ status: 422 },
-			),
-		};
-	}
-	return { ok: true, width: width.value, height: height.value };
-}
-
-function rejectOversizedArea(width: number, height: number): Response | null {
-	if (width * height <= MAX_IMAGE_PIXELS) return null;
-	return Response.json(
-		{ error: `image area must be <= ${MAX_IMAGE_PIXELS} pixels` },
-		{ status: 422 },
-	);
-}
-
-function parseGrayscale(value: string | null): number | Response {
-	if (value === null) return normalizeGrayscale(undefined);
-	if (!/^\d+$/.test(value)) {
-		return Response.json(
-			{ error: "grayscale must be a positive integer" },
-			{ status: 422 },
-		);
-	}
-	return normalizeGrayscale(Number.parseInt(value, 10));
-}
 
 export async function GET(
 	req: NextRequest,
@@ -114,28 +32,16 @@ export async function GET(
 	const headers = parseRequestHeaders(req);
 	try {
 		// Always await params as required by Next.js 14/15
-		const { slug = ["not-found"] } = await params;
+		const { slug = ["error"] } = await params;
 		const bitmapPath = Array.isArray(slug) ? slug.join("/") : slug;
 		const recipeSlug = stripImageExtension(bitmapPath);
 
-		// Get width, height, and grayscale from query parameters
 		const { searchParams } = new URL(req.url);
-		const widthParam = searchParams.get("width");
-		const heightParam = searchParams.get("height");
-		const grayscaleParam = searchParams.get("grayscale");
-		const modelParam = searchParams.get("model");
-		const paletteParam = searchParams.get("palette_id");
-
-		const requestedDimensions = parseRequestedDimensions(
-			widthParam,
-			heightParam,
-		);
-		if (!requestedDimensions.ok) return requestedDimensions.response;
-		const grayscaleLevels = parseGrayscale(grayscaleParam);
-		if (grayscaleLevels instanceof Response) return grayscaleLevels;
+		const imageRequest = parseImageRequest(searchParams);
+		if (imageRequest instanceof Response) return imageRequest;
 
 		logger.info(
-			`Bitmap request for: ${bitmapPath} with ${grayscaleLevels} gray levels`,
+			`Bitmap request for: ${bitmapPath} with ${imageRequest.grayscaleLevels} gray levels`,
 		);
 
 		// Resolve the device owner so DB queries are scoped to the right user
@@ -146,20 +52,33 @@ export async function GET(
 		// Forward cookies so browser rendering can reuse the caller's auth session.
 		const cookieHeader = req.headers.get("cookie");
 		const profile = await resolveDeviceProfileForRequest(headers, {
-			modelName: modelParam,
-			paletteId: paletteParam,
+			modelName: imageRequest.modelName,
+			paletteId: imageRequest.paletteId,
 		});
 
-		// The bitmap URL is server-emitted by `/api/display` via
-		// `buildDeviceImageUrl`, which derives the extension from the resolved
-		// profile. Profile + extension are both pinned by the URL (model and
-		// palette_id are query params), so dispatch on profile MIME alone:
-		// PNG/WebP profiles use the device-image renderer, BMP profiles use
-		// the legacy bitmap renderer.
+		if (recipeSlug === "error") {
+			const imageWidth = imageRequest.width ?? profile.model.width;
+			const imageHeight = imageRequest.height ?? profile.model.height;
+			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
+			if (oversized) return oversized;
+			const image = await renderErrorImage({
+				message: searchParams.get("message") ?? "Display error",
+				width: imageWidth,
+				height: imageHeight,
+				grayscale: imageRequest.grayscaleLevels,
+				profile,
+			});
+			return new Response(new Uint8Array(image.buffer), {
+				headers: getImageResponseHeaders(image),
+			});
+		}
+
+		// Profile + extension are both pinned by the URL (model and palette_id
+		// are query params), so dispatch on profile MIME alone.
 		if (profile.model.mime_type !== "image/bmp") {
-			const imageWidth = requestedDimensions.width ?? profile.model.width;
-			const imageHeight = requestedDimensions.height ?? profile.model.height;
-			const oversized = rejectOversizedArea(imageWidth, imageHeight);
+			const imageWidth = imageRequest.width ?? profile.model.width;
+			const imageHeight = imageRequest.height ?? profile.model.height;
+			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
 			if (oversized) return oversized;
 			const image = await renderRecipeForDevice({
 				slug: recipeSlug,
@@ -171,10 +90,18 @@ export async function GET(
 			});
 
 			if (!image?.buffer.length) {
-				logger.warn(
-					`Failed to generate device image for ${recipeSlug}, returning fallback`,
-				);
-				return renderFallbackDeviceImage(profile);
+				logger.warn(`Failed to generate device image for ${recipeSlug}`);
+				const errorImage = await renderErrorImage({
+					message: `Could not render ${recipeSlug}`,
+					width: imageWidth,
+					height: imageHeight,
+					grayscale: imageRequest.grayscaleLevels,
+					profile,
+				});
+				return new Response(new Uint8Array(errorImage.buffer), {
+					status: 500,
+					headers: getImageResponseHeaders(errorImage),
+				});
 			}
 
 			return new Response(new Uint8Array(image.buffer), {
@@ -182,15 +109,15 @@ export async function GET(
 			});
 		}
 
-		const validWidth = requestedDimensions.width ?? DEFAULT_IMAGE_WIDTH;
-		const validHeight = requestedDimensions.height ?? DEFAULT_IMAGE_HEIGHT;
-		const oversized = rejectOversizedArea(validWidth, validHeight);
+		const validWidth = imageRequest.width ?? DEFAULT_IMAGE_WIDTH;
+		const validHeight = imageRequest.height ?? DEFAULT_IMAGE_HEIGHT;
+		const oversized = rejectOversizedImageArea(validWidth, validHeight);
 		if (oversized) return oversized;
 		const recipeBuffer = await renderRecipeBitmap(
 			recipeSlug,
 			validWidth,
 			validHeight,
-			grayscaleLevels,
+			imageRequest.grayscaleLevels,
 			userId,
 			cookieHeader || undefined,
 		);
@@ -200,11 +127,17 @@ export async function GET(
 			!(recipeBuffer instanceof Buffer) ||
 			recipeBuffer.length === 0
 		) {
-			logger.warn(
-				`Failed to generate bitmap for ${recipeSlug}, returning fallback`,
-			);
-			const fallback = await renderFallbackBitmap();
-			return fallback;
+			logger.warn(`Failed to generate bitmap for ${recipeSlug}`);
+			const errorImage = await renderErrorImage({
+				message: `Could not render ${recipeSlug}`,
+				width: validWidth,
+				height: validHeight,
+				grayscale: imageRequest.grayscaleLevels,
+			});
+			return new Response(new Uint8Array(errorImage.buffer), {
+				status: 500,
+				headers: getImageResponseHeaders(errorImage),
+			});
 		}
 
 		return new Response(new Uint8Array(recipeBuffer), {
@@ -215,9 +148,25 @@ export async function GET(
 		});
 	} catch (error) {
 		logger.error("Error generating image:", error);
-
-		// Instead of returning an error, return the NotFoundScreen as a fallback
-		return await renderFallbackBitmap();
+		const { searchParams } = new URL(req.url);
+		const width = Number.parseInt(
+			searchParams.get("width") ?? String(DEFAULT_IMAGE_WIDTH),
+			10,
+		);
+		const height = Number.parseInt(
+			searchParams.get("height") ?? String(DEFAULT_IMAGE_HEIGHT),
+			10,
+		);
+		const errorImage = await renderErrorImage({
+			message: error instanceof Error ? error.message : "Image render failed",
+			width: Number.isFinite(width) && width > 0 ? width : DEFAULT_IMAGE_WIDTH,
+			height:
+				Number.isFinite(height) && height > 0 ? height : DEFAULT_IMAGE_HEIGHT,
+		});
+		return new Response(new Uint8Array(errorImage.buffer), {
+			status: 500,
+			headers: getImageResponseHeaders(errorImage),
+		});
 	}
 }
 
@@ -280,59 +229,3 @@ const renderRecipeBitmap = cache(
 		return renders.bitmap ?? Buffer.from([]);
 	},
 );
-
-const renderFallbackBitmap = cache(async () => {
-	try {
-		const renders = await renderRecipeToImage({
-			slug: "not-found",
-			imageWidth: DEFAULT_IMAGE_WIDTH,
-			imageHeight: DEFAULT_IMAGE_HEIGHT,
-			formats: ["bitmap"],
-			grayscale: 2,
-		});
-
-		if (!renders.bitmap) {
-			throw new Error("Missing bitmap buffer for fallback");
-		}
-
-		return new Response(new Uint8Array(renders.bitmap), {
-			headers: {
-				"Content-Type": "image/bmp",
-				"Content-Length": renders.bitmap.length.toString(),
-			},
-		});
-	} catch (fallbackError) {
-		logger.error("Error generating fallback image:", fallbackError);
-		return new Response("Error generating image", {
-			status: 500,
-			headers: {
-				"Content-Type": "text/plain",
-			},
-		});
-	}
-});
-
-async function renderFallbackDeviceImage(profile: DeviceProfile) {
-	try {
-		const image = await renderRecipeForDevice({
-			slug: "not-found",
-			profile,
-		});
-
-		if (!image?.buffer.length) {
-			throw new Error("Missing device image buffer for fallback");
-		}
-
-		return new Response(new Uint8Array(image.buffer), {
-			headers: getImageResponseHeaders(image),
-		});
-	} catch (fallbackError) {
-		logger.error("Error generating fallback image:", fallbackError);
-		return new Response("Error generating image", {
-			status: 500,
-			headers: {
-				"Content-Type": "text/plain",
-			},
-		});
-	}
-}

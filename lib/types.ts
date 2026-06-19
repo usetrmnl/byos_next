@@ -87,7 +87,6 @@ export type MixupSlot = {
 	id: string;
 	mixup_id: string | null;
 	slot_id: string;
-	recipe_slug: string | null;
 	recipe_id: string | null;
 	order_index: number;
 	created_at: string | null;

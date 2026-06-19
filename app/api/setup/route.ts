@@ -38,10 +38,10 @@ export async function GET(request: Request) {
 			);
 			return NextResponse.json(
 				{
-					status: 200,
+					status: 503,
 					message: "Device setup skipped",
 				},
-				{ status: 200 },
+				{ status: 503 },
 			);
 		}
 
@@ -57,14 +57,14 @@ export async function GET(request: Request) {
 			});
 			return NextResponse.json(
 				{
-					status: 404,
+					status: 400,
 					api_key: null,
 					friendly_id: null,
 					image_url: null,
 					message: "ID header is required",
 				},
-				{ status: 200 },
-			); // Status 200 for device compatibility
+				{ status: 400 },
+			);
 		}
 
 		// TRMNL API requires Model header
@@ -77,8 +77,8 @@ export async function GET(request: Request) {
 					image_url: null,
 					message: "Model header is required",
 				},
-				{ status: 200 },
-			); // Status 200 for device compatibility
+				{ status: 400 },
+			);
 		}
 
 		const currentUserId = await getCurrentUserId();
@@ -164,7 +164,7 @@ export async function GET(request: Request) {
 						image_url: null,
 						message: "Device setup requires an authenticated owner",
 					},
-					{ status: 200 },
+					{ status: 403 },
 				);
 			}
 
@@ -222,7 +222,7 @@ export async function GET(request: Request) {
 						filename: null,
 						message: `Device ${newDevice.friendly_id} added to BYOS!`,
 					},
-					{ status: 200 },
+					{ status: 500 },
 				);
 			} catch (createError) {
 				// Create an error object with the error details
@@ -241,7 +241,7 @@ export async function GET(request: Request) {
 						reset_firmware: false,
 						message: `Error creating new device. ${friendly_id}`,
 					},
-					{ status: 200 },
+					{ status: 500 },
 				);
 			}
 		}
@@ -273,7 +273,7 @@ export async function GET(request: Request) {
 					message:
 						"Device setup requires a valid access token or owner session",
 				},
-				{ status: 200 },
+				{ status: 403 },
 			);
 		}
 
@@ -326,7 +326,7 @@ export async function GET(request: Request) {
 				filename: null,
 				message: `Device ${device.friendly_id} added to BYOS!`,
 			},
-			{ status: 200 },
+			{ status: 500 },
 		);
 	} catch (error) {
 		// The error object already contains the stack trace

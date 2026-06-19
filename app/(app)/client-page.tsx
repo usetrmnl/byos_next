@@ -15,7 +15,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { DEFAULT_DEVICE_SCREEN } from "@/lib/device/defaults";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import type { Device, SystemLog } from "@/lib/types";
@@ -244,7 +243,12 @@ function buildLatestScreenSrc(device: Device): string {
 		params.set("palette_id", paletteId);
 	}
 
-	return `/api/bitmap/${device.screen || DEFAULT_DEVICE_SCREEN}.png?${params.toString()}`;
+	if (!device.screen) {
+		params.set("message", "Device screen is not configured");
+		return `/api/bitmap/error.png?${params.toString()}`;
+	}
+
+	return `/api/bitmap/${device.screen}.png?${params.toString()}`;
 }
 
 function Stat({

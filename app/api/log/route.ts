@@ -133,10 +133,10 @@ export async function POST(request: Request) {
 			);
 			return NextResponse.json(
 				{
-					status: 200,
-					message: "Log received",
+					status: 503,
+					message: "Database not available",
 				},
-				{ status: 200 },
+				{ status: 503 },
 			);
 		}
 
@@ -176,7 +176,7 @@ export async function POST(request: Request) {
 							status: 401,
 							message: "Valid access token required for registered device",
 						},
-						{ status: 200 },
+						{ status: 401 },
 					);
 				}
 
@@ -358,7 +358,7 @@ export async function POST(request: Request) {
 								status: 400,
 								message: "Device owner is required before logs can be accepted",
 							},
-							{ status: 200 },
+							{ status: 400 },
 						);
 					}
 
@@ -721,7 +721,7 @@ export async function POST(request: Request) {
 									message:
 										"Device owner is required before logs can be accepted",
 								},
-								{ status: 200 },
+									{ status: 400 },
 							);
 						}
 
@@ -813,8 +813,8 @@ export async function POST(request: Request) {
 									status: 500,
 									message: "Failed to process logs from unknown device",
 								},
-								{ status: 200 },
-							); // 200 for device compatibility
+								{ status: 500 },
+							);
 						}
 					}
 				}
@@ -836,8 +836,8 @@ export async function POST(request: Request) {
 					status: 400,
 					message: "No device found or created",
 				},
-				{ status: 200 },
-			); // 200 for device compatibility
+				{ status: 400 },
+			);
 		}
 
 		const requestBody: LogRequestBody = await request.json();
@@ -930,8 +930,8 @@ export async function POST(request: Request) {
 					status: 500,
 					message: "Failed to save logs",
 				},
-				{ status: 200 },
-			); // 200 for device compatibility
+				{ status: 500 },
+			);
 		}
 
 		logInfo("Log saved successfully", {
@@ -960,7 +960,7 @@ export async function POST(request: Request) {
 				status: 500,
 				message: "Internal server error",
 			},
-			{ status: 200 },
-		); // 200 for device compatibility
+			{ status: 500 },
+		);
 	}
 }

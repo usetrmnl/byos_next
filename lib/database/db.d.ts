@@ -158,7 +158,6 @@ export interface MixupSlots {
 	mixup_id: string | null;
 	order_index: number;
 	recipe_id: string | null;
-	recipe_slug: string | null;
 	slot_id: string;
 }
 
