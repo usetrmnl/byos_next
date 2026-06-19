@@ -38,7 +38,7 @@ export default function SimpleText({
 	height?: number;
 }) {
 	return (
-		<PreSatori useDoubling={true} width={width} height={height}>
+		<PreSatori width={width} height={height}>
 			<div className="w-full h-full p-4 sm:p-6 lg:p-12 2xl:p-20 bg-white flex flex-col items-center justify-center gap-2 lg:gap-4 2xl:gap-6 text-center text-black">
 				<div className="text-4xl lg:text-6xl 2xl:text-8xl font-blockkie">
 					Hello World - blockkie font
@@ -79,7 +79,7 @@ export const definition: RecipeDefinition<typeof paramsSchema> = {
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-01T00:00:00Z",
-		renderSettings: { doubleSizeForSharperText: true },
+		renderSettings: { supersample: true },
 	},
 	paramsSchema,
 	dataSchema,

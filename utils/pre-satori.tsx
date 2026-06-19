@@ -14,14 +14,12 @@ import {
 } from "./pre-satori-tailwind";
 
 interface PreSatoriProps {
-	useDoubling?: boolean;
 	width?: number;
 	height?: number;
 	children: React.ReactNode;
 }
 
 export const PreSatori: React.FC<PreSatoriProps> = ({
-	useDoubling = false,
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
 	children,
@@ -109,8 +107,6 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 				display: "flex",
 				width: `${width}px`,
 				height: `${height}px`,
-				transformOrigin: "top left",
-				...(useDoubling ? { transform: "scale(2)" } : {}),
 			}}
 		>
 			{React.Children.map(children, (child) => transform(child))}

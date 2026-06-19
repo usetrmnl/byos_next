@@ -228,7 +228,7 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-13T00:00:00Z",
-		renderSettings: { doubleSizeForSharperText: true },
+		renderSettings: { supersample: true },
 	},
 	paramsSchema,
 	dataSchema,

@@ -19,7 +19,7 @@ export default function ResponsiveExample({
 	height = DEFAULT_IMAGE_HEIGHT,
 }: ResponsiveExampleProps) {
 	return (
-		<PreSatori useDoubling={false} width={width} height={height}>
+		<PreSatori width={width} height={height}>
 			<div className="bg-white flex flex-col w-full h-full">
 				{/* Header section - responsive height and text size */}
 				<div className="bg-blue-500 flex items-center justify-center text-white font-blockkie py-5 text-2xl sm:text-3xl lg:text-4xl">
