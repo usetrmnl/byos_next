@@ -107,7 +107,7 @@ const DashboardData = async () => {
 							</p>
 						</div>
 					)}
-					<DbInitializer connectionUrl={dbStatus.PostgresUrl} />
+					<DbInitializer databaseConfigured={dbStatus.databaseConfigured} />
 				</div>
 				<DashboardSkeleton className="filter blur-[1px] pointer-events-none mt-6" />
 			</>

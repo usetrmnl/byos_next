@@ -3,6 +3,12 @@ import type { CustomError } from "@/lib/api/types";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	createDefaultRefreshSchedule,
+	DEFAULT_DEVICE_TIMEZONE,
+	DEVICE_SLEEP_REFRESH_SECONDS,
+	serializeRefreshSchedule,
+} from "@/lib/device/defaults";
 import { logError, logInfo } from "@/lib/logger";
 import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
 
@@ -182,21 +188,14 @@ export async function GET(request: Request) {
 						name: `TRMNL Device ${friendly_id}`,
 						friendly_id: friendly_id,
 						api_key: api_key,
-						refresh_schedule: JSON.stringify({
-							default_refresh_rate: 60, // Default refresh rate in seconds
-							time_ranges: [
-								{
-									start_time: "00:00", // Start of the time range
-									end_time: "07:00", // End of the time range
-									refresh_rate: 3600, // Refresh rate in seconds
-								},
-							],
-						}),
+						refresh_schedule: serializeRefreshSchedule(
+							createDefaultRefreshSchedule(),
+						),
 						last_update_time: new Date().toISOString(), // Current time as last update
 						next_expected_update: new Date(
-							Date.now() + 3600 * 1000,
+							Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
 						).toISOString(), // 1 hour from now
-						timezone: "Europe/London", // Default timezone
+						timezone: DEFAULT_DEVICE_TIMEZONE,
 						user_id: currentUserId,
 					})
 					.returningAll()

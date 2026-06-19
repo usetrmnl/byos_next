@@ -1,11 +1,20 @@
-import crypto from "crypto";
 import { NextResponse } from "next/server";
 import type { CustomError } from "@/lib/api/types";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	createDefaultRefreshSchedule,
+	DEFAULT_DEVICE_TIMEZONE,
+	DEVICE_SETUP_REFRESH_SECONDS,
+	serializeRefreshSchedule,
+} from "@/lib/device/defaults";
 import { logError, logInfo } from "@/lib/logger";
-import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
+import {
+	generateApiKey,
+	generateFriendlyId,
+	generateMockMacAddress,
+} from "@/utils/helpers";
 
 interface LogEntry {
 	creation_timestamp: number;
@@ -29,19 +38,25 @@ interface LogRequestBody {
 	logs: unknown[]; // TRMNL API format - required
 }
 
-// Function to generate a consistent mock MAC address from an API key
-const generateMockMacAddress = (apiKey: string): string => {
-	// Create a hash of the API key
-	const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
+function parseRefreshRateHeader(refreshRate: string | null): number {
+	const parsed = refreshRate ? Number.parseInt(refreshRate, 10) : NaN;
+	return Number.isFinite(parsed) && parsed > 0
+		? parsed
+		: DEVICE_SETUP_REFRESH_SECONDS;
+}
 
-	// Use the last 12 characters of the hash to create a MAC-like string
-	// Format: A1:B2:C3:XX:XX:XX where XX is from the hash
-	// this ensures it won't clash with real MAC addresses, but repeating request from the same un-setup
-	// device will generate the same mock MAC address
-	// Convert to uppercase and ensure proper MAC address format
-	const macPart = hash.substring(hash.length - 6).toUpperCase();
-	return `A1:B2:C3:${macPart.substring(0, 2)}:${macPart.substring(2, 4)}:${macPart.substring(4, 6)}`;
-};
+function nextExpectedUpdateFromRefresh(refreshRate: string | null): string {
+	return new Date(
+		Date.now() + parseRefreshRateHeader(refreshRate) * 1000,
+	).toISOString();
+}
+
+function refreshScheduleFromHeader(refreshRate: string | null): string {
+	return serializeRefreshSchedule({
+		...createDefaultRefreshSchedule(),
+		default_refresh_rate: parseRefreshRateHeader(refreshRate),
+	});
+}
 
 export async function GET(request: Request) {
 	logInfo("Log API GET Request received (unexpected)", {
@@ -205,12 +220,7 @@ export async function POST(request: Request) {
 						.updateTable("devices")
 						.set({
 							last_update_time: new Date().toISOString(),
-							next_expected_update: new Date(
-								Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate, 10) * 1000
-										: 3600 * 1000),
-							).toISOString(),
+							next_expected_update: nextExpectedUpdateFromRefresh(refreshRate),
 							battery_voltage: batteryVoltage
 								? Number.parseFloat(batteryVoltage)
 								: deviceByMac.battery_voltage,
@@ -295,12 +305,8 @@ export async function POST(request: Request) {
 							.updateTable("devices")
 							.set({
 								last_update_time: new Date().toISOString(),
-								next_expected_update: new Date(
-									Date.now() +
-										(refreshRate
-											? Number.parseInt(refreshRate, 10) * 1000
-											: 3600 * 1000),
-								).toISOString(),
+								next_expected_update:
+									nextExpectedUpdateFromRefresh(refreshRate),
 								battery_voltage: batteryVoltage
 									? Number.parseFloat(batteryVoltage)
 									: deviceByApiKey.battery_voltage,
@@ -369,20 +375,11 @@ export async function POST(request: Request) {
 								name: `TRMNL Device ${friendly_id}`,
 								friendly_id: friendly_id,
 								api_key: apiKey,
-								refresh_schedule: JSON.stringify({
-									default_refresh_rate: refreshRate
-										? Number.parseInt(refreshRate, 10)
-										: 60,
-									time_ranges: [],
-								}),
+								refresh_schedule: refreshScheduleFromHeader(refreshRate),
 								last_update_time: new Date().toISOString(),
-								next_expected_update: new Date(
-									Date.now() +
-										(refreshRate
-											? Number.parseInt(refreshRate, 10) * 1000
-											: 3600 * 1000),
-								).toISOString(),
-								timezone: "UTC",
+								next_expected_update:
+									nextExpectedUpdateFromRefresh(refreshRate),
+								timezone: DEFAULT_DEVICE_TIMEZONE,
 								battery_voltage: batteryVoltage
 									? Number.parseFloat(batteryVoltage)
 									: null,
@@ -487,12 +484,7 @@ export async function POST(request: Request) {
 						.updateTable("devices")
 						.set({
 							last_update_time: new Date().toISOString(),
-							next_expected_update: new Date(
-								Date.now() +
-									(refreshRate
-										? Number.parseInt(refreshRate, 10) * 1000
-										: 3600 * 1000),
-							).toISOString(),
+							next_expected_update: nextExpectedUpdateFromRefresh(refreshRate),
 							battery_voltage: batteryVoltage
 								? Number.parseFloat(batteryVoltage)
 								: device.battery_voltage,
@@ -580,12 +572,8 @@ export async function POST(request: Request) {
 							.updateTable("devices")
 							.set({
 								last_update_time: new Date().toISOString(),
-								next_expected_update: new Date(
-									Date.now() +
-										(refreshRate
-											? Number.parseInt(refreshRate, 10) * 1000
-											: 3600 * 1000),
-								).toISOString(),
+								next_expected_update:
+									nextExpectedUpdateFromRefresh(refreshRate),
 								battery_voltage: batteryVoltage
 									? Number.parseFloat(batteryVoltage)
 									: existingDeviceWithApiKey.battery_voltage,
@@ -678,12 +666,8 @@ export async function POST(request: Request) {
 								.updateTable("devices")
 								.set({
 									last_update_time: new Date().toISOString(),
-									next_expected_update: new Date(
-										Date.now() +
-											(refreshRate
-												? Number.parseInt(refreshRate, 10) * 1000
-												: 3600 * 1000),
-									).toISOString(),
+									next_expected_update:
+										nextExpectedUpdateFromRefresh(refreshRate),
 									battery_voltage: batteryVoltage
 										? Number.parseFloat(batteryVoltage)
 										: existingMockDevice.battery_voltage,
@@ -769,20 +753,11 @@ export async function POST(request: Request) {
 									name: `Unknown device with API ${maskedApiKey}`,
 									friendly_id: friendly_id,
 									api_key: new_api_key,
-									refresh_schedule: JSON.stringify({
-										default_refresh_rate: refreshRate
-											? Number.parseInt(refreshRate, 10)
-											: 60,
-										time_ranges: [],
-									}),
+									refresh_schedule: refreshScheduleFromHeader(refreshRate),
 									last_update_time: new Date().toISOString(),
-									next_expected_update: new Date(
-										Date.now() +
-											(refreshRate
-												? Number.parseInt(refreshRate, 10) * 1000
-												: 3600 * 1000),
-									).toISOString(),
-									timezone: "UTC",
+									next_expected_update:
+										nextExpectedUpdateFromRefresh(refreshRate),
+									timezone: DEFAULT_DEVICE_TIMEZONE,
 									battery_voltage: batteryVoltage
 										? Number.parseFloat(batteryVoltage)
 										: null,

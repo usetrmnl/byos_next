@@ -19,9 +19,12 @@ import {
 } from "@/app/actions/execute-sql";
 import { SQL_STATEMENTS } from "@/lib/database/sql-statements";
 import { Button } from "../ui/button";
-import { Input } from "../ui/input";
 
-export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
+export function DbInitializer({
+	databaseConfigured,
+}: {
+	databaseConfigured: boolean;
+}) {
 	const [isPending, startTransition] = useTransition();
 	const [copied, setCopied] = useState<string | null>(null);
 	const [copyError, setCopyError] = useState<string | null>(null);
@@ -167,7 +170,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 		.join("\n\n");
 
 	const executeAll = () => {
-		if (!connectionUrl) return;
+		if (!databaseConfigured) return;
 
 		// Initialize all statements to loading state
 		const initialState = Object.keys(SQL_STATEMENTS).reduce((acc, key) => {
@@ -291,7 +294,7 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 
 	return (
 		<div className="p-6">
-			{connectionUrl && (
+			{databaseConfigured && (
 				<div className="flex flex-wrap items-center gap-3 mb-4">
 					<Button
 						type="button"
@@ -325,15 +328,9 @@ export function DbInitializer({ connectionUrl }: { connectionUrl?: string }) {
 					<div className="flex items-center gap-2 px-2 py-1 rounded min-w-0 flex-1">
 						<Code className="h-4 w-4 text-muted-foreground shrink-0" />
 						<span className="font-medium min-w-0 flex-1">
-							{connectionUrl ? (
-								<Input
-									className="w-full max-w-2xl font-mono text-xs"
-									value={connectionUrl}
-									readOnly
-								/>
-							) : (
-								"Database initialization SQL"
-							)}
+							{databaseConfigured
+								? "Database connection is configured"
+								: "Database initialization SQL"}
 						</span>
 						{getExecutionSummary()}
 					</div>

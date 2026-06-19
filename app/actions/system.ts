@@ -20,7 +20,7 @@ type FetchSystemLogsResult = {
 	uniqueSources: string[];
 };
 
-async function canReadSystemLogs(): Promise<boolean> {
+export async function canReadSystemLogs(): Promise<boolean> {
 	if (!auth) {
 		return true;
 	}

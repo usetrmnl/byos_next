@@ -13,7 +13,7 @@ import { SQL_STATEMENTS } from "./sql-statements";
 export async function checkDbConnection(): Promise<{
 	ready: boolean;
 	error?: string;
-	PostgresUrl?: string;
+	databaseConfigured: boolean;
 }> {
 	try {
 		await sql`SELECT 1`.execute(db);
@@ -31,13 +31,13 @@ export async function checkDbConnection(): Promise<{
 
 		return {
 			ready: true,
-			PostgresUrl: process.env.DATABASE_URL,
+			databaseConfigured: Boolean(process.env.DATABASE_URL),
 		};
 	} catch (error) {
 		return {
 			ready: false,
 			error: error instanceof Error ? error.message : String(error),
-			PostgresUrl: process.env.DATABASE_URL,
+			databaseConfigured: Boolean(process.env.DATABASE_URL),
 		};
 	}
 }
@@ -47,6 +47,7 @@ export async function getDbStatus() {
 		return {
 			ready: false,
 			error: "ERROR_ENV_VAR_DATABASE_URL_NOT_SET",
+			databaseConfigured: false,
 		};
 	}
 	const status = await checkDbConnection();

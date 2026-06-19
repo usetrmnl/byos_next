@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	DEFAULT_DEVICE_SCREEN,
+	DISPLAY_FALLBACK_REFRESH_SECONDS,
+	FALLBACK_DEVICE_SCREEN,
+	normalizeRefreshSchedule,
+} from "@/lib/device/defaults";
 import { selectDisplayForDevice } from "@/lib/display/select";
 import { getLatestFirmware, isUpdateAvailable } from "@/lib/firmware";
 import { logError, logInfo } from "@/lib/logger";
@@ -10,7 +16,6 @@ import {
 	buildDeviceImageUrl,
 } from "@/lib/render/device-image-url";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
-import type { RefreshSchedule } from "@/lib/types";
 import {
 	buildDisplayResponse,
 	buildErrorResponse,
@@ -22,8 +27,8 @@ import {
 	updateDeviceStatus,
 } from "./utils";
 
-export const DEFAULT_SCREEN = "album";
-export const DEFAULT_REFRESH_RATE = 180;
+export const DEFAULT_SCREEN = DEFAULT_DEVICE_SCREEN;
+export const DEFAULT_REFRESH_RATE = DISPLAY_FALLBACK_REFRESH_SECONDS;
 
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
@@ -119,8 +124,8 @@ export async function GET(request: Request) {
 							source: "api/display",
 							metadata: { deviceId: device.friendly_id },
 						});
-						screenToDisplay = device.screen || "not-found";
-						dynamicRefreshRate = 60;
+						screenToDisplay = device.screen || FALLBACK_DEVICE_SCREEN;
+						dynamicRefreshRate = DEFAULT_REFRESH_RATE;
 					}
 				} else {
 					dynamicRefreshRate = 180;
@@ -153,16 +158,16 @@ export async function GET(request: Request) {
 					});
 				}
 				dynamicRefreshRate = calculateRefreshRate(
-					device.refresh_schedule as unknown as RefreshSchedule,
-					180,
+					normalizeRefreshSchedule(device.refresh_schedule),
+					DEFAULT_REFRESH_RATE,
 					device.timezone || "UTC",
 				);
 				break;
 
 			default:
 				dynamicRefreshRate = calculateRefreshRate(
-					device.refresh_schedule as unknown as RefreshSchedule,
-					180,
+					normalizeRefreshSchedule(device.refresh_schedule),
+					DEFAULT_REFRESH_RATE,
 					device.timezone || "UTC",
 				);
 				break;

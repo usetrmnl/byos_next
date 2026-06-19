@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth/auth";
+import { getCurrentUser } from "@/lib/auth/get-user";
 import { logInfo } from "@/lib/logger";
 
 /**
  * GET /api/me
  * Get current user data
  *
- * Note: BYOS doesn't currently have user authentication.
- * This endpoint returns a stub response for compatibility.
- * In the future, this can be enhanced with actual user authentication.
+ * Returns the Better Auth session user when available, otherwise a TRMNL
+ * compatibility stub for bearer-token clients.
  */
 export async function GET(request: Request) {
 	// Check for Authorization header (Bearer token)
@@ -19,16 +20,16 @@ export async function GET(request: Request) {
 		metadata: { hasAuth: !!bearerToken },
 	});
 
-	// For now, return a stub user response
-	// In the future, this should validate the bearer token and return actual user data
+	const user = auth ? await getCurrentUser().catch(() => null) : null;
+
 	return NextResponse.json(
 		{
 			data: {
-				id: 0,
-				name: "BYOS User",
-				email: null,
-				first_name: null,
-				last_name: null,
+				id: user?.id ?? 0,
+				name: user?.name ?? "BYOS User",
+				email: user?.email ?? null,
+				first_name: user?.name?.split(" ")[0] ?? null,
+				last_name: user?.name?.split(" ").slice(1).join(" ") || null,
 				locale: "en",
 				time_zone: "UTC",
 				time_zone_iana: "UTC",
