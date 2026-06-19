@@ -1,146 +1,154 @@
 # Recipe Collection
 
-This recipes page allows you to visualize and test components in both their direct rendering and bitmap (BMP) rendering forms. It's designed to help develop and test components for e-ink displays.
+The recipes page lets you visualize and test components in both direct
+rendering and bitmap (BMP) rendering forms. It is designed for developing
+and testing components that will run on e-ink displays.
 
 ## How It Works
 
 The recipes page provides two main views:
 
-1. **Index View** (`/recipes`) - Shows a list of all available recipes grouped by category
-2. **Recipe View** (`/recipes/[slug]`) - Shows a specific recipe with both direct and BMP rendering
+1. **Index view** (`/recipes`) — every recipe grouped by category.
+2. **Recipe view** (`/recipes/[slug]`) — a single recipe with React,
+   PNG, and BMP renderings side by side.
 
-Each recipe is defined in `app/recipes/screens.json` and can be accessed via its slug.
+Built-in React recipes live in `app/(app)/recipes/screens/<slug>/`. Each
+folder is a single source of truth: the component, its Zod schemas, and
+its `RecipeDefinition` export all live in one file. There is no
+separate registry file to keep in sync.
 
-## Adding New Recipe
+## Adding a New Recipe
 
-To add a new recipe to the collection:
+1. Create a folder named after your recipe's slug under
+   `app/(app)/recipes/screens/`. Add `<slug>.tsx`.
 
-1. Create your recipe folder in the `app/recipes/screens` directory
-2. Add your my-component.tsx and get-data.ts to the recipe folder
-3. Add an entry to `app/recipes/screens.json` with the following structure:
+2. Inside `<slug>.tsx`, declare two Zod schemas and a `definition` export:
 
-```json
-{
-  "component-slug": {
-    "title": "Component Title",
-    "published": true,
-    "createdAt": "YYYY-MM-DDT00:00:00Z",
-    "updatedAt": "YYYY-MM-DDT00:00:00Z",
-    "description": "A description of your component",
-    "componentPath": "../screens/YourComponent",
-    "hasDataFetch": false,
-    "props": {
-      // Default props for your component
-      "propName": "propValue"
-    },
-    "tags": ["tag1", "tag2"],
-    "author": {
-      "name": "Your Name",
-      "github": "yourgithubusername"
-    },
-    "version": "0.1.0",
-    "category": "component-category"
-  }
-}
-```
+```tsx
+import { z } from "zod";
+import type { RecipeDefinition } from "@/lib/recipes/types";
+import { PreSatori } from "@/utils/pre-satori";
 
-The component will automatically appear in the sidebar navigation and on the index page.
+export const paramsSchema = z.object({
+  message: z
+    .string()
+    .default("Hello world")
+    .describe("Text to render on the screen")
+    .meta({ title: "Message" }),
+});
+export const dataSchema = paramsSchema;
 
-## Data Fetching
-
-If your component requires dynamic data, you can create a data fetch function:
-
-1. Create a file in `app/data` (e.g., `app/data/your-component-data.ts`) that exports a named function:
-
-```typescript
-export async function fetchYourComponentData() {
-  // Fetch or generate your data here
-  return {
-    propName: "propValue",
-    // Other props
-  };
+export default function MyRecipe({
+  width,
+  height,
+  data,
+}: {
+  width?: number;
+  height?: number;
+  data: z.infer<typeof dataSchema>;
+}) {
+  return (
+    <PreSatori width={width} height={height}>
+      <div className="flex h-full w-full items-center justify-center text-4xl">
+        {data.message}
+      </div>
+    </PreSatori>
+  );
 }
 
-export default fetchYourComponentData;
-```
-
-2. Add the function to the `dataFetchFunctions` map in `utils/component-data.ts`:
-
-```typescript
-const dataFetchFunctions: Record<string, DataFetchFunction> = {
-  "tailwind-test": fetchTailwindTestData,
-  "your-component-slug": fetchYourComponentData,
-  // Add more data fetch functions here as needed
+export const definition: RecipeDefinition<typeof paramsSchema> = {
+  meta: {
+    slug: "my-recipe",
+    title: "My Recipe",
+    description: "A demo recipe",
+    published: true,
+    tags: ["demo"],
+    category: "display-components",
+    version: "0.1.0",
+  },
+  paramsSchema,
+  dataSchema,
+  Component: ({ width, height, data }) => (
+    <MyRecipe width={width} height={height} data={data} />
+  ),
 };
 ```
 
-3. Set `hasDataFetch` to `true` in your component's entry in `components.json`
+3. The recipe index regenerates automatically on `pnpm dev` and
+   `pnpm build`. To regenerate by hand, run `pnpm generate:recipes`.
 
-The recipes system will automatically fetch the data and pass it as props to your component.
+That's it. The recipe shows up in the sidebar, has a working parameter
+form (rendered from `paramsSchema`), and renders to BMP/PNG via the
+shared rasterizer. No `screens.json` to edit.
+
+## Fetching Data
+
+If a recipe needs to fetch data at render time, add a `getData` function
+to its `definition`:
+
+```tsx
+export const dataSchema = z.object({
+  title: z.string().default("Loading…"),
+  body: z.string().default("…"),
+});
+
+async function fetchPost(params: z.infer<typeof paramsSchema>) {
+  const res = await fetch(`https://api.example.com/post/${params.id}`);
+  return res.json();
+}
+
+export const definition: RecipeDefinition<
+  typeof paramsSchema,
+  typeof dataSchema
+> = {
+  meta: { /* … */ },
+  paramsSchema,
+  dataSchema,
+  getData: async (params) => {
+    const data = await fetchPost(params);
+    return data as z.infer<typeof dataSchema>;
+  },
+  Component: ({ width, height, data }) => (
+    <MyRecipe width={width} height={height} data={data} />
+  ),
+};
+```
+
+The runtime calls `getData(params)` with the user's saved overrides
+(validated against `paramsSchema`), parses the result against
+`dataSchema` (with defaults applied for missing fields), and passes the
+final shape to `Component` as `data`.
+
+For complex data fetchers, keep them in a sibling `getData.ts` file and
+import the function into your `definition`.
 
 ## Bitmap Rendering
 
-The recipes system uses the `renderBmp` utility to convert components to bitmap images suitable for e-ink displays. The rendering process:
+The recipe runtime turns each React component into a 1-bit (or 4/16
+shade) BMP through this pipeline:
 
-1. Uses Next.js's `ImageResponse` to render the component to a PNG
-2. Converts the PNG to a 1-bit BMP using the `renderBmp` utility
-3. Displays the BMP image alongside the direct component rendering
+1. The component renders to PNG via the configured renderer
+   (`takumi`, `satori`, or `browser`).
+2. `utils/render-bmp.ts` converts the PNG into a BMP suitable for the
+   target TRMNL device, applying Floyd–Steinberg dithering.
+3. The BMP is served by `/api/bitmap/<slug>.bmp`.
 
-This allows you to see exactly how your component will look on an e-ink display.
+Set `REACT_RENDERER=takumi|satori|browser` to switch renderers.
 
-## Responsive Design and Tailwind Markers
+## Responsive Design
 
-Recipe components support responsive Tailwind classes and special markers that are processed during rendering. This allows you to create layouts that adapt to different screen sizes and orientations.
+Recipes are rendered at fixed pixel dimensions. Use Tailwind's responsive
+classes (`sm:`, `md:`, `lg:`, …) to adapt layouts to portrait vs
+landscape orientations. The recipe preview lets you switch orientations
+at runtime via `?format=portrait`.
 
-### Responsive Breakpoints
-
-The rendering system supports standard Tailwind responsive breakpoints:
-
-- `sm:` - 640px and above
-- `md:` - 768px and above
-- `lg:` - 1024px and above
-- `xl:` - 1280px and above
-- `2xl:` - 1536px and above
-
-You can also use `max-` prefix for maximum width queries:
-- `max-sm:` - below 640px
-- `max-md:` - below 768px
-- `max-lg:` - below 1024px
-- `max-xl:` - below 1280px
-- `max-2xl:` - below 1536px
-
-**Example:**
-```tsx
-<div className="flex flex-col md:flex-row gap-2 sm:gap-4">
-  <div className="text-xl sm:text-2xl lg:text-3xl">Responsive Text</div>
-  <div className="hidden md:block">Visible on medium screens and up</div>
-</div>
-```
-
-### Dither Patterns
-
-Special dither pattern classes are available for creating visual effects on e-ink displays:
-*Compatible only with Satori rendering.*
-
-```tsx
-<div className="dither-100">
-  {/* Applies dither pattern for visual effect */}
-</div>
-```
-
-These patterns help create gradients and visual depth on 1-bit displays.
-
-### Best Practices
-
-- Use responsive classes to adapt layouts for portrait vs landscape orientations
-- Test your components at different viewport sizes using the recipe preview
-- Combine responsive classes with conditional rendering for maximum flexibility
+Special dither classes (`dither-100`, etc.) work with Satori for
+gradients on 1-bit displays.
 
 ## Routing
 
-The recipes system uses Next.js's dynamic routing to provide two main views:
+- `/recipes` — index view
+- `/recipes/[slug]` — single recipe view
 
-- `/recipes` - Index view showing all recipes
-- `/recipes/[slug]` - Detailed view of a specific recipe
-
-The `generateStaticParams` function in `app/recipes/[slug]/page.tsx` ensures that all recipe pages are pre-rendered at build time. 
+`generateStaticParams` enumerates the recipe registry so every recipe
+page is pre-rendered at build time.

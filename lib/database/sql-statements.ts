@@ -928,6 +928,188 @@ CREATE POLICY mixup_slots_delete_policy ON mixup_slots
 GRANT SELECT, INSERT, UPDATE, DELETE ON playlist_items TO byos_app;
 GRANT SELECT, INSERT, UPDATE, DELETE ON mixup_slots TO byos_app;`,
 	},
+	"0015_add_plugin_settings": {
+		title: "Add Plugin Settings",
+		description:
+			"Stores local TRMNL-compatible plugin settings, data, markup, and archives.",
+		sql: `CREATE TABLE IF NOT EXISTS plugin_settings (
+  id BIGSERIAL PRIMARY KEY,
+  uuid TEXT NOT NULL UNIQUE,
+  user_id TEXT NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  plugin_id INTEGER NOT NULL,
+  icon_url TEXT,
+  icon_content_type TEXT,
+  read_only BOOLEAN NOT NULL DEFAULT FALSE,
+  strategy TEXT DEFAULT 'webhook',
+  merge_variables JSONB NOT NULL DEFAULT '{}'::jsonb,
+  fields JSONB NOT NULL DEFAULT '{}'::jsonb,
+  markup JSONB NOT NULL DEFAULT '{}'::jsonb,
+  settings_yaml TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_plugin_settings_user_id ON plugin_settings(user_id);
+CREATE INDEX IF NOT EXISTS idx_plugin_settings_plugin_id ON plugin_settings(plugin_id);
+
+-- =============================================================================
+-- RLS: tenant ownership enforced at the DB layer (matches 0014_harden_rls.sql)
+-- =============================================================================
+
+ALTER TABLE plugin_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE plugin_settings FORCE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS plugin_settings_select_policy ON plugin_settings;
+DROP POLICY IF EXISTS plugin_settings_insert_policy ON plugin_settings;
+DROP POLICY IF EXISTS plugin_settings_update_policy ON plugin_settings;
+DROP POLICY IF EXISTS plugin_settings_delete_policy ON plugin_settings;
+
+CREATE POLICY plugin_settings_select_policy ON plugin_settings
+    FOR SELECT
+    USING (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY plugin_settings_insert_policy ON plugin_settings
+    FOR INSERT
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY plugin_settings_update_policy ON plugin_settings
+    FOR UPDATE
+    USING (user_id = current_setting('app.current_user_id', true))
+    WITH CHECK (user_id = current_setting('app.current_user_id', true));
+
+CREATE POLICY plugin_settings_delete_policy ON plugin_settings
+    FOR DELETE
+    USING (user_id = current_setting('app.current_user_id', true));
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON plugin_settings TO byos_app;
+GRANT USAGE, SELECT ON SEQUENCE plugin_settings_id_seq TO byos_app;`,
+	},
+	"0016_align_trmnl_contract": {
+		title:
+			"Align TRMNL contract — capability URLs, shared recipe seeding, device sleep",
+		description:
+			"Adds plugin_settings UUID capability policy (no-auth webhooks), shared-recipe seed policy under RLS, and device sleep columns to match TRMNL PATCH /devices/{id}.",
+		sql: `-- =============================================================================
+-- Part 1: Plugin settings — UUID acts as a capability URL (no session required)
+--
+-- TRMNL contract: knowing the UUID of a plugin setting is sufficient to read
+-- and update it. Numeric IDs still require session auth. The application
+-- resolves the row owner by setting \`app.capability_lookup_uuid\`, then
+-- re-scopes to that owner via \`app.current_user_id\` for the actual mutation.
+-- =============================================================================
+
+DROP POLICY IF EXISTS plugin_settings_capability_select_policy ON plugin_settings;
+
+CREATE POLICY plugin_settings_capability_select_policy ON plugin_settings
+    FOR SELECT
+    USING (
+        current_setting('app.capability_lookup_uuid', true) <> ''
+        AND uuid = current_setting('app.capability_lookup_uuid', true)
+    );
+
+-- =============================================================================
+-- Part 2: Shared recipe seeding — boot-time sync inserts/updates rows with
+-- user_id = NULL. Existing INSERT/UPDATE policies require user ownership, so
+-- under FORCE RLS the seed bombs out. A scoped seed flag opens just enough
+-- of a hole to write shared rows from a privileged code path.
+-- =============================================================================
+
+DROP POLICY IF EXISTS recipes_shared_seed_insert_policy ON recipes;
+DROP POLICY IF EXISTS recipes_shared_seed_update_policy ON recipes;
+
+CREATE POLICY recipes_shared_seed_insert_policy ON recipes
+    FOR INSERT
+    WITH CHECK (
+        user_id IS NULL
+        AND current_setting('app.shared_recipe_seed', true) = 'on'
+    );
+
+CREATE POLICY recipes_shared_seed_update_policy ON recipes
+    FOR UPDATE
+    USING (
+        user_id IS NULL
+        AND current_setting('app.shared_recipe_seed', true) = 'on'
+    )
+    WITH CHECK (
+        user_id IS NULL
+        AND current_setting('app.shared_recipe_seed', true) = 'on'
+    );
+
+-- =============================================================================
+-- Part 3: Device sleep mode — restore TRMNL PATCH /api/devices/{id} support
+-- =============================================================================
+
+ALTER TABLE devices
+    ADD COLUMN IF NOT EXISTS sleep_mode_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS sleep_start_time INTEGER,
+    ADD COLUMN IF NOT EXISTS sleep_end_time INTEGER;
+
+COMMENT ON COLUMN devices.sleep_mode_enabled IS 'Whether the device honors the configured quiet-hours window.';
+COMMENT ON COLUMN devices.sleep_start_time IS 'Quiet-hours start as minutes since midnight (TRMNL convention).';
+COMMENT ON COLUMN devices.sleep_end_time IS 'Quiet-hours end as minutes since midnight (TRMNL convention).';`,
+	},
+	"0017_add_device_temperature_profile": {
+		title: "Add Device Temperature Profile",
+		description:
+			"Per-device color/shadow tuning profile sent back to the firmware",
+		sql: `-- on /api/display as \`temperature_profile\`. Firmware advertises support via the
+-- \`temperature-profile: true\` request header; we cache that capability flag so
+-- the UI can decide whether to expose the setting.
+
+ALTER TABLE devices
+ADD COLUMN IF NOT EXISTS temperature_profile TEXT NOT NULL DEFAULT 'default';
+
+ALTER TABLE devices
+DROP CONSTRAINT IF EXISTS devices_temperature_profile_check;
+
+ALTER TABLE devices
+ADD CONSTRAINT devices_temperature_profile_check
+CHECK (temperature_profile IN ('default', 'a', 'b', 'c'));
+
+ALTER TABLE devices
+ADD COLUMN IF NOT EXISTS supports_temperature_profile BOOLEAN;
+
+COMMENT ON COLUMN devices.temperature_profile IS 'Display tuning profile sent to the firmware in the /api/display response (default|a|b|c).';
+COMMENT ON COLUMN devices.supports_temperature_profile IS 'TRUE when the device sent the \`temperature-profile: true\` request header on its last /api/display call. NULL until the device has been seen.';`,
+	},
+	"0018_remove_mixup_recipe_slug": {
+		title: "Remove Legacy Mixup Recipe Slug",
+		description:
+			"Removes the denormalized mixup_slots.recipe_slug column after recipe_id became the only recipe reference.",
+		sql: `UPDATE mixup_slots AS slot
+SET recipe_id = (
+    SELECT recipe.id
+    FROM mixups AS mixup
+    JOIN recipes AS recipe
+        ON recipe.slug = slot.recipe_slug
+    WHERE mixup.id = slot.mixup_id
+        AND (
+            recipe.user_id IS NOT DISTINCT FROM mixup.user_id
+            OR recipe.user_id IS NULL
+        )
+    ORDER BY CASE
+        WHEN recipe.user_id IS NOT DISTINCT FROM mixup.user_id THEN 0
+        ELSE 1
+    END
+    LIMIT 1
+)
+WHERE slot.recipe_id IS NULL
+    AND slot.recipe_slug IS NOT NULL
+    AND EXISTS (
+        SELECT 1
+        FROM mixups AS mixup
+        JOIN recipes AS recipe
+            ON recipe.slug = slot.recipe_slug
+        WHERE mixup.id = slot.mixup_id
+            AND (
+                recipe.user_id IS NOT DISTINCT FROM mixup.user_id
+                OR recipe.user_id IS NULL
+            )
+    );
+
+ALTER TABLE mixup_slots DROP COLUMN IF EXISTS recipe_slug;`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:
@@ -936,7 +1118,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON mixup_slots TO byos_app;`,
 -- Returns empty result if all tables exist, or rows with missing table names if any are missing
 SELECT 
   expected_table as missing_table
-FROM unnest(ARRAY['account', 'devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'recipe_files', 'recipes', 'schema_migrations', 'screen_configs', 'session', 'system_logs', 'user', 'verification']::text[]) as expected_table
+FROM unnest(ARRAY['account', 'devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'plugin_settings', 'recipe_files', 'recipes', 'schema_migrations', 'screen_configs', 'session', 'system_logs', 'user', 'verification']::text[]) as expected_table
 WHERE NOT EXISTS (
   SELECT 1 
   FROM information_schema.tables 

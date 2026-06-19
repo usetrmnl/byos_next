@@ -1,5 +1,38 @@
+import { z } from "zod";
 import { Graph } from "@/components/common/graph";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { isHalfScreenLayout } from "@/lib/recipes/layout";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
+import getCryptoData from "./getData";
+
+export const paramsSchema = z.object({
+	cryptoSymbol: z
+		.string()
+		.default("bitcoin")
+		.describe(
+			"The CoinGecko ID of the cryptocurrency (e.g., 'bitcoin', 'ethereum', 'cardano').",
+		)
+		.meta({ title: "Cryptocurrency Symbol", placeholder: "bitcoin" }),
+});
+
+export const dataSchema = z.object({
+	price: z.string().default("Loading..."),
+	change24h: z.string().default("0"),
+	marketCap: z.string().default("Loading..."),
+	volume24h: z.string().default("Loading..."),
+	lastUpdated: z.string().default("Loading..."),
+	high24h: z.string().default("Loading..."),
+	low24h: z.string().default("Loading..."),
+	historicalPrices: z
+		.array(z.object({ timestamp: z.number(), price: z.number() }))
+		.default([]),
+	cryptoName: z.string().default("Bitcoin"),
+	cryptoImage: z.string().optional(),
+});
 
 interface CryptoPriceProps {
 	price?: string;
@@ -27,8 +60,8 @@ export default function CryptoPrice({
 	historicalPrices = [],
 	cryptoName = "Bitcoin",
 	cryptoImage,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: CryptoPriceProps) {
 	// Calculate if price change is positive or negative
 	const isPositive = !change24h.startsWith("-");
@@ -47,7 +80,7 @@ export default function CryptoPrice({
 		y: d.price,
 	}));
 
-	const isHalfScreen = width === 400 && height === 480;
+	const isHalfScreen = isHalfScreenLayout(width, height);
 
 	return (
 		<PreSatori width={width} height={height}>
@@ -116,3 +149,31 @@ export default function CryptoPrice({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<
+	typeof paramsSchema,
+	typeof dataSchema
+> = {
+	meta: {
+		slug: "bitcoin-price",
+		title: "Crypto Price Tracker",
+		description:
+			"A component that displays the current cryptocurrency price and market data. Supports any cryptocurrency available on CoinGecko.",
+		published: true,
+		tags: ["tailwind", "cryptocurrency", "api", "configurable"],
+		author: { name: "Mangle Kuo", github: "ghcpuman902" },
+		category: "display-components",
+		version: "0.2.0",
+		createdAt: "2025-03-01T00:00:00Z",
+		updatedAt: "2025-03-01T00:00:00Z",
+	},
+	paramsSchema,
+	dataSchema,
+	getData: async (params) => {
+		const data = await getCryptoData({ cryptoSymbol: params.cryptoSymbol });
+		return data as z.infer<typeof dataSchema>;
+	},
+	Component: ({ width, height, data }) => (
+		<CryptoPrice {...data} width={width} height={height} />
+	),
+};

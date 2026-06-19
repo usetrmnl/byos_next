@@ -31,7 +31,10 @@ export function PlaylistLivePreview({
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [progress, setProgress] = useState(0);
 
-	const active = frames[activeIndex];
+	// Deleting the last/selected frame leaves activeIndex out of bounds for one
+	// render (parent clamps it via effect afterwards); fall back to the last
+	// frame so we never deref undefined and crash the editor.
+	const active = frames[activeIndex] ?? frames[frames.length - 1];
 	const duration = Math.max(1, active?.duration ?? 30);
 	const isEmpty = frames.length === 0;
 

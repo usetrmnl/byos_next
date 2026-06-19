@@ -1,5 +1,10 @@
 import React from "react";
 import { extractFontFamily } from "@/lib/fonts";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { getRendererType } from "@/lib/recipes/render/rasterize";
 import { cn } from "@/lib/utils";
 import {
 	getResetStyles,
@@ -9,20 +14,14 @@ import {
 } from "./pre-satori-tailwind";
 
 interface PreSatoriProps {
-	useDoubling?: boolean;
 	width?: number;
 	height?: number;
 	children: React.ReactNode;
 }
-export const getRendererType = (): "takumi" | "satori" => {
-	const renderer = process.env.REACT_RENDERER?.toLowerCase();
-	return renderer === "satori" ? "satori" : "takumi";
-};
 
 export const PreSatori: React.FC<PreSatoriProps> = ({
-	useDoubling = false,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 	children,
 }) => {
 	// Define a helper to recursively transform children.
@@ -108,8 +107,6 @@ export const PreSatori: React.FC<PreSatoriProps> = ({
 				display: "flex",
 				width: `${width}px`,
 				height: `${height}px`,
-				transformOrigin: "top left",
-				...(useDoubling ? { transform: "scale(2)" } : {}),
 			}}
 		>
 			{React.Children.map(children, (child) => transform(child))}

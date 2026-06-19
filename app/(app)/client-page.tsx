@@ -15,10 +15,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
+import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
+import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
@@ -50,12 +48,9 @@ export default function DashboardClientPage({
 			: null;
 
 	const isPortrait = lastUpdatedDevice?.screen_orientation === "portrait";
-	const deviceWidth = isPortrait
-		? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
-		: lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
-	const deviceHeight = isPortrait
-		? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
-		: lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const latestScreenSrc = lastUpdatedDevice
+		? buildLatestScreenSrc(lastUpdatedDevice)
+		: "";
 
 	return (
 		<div className="space-y-4">
@@ -94,7 +89,7 @@ export default function DashboardClientPage({
 							>
 								<DeviceFrame size="lg" portrait={isPortrait}>
 									<Image
-										src={`/api/bitmap/${lastUpdatedDevice.screen}.bmp?width=${deviceWidth}&height=${deviceHeight}`}
+										src={latestScreenSrc}
 										alt={`${lastUpdatedDevice.name} screen`}
 										fill
 										className="absolute inset-0 h-full w-full object-cover"
@@ -236,6 +231,24 @@ export default function DashboardClientPage({
 			</section>
 		</div>
 	);
+}
+
+function buildLatestScreenSrc(device: Device): string {
+	const params = new URLSearchParams({
+		grayscale: String(normalizeGrayscale(device.grayscale)),
+		model: device.model?.trim() || DEFAULT_MODEL_NAME,
+	});
+	const paletteId = device.palette_id?.trim();
+	if (paletteId) {
+		params.set("palette_id", paletteId);
+	}
+
+	if (!device.screen) {
+		params.set("message", "Device screen is not configured");
+		return `/api/bitmap/error.png?${params.toString()}`;
+	}
+
+	return `/api/bitmap/${device.screen}.png?${params.toString()}`;
 }
 
 function Stat({

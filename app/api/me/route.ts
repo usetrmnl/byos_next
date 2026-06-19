@@ -1,39 +1,54 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth/auth";
+import { BYOS_MONO_USER_ID, getCurrentUser } from "@/lib/auth/get-user";
 import { logInfo } from "@/lib/logger";
 
 /**
  * GET /api/me
  * Get current user data
- *
- * Note: BYOS doesn't currently have user authentication.
- * This endpoint returns a stub response for compatibility.
- * In the future, this can be enhanced with actual user authentication.
  */
 export async function GET(request: Request) {
-	// Check for Authorization header (Bearer token)
-	const authHeader = request.headers.get("Authorization");
-	const bearerToken = authHeader?.replace("Bearer ", "");
-
 	logInfo("User data request", {
 		source: "api/me",
-		metadata: { hasAuth: !!bearerToken },
+		metadata: { hasAuthHeader: Boolean(request.headers.get("Authorization")) },
 	});
 
-	// For now, return a stub user response
-	// In the future, this should validate the bearer token and return actual user data
+	if (!auth) {
+		return NextResponse.json(
+			{
+				data: {
+					id: BYOS_MONO_USER_ID,
+					name: "Local user",
+					email: "mono@byos.local",
+					first_name: "Local",
+					last_name: "user",
+					locale: "en",
+					time_zone: "UTC",
+					time_zone_iana: "UTC",
+					utc_offset: 0,
+				},
+			},
+			{ status: 200 },
+		);
+	}
+
+	const user = await getCurrentUser().catch(() => null);
+	if (!user) {
+		return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+	}
+
 	return NextResponse.json(
 		{
 			data: {
-				id: 0,
-				name: "BYOS User",
-				email: null,
-				first_name: null,
-				last_name: null,
+				id: user.id,
+				name: user.name,
+				email: user.email,
+				first_name: user.name.split(" ")[0] ?? null,
+				last_name: user.name.split(" ").slice(1).join(" ") || null,
 				locale: "en",
 				time_zone: "UTC",
 				time_zone_iana: "UTC",
 				utc_offset: 0,
-				api_key: bearerToken || null,
 			},
 		},
 		{ status: 200 },

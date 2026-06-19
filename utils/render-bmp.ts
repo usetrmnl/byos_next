@@ -1,4 +1,8 @@
 import sharp from "sharp";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import { applyDithering, DitheringMethod } from "./image-processing";
 
 export { DitheringMethod };
@@ -8,7 +12,7 @@ export interface RenderBmpOptions {
 	inverted?: boolean;
 	width?: number;
 	height?: number;
-	grayscale?: number; // Number of gray levels: 2 (black/white), 4, or 16
+	grayscale?: number; // Number of gray levels: 2 (black/white), 4, 16, or 256
 	applyEdgeSnap?: boolean;
 }
 
@@ -43,16 +47,15 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	} = options;
 
 	// Validate grayscale levels
-	const validLevels = [2, 4, 16];
+	const validLevels = [2, 4, 16, 256];
 	if (!validLevels.includes(grayscale)) {
 		throw new Error(
 			`Invalid grayscale value: ${grayscale}. Must be one of: ${validLevels.join(", ")}`,
 		);
 	}
 
-	// Fixed dimensions to match the device requirements
-	const targetWidth = options.width ?? 800;
-	const targetHeight = options.height ?? 480;
+	const targetWidth = options.width ?? DEFAULT_IMAGE_WIDTH;
+	const targetHeight = options.height ?? DEFAULT_IMAGE_HEIGHT;
 	const targetPixelCount = targetWidth * targetHeight;
 
 	// Load image metadata
@@ -60,7 +63,7 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	const isDoubleSize =
 		metadata.width === targetWidth * 2 && metadata.height === targetHeight * 2;
 
-	// Step 1: Resize to 800x480 if necessary
+	// Step 1: Resize to the target dimensions if necessary
 	let image = sharp(png);
 	if (isDoubleSize) {
 		image = image.resize(targetWidth, targetHeight, {
@@ -90,7 +93,8 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	});
 
 	// Determine BMP format based on grayscale levels
-	const bitsPerPixel = grayscale === 2 ? 1 : grayscale === 4 ? 2 : 4;
+	const bitsPerPixel =
+		grayscale === 2 ? 1 : grayscale === 4 ? 2 : grayscale === 16 ? 4 : 8;
 	const numColors = grayscale;
 	const paletteSize = numColors * 4; // Each color is 4 bytes (BGR + reserved)
 
@@ -182,6 +186,13 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 					byte |= paletteIndex << (4 - bit * 4);
 				}
 				buffer[destRowOffset + (x >> 1)] = byte;
+			}
+		} else if (bitsPerPixel === 8) {
+			for (let x = 0; x < targetWidth; x++) {
+				const idx = yOffset + x;
+				let paletteIndex = valueToIndex(dithered[idx]);
+				if (inverted) paletteIndex = grayscale - 1 - paletteIndex;
+				buffer[destRowOffset + x] = paletteIndex;
 			}
 		}
 	}

@@ -20,8 +20,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { addUserDevice } from "@/app/actions/device";
-import type { ComponentConfig } from "@/components/client-sidebar";
 import { StatusIndicator } from "@/components/common/status-indicator";
+import type { ComponentConfig } from "@/components/component-config";
 import { NavUser } from "@/components/nav-user";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,7 +56,7 @@ import {
 } from "@/components/ui/sidebar";
 import type { Device, RecipeSidebarItem } from "@/lib/types";
 import packageJson from "@/package.json";
-import { getDeviceStatus } from "@/utils/helpers";
+import { generateRandomApiKey, getDeviceStatus } from "@/utils/helpers";
 
 interface AppSidebarProps {
 	devices: Device[];
@@ -88,14 +88,8 @@ export function AppSidebar({
 	const [newDeviceName, setNewDeviceName] = useState("");
 	const [addingDevice, setAddingDevice] = useState(false);
 
-	const generateRandomApiKey = () => {
-		const chars =
-			"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-		let key = "";
-		for (let i = 0; i < 22; i++) {
-			key += chars[Math.floor(Math.random() * chars.length)];
-		}
-		setNewDeviceApiKey(key);
+	const generateRandomDeviceApiKey = () => {
+		setNewDeviceApiKey(generateRandomApiKey());
 	};
 
 	const handleAddDevice = async () => {
@@ -447,7 +441,7 @@ export function AppSidebar({
 								<Button
 									variant="outline"
 									size="icon"
-									onClick={generateRandomApiKey}
+									onClick={generateRandomDeviceApiKey}
 									title="Generate random key"
 								>
 									<Dice5 className="size-4" />

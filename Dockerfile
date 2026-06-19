@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22
+ARG NODE_VERSION=22.22.3
 
 # Base stage - minimal Node.js only
 FROM node:${NODE_VERSION}-slim AS base
@@ -12,7 +12,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app
 
-RUN corepack enable pnpm && corepack prepare pnpm@11.5.2 --activate
+RUN corepack enable pnpm && corepack prepare pnpm@11.8.0 --activate
 
 # Install dependencies only when needed
 FROM base AS deps

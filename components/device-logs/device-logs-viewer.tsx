@@ -150,7 +150,8 @@ export default function DeviceLogsViewer({
 				const { logs, total, uniqueTypes } = await fetchDeviceLogsWithFilters({
 					page,
 					perPage: ITEMS_PER_PAGE,
-					search: typeFilter !== "all" ? typeFilter : searchQuery,
+					search: searchQuery,
+					type: typeFilter,
 					friendlyId,
 				});
 

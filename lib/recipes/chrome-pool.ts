@@ -56,7 +56,7 @@ async function resolveChrome(): Promise<Resolved> {
 	try {
 		return {
 			mode: "launch",
-			executablePath: puppeteer.executablePath("chrome"),
+			executablePath: await puppeteer.executablePath("chrome"),
 		};
 	} catch {
 		const chromium = (await import("@sparticuz/chromium-min")).default;

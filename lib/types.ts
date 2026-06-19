@@ -47,7 +47,14 @@ export type Device = {
 	grayscale: number | null;
 	model: string | null;
 	palette_id: string | null;
+	sleep_mode_enabled: boolean;
+	sleep_start_time: number | null;
+	sleep_end_time: number | null;
+	temperature_profile: TemperatureProfile;
+	supports_temperature_profile: boolean | null;
 };
+
+export type TemperatureProfile = "default" | "a" | "b" | "c";
 
 export type Playlist = {
 	id: string;
@@ -80,7 +87,6 @@ export type MixupSlot = {
 	id: string;
 	mixup_id: string | null;
 	slot_id: string;
-	recipe_slug: string | null;
 	recipe_id: string | null;
 	order_index: number;
 	created_at: string | null;

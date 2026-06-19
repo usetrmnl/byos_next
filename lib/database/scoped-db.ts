@@ -48,6 +48,69 @@ export async function withExplicitUserScope<T>(
 }
 
 /**
+ * Execute a database operation as `byos_app` with the plugin-settings
+ * capability UUID set, so the matching `plugin_settings` row is selectable
+ * even without a session user. The lookup is intentionally one-row,
+ * uuid-equality only — the policy in 0016 is `uuid = current_setting(...)`.
+ *
+ * The TRMNL contract treats plugin-setting UUIDs as capability URLs; this
+ * helper is the single privileged path that turns one into the row's owner
+ * before we re-scope to that owner for any actual mutation.
+ */
+export async function withCapabilityUuid<T>(
+	uuid: string,
+	callback: (scopedDb: typeof db) => Promise<T>,
+): Promise<T> {
+	return db.connection().execute(async (conn) => {
+		await sql`SET ROLE ${sql.ref(APP_ROLE)}`.execute(conn);
+		await sql`SELECT set_config('app.capability_lookup_uuid', ${uuid}, false)`.execute(
+			conn,
+		);
+		try {
+			return await callback(conn);
+		} finally {
+			try {
+				await sql`SELECT set_config('app.capability_lookup_uuid', '', false)`.execute(
+					conn,
+				);
+				await sql`RESET ROLE`.execute(conn);
+			} catch {
+				// Connection already broken; the pool will discard it.
+			}
+		}
+	});
+}
+
+/**
+ * Execute the boot-time shared-recipe seed under RLS. Migration 0016 adds an
+ * INSERT/UPDATE policy for rows with `user_id IS NULL` that only fires when
+ * `app.shared_recipe_seed = 'on'`. The flag is intentionally scoped to this
+ * helper so request-time code paths can never trip it.
+ */
+export async function withSharedRecipeSeed<T>(
+	callback: (scopedDb: typeof db) => Promise<T>,
+): Promise<T> {
+	return db.connection().execute(async (conn) => {
+		await sql`SET ROLE ${sql.ref(APP_ROLE)}`.execute(conn);
+		await sql`SELECT set_config('app.shared_recipe_seed', 'on', false)`.execute(
+			conn,
+		);
+		try {
+			return await callback(conn);
+		} finally {
+			try {
+				await sql`SELECT set_config('app.shared_recipe_seed', '', false)`.execute(
+					conn,
+				);
+				await sql`RESET ROLE`.execute(conn);
+			} catch {
+				// Connection already broken; the pool will discard it.
+			}
+		}
+	});
+}
+
+/**
  * Acquire a pooled connection, switch role + set RLS user, run the callback,
  * then reset both settings before releasing the connection back to the pool.
  * Without the reset, `app.current_user_id` would persist on the connection and

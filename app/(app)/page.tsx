@@ -1,4 +1,4 @@
-import { headers } from "next/headers";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { PageTemplate } from "@/components/common/page-template";
 import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
@@ -107,7 +107,7 @@ const DashboardData = async () => {
 							</p>
 						</div>
 					)}
-					<DbInitializer connectionUrl={dbStatus.PostgresUrl} />
+					<DbInitializer databaseConfigured={dbStatus.databaseConfigured} />
 				</div>
 				<DashboardSkeleton className="filter blur-[1px] pointer-events-none mt-6" />
 			</>
@@ -118,11 +118,7 @@ const DashboardData = async () => {
 };
 
 export default async function Dashboard() {
-	// Access headers first to allow time-based operations in Server Component
-	// We need to actually read from headers to access uncached request data
-	const headersList = await headers();
-	// Read a header to ensure we've accessed uncached request data
-	const _userAgent = headersList.get("user-agent");
+	await connection();
 
 	// Get minimal data for the header only
 	const { dbStatus } = await getInitData();

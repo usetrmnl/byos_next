@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
@@ -12,6 +12,8 @@ import type { Device } from "@/lib/types";
  * since there's no user authentication system yet. This can be enhanced later.
  */
 export async function GET(_request: Request) {
+	await connection();
+
 	const { ready } = await checkDbConnection();
 
 	if (!ready) {

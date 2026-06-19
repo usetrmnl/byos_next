@@ -18,25 +18,37 @@ interface SendEmailOptions {
 }
 
 export async function sendEmail(options: SendEmailOptions): Promise<void> {
-	// Log to console for development
-	console.log("📧 Email would be sent:");
+	const resendApiKey = process.env.RESEND_API_KEY;
+	const from = process.env.EMAIL_FROM;
+
+	if (resendApiKey && from) {
+		const response = await fetch("https://api.resend.com/emails", {
+			method: "POST",
+			headers: {
+				Authorization: `Bearer ${resendApiKey}`,
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				from,
+				to: options.to,
+				subject: options.subject,
+				text: options.text,
+				html: options.html,
+			}),
+		});
+		if (!response.ok) {
+			throw new Error(`Resend email failed with status ${response.status}`);
+		}
+		return;
+	}
+
+	if (process.env.NODE_ENV === "production") {
+		throw new Error("Email provider is not configured");
+	}
+
+	console.log("Email would be sent:");
 	console.log("To:", options.to);
 	console.log("Subject:", options.subject);
 	console.log("Content:", options.text || options.html);
 	console.log("---");
-
-	// TODO: Replace with actual email service
-	// Example with Resend:
-	// import { Resend } from 'resend';
-	// const resend = new Resend(process.env.RESEND_API_KEY);
-	// await resend.emails.send({
-	//   from: 'noreply@yourdomain.com',
-	//   to: options.to,
-	//   subject: options.subject,
-	//   text: options.text,
-	//   html: options.html,
-	// });
-
-	// For development, we'll just simulate success
-	return Promise.resolve();
 }

@@ -1,4 +1,13 @@
+import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
+
+export const paramsSchema = z.object({});
+export const dataSchema = paramsSchema;
 
 interface ResponsiveExampleProps {
 	width?: number;
@@ -6,11 +15,11 @@ interface ResponsiveExampleProps {
 }
 
 export default function ResponsiveExample({
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: ResponsiveExampleProps) {
 	return (
-		<PreSatori useDoubling={false} width={width} height={height}>
+		<PreSatori width={width} height={height}>
 			<div className="bg-white flex flex-col w-full h-full">
 				{/* Header section - responsive height and text size */}
 				<div className="bg-blue-500 flex items-center justify-center text-white font-blockkie py-5 text-2xl sm:text-3xl lg:text-4xl">
@@ -41,3 +50,23 @@ export default function ResponsiveExample({
 		</PreSatori>
 	);
 }
+
+export const definition: RecipeDefinition<typeof paramsSchema> = {
+	meta: {
+		slug: "responsive-example",
+		title: "Responsive Example",
+		description: "A demonstration of responsive design using Tailwind CSS.",
+		published: true,
+		tags: ["tailwind", "responsive", "example"],
+		author: { name: "rbouteiller", github: "" },
+		category: "display-components",
+		version: "0.1.0",
+		createdAt: "2025-03-01T00:00:00Z",
+		updatedAt: "2025-03-01T00:00:00Z",
+	},
+	paramsSchema,
+	dataSchema,
+	Component: ({ width, height }) => (
+		<ResponsiveExample width={width} height={height} />
+	),
+};
