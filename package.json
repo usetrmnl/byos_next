@@ -73,7 +73,7 @@
 		"react-dom": "^19.2.7",
 		"react-virtuoso": "^4.18.7",
 		"satori": "^0.26.0",
-		"sharp": "^0.35.1",
+		"sharp": "0.34.5",
 		"sonner": "^2.0.7",
 		"tailwind-merge": "^3.6.0",
 		"tailwindcss-animate": "^1.0.7",
