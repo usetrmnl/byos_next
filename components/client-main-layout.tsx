@@ -17,8 +17,8 @@ import { useTheme } from "next-themes";
 import type React from "react";
 import { Suspense, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
-import type { ComponentConfig } from "@/components/client-sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import type { ComponentConfig } from "@/components/component-config";
 import { Button } from "@/components/ui/button";
 import {
 	SidebarInset,
@@ -48,7 +48,7 @@ interface ClientMainLayoutProps {
 	dbStatus: {
 		ready: boolean;
 		error?: string;
-		PostgresUrl?: string;
+		databaseConfigured: boolean;
 	};
 	recipeSidebarItems: RecipeSidebarItem[];
 	toolsComponents: [string, ComponentConfig][];

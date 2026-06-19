@@ -15,8 +15,8 @@ import type { AnyRecipeDefinition } from "./types";
  * `recipes.metadata`. We still write a metadata blob for legacy callers
  * and to keep the catalog query simple.
  *
- * This is invoked manually via `pnpm sync:recipes`. Production deploys
- * should run it once after build. There is no request-time sync.
+ * This is invoked by `instrumentation.ts` once per server process after boot.
+ * There is no request-time sync.
  */
 export async function syncReactRecipes(): Promise<{
 	synced: number;
