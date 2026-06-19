@@ -21,8 +21,6 @@ import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
 
-const DEFAULT_SCREEN = "simple-text";
-
 interface DashboardClientPageProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
@@ -245,7 +243,12 @@ function buildLatestScreenSrc(device: Device): string {
 		params.set("palette_id", paletteId);
 	}
 
-	return `/api/bitmap/${device.screen || DEFAULT_SCREEN}.png?${params.toString()}`;
+	if (!device.screen) {
+		params.set("message", "Device screen is not configured");
+		return `/api/bitmap/error.png?${params.toString()}`;
+	}
+
+	return `/api/bitmap/${device.screen}.png?${params.toString()}`;
 }
 
 function Stat({

@@ -1,12 +1,17 @@
 "use server";
 
-import crypto from "crypto";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	createDefaultRefreshSchedule,
+	DEFAULT_DEVICE_TIMEZONE,
+	DEVICE_SLEEP_REFRESH_SECONDS,
+	serializeRefreshSchedule,
+} from "@/lib/device/defaults";
 import type { Device, Log } from "@/lib/types";
-import { generateFriendlyId } from "@/utils/helpers";
+import { generateFriendlyId, generateMockMacAddress } from "@/utils/helpers";
 
 /**
  * Fetch a single device by friendly_id
@@ -70,6 +75,7 @@ export type FetchDeviceLogsParams = {
 	page: number;
 	perPage: number;
 	search?: string;
+	type?: string;
 	friendlyId?: string;
 };
 
@@ -97,6 +103,7 @@ export async function fetchDeviceLogsWithFilters({
 	page,
 	perPage,
 	search,
+	type,
 	friendlyId,
 }: FetchDeviceLogsParams): Promise<FetchDeviceLogsResult> {
 	const { ready } = await checkDbConnection();
@@ -123,6 +130,30 @@ export async function fetchDeviceLogsWithFilters({
 	if (search) {
 		query = query.where("log_data", "ilike", `%${search}%`);
 	}
+	if (type && type !== "all") {
+		if (type === "error") {
+			query = query.where((eb) =>
+				eb.or([
+					eb("log_data", "ilike", "%error%"),
+					eb("log_data", "ilike", "%fail%"),
+				]),
+			);
+		} else if (type === "warning") {
+			query = query.where("log_data", "ilike", "%warn%");
+		} else if (type === "info") {
+			query = query.where((eb) =>
+				eb.and([
+					eb.not(
+						eb.or([
+							eb("log_data", "ilike", "%error%"),
+							eb("log_data", "ilike", "%fail%"),
+						]),
+					),
+					eb.not(eb("log_data", "ilike", "%warn%")),
+				]),
+			);
+		}
+	}
 
 	// Get paginated results
 	const logs = await query
@@ -139,6 +170,30 @@ export async function fetchDeviceLogsWithFilters({
 
 	if (search) {
 		countQuery = countQuery.where("log_data", "ilike", `%${search}%`);
+	}
+	if (type && type !== "all") {
+		if (type === "error") {
+			countQuery = countQuery.where((eb) =>
+				eb.or([
+					eb("log_data", "ilike", "%error%"),
+					eb("log_data", "ilike", "%fail%"),
+				]),
+			);
+		} else if (type === "warning") {
+			countQuery = countQuery.where("log_data", "ilike", "%warn%");
+		} else if (type === "info") {
+			countQuery = countQuery.where((eb) =>
+				eb.and([
+					eb.not(
+						eb.or([
+							eb("log_data", "ilike", "%error%"),
+							eb("log_data", "ilike", "%fail%"),
+						]),
+					),
+					eb.not(eb("log_data", "ilike", "%warn%")),
+				]),
+			);
+		}
 	}
 
 	const countResult = await countQuery.executeTakeFirst();
@@ -296,17 +351,7 @@ export async function addUserDevice(input: {
 		}
 
 		// Generate a placeholder MAC from the API key (will be replaced on /api/setup)
-		const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
-		const mockMac = [
-			hash.slice(0, 2),
-			hash.slice(2, 4),
-			hash.slice(4, 6),
-			hash.slice(6, 8),
-			hash.slice(8, 10),
-			hash.slice(10, 12),
-		]
-			.join(":")
-			.toUpperCase();
+		const mockMac = generateMockMacAddress(apiKey);
 
 		const timestamp = new Date().toISOString().replace(/[-:Z]/g, "");
 		const friendlyId = generateFriendlyId(mockMac, timestamp);
@@ -321,21 +366,14 @@ export async function addUserDevice(input: {
 					friendly_id: friendlyId,
 					api_key: apiKey,
 					user_id: userId,
-					refresh_schedule: JSON.stringify({
-						default_refresh_rate: 60,
-						time_ranges: [
-							{
-								start_time: "00:00",
-								end_time: "07:00",
-								refresh_rate: 3600,
-							},
-						],
-					}),
+					refresh_schedule: serializeRefreshSchedule(
+						createDefaultRefreshSchedule(),
+					),
 					last_update_time: new Date().toISOString(),
 					next_expected_update: new Date(
-						Date.now() + 3600 * 1000,
+						Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
 					).toISOString(),
-					timezone: "Europe/London",
+					timezone: DEFAULT_DEVICE_TIMEZONE,
 				})
 				.execute(),
 		);

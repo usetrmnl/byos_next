@@ -22,8 +22,8 @@ export type UpdateScreenParamsResult =
  *
  * For React recipes the recipe's own `paramsSchema` is the trust boundary
  * — values that don't validate are returned to the client as per-field
- * errors. For liquid recipes (which don't have a Zod schema) we fall back
- * to the existing custom_fields allowlist so unknown keys are stripped.
+ * errors. For liquid recipes (which don't have a Zod schema), the
+ * custom_fields definition is the allowlist so unknown keys are stripped.
  */
 export async function updateScreenParams(
 	slug: string,
@@ -59,7 +59,7 @@ export async function updateScreenParams(
 		}
 		sanitizedParams = result.data as Record<string, unknown>;
 	} else {
-		// Liquid path — apply the legacy allowlist from custom_fields.
+		// Liquid path — apply the allowlist declared by custom_fields.
 		const settings = await fetchLiquidRecipeSettings(slug, userId);
 		const definitions = settings?.custom_fields?.length
 			? customFieldsToParamDefinitions(settings.custom_fields)
@@ -107,9 +107,8 @@ export async function updateScreenParams(
  * Read user-saved parameter overrides for a recipe.
  *
  * `definitions` is optional. When provided, it controls which keys are
- * returned and supplies fallback defaults — used by the legacy form path
- * and by liquid recipes. The React recipe runtime calls this without
- * definitions and validates via the recipe's own paramsSchema.
+ * returned and supplies schema defaults. Liquid recipes provide definitions
+ * from custom_fields; React recipes validate via their own paramsSchema.
  */
 export async function getScreenParams(
 	slug: string,

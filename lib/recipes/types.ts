@@ -7,7 +7,7 @@ export type RecipeAuthor = {
 };
 
 export type RecipeRenderSettings = {
-	doubleSizeForSharperText?: boolean;
+	supersample?: boolean;
 	applyEdgeSnap?: boolean;
 	[key: string]: boolean | string | number | undefined;
 };

@@ -55,7 +55,14 @@ export async function fetchMixupWithSlots(mixupId: string): Promise<{
 				.executeTakeFirst(),
 			scopedDb
 				.selectFrom("mixup_slots")
-				.selectAll()
+				.select([
+					"mixup_slots.id",
+					"mixup_slots.mixup_id",
+					"mixup_slots.slot_id",
+					"mixup_slots.recipe_id",
+					"mixup_slots.order_index",
+					"mixup_slots.created_at",
+				])
 				.where("mixup_id", "=", mixupId)
 				.orderBy("order_index", "asc")
 				.execute(),

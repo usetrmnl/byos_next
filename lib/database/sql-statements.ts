@@ -1073,6 +1073,43 @@ ADD COLUMN IF NOT EXISTS supports_temperature_profile BOOLEAN;
 COMMENT ON COLUMN devices.temperature_profile IS 'Display tuning profile sent to the firmware in the /api/display response (default|a|b|c).';
 COMMENT ON COLUMN devices.supports_temperature_profile IS 'TRUE when the device sent the \`temperature-profile: true\` request header on its last /api/display call. NULL until the device has been seen.';`,
 	},
+	"0018_remove_mixup_recipe_slug": {
+		title: "Remove Legacy Mixup Recipe Slug",
+		description:
+			"Removes the denormalized mixup_slots.recipe_slug column after recipe_id became the only recipe reference.",
+		sql: `UPDATE mixup_slots AS slot
+SET recipe_id = (
+    SELECT recipe.id
+    FROM mixups AS mixup
+    JOIN recipes AS recipe
+        ON recipe.slug = slot.recipe_slug
+    WHERE mixup.id = slot.mixup_id
+        AND (
+            recipe.user_id IS NOT DISTINCT FROM mixup.user_id
+            OR recipe.user_id IS NULL
+        )
+    ORDER BY CASE
+        WHEN recipe.user_id IS NOT DISTINCT FROM mixup.user_id THEN 0
+        ELSE 1
+    END
+    LIMIT 1
+)
+WHERE slot.recipe_id IS NULL
+    AND slot.recipe_slug IS NOT NULL
+    AND EXISTS (
+        SELECT 1
+        FROM mixups AS mixup
+        JOIN recipes AS recipe
+            ON recipe.slug = slot.recipe_slug
+        WHERE mixup.id = slot.mixup_id
+            AND (
+                recipe.user_id IS NOT DISTINCT FROM mixup.user_id
+                OR recipe.user_id IS NULL
+            )
+    );
+
+ALTER TABLE mixup_slots DROP COLUMN IF EXISTS recipe_slug;`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:

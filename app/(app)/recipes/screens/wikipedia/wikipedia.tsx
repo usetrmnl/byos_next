@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getWikipediaData, { WikipediaData } from "./getData";
@@ -45,8 +50,8 @@ export default function Wikipedia({
 	description,
 	fullurl,
 	displaytitle,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: WikipediaData & { width?: number; height?: number }) {
 	// Sanitize the data to ensure we only work with valid inputs
 	const safeTitle =
@@ -56,7 +61,7 @@ export default function Wikipedia({
 	const safeExtract = extract || "Article content is unavailable.";
 	const safeDescription = typeof description === "string" ? description : "";
 
-	const isHalfScreen = width === 400 && height === 480;
+	const isHalfScreen = isHalfScreenLayout(width, height);
 
 	// Use fullurl if available, otherwise fall back to content_urls
 	const safeContentUrl =
@@ -223,7 +228,7 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-13T00:00:00Z",
-		renderSettings: { doubleSizeForSharperText: true },
+		renderSettings: { supersample: true },
 	},
 	paramsSchema,
 	dataSchema,

@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getLocalNews, {
@@ -98,10 +103,10 @@ export default function LocalNews({
 	subreddit,
 	generatedAt = "Now",
 	stories = fallbackStories,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: LocalNewsProps) {
-	const isHalfScreen = width === 400 && height === 480;
+	const isHalfScreen = isHalfScreenLayout(width, height);
 	const lead = safeStory(stories[0]);
 	const secondary = stories
 		.slice(1, isHalfScreen ? 3 : 4)
@@ -120,7 +125,7 @@ export default function LocalNews({
 	const secondarySummaryCap = width >= 1280 ? 220 : 120;
 
 	return (
-		<PreSatori useDoubling={true} width={width} height={height}>
+		<PreSatori width={width} height={height}>
 			<div className="flex h-full w-full flex-col bg-white p-4 lg:p-6 2xl:p-10 gap-3 lg:gap-5 2xl:gap-8 text-black">
 				{/* Lead post */}
 				<div className="flex flex-col rounded-xl border-2 border-black p-3 lg:p-5 2xl:p-8">
@@ -223,7 +228,7 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2026-04-26T00:00:00Z",
 		updatedAt: "2026-04-26T00:00:00Z",
-		renderSettings: { doubleSizeForSharperText: true },
+		renderSettings: { supersample: true },
 	},
 	paramsSchema,
 	dataSchema,

@@ -16,7 +16,7 @@ import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
  *   3) Parse those overrides through `paramsSchema` so:
  *        - unknown keys are stripped
  *        - missing keys get their schema default
- *        - shape mismatches fall back to defaults silently (we never throw)
+ *        - invalid stored shapes are logged, then reset to schema defaults
  *   4) If the definition has a `getData(params)`, call it; otherwise the
  *      data IS the params (paramsSchema.parse gives us a fully-defaulted
  *      object).
@@ -35,13 +35,17 @@ const FETCH_TIMEOUT_MS = 10_000;
 function safeParseWithDefaults(
 	schema: z.ZodObject,
 	value: unknown,
+	context: string,
 ): Record<string, unknown> {
 	const candidate =
 		value && typeof value === "object" && !Array.isArray(value) ? value : {};
 	const result = schema.safeParse(candidate);
 	if (result.success) return result.data as Record<string, unknown>;
-	// Stored shape no longer matches the schema (e.g. field renamed). Fall
-	// back to the defaults-only object so the recipe still renders.
+	// Stored shape no longer matches the schema (e.g. field renamed). Report it
+	// and render from the schema-defined defaults so the device shows a valid UI.
+	console.warn(`[recipe:${context}] Stored params failed schema validation`, {
+		issues: result.error.issues,
+	});
 	const defaults = schema.safeParse({});
 	return defaults.success ? (defaults.data as Record<string, unknown>) : {};
 }
@@ -57,6 +61,9 @@ function safeParseDataWithDefaults(
 			? (data as Record<string, unknown>)
 			: {};
 	}
+	console.warn("[recipe:data] Data failed schema validation", {
+		issues: result.error.issues,
+	});
 	const defaults = schema.safeParse({});
 	if (defaults.success) {
 		const data = defaults.data;
@@ -90,9 +97,8 @@ export const resolveReactRecipe = cache(
 		const definition = await getReactRecipeDefinition(slug);
 		if (!definition) return null;
 
-		// Read user-saved param overrides. Pass paramDefinitions for
-		// backwards-compatible filtering — getScreenParams uses keys to
-		// gate which fields it returns.
+		// Read user-saved param overrides. Pass paramDefinitions so
+		// getScreenParams can return only fields declared by the recipe schema.
 		const paramDefinitions = zodObjectToParamDefinitions(
 			definition.paramsSchema,
 		);
@@ -104,6 +110,7 @@ export const resolveReactRecipe = cache(
 		const params = safeParseWithDefaults(
 			definition.paramsSchema,
 			storedOverrides,
+			slug,
 		);
 
 		let data: Record<string, unknown>;

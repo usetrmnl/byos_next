@@ -95,16 +95,16 @@
     {
       "id": "color-12bit",
       "name": "Color (4096 colors)",
+      "grays": 2,
       "framework_class": "screen--color-full",
-      "grayscale_bit_depth": 4,
-      "channel_bit_depth": 4
+      "grayscale_bit_depth": 4
     },
     {
       "id": "color-24bit",
       "name": "Color (16777216 colors)",
+      "grays": 2,
       "framework_class": "screen--color-full",
-      "grayscale_bit_depth": 4,
-      "channel_bit_depth": 8
+      "grayscale_bit_depth": 4
     }
   ]
 }

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	DISPLAY_FALLBACK_REFRESH_SECONDS,
+	normalizeRefreshSchedule,
+} from "@/lib/device/defaults";
 import { selectDisplayForDevice } from "@/lib/display/select";
 import { logError, logInfo } from "@/lib/logger";
 import { buildDeviceImageFilename } from "@/lib/render/device-image-url";
@@ -59,10 +63,11 @@ export async function GET(request: Request) {
 			height: headers.height,
 		});
 
-		const refreshSchedule = deviceData.refresh_schedule as {
-			default_refresh_rate: number;
-		} | null;
-		const refreshRate = refreshSchedule?.default_refresh_rate || 180;
+		const refreshSchedule = normalizeRefreshSchedule(
+			deviceData.refresh_schedule,
+		);
+		const refreshRate =
+			refreshSchedule?.default_refresh_rate || DISPLAY_FALLBACK_REFRESH_SECONDS;
 
 		logInfo("Current display request successful", {
 			source: "api/display/current",

@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { canReadSystemLogs } from "@/app/actions/system";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { getDbStatus } from "@/lib/database/utils";
 import type {
@@ -21,7 +22,7 @@ export type InitialData = {
 	dbStatus: {
 		ready: boolean;
 		error?: string;
-		PostgresUrl?: string;
+		databaseConfigured: boolean;
 	};
 };
 
@@ -55,6 +56,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 	// Fetch data only if DB is ready
 	if (dbStatus.ready) {
 		try {
+			const includeSystemLogs = await canReadSystemLogs();
 			// Use withUserScope to set RLS context - database handles user filtering
 			const [
 				devicesResult,
@@ -79,24 +81,30 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 						.orderBy("created_at", "desc")
 						.execute(),
 					// Fetch recent logs (no RLS - shared)
-					scopedDb
-						.selectFrom("system_logs")
-						.selectAll()
-						.orderBy("created_at", "desc")
-						.limit(5)
-						.execute(),
+					includeSystemLogs
+						? scopedDb
+								.selectFrom("system_logs")
+								.selectAll()
+								.orderBy("created_at", "desc")
+								.limit(5)
+								.execute()
+						: Promise.resolve([]),
 					// Fetch unique sources for filters
-					scopedDb
-						.selectFrom("system_logs")
-						.select("source")
-						.distinct()
-						.orderBy("source")
-						.execute(),
+					includeSystemLogs
+						? scopedDb
+								.selectFrom("system_logs")
+								.select("source")
+								.distinct()
+								.orderBy("source")
+								.execute()
+						: Promise.resolve([]),
 					// Get total logs count
-					scopedDb
-						.selectFrom("system_logs")
-						.select((eb) => eb.fn.countAll().as("count"))
-						.executeTakeFirst(),
+					includeSystemLogs
+						? scopedDb
+								.selectFrom("system_logs")
+								.select((eb) => eb.fn.countAll().as("count"))
+								.executeTakeFirst()
+						: Promise.resolve({ count: 0 }),
 				]),
 			);
 

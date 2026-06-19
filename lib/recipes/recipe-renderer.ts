@@ -1,5 +1,4 @@
 import { createElement } from "react";
-import NotFoundScreen from "@/app/(app)/recipes/screens/not-found/not-found";
 import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
@@ -59,8 +58,7 @@ type RenderRecipeArgs = {
 };
 
 /**
- * Resolve a recipe (React or liquid) and rasterize it. Returns
- * `{ bitmap: null, png: null }` when nothing renders.
+ * Resolve a recipe (React or liquid) and rasterize it.
  */
 export async function renderRecipeToImage({
 	slug,
@@ -102,7 +100,7 @@ export async function renderRecipeToImage({
 	if (await isLiquidRecipe(slug, userId ?? undefined)) {
 		const html = await buildLiquidHtml(slug, userId ?? undefined);
 		if (html === null) {
-			return rasterizeNotFound({ slug, imageWidth, imageHeight, formats });
+			throw new Error(`Liquid recipe ${slug} did not produce HTML`);
 		}
 		return rasterize({
 			slug,
@@ -119,7 +117,7 @@ export async function renderRecipeToImage({
 	}
 
 	// Unknown slug
-	return rasterizeNotFound({ slug, imageWidth, imageHeight, formats });
+	throw new Error(`Unknown recipe: ${slug}`);
 }
 
 export async function renderRecipeForDevice({
@@ -176,30 +174,4 @@ async function buildLiquidHtml(
 	}
 	const result = await renderLiquidRecipe(slug, customFieldOverrides, userId);
 	return result?.html ?? null;
-}
-
-async function rasterizeNotFound({
-	slug,
-	imageWidth,
-	imageHeight,
-	formats,
-}: {
-	slug: string;
-	imageWidth: number;
-	imageHeight: number;
-	formats: RasterizeFormat[];
-}): Promise<RasterizeResults> {
-	const element = createElement(NotFoundScreen, {
-		slug,
-		width: imageWidth,
-		height: imageHeight,
-	});
-	return rasterize({
-		slug,
-		element,
-		imageWidth,
-		imageHeight,
-		formats,
-		renderSettings: null,
-	});
 }

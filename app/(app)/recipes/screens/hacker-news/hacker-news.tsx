@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getHackerNewsData, { type HackerNewsData } from "./getData";
@@ -61,8 +65,8 @@ export default function HackerNews({
 	stories = [],
 	updatedLabel = "",
 	message,
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: HackerNewsProps) {
 	const HEADER = 30;
 	const GAP = 6;
@@ -158,7 +162,7 @@ export default function HackerNews({
 	);
 
 	return (
-		<PreSatori useDoubling={true} width={width} height={height}>
+		<PreSatori width={width} height={height}>
 			<div
 				className="bg-white text-black font-blockKie"
 				style={{ display: "flex", flexDirection: "column", width, height }}
@@ -229,7 +233,7 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2026-06-14T00:00:00Z",
 		updatedAt: "2026-06-14T00:00:00Z",
-		renderSettings: { doubleSizeForSharperText: true },
+		renderSettings: { supersample: true },
 	},
 	paramsSchema,
 	dataSchema,

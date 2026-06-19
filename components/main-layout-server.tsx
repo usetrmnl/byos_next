@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { connection } from "next/server";
 import tools from "@/app/(app)/tools/tools.json";
 import { ClientMainLayout } from "@/components/client-main-layout";
 import { auth } from "@/lib/auth/auth";
@@ -26,6 +27,8 @@ export default async function MainLayout({
 }: {
 	children: React.ReactNode;
 }) {
+	await connection();
+
 	// Centralized data fetching using getInitData
 	// This is cached and shared across all components using React's cache() mechanism
 	const { devices, dbStatus } = await getInitData();

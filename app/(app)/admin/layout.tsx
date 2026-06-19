@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import type React from "react";
 import { auth } from "@/lib/auth/auth";
 
@@ -12,6 +13,8 @@ export default async function AdminLayout({
 	if (!auth) {
 		redirect("/");
 	}
+
+	await connection();
 
 	const session = await auth.api.getSession({
 		headers: await headers(),

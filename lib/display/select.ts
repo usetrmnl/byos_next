@@ -68,15 +68,18 @@ export async function selectDisplayForDevice(
 	hints: RequestHints,
 ): Promise<DisplaySelection> {
 	const profile = await getDeviceProfile(device.model, device.palette_id);
-	const fallback = defaultDimensions(profile, device);
-	const width = hints.width || fallback.width;
-	const height = hints.height || fallback.height;
+	const dimensions = defaultDimensions(profile, device);
+	const width = hints.width || dimensions.width;
+	const height = hints.height || dimensions.height;
 	const grayscaleLevels = normalizeGrayscale(device.grayscale);
-	const screen = device.screen || "not-found";
+	if (!device.screen) {
+		throw new Error("Device screen is not configured");
+	}
+	const screen = device.screen;
 
 	// Image URLs must be self-contained. If the URL only carried width/
-	// height/grayscale, the bitmap route would fall back to inferring model
-	// and palette from request headers — and a fetch from a browser, a
+	// height/grayscale, the bitmap route would infer model and palette from
+	// request headers — and a fetch from a browser, a
 	// caching proxy, or any tool that doesn't replay the device's headers
 	// would render against the wrong profile. `model` and `palette_id` go
 	// into the URL so the right profile is selected purely from the URL.

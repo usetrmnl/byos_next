@@ -9,6 +9,7 @@ import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -43,7 +44,8 @@ const calculateRefreshPerDay = (
 ): number => {
 	if (!deviceData?.refresh_schedule) return 0;
 	const defaultRefreshRate =
-		deviceData.refresh_schedule.default_refresh_rate || 300;
+		deviceData.refresh_schedule.default_refresh_rate ||
+		UI_REFRESH_FALLBACK_SECONDS;
 	let refreshesPerDay = (24 * 60 * 60) / defaultRefreshRate;
 	if (
 		deviceData.refresh_schedule.time_ranges &&
@@ -169,6 +171,11 @@ export default function DeviceView({
 	if (selectedPalette?.id) {
 		profileQuery.set("palette_id", selectedPalette.id);
 	}
+	const errorImageSrc = (message: string) => {
+		const params = new URLSearchParams(profileQuery);
+		params.set("message", message);
+		return `/api/bitmap/error.${imageExtension}?${params}`;
+	};
 
 	const status: "online" | "offline" =
 		device.status === "online" ? "online" : "offline";
@@ -184,10 +191,14 @@ export default function DeviceView({
 	const isMixup =
 		device.display_mode === DeviceDisplayMode.MIXUP && device.mixup_id;
 	const heroSrc = isPlaylist
-		? `/api/bitmap/${playlistScreens[0].screen || "simple-text"}.${imageExtension}?${profileQuery}`
+		? playlistScreens[0].screen
+			? `/api/bitmap/${playlistScreens[0].screen}.${imageExtension}?${profileQuery}`
+			: errorImageSrc("Playlist item has no screen")
 		: isMixup
 			? `/api/bitmap/mixup/${device.mixup_id}.${imageExtension}?${profileQuery}`
-			: `/api/bitmap/${device?.screen || "simple-text"}.${imageExtension}?${profileQuery}`;
+			: device.screen
+				? `/api/bitmap/${device.screen}.${imageExtension}?${profileQuery}`
+				: errorImageSrc("Device screen is not configured");
 
 	return (
 		<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
@@ -241,7 +252,11 @@ export default function DeviceView({
 								>
 									<DeviceFrame size="sm" portrait={isPortrait} flat>
 										<Image
-											src={`/api/bitmap/${screen.screen || "simple-text"}.${imageExtension}?${profileQuery}`}
+											src={
+												screen.screen
+													? `/api/bitmap/${screen.screen}.${imageExtension}?${profileQuery}`
+													: errorImageSrc("Playlist item has no screen")
+											}
 											alt={`Frame ${i + 1}`}
 											fill
 											className="absolute inset-0 h-full w-full object-cover"
@@ -415,7 +430,9 @@ export default function DeviceView({
 								: "Unknown"}
 						</MetaPair>
 						<MetaPair label="Default refresh">
-							{device?.refresh_schedule?.default_refresh_rate || 300}s
+							{device?.refresh_schedule?.default_refresh_rate ||
+								UI_REFRESH_FALLBACK_SECONDS}
+							s
 						</MetaPair>
 					</div>
 					<p className="border-t bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">

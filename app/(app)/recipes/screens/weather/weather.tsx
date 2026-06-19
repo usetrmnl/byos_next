@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
+import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import { PreSatori } from "@/utils/pre-satori";
 import getWeatherDataInternal from "./getData";
@@ -90,8 +95,8 @@ export default function Weather({
 	pressure = "Loading...",
 	sunset = "Loading...",
 	sunrise = "Loading...",
-	width = 800,
-	height = 480,
+	width = DEFAULT_IMAGE_WIDTH,
+	height = DEFAULT_IMAGE_HEIGHT,
 }: WeatherProps) {
 	// Weather statistics
 	const weatherStats = [
@@ -117,7 +122,7 @@ export default function Weather({
 		return CloudIcon; // default
 	};
 
-	const isHalfScreen = width === 400 && height === 480;
+	const isHalfScreen = isHalfScreenLayout(width, height);
 
 	return (
 		<PreSatori width={width} height={height}>

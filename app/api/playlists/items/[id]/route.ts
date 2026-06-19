@@ -9,8 +9,6 @@ import { logError, logInfo } from "@/lib/logger";
  *
  * Body:
  * - visible: boolean
- *
- * Note: BYOS doesn't currently track visibility, but we'll store it for compatibility
  */
 export async function PATCH(
 	request: Request,
@@ -34,14 +32,12 @@ export async function PATCH(
 
 	try {
 		const body = await request.json();
-		const { visible } = body;
-
-		if (typeof visible !== "boolean") {
+		if ("visible" in body) {
 			return NextResponse.json(
 				{
-					error: "visible field is required and must be a boolean",
+					error: "Playlist item visibility is not supported",
 				},
-				{ status: 422 },
+				{ status: 501 },
 			);
 		}
 
@@ -63,24 +59,9 @@ export async function PATCH(
 			);
 		}
 
-		// Note: BYOS doesn't have a visible field in playlist_items table
-		// For now, we'll just log the update and return success
-		// In the future, we could add a visible column to the table
-		logInfo("Playlist item visibility update requested", {
-			source: "api/playlists/items/[id]",
-			metadata: { id, visible },
-		});
-
-		// Note: playlist_items table doesn't have updated_at or visible fields
-		// This endpoint is implemented for API compatibility but doesn't persist the visible state
-		// To fully implement this, you would need to add a visible column to the playlist_items table
-
 		return NextResponse.json(
-			{
-				status: 200,
-				message: "Playlist item updated",
-			},
-			{ status: 200 },
+			{ error: "No supported fields to update" },
+			{ status: 400 },
 		);
 	} catch (error) {
 		logError(error as Error, {

@@ -59,6 +59,4 @@ export type TrmnlPalette = {
 export type DeviceProfile = {
 	model: TrmnlModel;
 	palette: TrmnlPalette | null;
-	/** True when we couldn't resolve the requested model and fell back. */
-	fallback: boolean;
 };

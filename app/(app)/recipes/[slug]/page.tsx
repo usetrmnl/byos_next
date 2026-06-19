@@ -1,8 +1,8 @@
 import { revalidateTag } from "next/cache";
-import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { cache, Suspense, use } from "react";
 import {
 	getScreenParams,
@@ -195,36 +195,16 @@ const RenderComponent = ({
 
 	const { definition, params, data } = resolved;
 	const Component = definition.Component;
-	const useDoubling =
-		definition.meta.renderSettings?.doubleSizeForSharperText ?? false;
 
 	if (format === "react") {
 		return (
 			<ScaledToFit imageWidth={imageWidth} imageHeight={imageHeight}>
-				{useDoubling ? (
-					<div
-						style={{
-							transform: "scale(0.5)",
-							transformOrigin: "top left",
-							width: "200%",
-							height: "200%",
-						}}
-					>
-						<Component
-							width={imageWidth}
-							height={imageHeight}
-							params={params}
-							data={data}
-						/>
-					</div>
-				) : (
-					<Component
-						width={imageWidth}
-						height={imageHeight}
-						params={params}
-						data={data}
-					/>
-				)}
+				<Component
+					width={imageWidth}
+					height={imageHeight}
+					params={params}
+					data={data}
+				/>
 			</ScaledToFit>
 		);
 	}
@@ -375,7 +355,7 @@ export default async function RecipePage({
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<{ format?: string }>;
 }) {
-	headers();
+	await connection();
 	const { slug } = await params;
 	const { format } = await searchParams;
 	const isPortrait = format === "portrait";
@@ -419,10 +399,10 @@ export default async function RecipePage({
 									{meta.description}
 								</p>
 							)}
-							{meta.renderSettings?.doubleSizeForSharperText && (
+							{meta.renderSettings?.supersample && (
 								<p className="mt-1 text-xs text-muted-foreground max-w-prose">
-									Rendering at double size for sharper text — some layouts with
-									overflow-hidden may need adjustment.
+									Supersampling enabled: image renders at 2× resolution, then
+									downsamples to the selected device size.
 								</p>
 							)}
 						</>
