@@ -13,7 +13,6 @@ import {
 	buildDeviceImageFilename,
 	buildDeviceImageUrl,
 } from "@/lib/render/device-image-url";
-import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import {
 	buildDisplayResponse,
 	buildErrorResponse,
@@ -53,12 +52,7 @@ export async function GET(request: Request) {
 		logError("Database not available for display request", {
 			source: "api/display",
 		});
-		return buildErrorResponse(
-			"Database not available",
-			baseUrl,
-			uniqueId,
-			503,
-		);
+		return buildErrorResponse("Database not available", baseUrl, uniqueId, 503);
 	}
 
 	logInfo("Display API Request", {

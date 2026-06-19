@@ -1073,6 +1073,12 @@ ADD COLUMN IF NOT EXISTS supports_temperature_profile BOOLEAN;
 COMMENT ON COLUMN devices.temperature_profile IS 'Display tuning profile sent to the firmware in the /api/display response (default|a|b|c).';
 COMMENT ON COLUMN devices.supports_temperature_profile IS 'TRUE when the device sent the \`temperature-profile: true\` request header on its last /api/display call. NULL until the device has been seen.';`,
 	},
+	"0018_remove_mixup_recipe_slug": {
+		title: "Remove Legacy Mixup Recipe Slug",
+		description:
+			"Removes the denormalized mixup_slots.recipe_slug column after recipe_id became the only recipe reference.",
+		sql: `ALTER TABLE mixup_slots DROP COLUMN IF EXISTS recipe_slug;`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:

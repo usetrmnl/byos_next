@@ -3,9 +3,12 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { renderDeviceImage, type RenderDeviceImageResult } from "./device-image";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import { renderBmp } from "@/utils/render-bmp";
+import {
+	type RenderDeviceImageResult,
+	renderDeviceImage,
+} from "./device-image";
 
 type RenderErrorImageOptions = {
 	message: string;

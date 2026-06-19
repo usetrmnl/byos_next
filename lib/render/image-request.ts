@@ -11,7 +11,9 @@ export type ParsedImageRequest = {
 	paletteId: string | null;
 };
 
-type ParseResult<T> = { ok: true; value: T } | { ok: false; response: Response };
+type ParseResult<T> =
+	| { ok: true; value: T }
+	| { ok: false; response: Response };
 
 function validationError(message: string): Response {
 	return Response.json({ error: message }, { status: 422 });
@@ -68,7 +70,11 @@ export function parseImageRequest(
 	searchParams: URLSearchParams,
 	defaults: { width?: number; height?: number } = {},
 ): ParsedImageRequest | Response {
-	const width = parseDimension(searchParams.get("width"), "width", defaults.width);
+	const width = parseDimension(
+		searchParams.get("width"),
+		"width",
+		defaults.width,
+	);
 	if (!width.ok) return width.response;
 	const height = parseDimension(
 		searchParams.get("height"),

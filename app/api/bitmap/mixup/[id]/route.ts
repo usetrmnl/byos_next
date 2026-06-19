@@ -12,9 +12,9 @@ import {
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
 import { renderDeviceImage } from "@/lib/render/device-image";
+import { stripImageExtension } from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
-import { stripImageExtension } from "@/lib/render/device-image-url";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
@@ -174,7 +174,8 @@ export async function GET(
 	} catch (error) {
 		logger.error("Error generating mixup image:", error);
 		const image = await renderErrorImage({
-			message: error instanceof Error ? error.message : "Error generating image",
+			message:
+				error instanceof Error ? error.message : "Error generating image",
 		});
 		return imageResponse(image, 500);
 	}

@@ -721,7 +721,7 @@ export async function POST(request: Request) {
 									message:
 										"Device owner is required before logs can be accepted",
 								},
-									{ status: 400 },
+								{ status: 400 },
 							);
 						}
 
