@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22
+ARG NODE_VERSION=22.22.3
 
 # Base stage - minimal Node.js only
 FROM node:${NODE_VERSION}-slim AS base
