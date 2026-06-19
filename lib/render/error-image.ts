@@ -136,7 +136,17 @@ export async function renderErrorImage({
 }: RenderErrorImageOptions): Promise<RenderDeviceImageResult> {
 	const png = await renderErrorPng(message, width, height);
 	if (profile && profile.model.mime_type !== "image/bmp") {
-		return renderDeviceImage({ png, profile });
+		return renderDeviceImage({
+			png,
+			profile: {
+				...profile,
+				model: {
+					...profile.model,
+					width,
+					height,
+				},
+			},
+		});
 	}
 	return {
 		buffer: await renderBmp(png, { width, height, grayscale }),

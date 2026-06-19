@@ -12,7 +12,6 @@ const PUBLIC_API_PATHS = [
 	"/api/models",
 	"/api/palettes",
 	"/api/setup",
-	"/api/test-img",
 ];
 
 // Paths that don't require authentication

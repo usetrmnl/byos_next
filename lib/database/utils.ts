@@ -2,6 +2,10 @@ import { sql } from "kysely";
 import { db } from "./db";
 import { SQL_STATEMENTS } from "./sql-statements";
 
+const REQUIRED_MIGRATIONS = Object.keys(SQL_STATEMENTS).filter(
+	(name) => name !== "validate_schema",
+);
+
 /**
  * App and DB are required to stay in lockstep — a partial-migration deploy
  * means the app is making assumptions the DB can't enforce yet, so we want
@@ -27,6 +31,16 @@ export async function checkDbConnection(): Promise<{
 				(row) => (row as { missing_table: string }).missing_table,
 			);
 			throw new Error(`Missing required tables: ${missingTables.join(", ")}`);
+		}
+
+		const migrations = await sql<{ name: string }>`
+			SELECT name
+			FROM schema_migrations
+		`.execute(db);
+		const applied = new Set(migrations.rows.map((row) => row.name));
+		const pending = REQUIRED_MIGRATIONS.filter((name) => !applied.has(name));
+		if (pending.length > 0) {
+			throw new Error(`Pending database migrations: ${pending.join(", ")}`);
 		}
 
 		return {

@@ -149,24 +149,47 @@ export async function GET(
 	} catch (error) {
 		logger.error("Error generating image:", error);
 		const { searchParams } = new URL(req.url);
-		const width = Number.parseInt(
-			searchParams.get("width") ?? String(DEFAULT_IMAGE_WIDTH),
-			10,
-		);
-		const height = Number.parseInt(
-			searchParams.get("height") ?? String(DEFAULT_IMAGE_HEIGHT),
-			10,
-		);
+		const imageRequest = parseImageRequest(searchParams);
+		const width =
+			imageRequest instanceof Response
+				? DEFAULT_IMAGE_WIDTH
+				: (imageRequest.width ?? DEFAULT_IMAGE_WIDTH);
+		const height =
+			imageRequest instanceof Response
+				? DEFAULT_IMAGE_HEIGHT
+				: (imageRequest.height ?? DEFAULT_IMAGE_HEIGHT);
+		const profile =
+			imageRequest instanceof Response
+				? null
+				: await resolveProfileOrNull(headers, {
+						modelName: imageRequest.modelName,
+						paletteId: imageRequest.paletteId,
+					});
 		const errorImage = await renderErrorImage({
 			message: error instanceof Error ? error.message : "Image render failed",
-			width: Number.isFinite(width) && width > 0 ? width : DEFAULT_IMAGE_WIDTH,
-			height:
-				Number.isFinite(height) && height > 0 ? height : DEFAULT_IMAGE_HEIGHT,
+			width,
+			height,
+			grayscale:
+				imageRequest instanceof Response
+					? undefined
+					: imageRequest.grayscaleLevels,
+			profile,
 		});
 		return new Response(new Uint8Array(errorImage.buffer), {
 			status: 500,
 			headers: getImageResponseHeaders(errorImage),
 		});
+	}
+}
+
+async function resolveProfileOrNull(
+	headers: RequestHeaders,
+	query: { modelName?: string | null; paletteId?: string | null },
+): Promise<DeviceProfile | null> {
+	try {
+		return await resolveDeviceProfileForRequest(headers, query);
+	} catch {
+		return null;
 	}
 }
 

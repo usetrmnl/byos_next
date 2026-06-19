@@ -18,9 +18,11 @@ import { reactRecipeLoaders } from "./screens.generated";
 export async function syncReactRecipes(): Promise<{
 	synced: number;
 }> {
-	const { ready } = await checkDbConnection();
-	if (!ready) {
-		console.warn("[syncReactRecipes] Database not available");
+	const dbStatus = await checkDbConnection();
+	if (!dbStatus.ready) {
+		console.warn(
+			`[syncReactRecipes] Skipping recipe sync: ${dbStatus.error ?? "database not available"}`,
+		);
 		return { synced: 0 };
 	}
 
