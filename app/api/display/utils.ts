@@ -546,14 +546,14 @@ export const buildErrorResponse = (
 	uniqueId: string,
 	status = 500,
 ) => {
-	const errorImageUrl = `${baseUrl}/error.bmp?message=${encodeURIComponent(message)}`;
+	const errorImageUrl = `${baseUrl}/error.png?message=${encodeURIComponent(message)}`;
 	return NextResponse.json(
 		{
 			status,
 			reset_firmware: true,
 			message,
 			image_url: errorImageUrl,
-			filename: `error_${uniqueId}.bmp`,
+			filename: `error_${uniqueId}.png`,
 		},
 		{ status },
 	);
