@@ -33,6 +33,42 @@
 			}
 		}
 	},
+	"overrides": [
+		{
+			"includes": [
+				"app/(app)/recipes/screens/**",
+				"app/(render)/**",
+				"components/common/graph.tsx"
+			],
+			"linter": {
+				"rules": {
+					"performance": {
+						"noImgElement": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["components/ui/**"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noDocumentCookie": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["lib/recipes/types.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off"
+					}
+				}
+			}
+		}
+	],
 	"javascript": {
 		"formatter": {
 			"quoteStyle": "double"

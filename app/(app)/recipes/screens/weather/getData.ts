@@ -157,7 +157,9 @@ async function getWeatherData(
 			throw new Error("Latitude, longitude, or location name are required");
 		}
 
-		if (locationName) {
+		// Skip geocoding when explicit coordinates are supplied — avoids a slow,
+		// sometimes-unreachable geocoding call and goes straight to the forecast.
+		if (locationName && (!latitude || !longitude)) {
 			const geocoded = await geocodeLocation(locationName);
 			if (geocoded) {
 				latitude = geocoded.latitude;

@@ -2,21 +2,29 @@ import { headers } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth/auth";
 
-// Paths that don't require authentication
-const PUBLIC_PATHS = [
-	"/api",
-	"/_next",
-	"/favicon.ico",
-	"/sign-in",
-	"/sign-up",
-	"/recover",
+const PUBLIC_API_PATHS = [
+	"/api/auth",
+	"/api/bitmap",
+	"/api/categories",
+	"/api/display",
+	"/api/ips",
+	"/api/log",
+	"/api/models",
+	"/api/palettes",
+	"/api/setup",
 ];
+
+// Paths that don't require authentication
+const PUBLIC_PATHS = ["/_next", "/favicon.ico", "/sign-in", "/sign-up", "/recover"];
 
 export async function proxy(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
 	// Skip auth for public paths
-	if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
+	if (
+		PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
+		PUBLIC_API_PATHS.some((path) => pathname.startsWith(path))
+	) {
 		return NextResponse.next();
 	}
 

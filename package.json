@@ -1,17 +1,19 @@
 {
 	"name": "byos-nextjs",
-	"version": "0.2.2",
+	"version": "0.2.9",
 	"private": true,
 	"engines": {
 		"node": "22.22.3",
-		"pnpm": "11.5.2"
+		"pnpm": "11.8.0"
 	},
 	"scripts": {
 		"screenshots": "node scripts/take-screenshots.mjs",
 		"generate:sql": "node scripts/generate-sql-statements.js && pnpm format",
 		"generate:types": "kysely-codegen --dialect postgres --include-pattern='public.*' --out-file lib/database/db.d.ts",
-		"prebuild": "pnpm generate:sql",
-		"dev": "pnpm generate:sql && next dev --turbopack",
+		"generate:types:trmnl": "openapi-typescript lib/trmnl/openapi.yaml -o lib/trmnl/types.gen.ts && biome format --write lib/trmnl/types.gen.ts",
+		"generate:recipes": "node scripts/generate-recipes-index.mjs && biome format --write lib/recipes/screens.generated.ts",
+		"prebuild": "pnpm generate:sql && pnpm generate:recipes",
+		"dev": "pnpm generate:sql && pnpm generate:recipes && next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
 		"lint": "biome check ./app ./components ./lib ./utils ./hooks",
@@ -53,6 +55,7 @@
 		"clsx": "^2.1.1",
 		"cmdk": "1.1.1",
 		"d3": "^7.9.0",
+		"ical-expander": "^3.2.0",
 		"jimp": "^1.6.1",
 		"js-yaml": "^4.1.1",
 		"jszip": "^3.10.1",
@@ -64,6 +67,7 @@
 		"pg": "^8.20.0",
 		"postgres": "^3.4.9",
 		"puppeteer-core": "^24.42.0",
+		"qrcode-generator": "^2.0.4",
 		"radix-ui": "^1.4.3",
 		"react": "^19.2.5",
 		"react-dom": "^19.2.5",
@@ -90,9 +94,10 @@
 		"eslint-config-next": "16.1.6",
 		"eslint-plugin-react-hooks": "^7.0.1",
 		"kysely-codegen": "^0.20.0",
+		"openapi-typescript": "^7.13.0",
 		"shadcn": "^4.4.0",
 		"tailwindcss": "^4.2.4",
 		"typescript": "^6.0.3"
 	},
-	"packageManager": "pnpm@11.5.2+sha512.71c631e382066efc25625d5cf029075de07b61b37f6e27350fbd84b1bda5864c8c1967adc280776b45c30a715c0359a3be08fef42d5bb09e2b99029979692916"
+	"packageManager": "pnpm@11.8.0+sha512.c1f5e7c4cb241c8f174b743851d82f42b802324afc8b0f116b96adb15aa06664948dde36960a3ba1079ba5b4b29dd0140135b94b5b5f5263592249d68e555f26"
 }

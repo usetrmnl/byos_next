@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	DISPLAY_FALLBACK_REFRESH_SECONDS,
+	normalizeRefreshSchedule,
+} from "@/lib/device/defaults";
+import { selectDisplayForDevice } from "@/lib/display/select";
 import { getLatestFirmware, isUpdateAvailable } from "@/lib/firmware";
 import { logError, logInfo } from "@/lib/logger";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/recipe-renderer";
-import type { RefreshSchedule } from "@/lib/types";
+	buildDeviceImageFilename,
+	buildDeviceImageUrl,
+} from "@/lib/render/device-image-url";
 import {
 	buildDisplayResponse,
 	buildErrorResponse,
@@ -20,36 +24,23 @@ import {
 	updateDeviceStatus,
 } from "./utils";
 
-export const DEFAULT_SCREEN = "album";
-export const DEFAULT_REFRESH_RATE = 180;
+export const DEFAULT_REFRESH_RATE = DISPLAY_FALLBACK_REFRESH_SECONDS;
 
-/**
- * Map grayscale value from database to number of gray levels
- * Valid values: 2, 4, or 16. Defaults to 2 if invalid.
- */
-function getGrayscaleLevels(grayscale: number | null | undefined): number {
-	if (grayscale === 2 || grayscale === 4 || grayscale === 16) {
-		return grayscale;
-	}
-	return 2; // Default to 2 levels (black/white)
+function errorImageQuery(baseQueryParams: string, message: string): string {
+	const params = new URLSearchParams(baseQueryParams);
+	params.set("message", message);
+	return params.toString();
 }
 
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
 
-	// TRMNL API requires Access-Token header
 	if (!headers.apiKey) {
 		return NextResponse.json(
-			{
-				status: 401,
-				error: "Access-Token header is required",
-			},
+			{ status: 401, error: "Access-Token header is required" },
 			{ status: 401 },
 		);
 	}
-
-	// log all headers in console for debugging
-	console.table(headers);
 
 	const { ready } = await checkDbConnection();
 	const baseUrl = `${headers.hostUrl}/api/bitmap`;
@@ -58,26 +49,15 @@ export async function GET(request: Request) {
 		Date.now().toString(36).slice(-3);
 
 	if (!ready) {
-		console.warn("Database client not initialized, using noDB mode");
-		logInfo("Database client not initialized, using noDB mode", {
+		logError("Database not available for display request", {
 			source: "api/display",
-			metadata: { headers },
 		});
-		// Use header dimensions if provided
-		const width = headers.width || DEFAULT_IMAGE_WIDTH;
-		const height = headers.height || DEFAULT_IMAGE_HEIGHT;
-		const noDbQueryParams = `width=${width}&height=${height}&grayscale=2${headers.base64 ? "&base64=true" : ""}`;
-
-		return buildDisplayResponse(
-			`${baseUrl}/${DEFAULT_SCREEN}.bmp?${noDbQueryParams}`,
-			`${DEFAULT_SCREEN}_${uniqueId}.bmp`,
-			DEFAULT_REFRESH_RATE,
-		);
+		return buildErrorResponse("Database not available", baseUrl, uniqueId, 503);
 	}
 
 	logInfo("Display API Request", {
 		source: "api/display",
-		metadata: { headers },
+		metadata: { apiKey: headers.apiKey?.slice(0, 6) },
 	});
 
 	try {
@@ -86,118 +66,137 @@ export async function GET(request: Request) {
 		if (!device) {
 			logError("Error fetching/creating device", {
 				source: "api/display",
-				metadata: { headers },
+				metadata: { apiKey: headers.apiKey?.slice(0, 6) },
 			});
 			return buildErrorResponse("Device not found", baseUrl, uniqueId);
 		}
 
-		const deviceUserId = device.user_id;
-		let screenToDisplay = device.screen;
-		const orientation = device.screen_orientation || "landscape";
+		const selection = await selectDisplayForDevice(device, {
+			hostUrl: headers.hostUrl,
+			width: headers.width,
+			height: headers.height,
+			base64: headers.base64,
+		});
 
-		// Use dimensions from headers if provided, otherwise fall back to device settings
-		const storedWidth =
-			orientation === "landscape"
-				? device.screen_width || DEFAULT_IMAGE_WIDTH
-				: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-		const storedHeight =
-			orientation === "landscape"
-				? device.screen_height || DEFAULT_IMAGE_HEIGHT
-				: device.screen_width || DEFAULT_IMAGE_WIDTH;
-
-		const deviceWidth = headers.width || storedWidth;
-		const deviceHeight = headers.height || storedHeight;
-		const grayscaleLevels = getGrayscaleLevels(device.grayscale);
-
-		// Build common query params for image URLs
-		const baseQueryParams = `width=${deviceWidth}&height=${deviceHeight}&grayscale=${grayscaleLevels}${headers.base64 ? "&base64=true" : ""}`;
-
-		let dynamicRefreshRate = 180;
-		let imageUrl: string;
+		let { screen: screenToDisplay, imageUrl } = selection;
+		let dynamicRefreshRate: number;
 
 		switch (device.display_mode) {
-			case DeviceDisplayMode.PLAYLIST:
+			case DeviceDisplayMode.PLAYLIST: {
 				if (device.playlist_id) {
 					const activeItem = await getActivePlaylistItem(
 						device.playlist_id,
 						device.current_playlist_index || 0,
 						device.timezone || "UTC",
-						deviceUserId,
+						device.user_id,
 					);
 
 					if (activeItem) {
 						screenToDisplay = activeItem.screen_id;
 						dynamicRefreshRate = activeItem.duration;
-						// Update playlist index
 						await db
 							.updateTable("devices")
 							.set({ current_playlist_index: activeItem.order_index })
 							.where("id", "=", device.id.toString())
 							.execute();
 					} else {
-						logInfo("No active playlist item found, using fallback", {
+						logInfo("No active playlist item found", {
 							source: "api/display",
 							metadata: { deviceId: device.friendly_id },
 						});
-						screenToDisplay = device.screen || "not-found";
-						dynamicRefreshRate = 60;
+						screenToDisplay = "error";
+						imageUrl = buildDeviceImageUrl({
+							baseUrl,
+							imagePath: "error",
+							profile: selection.profile,
+							query: errorImageQuery(
+								selection.baseQueryParams,
+								"No active playlist item",
+							),
+						});
+						dynamicRefreshRate = DEFAULT_REFRESH_RATE;
 					}
+				} else {
+					screenToDisplay = "error";
+					imageUrl = buildDeviceImageUrl({
+						baseUrl,
+						imagePath: "error",
+						profile: selection.profile,
+						query: errorImageQuery(
+							selection.baseQueryParams,
+							"Playlist mode needs a playlist",
+						),
+					});
+					dynamicRefreshRate = DEFAULT_REFRESH_RATE;
 				}
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
+				if (screenToDisplay !== "error") {
+					imageUrl = buildDeviceImageUrl({
+						baseUrl,
+						imagePath: screenToDisplay,
+						profile: selection.profile,
+						query: selection.baseQueryParams,
+					});
+				}
 				break;
+			}
 
 			case DeviceDisplayMode.MIXUP:
 				if (device.mixup_id) {
-					imageUrl = `${baseUrl}/mixup/${device.mixup_id}.bmp?${baseQueryParams}&access_token=${encodeURIComponent(headers.apiKey)}`;
-					const metadata = {
-						deviceId: device.friendly_id,
-						mixupId: device.mixup_id,
-					};
+					imageUrl = buildDeviceImageUrl({
+						baseUrl,
+						imagePath: `mixup/${device.mixup_id}`,
+						profile: selection.profile,
+						query: `${selection.baseQueryParams}&access_token=${encodeURIComponent(
+							headers.apiKey,
+						)}`,
+					});
 					logInfo("Using mixup display mode", {
 						source: "api/display",
-						metadata,
+						metadata: {
+							deviceId: device.friendly_id,
+							mixupId: device.mixup_id,
+						},
 					});
-				} else {
-					imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
 				}
 				dynamicRefreshRate = calculateRefreshRate(
-					device.refresh_schedule as unknown as RefreshSchedule,
-					180,
+					normalizeRefreshSchedule(device.refresh_schedule),
+					DEFAULT_REFRESH_RATE,
 					device.timezone || "UTC",
 				);
 				break;
 
 			default:
 				dynamicRefreshRate = calculateRefreshRate(
-					device.refresh_schedule as unknown as RefreshSchedule,
-					180,
+					normalizeRefreshSchedule(device.refresh_schedule),
+					DEFAULT_REFRESH_RATE,
 					device.timezone || "UTC",
 				);
-				imageUrl = `${baseUrl}/${screenToDisplay || "not-found"}.bmp?${baseQueryParams}`;
 				break;
 		}
 
 		precacheImageInBackground(imageUrl, device.friendly_id);
-
-		// Update device status in background
 		updateDeviceStatus(device, headers, dynamicRefreshRate);
-		const metadata = {
-			deviceId: device.friendly_id,
-			screen: screenToDisplay,
-			refreshRate: dynamicRefreshRate,
-			displayMode: device.display_mode,
-		};
-		logInfo("Display request successful", { source: "api/display", metadata });
 
-		// Check for firmware updates
-		const latestFirmware = await getLatestFirmware();
+		logInfo("Display request successful", {
+			source: "api/display",
+			metadata: {
+				deviceId: device.friendly_id,
+				screen: screenToDisplay,
+				refreshRate: dynamicRefreshRate,
+				displayMode: device.display_mode,
+			},
+		});
+
+		const orientation = device.screen_orientation || "landscape";
 		const firmwareExtra: Record<string, unknown> = {
-			// Tell the firmware how to rotate the panel. The TRMNL panel is
-			// portrait-native, so a landscape orientation needs a 90° rotation.
-			// 0 = portrait (no rotation), 1 = landscape (90°).
+			// 0 = portrait (no rotation), 1 = landscape (90° rotation).
 			image_rotate: orientation === "landscape" ? 1 : 0,
+			// Display tuning profile. Firmware reads this only when it sent
+			// `temperature-profile: true` in the request.
+			temperature_profile: device.temperature_profile ?? "default",
 		};
 
+		const latestFirmware = await getLatestFirmware();
 		if (
 			latestFirmware &&
 			isUpdateAvailable(device.firmware_version, latestFirmware.version)
@@ -216,14 +215,13 @@ export async function GET(request: Request) {
 
 		return buildDisplayResponse(
 			imageUrl,
-			`${screenToDisplay || "not-found"}_${uniqueId}.bmp`,
+			buildDeviceImageFilename(screenToDisplay, uniqueId, selection.profile),
 			dynamicRefreshRate,
 			firmwareExtra,
 		);
 	} catch (_error) {
 		logError("Internal server error", {
 			source: "api/display",
-			metadata: { headers },
 		});
 		return buildErrorResponse("Internal server error", baseUrl, uniqueId);
 	}

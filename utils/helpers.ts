@@ -144,6 +144,23 @@ export function generateApiKey(macAddress: string, salt?: string): string {
 	);
 }
 
+export function generateMockMacAddress(apiKey: string): string {
+	const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
+	const macPart = hash.substring(hash.length - 6).toUpperCase();
+	return `A1:B2:C3:${macPart.substring(0, 2)}:${macPart.substring(2, 4)}:${macPart.substring(4, 6)}`;
+}
+
+export function generateRandomApiKey(length = 22): string {
+	const characters =
+		"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+	let result = "";
+	const bytes = crypto.randomBytes(length);
+	for (const byte of bytes) {
+		result += characters[byte % characters.length];
+	}
+	return result;
+}
+
 export function generateFriendlyId(macAddress: string, salt?: string): string {
 	const normalizedMacAddress = macAddress.toUpperCase().replace(/[:-]/g, ""); // Normalize MAC
 	const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

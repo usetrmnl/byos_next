@@ -303,7 +303,6 @@ export const slotsToAssignments = (
 	slots: Array<{
 		slot_id: string;
 		recipe_id: string | null;
-		recipe_slug: string | null;
 	}>,
 ): Record<string, string> => {
 	const assignments: Record<string, string> = {};

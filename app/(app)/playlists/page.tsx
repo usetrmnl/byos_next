@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { fetchRecipes } from "@/app/actions/mixup";
 import { PageTemplate } from "@/components/common/page-template";
@@ -10,6 +11,8 @@ export const metadata = {
 };
 
 export default async function PlaylistsPage() {
+	await connection();
+
 	const [{ playlists, playlistItems }, recipes] = await Promise.all([
 		getInitData(),
 		fetchRecipes(),

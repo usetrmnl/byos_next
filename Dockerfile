@@ -12,7 +12,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 
 WORKDIR /app
 
-RUN corepack enable pnpm && corepack prepare pnpm@11.5.2 --activate
+RUN corepack enable pnpm && corepack prepare pnpm@11.8.0 --activate
 
 # Install dependencies only when needed
 FROM base AS deps

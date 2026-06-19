@@ -26,6 +26,7 @@ export function useSearchWithDebounce(
 	const createQueryStringRef = useRef(createQueryString);
 	const pathnameRef = useRef(pathname);
 	const routerRef = useRef(router);
+	const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	// Update refs when props change
 	useEffect(() => {
@@ -36,10 +37,17 @@ export function useSearchWithDebounce(
 		routerRef.current = router;
 	}, [searchQuery, page, createQueryString, pathname, router]);
 
+	useEffect(() => {
+		return () => {
+			if (timeoutRef.current) clearTimeout(timeoutRef.current);
+		};
+	}, []);
+
 	// Create the debounced search function with stable dependencies
 	return useCallback(
 		(value: string) => {
-			const timeoutId = setTimeout(() => {
+			if (timeoutRef.current) clearTimeout(timeoutRef.current);
+			timeoutRef.current = setTimeout(() => {
 				const queryString = createQueryStringRef.current({
 					search: value || null,
 					page: value !== searchQueryRef.current ? 1 : pageRef.current, // Reset to page 1 on new search
@@ -47,9 +55,8 @@ export function useSearchWithDebounce(
 				routerRef.current.push(`${pathnameRef.current}?${queryString}`, {
 					scroll: false,
 				});
+				timeoutRef.current = null;
 			}, delay);
-
-			return () => clearTimeout(timeoutId);
 		},
 		[delay],
 	); // Only delay as a dependency

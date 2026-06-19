@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import type { ComponentConfig } from "@/components/client-sidebar";
+import type { ComponentConfig } from "@/components/component-config";
 import {
 	CommandDialog,
 	CommandEmpty,
