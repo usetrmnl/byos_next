@@ -1,8 +1,8 @@
 import { revalidateTag } from "next/cache";
-import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { cache, Suspense, use } from "react";
 import {
 	getScreenParams,
@@ -355,7 +355,7 @@ export default async function RecipePage({
 	params: Promise<{ slug: string }>;
 	searchParams: Promise<{ format?: string }>;
 }) {
-	headers();
+	await connection();
 	const { slug } = await params;
 	const { format } = await searchParams;
 	const isPortrait = format === "portrait";

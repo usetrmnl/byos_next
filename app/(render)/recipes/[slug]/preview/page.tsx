@@ -1,5 +1,5 @@
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { connection } from "next/server";
 import { resolveReactRecipe } from "@/lib/recipes/recipe-renderer";
 import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
 import { getRenderScale } from "@/lib/recipes/render/settings";
@@ -22,7 +22,7 @@ export default async function RecipePreviewPage({
 		render_token?: string;
 	}>;
 }) {
-	headers();
+	await connection();
 	const { slug } = await params;
 	const {
 		width: widthParam,

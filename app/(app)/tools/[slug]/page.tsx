@@ -31,10 +31,6 @@ export async function generateStaticParams() {
 // Fetch component for a recipe
 const fetchComponent = cache(async (slug: string) => {
 	try {
-		// Use the componentPath from tools.json
-		console.log(
-			`Loading component: @/app/(app)/tools/tools-components/${slug}/${slug}.tsx`,
-		);
 		const { default: Component } = await import(
 			`@/app/(app)/tools/tools-components/${slug}/${slug}.tsx`
 		);
@@ -67,8 +63,6 @@ export default async function ToolPage({
 }) {
 	const { slug } = await params;
 	const config = tools[slug as keyof typeof tools];
-
-	console.log(`config: ${config}`);
 
 	if (!config) {
 		notFound();

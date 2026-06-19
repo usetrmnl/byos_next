@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { connection, NextResponse } from "next/server";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
@@ -8,6 +8,8 @@ import { logError, logInfo } from "@/lib/logger";
  * List all playlist items
  */
 export async function GET(_request: Request) {
+	await connection();
+
 	const { ready } = await checkDbConnection();
 
 	if (!ready) {
