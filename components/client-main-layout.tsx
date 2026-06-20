@@ -26,6 +26,7 @@ import {
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UpdateNotification } from "@/components/update-notification";
 import type { Device, RecipeSidebarItem } from "@/lib/types";
 
 // Loading skeleton for main content
@@ -74,6 +75,9 @@ export function ClientMainLayout({
 	const { theme, setTheme } = useTheme();
 
 	const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+
+	// Only nag the operator about server updates (mono-user mode or admins).
+	const canSeeUpdates = !authEnabled || user?.role === "admin";
 
 	return (
 		<SidebarProvider>
@@ -141,6 +145,9 @@ export function ClientMainLayout({
 				recipeSidebarItems={recipeSidebarItems}
 				toolsComponents={toolsComponents}
 			/>
+
+			{/* New server version popup */}
+			<UpdateNotification enabled={canSeeUpdates} />
 		</SidebarProvider>
 	);
 }
