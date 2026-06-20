@@ -1,6 +1,6 @@
 {
 	"name": "byos-nextjs",
-	"version": "0.2.13",
+	"version": "0.2.14",
 	"private": true,
 	"engines": {
 		"node": "22.22.3",
