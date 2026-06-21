@@ -276,6 +276,16 @@ async function fetchPollingData(
 		}
 	}
 
+	// TRMNL contract: a single polling URL exposes its JSON keys at the root
+	// scope, so templates can reference {{ img }} directly. Only multiple URLs
+	// stay namespaced as IDX_0, IDX_1, … . IDX_0 is kept for compatibility.
+	if (urls.length === 1) {
+		const single = data.IDX_0;
+		if (single && typeof single === "object" && !Array.isArray(single)) {
+			Object.assign(data, single as Record<string, unknown>);
+		}
+	}
+
 	return data;
 }
 
