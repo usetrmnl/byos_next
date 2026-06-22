@@ -1,4 +1,5 @@
 import { sql } from "kysely";
+import { DbStatus } from "../types";
 import { db } from "./db";
 import { SQL_STATEMENTS } from "./sql-statements";
 
@@ -14,11 +15,7 @@ const REQUIRED_MIGRATIONS = Object.keys(SQL_STATEMENTS).filter(
  * adding a new table is a one-step change (write the migration, run
  * `pnpm generate:sql`).
  */
-export async function checkDbConnection(): Promise<{
-	ready: boolean;
-	error?: string;
-	databaseConfigured: boolean;
-}> {
+export async function checkDbConnection(): Promise<DbStatus> {
 	try {
 		await sql`SELECT 1`.execute(db);
 
@@ -56,7 +53,7 @@ export async function checkDbConnection(): Promise<{
 	}
 }
 
-export async function getDbStatus() {
+export async function getDbStatus(): Promise<DbStatus> {
 	if (!process.env.DATABASE_URL) {
 		return {
 			ready: false,
