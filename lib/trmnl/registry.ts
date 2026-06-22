@@ -14,6 +14,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { normalizeModelName } from "@/utils/helpers";
 
 const TRMNL_API_BASE = "https://usetrmnl.com";
 const DATA_DIR = path.join(process.cwd(), "data", "trmnl");
@@ -42,7 +43,8 @@ export async function listPalettes(): Promise<TrmnlPalette[]> {
 
 export async function findModel(name: string): Promise<TrmnlModel | null> {
 	const models = await listModels();
-	return models.find((m) => m.name === name) ?? null;
+	const normalized = normalizeModelName(name) || name;
+	return models.find((m) => m.name === normalized) ?? null;
 }
 
 export async function findPalette(id: string): Promise<TrmnlPalette | null> {

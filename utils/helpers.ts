@@ -289,3 +289,13 @@ export function estimateBatteryLife(
 		isCharging: batteryVoltage > V_CHARGING,
 	};
 }
+
+// Normalize TRMNL model names (e.g. "og" -> "og_png")
+export function normalizeModelName(
+	modelName: string | null | undefined,
+): string | null {
+	if (!modelName) return null;
+	const trimmed = modelName.trim().toLowerCase();
+	if (trimmed === "og") return "og_png";
+	return modelName;
+}

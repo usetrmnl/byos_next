@@ -22,6 +22,7 @@ import {
 	generateApiKey,
 	generateFriendlyId,
 	generateMockMacAddress,
+	normalizeModelName,
 	timezones,
 } from "@/utils/helpers";
 
@@ -59,7 +60,7 @@ export const parseRequestHeaders = (request: Request): RequestHeaders => {
 		rssi: headers.get("RSSI"),
 		width: widthStr ? Number.parseInt(widthStr, 10) : null,
 		height: heightStr ? Number.parseInt(heightStr, 10) : null,
-		model: headers.get("Model")?.trim() || null,
+		model: normalizeModelName(headers.get("Model")),
 		specialFunction: headers.get("Special-Function") === "true",
 		base64: headers.get("BASE64") === "true",
 		supportsTemperatureProfile: headers.get("temperature-profile") === "true",

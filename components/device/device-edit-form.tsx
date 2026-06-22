@@ -50,7 +50,7 @@ import {
 } from "@/lib/trmnl/types";
 import type { Device, Mixup, Playlist } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { formatTimezone, timezones } from "@/utils/helpers";
+import { formatTimezone, normalizeModelName, timezones } from "@/utils/helpers";
 
 interface DeviceEditFormProps {
 	editedDevice: Device & { status?: string; type?: string };
@@ -142,7 +142,7 @@ export default function DeviceEditForm({
 		? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH
 		: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
 	const grayscaleLevels = normalizeGrayscale(editedDevice.grayscale);
-	const savedModelName = editedDevice.model?.trim() || null;
+	const savedModelName = normalizeModelName(editedDevice.model);
 	const savedModelMatch =
 		savedModelName != null
 			? trmnlModels.find((model) => model.name === savedModelName)

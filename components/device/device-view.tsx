@@ -24,6 +24,7 @@ import {
 	estimateBatteryLife,
 	formatDate,
 	formatTimezone,
+	normalizeModelName,
 } from "@/utils/helpers";
 
 interface FirmwareInfo {
@@ -151,7 +152,9 @@ export default function DeviceView({
 		: device.screen_height || DEFAULT_IMAGE_HEIGHT;
 	const grayscaleLevels = normalizeGrayscale(device.grayscale);
 	const selectedModel =
-		trmnlModels.find((model) => model.name === device.model) ??
+		trmnlModels.find(
+			(model) => model.name === normalizeModelName(device.model),
+		) ??
 		trmnlModels.find((model) => model.name === "og_plus") ??
 		trmnlModels[0];
 	const selectedPalette =
