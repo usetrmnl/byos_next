@@ -142,17 +142,15 @@ describe("formatDate", () => {
 	it("shows date string for >= 7 days ago", () => {
 		const date = new Date(FIXED_NOW - 8 * 86_400_000).toISOString();
 		const result = formatDate(date);
-		expect(result).toMatch(/ago$/);
 		// Should contain month/day digits rather than a weekday
-		expect(result).toMatch(/\d{2}\/\d{2}/);
+		expect(result).toBe("01/07, 07:00");
 	});
 
 	it("shows weekday format for 1-6 days ago", () => {
 		const date = new Date(FIXED_NOW - 2 * 86_400_000).toISOString();
 		const result = formatDate(date);
-		expect(result).toMatch(/ago$/);
 		// Weekday abbreviated like "Sat 07:00"
-		expect(result).toMatch(/\w{3} \d{2}:\d{2}/);
+		expect(result).toBe("Sat 07:00");
 	});
 });
 

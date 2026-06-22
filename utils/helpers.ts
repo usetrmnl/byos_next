@@ -51,6 +51,7 @@ export function formatDate(dateString: string | null): string {
 			hour12: false,
 		};
 		timeText = date.toLocaleString("en-US", options);
+		return timeText;
 	} else {
 		timeText = date.toLocaleString("en-US", {
 			month: "2-digit",
@@ -59,6 +60,7 @@ export function formatDate(dateString: string | null): string {
 			minute: "2-digit",
 			hour12: false,
 		});
+		return timeText;
 	}
 
 	return diffMs < 0 ? `in ${timeText}` : `${timeText} ago`;
