@@ -7,6 +7,7 @@
 		"pnpm": "11.8.0"
 	},
 	"scripts": {
+		"test": "jest",
 		"screenshots": "node scripts/take-screenshots.mjs",
 		"generate:sql": "node scripts/generate-sql-statements.js && pnpm format",
 		"generate:types": "kysely-codegen --dialect postgres --include-pattern='public.*' --out-file lib/database/db.d.ts",
@@ -84,6 +85,7 @@
 		"@biomejs/biome": "2.5.0",
 		"@eslint/eslintrc": "^3.3.5",
 		"@tailwindcss/postcss": "^4.3.1",
+		"@types/jest": "^30.0.0",
 		"@types/js-yaml": "^4.0.9",
 		"@types/node": "^25.9.3",
 		"@types/pg": "^8.20.0",
@@ -93,10 +95,12 @@
 		"eslint": "^9.39.4",
 		"eslint-config-next": "16.2.9",
 		"eslint-plugin-react-hooks": "^7.1.1",
+		"jest": "^30.4.2",
 		"kysely-codegen": "^0.20.0",
 		"openapi-typescript": "^7.13.0",
 		"shadcn": "^4.11.0",
 		"tailwindcss": "^4.3.1",
+		"ts-jest": "^29.4.11",
 		"typescript": "^6.0.3"
 	},
 	"packageManager": "pnpm@11.8.0+sha512.c1f5e7c4cb241c8f174b743851d82f42b802324afc8b0f116b96adb15aa06664948dde36960a3ba1079ba5b4b29dd0140135b94b5b5f5263592249d68e555f26"
