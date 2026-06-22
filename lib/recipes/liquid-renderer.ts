@@ -1,7 +1,5 @@
 import yaml from "js-yaml";
 import {
-	type Context,
-	type Emitter,
 	Liquid,
 	type Parser,
 	Tag,
@@ -66,10 +64,10 @@ class TemplateTag extends Tag {
 		stream.start();
 	}
 
-	*render(ctx: Context, emitter: Emitter): Generator<unknown> {
-		for (const tpl of this.templates) {
-			yield this.liquid.renderer.renderTemplates([tpl], ctx, emitter);
-		}
+	*render(): Generator<unknown> {
+		// {% template %} only DEFINES a reusable block (registered as a partial
+		// elsewhere) — it must emit nothing at definition time. Emitting here
+		// double-renders the block when a layout also {% render %}s it.
 	}
 }
 
