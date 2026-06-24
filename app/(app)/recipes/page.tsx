@@ -1,6 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
+import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { PageTemplate } from "@/components/common/page-template";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,17 +24,11 @@ const RecipeCard = ({ recipe }: { recipe: CatalogRecipe }) => {
 					aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
 				}}
 			>
-				<picture>
-					<source srcSet={`/api/bitmap/${recipe.slug}.bmp`} type="image/bmp" />
-					<img
-						src={`/api/bitmap/${recipe.slug}.bmp`}
-						alt={`${recipe.name} preview`}
-						width={DEFAULT_IMAGE_WIDTH}
-						height={DEFAULT_IMAGE_HEIGHT}
-						className="absolute inset-0 h-full w-full object-cover"
-						style={{ imageRendering: "pixelated" }}
-					/>
-				</picture>
+				<BitmapPreview
+					path={recipe.slug}
+					alt={`${recipe.name} preview`}
+					className="absolute inset-0"
+				/>
 				<div className="absolute left-2 top-2 flex items-center gap-1">
 					<Badge
 						variant="secondary"

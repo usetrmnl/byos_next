@@ -1,20 +1,24 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { DeviceBitmapImage } from "@/components/common/device-bitmap-image";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { PanelHeader } from "@/components/common/panel-header";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
+import { getOrientedDeviceDimensions } from "@/lib/device/dimensions";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
+	buildDeviceErrorPreviewSrc,
+	buildDevicePreviewSrc,
+	buildScreenPreviewSrc,
+} from "@/lib/render/preview-image";
+import { resolveDeviceProfileFromCatalog } from "@/lib/trmnl/device-profile-client";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -73,23 +77,6 @@ interface DeviceViewProps {
 	trmnlPalettes: TrmnlPalette[];
 }
 
-function PanelHeader({
-	label,
-	right,
-}: {
-	label: string;
-	right?: React.ReactNode;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
-			<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-				{label}
-			</h3>
-			{right}
-		</div>
-	);
-}
-
 function MetaPair({
 	label,
 	children,
@@ -141,39 +128,18 @@ export default function DeviceView({
 		fetchLatestFirmware();
 	}, [device.firmware_version]);
 
-	const isPortrait = device.screen_orientation === "portrait";
-	const deviceWidth = isPortrait
-		? device.screen_height || DEFAULT_IMAGE_HEIGHT
-		: device.screen_width || DEFAULT_IMAGE_WIDTH;
-	const deviceHeight = isPortrait
-		? device.screen_width || DEFAULT_IMAGE_WIDTH
-		: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const selectedModel =
-		trmnlModels.find((model) => model.name === device.model) ??
-		trmnlModels.find((model) => model.name === "og_plus") ??
-		trmnlModels[0];
-	const selectedPalette =
-		trmnlPalettes.find((palette) => palette.id === device.palette_id) ??
-		trmnlPalettes.find(
-			(palette) => palette.id === selectedModel?.palette_ids[0],
-		);
-	const imageExtension = getModelImageExtension(selectedModel);
-	const screenAspectRatio = `${deviceWidth} / ${deviceHeight}`;
-	const profileQuery = new URLSearchParams({
-		width: String(deviceWidth),
-		height: String(deviceHeight),
+	const {
+		width: deviceWidth,
+		height: deviceHeight,
+		isPortrait,
+	} = getOrientedDeviceDimensions(device);
+	const { selectedPalette } = resolveDeviceProfileFromCatalog({
+		modelName: device.model,
+		paletteId: device.palette_id,
+		models: trmnlModels,
+		palettes: trmnlPalettes,
 	});
-	if (selectedModel?.name) {
-		profileQuery.set("model", selectedModel.name);
-	}
-	if (selectedPalette?.id) {
-		profileQuery.set("palette_id", selectedPalette.id);
-	}
-	const errorImageSrc = (message: string) => {
-		const params = new URLSearchParams(profileQuery);
-		params.set("message", message);
-		return `/api/bitmap/error.${imageExtension}?${params}`;
-	};
+	const screenAspectRatio = `${deviceWidth} / ${deviceHeight}`;
 
 	const status: "online" | "offline" =
 		device.status === "online" ? "online" : "offline";
@@ -184,19 +150,13 @@ export default function DeviceView({
 
 	const isPlaylist =
 		device.display_mode === DeviceDisplayMode.PLAYLIST &&
-		device.playlist_id &&
+		!!device.playlist_id &&
 		playlistScreens.length > 0;
-	const isMixup =
-		device.display_mode === DeviceDisplayMode.MIXUP && device.mixup_id;
-	const heroSrc = isPlaylist
-		? playlistScreens[0].screen
-			? `/api/bitmap/${playlistScreens[0].screen}.${imageExtension}?${profileQuery}`
-			: errorImageSrc("Playlist item has no screen")
-		: isMixup
-			? `/api/bitmap/mixup/${device.mixup_id}.${imageExtension}?${profileQuery}`
-			: device.screen
-				? `/api/bitmap/${device.screen}.${imageExtension}?${profileQuery}`
-				: errorImageSrc("Device screen is not configured");
+	const heroSrc = buildDevicePreviewSrc(device, {
+		width: deviceWidth,
+		height: deviceHeight,
+		playlistScreen: playlistScreens[0]?.screen,
+	});
 
 	return (
 		<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
@@ -226,14 +186,7 @@ export default function DeviceView({
 							portrait={isPortrait}
 							screenAspectRatio={screenAspectRatio}
 						>
-							<Image
-								src={heroSrc}
-								alt="Device screen"
-								fill
-								className="absolute inset-0 h-full w-full object-cover"
-								style={{ imageRendering: "pixelated" }}
-								unoptimized
-							/>
+							<DeviceBitmapImage src={heroSrc} alt="Device screen" />
 						</DeviceFrame>
 					</div>
 				</div>
@@ -258,17 +211,23 @@ export default function DeviceView({
 										screenAspectRatio={screenAspectRatio}
 										flat
 									>
-										<Image
+										<DeviceBitmapImage
 											src={
 												screen.screen
-													? `/api/bitmap/${screen.screen}.${imageExtension}?${profileQuery}`
-													: errorImageSrc("Playlist item has no screen")
+													? buildScreenPreviewSrc(
+															screen.screen,
+															device,
+															deviceWidth,
+															deviceHeight,
+														)
+													: buildDeviceErrorPreviewSrc(
+															device,
+															deviceWidth,
+															deviceHeight,
+															"Playlist item has no screen",
+														)
 											}
 											alt={`Frame ${i + 1}`}
-											fill
-											className="absolute inset-0 h-full w-full object-cover"
-											style={{ imageRendering: "pixelated" }}
-											unoptimized
 										/>
 									</DeviceFrame>
 									<div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -453,12 +412,4 @@ export default function DeviceView({
 			</div>
 		</div>
 	);
-}
-
-function getModelImageExtension(model: TrmnlModel | undefined): string {
-	if (!model) return "png";
-	if (model.mime_type === "image/webp") return "webp";
-	if (model.mime_type === "image/bmp") return "bmp";
-	if (model.mime_type === "image/jpeg") return "jpg";
-	return "png";
 }

@@ -4,9 +4,9 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { resolveReactRecipe } from "@/lib/recipes/recipe-renderer";
 import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
 import { getRenderScale } from "@/lib/recipes/render/settings";
+import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import {
 	getTrmnlModelClassName,

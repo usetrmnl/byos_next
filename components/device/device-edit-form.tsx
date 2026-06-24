@@ -1,11 +1,8 @@
 "use client";
 
-import { AlertTriangle, RefreshCw, Search, Trash2 } from "lucide-react";
-import Image from "next/image";
+import { RefreshCw, Search, Trash2 } from "lucide-react";
 import type React from "react";
 import { type ChangeEvent, type ReactNode } from "react";
-import { DeviceFrame } from "@/components/common/device-frame";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
 	Command,
@@ -37,24 +34,24 @@ import {
 	UI_REFRESH_FALLBACK_SECONDS,
 } from "@/lib/device/defaults";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
+import { getFirstPlaylistScreenId } from "@/lib/playlists/playlist-items";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 import { type DeviceSizePreset } from "@/lib/trmnl/device-presets";
-import {
-	DEFAULT_MODEL_NAME,
-	type TrmnlModel,
-	type TrmnlPalette,
-} from "@/lib/trmnl/types";
-import type { Device, Mixup, Playlist } from "@/lib/types";
+import { resolveDeviceProfileFromCatalog } from "@/lib/trmnl/device-profile-client";
+import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
+import type { Device, Mixup, Playlist, PlaylistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatTimezone, timezones } from "@/utils/helpers";
+import { DeviceEditPreview } from "./device-edit-preview";
 
 interface DeviceEditFormProps {
 	editedDevice: Device & { status?: string; type?: string };
 	availableScreens: { id: string; title: string }[];
 	availablePlaylists: Playlist[];
+	playlistItems: PlaylistItem[];
 	availableMixups: Mixup[];
 	trmnlModels: TrmnlModel[];
 	trmnlPalettes: TrmnlPalette[];
@@ -78,21 +75,11 @@ interface DeviceEditFormProps {
 	onCancel: () => void;
 }
 
-function PanelHeader({ label, right }: { label: string; right?: ReactNode }) {
-	return (
-		<div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
-			<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-				{label}
-			</h3>
-			{right}
-		</div>
-	);
-}
-
 export default function DeviceEditForm({
 	editedDevice,
 	availableScreens,
 	availablePlaylists,
+	playlistItems,
 	availableMixups,
 	trmnlModels,
 	trmnlPalettes,
@@ -113,146 +100,33 @@ export default function DeviceEditForm({
 	onSubmit,
 	onCancel: _onCancel,
 }: DeviceEditFormProps) {
-	const isPortrait = editedDevice.screen_orientation === "portrait";
-	const deviceWidth = isPortrait
-		? editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT
-		: editedDevice.screen_width || DEFAULT_IMAGE_WIDTH;
-	const deviceHeight = isPortrait
-		? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH
-		: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const savedModelName = editedDevice.model?.trim() || null;
-	const savedModelMatch =
-		savedModelName != null
-			? trmnlModels.find((model) => model.name === savedModelName)
-			: null;
-	const selectedModel =
-		savedModelName != null
-			? savedModelMatch
-			: (trmnlModels.find((model) => model.name === DEFAULT_MODEL_NAME) ??
-				trmnlModels[0]);
-	const hasUnknownModel = savedModelName != null && !savedModelMatch;
-	const selectedPaletteIds = selectedModel?.palette_ids ?? [];
-	const selectedPalette =
-		trmnlPalettes.find((palette) => palette.id === editedDevice.palette_id) ??
-		trmnlPalettes.find((palette) => palette.id === selectedPaletteIds[0]);
-	const imageExtension = getModelImageExtension(selectedModel ?? undefined);
-	const profileQuery = new URLSearchParams({
-		width: String(deviceWidth),
-		height: String(deviceHeight),
+	const {
+		savedModelName,
+		selectedModel,
+		selectedPalette,
+		selectedPaletteIds,
+		hasUnknownModel,
+	} = resolveDeviceProfileFromCatalog({
+		modelName: editedDevice.model,
+		paletteId: editedDevice.palette_id,
+		models: trmnlModels,
+		palettes: trmnlPalettes,
 	});
-	if (selectedModel?.name) {
-		profileQuery.set("model", selectedModel.name);
-	}
-	if (selectedPalette?.id) {
-		profileQuery.set("palette_id", selectedPalette.id);
-	}
-
-	const isMixup =
-		editedDevice.display_mode === DeviceDisplayMode.MIXUP &&
-		!!editedDevice.mixup_id;
-	const isPlaylist =
-		editedDevice.display_mode === DeviceDisplayMode.PLAYLIST &&
-		!!editedDevice.playlist_id;
-	const isScreenMissing = !editedDevice.screen && !isMixup && !isPlaylist;
-
-	const heroSrc =
-		selectedModel && !hasUnknownModel && !isScreenMissing
-			? isMixup
-				? `/api/bitmap/mixup/${editedDevice.mixup_id}.${imageExtension}?${profileQuery}`
-				: `/api/bitmap/${editedDevice.screen}.${imageExtension}?${profileQuery}`
-			: null;
 
 	return (
 		<form onSubmit={onSubmit}>
 			<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
-				{/* Hero preview — left column, sticky on lg */}
-				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card lg:sticky lg:top-4 lg:self-start">
-					{hasUnknownModel && (
-						<Alert className="rounded-none border-x-0 border-t-0 bg-muted/40 py-3 text-xs">
-							<AlertTriangle />
-							<AlertTitle>Unknown model</AlertTitle>
-							<AlertDescription>
-								Saved model <code className="font-mono">{savedModelName}</code>{" "}
-								isn't in the local TRMNL registry. Pick a supported model in the
-								Display tab to restore previews and device rendering.
-							</AlertDescription>
-						</Alert>
+				<DeviceEditPreview
+					editedDevice={editedDevice}
+					selectedModel={selectedModel}
+					selectedPalette={selectedPalette}
+					hasUnknownModel={hasUnknownModel}
+					savedModelName={savedModelName}
+					playlistScreen={getFirstPlaylistScreenId(
+						playlistItems,
+						editedDevice.playlist_id,
 					)}
-					{isScreenMissing && (
-						<Alert className="rounded-none border-x-0 border-t-0 bg-muted/40 py-3 text-xs">
-							<AlertTriangle />
-							<AlertTitle>Screen not configured</AlertTitle>
-							<AlertDescription>
-								Select a screen in the Content tab to restore previews and
-								device rendering.
-							</AlertDescription>
-						</Alert>
-					)}
-					<PanelHeader
-						label="Live preview"
-						right={
-							<span className="text-[11px] tabular-nums text-muted-foreground">
-								{deviceWidth}×{deviceHeight}px ·{" "}
-								<span className="capitalize">
-									{isPortrait ? "portrait" : "landscape"}
-								</span>
-								{selectedPalette ? ` · ${selectedPalette.name}` : ""}
-							</span>
-						}
-					/>
-					<div className="flex flex-1 items-center justify-center bg-[radial-gradient(circle_at_50%_0%,theme(colors.muted/40),transparent_70%)] p-6">
-						{isPlaylist ? (
-							<div className="text-center text-sm text-muted-foreground">
-								Playlist mode — preview shows on the device when saved.
-							</div>
-						) : !heroSrc ? (
-							<div className="max-w-sm text-center text-sm text-muted-foreground">
-								Preview unavailable until the display configuration is complete.
-							</div>
-						) : (
-							<div
-								className={cn(
-									"w-full",
-									isPortrait ? "max-w-[260px]" : "max-w-[520px]",
-								)}
-							>
-								<DeviceFrame
-									size="lg"
-									portrait={isPortrait}
-									screenAspectRatio={`${deviceWidth} / ${deviceHeight}`}
-								>
-									<Image
-										src={heroSrc}
-										alt="Device screen preview"
-										fill
-										className="absolute inset-0 h-full w-full object-cover"
-										style={{ imageRendering: "pixelated" }}
-										unoptimized
-									/>
-								</DeviceFrame>
-							</div>
-						)}
-					</div>
-					<div className="border-t bg-muted/20 px-4 py-3 text-xs">
-						<div className="grid gap-1.5 sm:grid-cols-3">
-							<MetaRow label="Mode">
-								<span className="capitalize">
-									{editedDevice.display_mode.toLowerCase()}
-								</span>
-							</MetaRow>
-							<MetaRow label="Timezone">
-								{editedDevice?.timezone
-									? formatTimezone(editedDevice.timezone)
-									: "—"}
-							</MetaRow>
-							<MetaRow label="Refresh">
-								{editedDevice?.refresh_schedule?.default_refresh_rate ||
-									UI_REFRESH_FALLBACK_SECONDS}
-								s
-							</MetaRow>
-						</div>
-					</div>
-				</section>
+				/>
 
 				{/* Form — right column with tabs */}
 				<section className="overflow-hidden rounded-2xl border bg-card">
@@ -780,14 +654,6 @@ export default function DeviceEditForm({
 	);
 }
 
-function getModelImageExtension(model: TrmnlModel | undefined): string {
-	if (!model) return "png";
-	if (model.mime_type === "image/webp") return "webp";
-	if (model.mime_type === "image/bmp") return "bmp";
-	if (model.mime_type === "image/jpeg") return "jpg";
-	return "png";
-}
-
 function Field({
 	label,
 	htmlFor,
@@ -811,17 +677,6 @@ function Field({
 				<p className="text-[11px] text-muted-foreground">{hint}</p>
 			)}
 			{error && <p className="text-[11px] text-destructive">{error}</p>}
-		</div>
-	);
-}
-
-function MetaRow({ label, children }: { label: string; children: ReactNode }) {
-	return (
-		<div className="flex flex-col gap-0.5">
-			<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-				{label}
-			</span>
-			<span className="truncate text-sm font-medium">{children}</span>
 		</div>
 	);
 }

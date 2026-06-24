@@ -1,23 +1,26 @@
 import type { NextRequest } from "next/server";
 import sharp from "sharp";
 import { getCurrentUserId } from "@/lib/auth/get-user";
-import { db } from "@/lib/database/db";
-import { withExplicitUserScope } from "@/lib/database/scoped-db";
+import {
+	withDeviceApiKey,
+	withExplicitUserScope,
+} from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
-	logger,
-	renderRecipeToImage,
-} from "@/lib/recipes/recipe-renderer";
+} from "@/lib/recipes/constants";
+import { logger } from "@/lib/recipes/logger";
+import { renderRecipeToImage } from "@/lib/recipes/recipe-renderer";
 import { renderDeviceImage } from "@/lib/render/device-image";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
+import { imageResponse } from "@/lib/render/image-response";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { getBmpGrayLevelsForPalette } from "@/lib/trmnl/palette-gray-levels";
-import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+import { renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
 	req: NextRequest,
@@ -62,11 +65,13 @@ export async function GET(
 		} | null = null;
 
 		if (accessToken) {
-			const device = await db
-				.selectFrom("devices")
-				.select(["user_id", "mixup_id", "model", "palette_id"])
-				.where("api_key", "=", accessToken)
-				.executeTakeFirst();
+			const device = await withDeviceApiKey(accessToken, (scopedDb) =>
+				scopedDb
+					.selectFrom("devices")
+					.select(["user_id", "mixup_id", "model", "palette_id"])
+					.where("api_key", "=", accessToken)
+					.executeTakeFirst(),
+			);
 
 			if (!device || device.mixup_id !== mixupId || !device.user_id) {
 				return new Response("Mixup not found", { status: 404 });
@@ -159,7 +164,6 @@ export async function GET(
 			profile.model.mime_type === "image/bmp"
 				? {
 						buffer: await renderBmp(compositedPng, {
-							ditheringMethod: DitheringMethod.ATKINSON,
 							width,
 							height,
 							levels: getBmpGrayLevelsForPalette(profile.palette),
@@ -178,22 +182,6 @@ export async function GET(
 		});
 		return imageResponse(image, 500);
 	}
-}
-
-function imageResponse(
-	image: { buffer: Buffer; mime_type: string; size_limit_exceeded?: boolean },
-	status = 200,
-): Response {
-	return new Response(new Uint8Array(image.buffer), {
-		status,
-		headers: {
-			"Content-Type": image.mime_type,
-			"Content-Length": image.buffer.length.toString(),
-			...(image.size_limit_exceeded
-				? { "X-TRMNL-Image-Size-Limit-Exceeded": "true" }
-				: {}),
-		},
-	});
 }
 
 /**

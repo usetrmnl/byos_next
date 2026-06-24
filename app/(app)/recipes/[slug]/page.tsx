@@ -17,22 +17,23 @@ import { Badge } from "@/components/ui/badge";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { listAllRecipes } from "@/lib/recipes/catalog";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import LiquidPreview from "@/lib/recipes/liquid-preview";
 import {
 	customFieldsToParamDefinitions,
 	fetchLiquidRecipeSettings,
 	renderLiquidRecipe,
 } from "@/lib/recipes/liquid-renderer";
+import { logger } from "@/lib/recipes/logger";
 import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-	getRendererType,
 	isBuildPhase,
-	logger,
 	renderRecipeToImage,
-	resolveReactRecipe,
 } from "@/lib/recipes/recipe-renderer";
-import { rasterize } from "@/lib/recipes/render/rasterize";
+import { getRendererType, rasterize } from "@/lib/recipes/render/rasterize";
+import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 

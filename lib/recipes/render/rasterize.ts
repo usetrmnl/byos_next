@@ -10,7 +10,7 @@ import {
 	getTrmnlModelStyle,
 } from "@/lib/trmnl/model-css";
 import type { TrmnlModel } from "@/lib/trmnl/types";
-import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
+import { renderBmp } from "@/utils/render-bmp";
 import type { RecipeRenderSettings } from "../types";
 
 /**
@@ -216,12 +216,11 @@ export async function rasterize(
 				},
 			);
 		} else {
-			console.error(`[rasterize:${slug}] No html or element provided`);
-			return results;
+			throw new Error(`[rasterize:${slug}] No render input provided`);
 		}
 	} catch (error) {
 		console.error(`[rasterize:${slug}] Error generating PNG:`, error);
-		return results;
+		throw error;
 	}
 
 	if (needsPng) {
@@ -237,7 +236,6 @@ export async function rasterize(
 	if (needsBitmap) {
 		try {
 			results.bitmap = await renderBmp(pngBuffer, {
-				ditheringMethod: DitheringMethod.FLOYD_STEINBERG,
 				width: imageWidth,
 				height: imageHeight,
 				applyEdgeSnap: renderSettings?.applyEdgeSnap ?? true,
@@ -245,6 +243,7 @@ export async function rasterize(
 			});
 		} catch (error) {
 			console.error(`[rasterize:${slug}] Error generating bitmap:`, error);
+			throw error;
 		}
 	}
 

@@ -1,11 +1,18 @@
 import type { NextRequest } from "next/server";
 import { cache } from "react";
-import { db } from "@/lib/database/db";
+import { withDeviceApiKey } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
+import {
+	parseRequestHeaders,
+	type RequestHeaders,
+	resolveUserIdFromApiKey,
+} from "@/lib/device/request-headers";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
-	logger,
+} from "@/lib/recipes/constants";
+import { logger } from "@/lib/recipes/logger";
+import {
 	renderRecipeForDevice,
 	renderRecipeToImage,
 } from "@/lib/recipes/recipe-renderer";
@@ -15,16 +22,12 @@ import {
 	parseImageRequest,
 	rejectOversizedImageArea,
 } from "@/lib/render/image-request";
+import { imageResponse } from "@/lib/render/image-response";
 import {
 	type DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
 import { getBmpGrayLevelsForPalette } from "@/lib/trmnl/palette-gray-levels";
-import {
-	parseRequestHeaders,
-	type RequestHeaders,
-	resolveUserIdFromApiKey,
-} from "../../display/utils";
 
 export async function GET(
 	req: NextRequest,
@@ -66,9 +69,7 @@ export async function GET(
 				height: imageHeight,
 				profile,
 			});
-			return new Response(new Uint8Array(image.buffer), {
-				headers: getImageResponseHeaders(image),
-			});
+			return imageResponse(image);
 		}
 
 		// Profile + extension are both pinned by the URL (model and palette_id
@@ -95,19 +96,14 @@ export async function GET(
 					height: imageHeight,
 					profile,
 				});
-				return new Response(new Uint8Array(errorImage.buffer), {
-					status: 500,
-					headers: getImageResponseHeaders(errorImage),
-				});
+				return imageResponse(errorImage, 500);
 			}
 
-			return new Response(new Uint8Array(image.buffer), {
-				headers: getImageResponseHeaders(image),
-			});
+			return imageResponse(image);
 		}
 
-		const validWidth = imageRequest.width ?? DEFAULT_IMAGE_WIDTH;
-		const validHeight = imageRequest.height ?? DEFAULT_IMAGE_HEIGHT;
+		const validWidth = imageRequest.width ?? profile.model.width;
+		const validHeight = imageRequest.height ?? profile.model.height;
 		const oversized = rejectOversizedImageArea(validWidth, validHeight);
 		if (oversized) return oversized;
 		const recipeBuffer = await renderRecipeBitmap(
@@ -131,30 +127,14 @@ export async function GET(
 				height: validHeight,
 				profile,
 			});
-			return new Response(new Uint8Array(errorImage.buffer), {
-				status: 500,
-				headers: getImageResponseHeaders(errorImage),
-			});
+			return imageResponse(errorImage, 500);
 		}
 
-		return new Response(new Uint8Array(recipeBuffer), {
-			headers: {
-				"Content-Type": "image/bmp",
-				"Content-Length": recipeBuffer.length.toString(),
-			},
-		});
+		return imageResponse({ buffer: recipeBuffer, mime_type: "image/bmp" });
 	} catch (error) {
 		logger.error("Error generating image:", error);
 		const { searchParams } = new URL(req.url);
 		const imageRequest = parseImageRequest(searchParams);
-		const width =
-			imageRequest instanceof Response
-				? DEFAULT_IMAGE_WIDTH
-				: (imageRequest.width ?? DEFAULT_IMAGE_WIDTH);
-		const height =
-			imageRequest instanceof Response
-				? DEFAULT_IMAGE_HEIGHT
-				: (imageRequest.height ?? DEFAULT_IMAGE_HEIGHT);
 		const profile =
 			imageRequest instanceof Response
 				? null
@@ -162,16 +142,23 @@ export async function GET(
 						modelName: imageRequest.modelName,
 						paletteId: imageRequest.paletteId,
 					});
+		const width =
+			imageRequest instanceof Response
+				? DEFAULT_IMAGE_WIDTH
+				: (imageRequest.width ?? profile?.model.width ?? DEFAULT_IMAGE_WIDTH);
+		const height =
+			imageRequest instanceof Response
+				? DEFAULT_IMAGE_HEIGHT
+				: (imageRequest.height ??
+					profile?.model.height ??
+					DEFAULT_IMAGE_HEIGHT);
 		const errorImage = await renderErrorImage({
 			message: error instanceof Error ? error.message : "Image render failed",
 			width,
 			height,
 			profile,
 		});
-		return new Response(new Uint8Array(errorImage.buffer), {
-			status: 500,
-			headers: getImageResponseHeaders(errorImage),
-		});
+		return imageResponse(errorImage, 500);
 	}
 }
 
@@ -196,32 +183,20 @@ async function resolveDeviceProfileForRequest(
 	if (headers.apiKey && !query.modelName) {
 		const { ready } = await checkDbConnection();
 		if (ready) {
-			const device = await db
-				.selectFrom("devices")
-				.select(["model", "palette_id"])
-				.where("api_key", "=", headers.apiKey)
-				.executeTakeFirst();
+			const device = await withDeviceApiKey(headers.apiKey, (scopedDb) =>
+				scopedDb
+					.selectFrom("devices")
+					.select(["model", "palette_id"])
+					.where("api_key", "=", headers.apiKey)
+					.executeTakeFirst(),
+			);
 
 			modelName = device?.model ?? modelName;
-			paletteId = device?.palette_id ?? null;
+			paletteId = query.paletteId ?? device?.palette_id ?? null;
 		}
 	}
 
 	return getDeviceProfile(modelName, paletteId);
-}
-
-function getImageResponseHeaders(image: {
-	buffer: Buffer;
-	mime_type: string;
-	size_limit_exceeded?: boolean;
-}) {
-	return {
-		"Content-Type": image.mime_type,
-		"Content-Length": image.buffer.length.toString(),
-		...(image.size_limit_exceeded
-			? { "X-TRMNL-Image-Size-Limit-Exceeded": "true" }
-			: {}),
-	};
 }
 
 const renderRecipeBitmap = cache(

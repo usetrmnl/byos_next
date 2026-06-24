@@ -5,13 +5,14 @@ import { DashboardSkeleton } from "@/components/dashboard/dashboard-skeleton";
 import { DatabaseSetupPanel } from "@/components/setup/database-setup-panel";
 import { Badge } from "@/components/ui/badge";
 import { getInitData } from "@/lib/getInitData";
+import { buildFirstScreenByPlaylistId } from "@/lib/playlists/playlist-items";
 import DashboardClientPage from "./client-page";
 
 // Dashboard data component that uses the cached data
 const DashboardData = async () => {
 	// Get data from the centralized getInitData
 	// Since this is cached, it won't cause duplicate requests
-	const { devices, systemLogs, dbStatus } = await getInitData();
+	const { devices, systemLogs, playlistItems, dbStatus } = await getInitData();
 	if (!dbStatus.ready) {
 		return (
 			<>
@@ -21,7 +22,13 @@ const DashboardData = async () => {
 		);
 	}
 
-	return <DashboardClientPage devices={devices} systemLogs={systemLogs} />;
+	return (
+		<DashboardClientPage
+			devices={devices}
+			systemLogs={systemLogs}
+			firstScreenByPlaylistId={buildFirstScreenByPlaylistId(playlistItems)}
+		/>
+	);
 };
 
 export default async function Dashboard() {

@@ -306,11 +306,11 @@ export async function renderDeviceImage({
 }: RenderDeviceImageInput): Promise<RenderDeviceImageResult> {
 	const transformed = await transformToDeviceCanvas(png, profile);
 	const palette = profile.palette ?? { id: "", name: "" };
+	const paletteColors = resolvePaletteColors(palette);
 	const paletteGrays =
-		typeof palette.grays === "number" && palette.grays > 1
+		!paletteColors && typeof palette.grays === "number" && palette.grays > 1
 			? palette.grays
 			: null;
-	const paletteColors = paletteGrays ? null : resolvePaletteColors(palette);
 
 	// Three quantization paths:
 	//   1. Grayscale palette (BW, gray-4, gray-16) — posterize without dither.

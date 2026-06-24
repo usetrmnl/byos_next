@@ -1,6 +1,7 @@
 "use client";
 
 import { Edit3, LayoutGrid, Plus, Trash2 } from "lucide-react";
+import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { FormattedDate } from "@/components/common/formatted-date";
 import { Button } from "@/components/ui/button";
 import { getLayoutById } from "@/lib/mixup/constants";
@@ -86,20 +87,11 @@ export function MixupList({
 								aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
 							}}
 						>
-							<picture>
-								<source
-									srcSet={`/api/bitmap/mixup/${mixup.id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-									type="image/bmp"
-								/>
-								<img
-									src={`/api/bitmap/mixup/${mixup.id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-									alt={`${mixup.name} preview`}
-									width={DEFAULT_IMAGE_WIDTH}
-									height={DEFAULT_IMAGE_HEIGHT}
-									className="absolute inset-0 h-full w-full object-cover"
-									style={{ imageRendering: "pixelated" }}
-								/>
-							</picture>
+							<BitmapPreview
+								path={`mixup/${mixup.id}`}
+								alt={`${mixup.name} preview`}
+								className="absolute inset-0"
+							/>
 						</div>
 
 						<div className="flex flex-1 flex-col gap-2 p-4">

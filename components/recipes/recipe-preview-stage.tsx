@@ -14,6 +14,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { buildScreenPreviewSrc } from "@/lib/render/preview-image";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import { cn } from "@/lib/utils";
 
@@ -24,7 +25,6 @@ type PreviewModel = {
 	label: string;
 	width: number;
 	height: number;
-	mime_type: string;
 	palette_ids: string[];
 };
 
@@ -32,16 +32,6 @@ type PreviewPalette = {
 	id: string;
 	name: string;
 };
-
-/** Aligns with `getImageFilenameExtension` in `lib/render/device-image.ts` (client-safe). */
-function modelImagePathExtension(mimeType: string): string {
-	const map: Record<string, string> = {
-		"image/bmp": "bmp",
-		"image/png": "png",
-		"image/webp": "webp",
-	};
-	return map[mimeType] ?? mimeType.split("/").pop() ?? "png";
-}
 
 function chooseDefaultPaletteId(model: PreviewModel | null): string {
 	if (!model) return "";
@@ -181,15 +171,12 @@ export function RecipePreviewStage({
 		selectedModel != null &&
 		simWidth != null &&
 		simHeight != null
-			? (() => {
-					const ext = modelImagePathExtension(selectedModel.mime_type);
-					const params = new URLSearchParams();
-					params.set("model", selectedModel.name);
-					if (selectedPaletteId) params.set("palette_id", selectedPaletteId);
-					params.set("width", String(simWidth));
-					params.set("height", String(simHeight));
-					return `/api/bitmap/${slug}.${ext}?${params.toString()}`;
-				})()
+			? buildScreenPreviewSrc(
+					slug,
+					{ model: selectedModel.name, palette_id: selectedPaletteId || null },
+					simWidth,
+					simHeight,
+				)
 			: null;
 
 	const reactPreviewSrc =

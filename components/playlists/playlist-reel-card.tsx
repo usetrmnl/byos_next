@@ -1,6 +1,7 @@
 "use client";
 
 import { Edit3, Film, Trash2 } from "lucide-react";
+import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { FormattedDate } from "@/components/common/formatted-date";
 import { Button } from "@/components/ui/button";
 import {
@@ -80,20 +81,10 @@ export function PlaylistReelCard({
 									aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
 								}}
 							>
-								<picture>
-									<source
-										srcSet={`/api/bitmap/${item.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-										type="image/bmp"
-									/>
-									<img
-										src={`/api/bitmap/${item.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-										alt={getRecipeName(item.screen_id)}
-										width={DEFAULT_IMAGE_WIDTH}
-										height={DEFAULT_IMAGE_HEIGHT}
-										className="h-full w-full object-cover"
-										style={{ imageRendering: "pixelated" }}
-									/>
-								</picture>
+								<BitmapPreview
+									path={item.screen_id}
+									alt={getRecipeName(item.screen_id)}
+								/>
 								<div className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white tabular-nums">
 									{i + 1}·{item.duration}s
 								</div>

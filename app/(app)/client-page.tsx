@@ -1,8 +1,8 @@
 "use client";
 
 import { AlertTriangle, ArrowRight } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
+import { DeviceBitmapImage } from "@/components/common/device-bitmap-image";
 import { DeviceFrame } from "@/components/common/device-frame";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
@@ -15,11 +15,8 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
-import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
+import { getOrientedDeviceDimensions } from "@/lib/device/dimensions";
+import { buildDevicePreviewSrc } from "@/lib/render/preview-image";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
@@ -27,11 +24,13 @@ import { formatDate, getDeviceStatus } from "@/utils/helpers";
 interface DashboardClientPageProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
+	firstScreenByPlaylistId: Record<string, string>;
 }
 
 export default function DashboardClientPage({
 	devices,
 	systemLogs,
+	firstScreenByPlaylistId,
 }: DashboardClientPageProps) {
 	const processedDevices = devices.map((device) => ({
 		...device,
@@ -43,24 +42,26 @@ export default function DashboardClientPage({
 
 	const lastUpdatedDevice =
 		processedDevices.length > 0
-			? processedDevices.sort(
+			? [...processedDevices].sort(
 					(a, b) =>
 						new Date(b.last_update_time || "").getTime() -
 						new Date(a.last_update_time || "").getTime(),
 				)[0]
 			: null;
 
-	const isPortrait = lastUpdatedDevice?.screen_orientation === "portrait";
-	// Orientation-adjusted device resolution, used for BOTH the rendered image
-	// and the frame aspect ratio so the preview isn't cropped by object-cover.
-	const previewWidth = isPortrait
-		? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
-		: lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
-	const previewHeight = isPortrait
-		? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
-		: lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const {
+		width: previewWidth,
+		height: previewHeight,
+		isPortrait,
+	} = getOrientedDeviceDimensions(lastUpdatedDevice);
 	const latestScreenSrc = lastUpdatedDevice
-		? buildLatestScreenSrc(lastUpdatedDevice, previewWidth, previewHeight)
+		? buildDevicePreviewSrc(lastUpdatedDevice, {
+				width: previewWidth,
+				height: previewHeight,
+				playlistScreen: lastUpdatedDevice.playlist_id
+					? firstScreenByPlaylistId[lastUpdatedDevice.playlist_id]
+					: null,
+			})
 		: "";
 
 	return (
@@ -103,13 +104,9 @@ export default function DashboardClientPage({
 									portrait={isPortrait}
 									screenAspectRatio={`${previewWidth} / ${previewHeight}`}
 								>
-									<Image
+									<DeviceBitmapImage
 										src={latestScreenSrc}
 										alt={`${lastUpdatedDevice.name} screen`}
-										fill
-										className="absolute inset-0 h-full w-full object-cover"
-										style={{ imageRendering: "pixelated" }}
-										unoptimized
 									/>
 								</DeviceFrame>
 							</div>
@@ -246,29 +243,6 @@ export default function DashboardClientPage({
 			</section>
 		</div>
 	);
-}
-
-function buildLatestScreenSrc(
-	device: Device,
-	width: number,
-	height: number,
-): string {
-	const params = new URLSearchParams({
-		width: String(width),
-		height: String(height),
-		model: device.model?.trim() || DEFAULT_MODEL_NAME,
-	});
-	const paletteId = device.palette_id?.trim();
-	if (paletteId) {
-		params.set("palette_id", paletteId);
-	}
-
-	if (!device.screen) {
-		params.set("message", "Device screen is not configured");
-		return `/api/bitmap/error.png?${params.toString()}`;
-	}
-
-	return `/api/bitmap/${device.screen}.png?${params.toString()}`;
 }
 
 function Stat({

@@ -2,6 +2,7 @@
 
 import { ArrowLeft, LayoutGrid, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { DeviceFrame } from "@/components/common/device-frame";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -269,18 +270,13 @@ export function MixupBuilder({
 												aria-pressed={isActive}
 											>
 												{recipe ? (
-													<picture>
-														<source
-															srcSet={`/api/bitmap/${recipe.slug}.bmp?width=${slot.width}&height=${slot.height}`}
-															type="image/bmp"
-														/>
-														<img
-															src={`/api/bitmap/${recipe.slug}.bmp`}
-															alt={`${recipe.title} preview`}
-															className="absolute inset-0 h-full w-full object-cover"
-															style={{ imageRendering: "pixelated" }}
-														/>
-													</picture>
+													<BitmapPreview
+														path={recipe.slug}
+														alt={`${recipe.title} preview`}
+														width={slot.width}
+														height={slot.height}
+														className="absolute inset-0"
+													/>
 												) : (
 													<div className="absolute inset-0 flex items-center justify-center bg-muted/40 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 														Empty

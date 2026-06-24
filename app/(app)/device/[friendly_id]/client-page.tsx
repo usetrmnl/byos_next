@@ -13,6 +13,10 @@ import DeviceLogsContainer from "@/components/device-logs/device-logs-container"
 import { Button } from "@/components/ui/button";
 import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
 import {
+	getPlaylistScreens,
+	type PlaylistScreen,
+} from "@/lib/playlists/playlist-items";
+import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
@@ -57,9 +61,7 @@ export default function DeviceClientPage({
 	const [editedDevice, setEditedDevice] = useState<
 		Device & { status?: string; type?: string }
 	>(JSON.parse(JSON.stringify(initialDevice)));
-	const [playlistScreens, setPlaylistScreens] = useState<
-		{ screen: string; duration: number }[]
-	>([]);
+	const [playlistScreens, setPlaylistScreens] = useState<PlaylistScreen[]>([]);
 	const [isSaving, setIsSaving] = useState(false);
 
 	// State for validation error messages
@@ -405,15 +407,9 @@ export default function DeviceClientPage({
 	};
 
 	useEffect(() => {
-		if (editedDevice.playlist_id) {
-			const playlistScreens = playlistItems
-				.filter((item) => item.playlist_id === editedDevice.playlist_id)
-				.map((item) => ({
-					screen: item.screen_id,
-					duration: item.duration,
-				}));
-			setPlaylistScreens(playlistScreens);
-		}
+		setPlaylistScreens(
+			getPlaylistScreens(playlistItems, editedDevice.playlist_id),
+		);
 	}, [editedDevice.playlist_id, playlistItems]);
 
 	return (
@@ -482,6 +478,7 @@ export default function DeviceClientPage({
 					editedDevice={editedDevice}
 					availableScreens={availableScreens}
 					availablePlaylists={availablePlaylists}
+					playlistItems={playlistItems}
 					availableMixups={availableMixups}
 					trmnlModels={trmnlModels}
 					trmnlPalettes={trmnlPalettes}
