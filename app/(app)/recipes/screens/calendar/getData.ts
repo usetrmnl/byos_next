@@ -8,6 +8,7 @@ export type CalendarParams = {
 	icsUrl?: string;
 	dayStartHour?: number | string;
 	dayEndHour?: number | string;
+	daysToShow?: number | string;
 	timezone?: string;
 };
 
@@ -21,6 +22,7 @@ export interface AllDayItem {
 	dayIndex: number;
 	span: number;
 	title: string;
+	calendarIndex: number;
 }
 
 export interface TimedItem {
@@ -31,6 +33,7 @@ export interface TimedItem {
 	lanes: number;
 	title: string;
 	timeLabel: string;
+	calendarIndex: number;
 }
 
 export interface CalendarData {
@@ -38,6 +41,9 @@ export interface CalendarData {
 	tzLabel: string;
 	dayStartHour: number;
 	dayEndHour: number;
+	daysToShow: number;
+	nowMinutes: number;
+	calendarCount: number;
 	hours: number[];
 	days: DayHeader[];
 	allDayItems: AllDayItem[];
@@ -98,6 +104,14 @@ function toHour(value: unknown, fallback: number): number {
 	const n = typeof value === "number" ? value : Number(value);
 	if (!Number.isFinite(n)) return fallback;
 	return Math.min(23, Math.max(0, Math.round(n)));
+}
+
+// 0 means "auto" (let the component fold to 3 or 7 based on width); 1-7 pins
+// an explicit day count.
+function toDayCount(value: unknown): number {
+	const n = typeof value === "number" ? value : Number(value);
+	if (!Number.isFinite(n)) return 0;
+	return Math.min(7, Math.max(0, Math.round(n)));
 }
 
 function formatRange(startMin: number, endMin: number): string {
@@ -327,6 +341,7 @@ export default async function getData(
 		requestedStart + 1,
 		toHour(params?.dayEndHour, 22),
 	);
+	const daysToShow = toDayCount(params?.daysToShow);
 	const now = new Date();
 	const today = tzParts(now, tz);
 	const anchor = Date.UTC(today.year, today.month - 1, today.day, 12);
@@ -358,6 +373,9 @@ export default async function getData(
 				.find((part) => part.type === "timeZoneName")?.value || "",
 		dayStartHour: requestedStart,
 		dayEndHour: requestedEnd,
+		daysToShow,
+		nowMinutes: today.minutes,
+		calendarCount: 0,
 		hours: hourRange(requestedStart, requestedEnd),
 		days,
 		allDayItems: [],
@@ -388,7 +406,8 @@ export default async function getData(
 	const timedItems: TimedItem[] = [];
 
 	const texts = await Promise.allSettled(urls.map(fetchIcs));
-	for (const result of texts) {
+	for (let calendarIndex = 0; calendarIndex < texts.length; calendarIndex++) {
+		const result = texts[calendarIndex];
 		if (result.status !== "fulfilled" || !result.value) continue;
 
 		let parsed: { events: unknown[]; occurrences: unknown[] };
@@ -418,7 +437,12 @@ export default async function getData(
 				const from = Math.max(0, startDay);
 				const to = Math.min(6, endDay);
 				if (to >= from) {
-					allDayItems.push({ dayIndex: from, span: to - from + 1, title });
+					allDayItems.push({
+						dayIndex: from,
+						span: to - from + 1,
+						title,
+						calendarIndex,
+					});
 				}
 				continue;
 			}
@@ -441,6 +465,7 @@ export default async function getData(
 					lanes: 1,
 					title,
 					timeLabel: formatRange(segmentStart, segmentEnd),
+					calendarIndex,
 				});
 			}
 		}
@@ -470,5 +495,6 @@ export default async function getData(
 		hours: hourRange(dayStartHour, dayEndHour),
 		allDayItems,
 		timedItems,
+		calendarCount: urls.length,
 	};
 }

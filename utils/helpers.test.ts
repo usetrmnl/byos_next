@@ -1,4 +1,10 @@
 /// <reference types="jest" />
+import { resolveCalendarDayCount } from "@/app/(app)/recipes/screens/calendar/day-count";
+import {
+	CALENDAR_EVENT_SHADES,
+	CURRENT_MEETING_SHADE,
+	getEventAppearance,
+} from "@/app/(app)/recipes/screens/calendar/event-appearance";
 import { parseDeviceLogData } from "@/lib/device/log-display";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import type { Device, Log } from "@/lib/types";
@@ -279,6 +285,138 @@ describe("parseDeviceLogData", () => {
 		);
 
 		expect(entry.message).toBe('{"event":"download","result":"ok"}');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// resolveCalendarDayCount
+// ---------------------------------------------------------------------------
+
+describe("resolveCalendarDayCount", () => {
+	it("shows the full week on wide screens in auto mode", () => {
+		expect(
+			resolveCalendarDayCount({ logicalWidth: 1040, availableDays: 7 }),
+		).toBe(7);
+	});
+
+	it("folds to 3 days on narrow screens in auto mode", () => {
+		expect(
+			resolveCalendarDayCount({ logicalWidth: 520, availableDays: 7 }),
+		).toBe(3);
+	});
+
+	it("treats the 640px boundary as wide", () => {
+		expect(
+			resolveCalendarDayCount({ logicalWidth: 640, availableDays: 7 }),
+		).toBe(7);
+		expect(
+			resolveCalendarDayCount({ logicalWidth: 639, availableDays: 7 }),
+		).toBe(3);
+	});
+
+	it("lets an explicit daysToShow override the wide default", () => {
+		expect(
+			resolveCalendarDayCount({
+				logicalWidth: 1040,
+				availableDays: 7,
+				daysToShow: 5,
+			}),
+		).toBe(5);
+	});
+
+	it("lets an explicit daysToShow override the narrow fold", () => {
+		expect(
+			resolveCalendarDayCount({
+				logicalWidth: 400,
+				availableDays: 7,
+				daysToShow: 7,
+			}),
+		).toBe(7);
+	});
+
+	it("clamps the override to the days available and a floor of 1", () => {
+		expect(
+			resolveCalendarDayCount({
+				logicalWidth: 1040,
+				availableDays: 7,
+				daysToShow: 99,
+			}),
+		).toBe(7);
+		expect(
+			resolveCalendarDayCount({
+				logicalWidth: 1040,
+				availableDays: 7,
+				daysToShow: 0,
+			}),
+		).toBe(7);
+	});
+
+	it("falls back to a 7-day week when no days are available yet", () => {
+		expect(
+			resolveCalendarDayCount({ logicalWidth: 1040, availableDays: 0 }),
+		).toBe(7);
+		expect(
+			resolveCalendarDayCount({ logicalWidth: 400, availableDays: 0 }),
+		).toBe(3);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// getEventAppearance
+// ---------------------------------------------------------------------------
+
+describe("getEventAppearance", () => {
+	it("uses solid black with a single calendar", () => {
+		expect(getEventAppearance({ calendarIndex: 0, calendarCount: 1 })).toEqual({
+			background: "#000000",
+			text: "#ffffff",
+		});
+	});
+
+	it("ignores the calendar index when only one calendar exists", () => {
+		expect(getEventAppearance({ calendarIndex: 3, calendarCount: 1 })).toEqual({
+			background: "#000000",
+			text: "#ffffff",
+		});
+	});
+
+	it("assigns distinct shades when multiple calendars exist", () => {
+		const first = getEventAppearance({ calendarIndex: 0, calendarCount: 3 });
+		const second = getEventAppearance({ calendarIndex: 1, calendarCount: 3 });
+		const third = getEventAppearance({ calendarIndex: 2, calendarCount: 3 });
+		expect(first.background).toBe(CALENDAR_EVENT_SHADES[0]);
+		expect(second.background).toBe(CALENDAR_EVENT_SHADES[1]);
+		expect(third.background).toBe(CALENDAR_EVENT_SHADES[2]);
+		expect(new Set([first, second, third].map((a) => a.background)).size).toBe(
+			3,
+		);
+	});
+
+	it("wraps the shade palette for many calendars", () => {
+		const wrapped = getEventAppearance({
+			calendarIndex: CALENDAR_EVENT_SHADES.length,
+			calendarCount: CALENDAR_EVENT_SHADES.length + 1,
+		});
+		expect(wrapped.background).toBe(CALENDAR_EVENT_SHADES[0]);
+	});
+
+	it("paints the in-progress meeting gray regardless of calendar", () => {
+		const current = getEventAppearance({
+			calendarIndex: 1,
+			calendarCount: 3,
+			isCurrent: true,
+		});
+		expect(current.background).toBe(CURRENT_MEETING_SHADE);
+	});
+
+	it("derives readable text color from background luminance", () => {
+		// Dark fill -> white text; light fill -> black text.
+		expect(
+			getEventAppearance({ calendarIndex: 0, calendarCount: 1 }).text,
+		).toBe("#ffffff");
+		expect(getEventAppearance({ calendarCount: 1, isCurrent: true }).text).toBe(
+			"#000000",
+		);
 	});
 });
 
