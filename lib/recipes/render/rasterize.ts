@@ -24,6 +24,8 @@ export type RasterizeOptions = {
 	slug: string;
 	imageWidth: number;
 	imageHeight: number;
+	layoutWidth?: number;
+	layoutHeight?: number;
 	formats?: RasterizeFormat[];
 	grayscale?: number;
 	renderSettings?: RecipeRenderSettings | null;
@@ -91,25 +93,40 @@ function wrapWithTrmnlCss(
 	);
 }
 
-function wrapWithRenderScale(
+function wrapLogicalCanvasToTarget(
 	element: React.ReactElement,
-	width: number,
-	height: number,
-	scale: number,
+	layoutWidth: number,
+	layoutHeight: number,
+	targetWidth: number,
+	targetHeight: number,
 ): React.ReactElement {
-	if (scale === 1) return element;
+	if (layoutWidth === targetWidth && layoutHeight === targetHeight)
+		return element;
+	const scaleX = targetWidth / layoutWidth;
+	const scaleY = targetHeight / layoutHeight;
 	return createElement(
 		"div",
 		{
 			style: {
 				display: "flex",
-				width,
-				height,
-				transform: `scale(${scale})`,
-				transformOrigin: "top left",
+				width: targetWidth,
+				height: targetHeight,
+				overflow: "hidden",
 			},
 		},
-		element,
+		createElement(
+			"div",
+			{
+				style: {
+					display: "flex",
+					width: layoutWidth,
+					height: layoutHeight,
+					transform: `scale(${scaleX}, ${scaleY})`,
+					transformOrigin: "top left",
+				},
+			},
+			element,
+		),
 	);
 }
 
@@ -134,8 +151,9 @@ export async function rasterize(
 	const needsBitmap = formats.includes("bitmap");
 	if (!needsPng && !needsBitmap) return results;
 
-	const renderScale = getRenderScale(renderSettings);
 	const target = getRasterDimensions(imageWidth, imageHeight, renderSettings);
+	const layoutWidth = options.layoutWidth ?? imageWidth;
+	const layoutHeight = options.layoutHeight ?? imageHeight;
 
 	let pngBuffer: Buffer;
 	try {
@@ -164,11 +182,12 @@ export async function rasterize(
 					},
 				);
 			} else {
-				const scaled = wrapWithRenderScale(
+				const scaled = wrapLogicalCanvasToTarget(
 					options.element,
-					imageWidth,
-					imageHeight,
-					renderScale,
+					layoutWidth,
+					layoutHeight,
+					target.width,
+					target.height,
 				);
 				const wrapped = wrapWithTrmnlCss(
 					scaled,
