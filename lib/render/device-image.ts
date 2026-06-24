@@ -158,6 +158,30 @@ async function quantizeChannels(
 	return sharp(output, { raw: { width, height, channels } }).png().toBuffer();
 }
 
+async function quantizeToGrayLevels(
+	png: Buffer,
+	levels: number,
+): Promise<Buffer> {
+	const source = await sharp(png)
+		.removeAlpha()
+		.grayscale()
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	const { width, height, channels } = source.info;
+	const step = 255 / (levels - 1);
+	const output = Buffer.alloc(width * height);
+
+	for (let index = 0; index < width * height; index++) {
+		const value = source.data[index * channels] ?? 0;
+		const level = Math.round(value / step);
+		output[index] = clampByte(Math.round(level * step));
+	}
+
+	return sharp(output, { raw: { width, height, channels: 1 } })
+		.png()
+		.toBuffer();
+}
+
 async function quantizeToPalette(
 	png: Buffer,
 	paletteColors: RGB[],
@@ -215,6 +239,7 @@ async function encode(
 	png: Buffer,
 	mimeType: string,
 	imageSizeLimit?: number,
+	options: { pngPaletteColors?: number } = {},
 ): Promise<{ buffer: Buffer; sizeLimitExceeded: boolean }> {
 	if (mimeType === "image/webp") {
 		for (const quality of [90, 80, 70, 60, 50]) {
@@ -234,7 +259,39 @@ async function encode(
 		}
 	}
 
-	const buffer = await sharp(png).png({ compressionLevel: 9 }).toBuffer();
+	if (mimeType === "image/png") {
+		const candidates: Buffer[] = [
+			await sharp(png).png({ compressionLevel: 9, effort: 10 }).toBuffer(),
+		];
+		if (options.pngPaletteColors && options.pngPaletteColors <= 256) {
+			candidates.push(
+				await sharp(png)
+					.png({
+						palette: true,
+						colours: options.pngPaletteColors,
+						colors: options.pngPaletteColors,
+						compressionLevel: 9,
+						effort: 10,
+						dither: 0,
+					})
+					.toBuffer(),
+			);
+		}
+
+		const buffer = candidates.reduce((smallest, candidate) =>
+			candidate.length < smallest.length ? candidate : smallest,
+		);
+		return {
+			buffer,
+			sizeLimitExceeded: Boolean(
+				imageSizeLimit && buffer.length > imageSizeLimit,
+			),
+		};
+	}
+
+	const buffer = await sharp(png)
+		.png({ compressionLevel: 9, effort: 10 })
+		.toBuffer();
 	return {
 		buffer,
 		sizeLimitExceeded: Boolean(
@@ -249,14 +306,24 @@ export async function renderDeviceImage({
 }: RenderDeviceImageInput): Promise<RenderDeviceImageResult> {
 	const transformed = await transformToDeviceCanvas(png, profile);
 	const palette = profile.palette ?? { id: "", name: "" };
-	const paletteColors = resolvePaletteColors(palette);
+	const paletteGrays =
+		typeof palette.grays === "number" && palette.grays > 1
+			? palette.grays
+			: null;
+	const paletteColors = paletteGrays ? null : resolvePaletteColors(palette);
 
 	// Three quantization paths:
-	//   1. Discrete palette (BW, color-6a, etc.) — LAB-distance match + dither.
-	//   2. Continuous palette (color-12bit) — per-channel rounding to RGB444.
-	//   3. Continuous 24-bit or no palette — pass through full color.
+	//   1. Grayscale palette (BW, gray-4, gray-16) — posterize without dither.
+	//   2. Discrete color palette (color-6a, etc.) — LAB-distance match + dither.
+	//   3. Continuous palette (color-12bit) — per-channel rounding to RGB444.
+	//   4. Continuous 24-bit or no palette — pass through full color.
 	let quantized: Buffer;
-	if (paletteColors && profile.model.bit_depth < 24) {
+	let pngPaletteColors: number | undefined;
+	if (paletteGrays && profile.model.bit_depth < 24) {
+		pngPaletteColors = paletteGrays;
+		quantized = await quantizeToGrayLevels(transformed, paletteGrays);
+	} else if (paletteColors && profile.model.bit_depth < 24) {
+		pngPaletteColors = paletteColors.length;
 		quantized = await quantizeToPalette(transformed, paletteColors);
 	} else if (
 		paletteColors === null &&
@@ -272,6 +339,7 @@ export async function renderDeviceImage({
 		quantized,
 		profile.model.mime_type,
 		profile.model.image_size_limit,
+		{ pngPaletteColors },
 	);
 
 	return {

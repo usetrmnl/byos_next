@@ -1,4 +1,5 @@
 /// <reference types="jest" />
+import { parseDeviceLogData } from "@/lib/device/log-display";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import type { Device, Log } from "@/lib/types";
 import {
@@ -226,6 +227,58 @@ describe("getLogType", () => {
 
 	it("prioritises 'error' over 'warn' when both are present", () => {
 		expect(getLogType(makeLog("error warning combined"))).toBe("error");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// parseDeviceLogData
+// ---------------------------------------------------------------------------
+
+describe("parseDeviceLogData", () => {
+	it("renders object-valued messages as JSON instead of [object Object]", () => {
+		const [entry] = parseDeviceLogData(
+			JSON.stringify({
+				logs_array: [
+					{
+						creation_timestamp: 1_700_000_000,
+						message: { event: "wifi", status: "connected" },
+					},
+				],
+			}),
+		);
+
+		expect(entry.message).toBe('{"event":"wifi","status":"connected"}');
+		expect(entry.sourcefile).toBe("device");
+		expect(entry.codeline).toBe(0);
+	});
+
+	it("uses a clear placeholder for legacy object coercion strings", () => {
+		const [entry] = parseDeviceLogData(
+			JSON.stringify({
+				logs_array: [
+					{
+						message: "[object Object]",
+					},
+				],
+			}),
+		);
+
+		expect(entry.message).toBe("Unstructured object log");
+	});
+
+	it("falls back to JSON for unknown structured entries", () => {
+		const [entry] = parseDeviceLogData(
+			JSON.stringify({
+				logs_array: [
+					{
+						event: "download",
+						result: "ok",
+					},
+				],
+			}),
+		);
+
+		expect(entry.message).toBe('{"event":"download","result":"ok"}');
 	});
 });
 

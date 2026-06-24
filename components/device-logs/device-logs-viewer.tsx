@@ -45,8 +45,8 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
 import {
-	parseDeviceLogData,
 	type DeviceStatusStamp as DeviceStatusStampData,
+	parseDeviceLogData,
 } from "@/lib/device/log-display";
 import type { Log } from "@/lib/types";
 import { formatDate, getLogType } from "@/utils/helpers";
@@ -401,166 +401,25 @@ export default function DeviceLogsViewer({
 										<TableCell className="px-4 py-3 text-sm">
 											{(() => {
 												const DeviceStatusStamp = ({
-														deviceStatusStamp,
-														logMessage,
-														logCodeline,
-														logSourcefile,
-														timestamp,
-													}: {
-														deviceStatusStamp: DeviceStatusStampData | undefined;
-														logMessage: string;
-														logCodeline: number;
-														logSourcefile: string;
-														timestamp: string;
-													}) => {
-														// Add null check before destructuring
-														if (!deviceStatusStamp) {
-															// Return a simplified version when device status is not available
-															return (
-																<div className="flex flex-col gap-2 py-1">
-																	{/* Log Message with Prefix */}
-																	<div className="flex items-start gap-2 pl-1 text-xs font-mono">
-																		{/* Source Info Prefix */}
-																		<FileCode className="h-3.5 w-3.5" />
-																		<span>
-																			[{logSourcefile}:{logCodeline}]
-																		</span>
-																		<Clock className="h-3.5 w-3.5 ml-1" />
-																		<span>
-																			{
-																				new Date(timestamp)
-																					.toISOString()
-																					.split("T")[1]
-																					.split(".")[0]
-																			}
-																		</span>
-																		{/* Log Message */}
-																		<span className="break-words flex items-center gap-1">
-																			{logMessage
-																				.toLowerCase()
-																				.includes("error") && (
-																				<AlertTriangle className="inline h-3.5 w-3.5 text-red-500 mr-1" />
-																			)}
-																			{logMessage}
-																		</span>
-																	</div>
-																</div>
-															);
-														}
-
-														const {
-															wifi_rssi_level,
-															wifi_status,
-															battery_voltage,
-															refresh_rate,
-															free_heap_size,
-															current_fw_version,
-															wakeup_reason,
-															time_since_last_sleep_start,
-														} = deviceStatusStamp;
-
-														// Determine log type for prefix color
-														const logType = logMessage
-															.toLowerCase()
-															.includes("error")
-															? "error"
-															: logMessage.toLowerCase().includes("warn")
-																? "warning"
-																: "info";
-
+													deviceStatusStamp,
+													logMessage,
+													logCodeline,
+													logSourcefile,
+													timestamp,
+												}: {
+													deviceStatusStamp: DeviceStatusStampData | undefined;
+													logMessage: string;
+													logCodeline: number;
+													logSourcefile: string;
+													timestamp: string;
+												}) => {
+													// Add null check before destructuring
+													if (!deviceStatusStamp) {
+														// Return a simplified version when device status is not available
 														return (
 															<div className="flex flex-col gap-2 py-1">
-																{/* Status Icons Row */}
-																<div className="flex flex-wrap items-center gap-3 text-xs">
-																	{/* WiFi Signal */}
-																	<div
-																		className="flex items-center gap-1 bg-blue-400/10 px-2 py-1 rounded-md"
-																		title="WiFi Signal"
-																	>
-																		{wifi_status === "connected" && (
-																			<Wifi className="h-3.5 w-3.5 text-primary" />
-																		)}
-																		{wifi_status === "disconnected" && (
-																			<WifiOff className="h-3.5 w-3.5 text-red-500" />
-																		)}
-																		<span>{wifi_rssi_level || "N/A"} dBm</span>
-																	</div>
-
-																	{/* Battery */}
-																	<div
-																		className="flex items-center gap-1 bg-green-400/10 px-2 py-1 rounded-md"
-																		title="Battery Voltage"
-																	>
-																		<BatteryCharging className="h-3.5 w-3.5 text-green-500" />
-																		<span>
-																			{battery_voltage
-																				? battery_voltage.toFixed(2)
-																				: "N/A"}{" "}
-																			V
-																		</span>
-																	</div>
-
-																	{/* Refresh Rate */}
-																	{refresh_rate !== undefined && (
-																		<div
-																			className="flex items-center gap-1 bg-purple-400/10 px-2 py-1 rounded-md"
-																			title="Refresh Rate"
-																		>
-																			<RefreshCw className="h-3.5 w-3.5 text-purple-500" />
-																			<span>{refresh_rate} s</span>
-																		</div>
-																	)}
-
-																	{/* Free Heap Size */}
-																	{free_heap_size !== undefined && (
-																		<div
-																			className="flex items-center gap-1 bg-cyan-400/10 px-2 py-1 rounded-md"
-																			title="Free Heap Size"
-																		>
-																			<Cpu className="h-3.5 w-3.5 text-cyan-500" />
-																			<span>{free_heap_size} B</span>
-																		</div>
-																	)}
-
-																	{/* Firmware Version */}
-																	{current_fw_version && (
-																		<div
-																			className="flex items-center gap-1 bg-gray-400/10 px-2 py-1 rounded-md"
-																			title="Firmware Version"
-																		>
-																			<HardDrive className="h-3.5 w-3.5 text-gray-500" />
-																			<span>v{current_fw_version}</span>
-																		</div>
-																	)}
-
-																	{/* Wakeup Reason */}
-																	{wakeup_reason && (
-																		<div
-																			className="flex items-center gap-1 bg-amber-400/10 px-2 py-1 rounded-md"
-																			title="Wakeup Reason"
-																		>
-																			<Coffee className="h-3.5 w-3.5 text-amber-500" />
-																			<span>{wakeup_reason}</span>
-																		</div>
-																	)}
-
-																	{/* Time Since Last Sleep */}
-																	{time_since_last_sleep_start !==
-																		undefined && (
-																		<div
-																			className="flex items-center gap-1 bg-indigo-400/10 px-2 py-1 rounded-md"
-																			title="Time Since Last Sleep"
-																		>
-																			<Timer className="h-3.5 w-3.5 text-indigo-500" />
-																			<span>
-																				{time_since_last_sleep_start}s
-																			</span>
-																		</div>
-																	)}
-																</div>
-
 																{/* Log Message with Prefix */}
-																<div className="flex items-start gap-2 pl-1 text-xs font-mono ">
+																<div className="flex items-start gap-2 pl-1 text-xs font-mono">
 																	{/* Source Info Prefix */}
 																	<FileCode className="h-3.5 w-3.5" />
 																	<span>
@@ -577,7 +436,9 @@ export default function DeviceLogsViewer({
 																	</span>
 																	{/* Log Message */}
 																	<span className="break-words flex items-center gap-1">
-																		{logType === "error" && (
+																		{logMessage
+																			.toLowerCase()
+																			.includes("error") && (
 																			<AlertTriangle className="inline h-3.5 w-3.5 text-red-500 mr-1" />
 																		)}
 																		{logMessage}
@@ -585,20 +446,157 @@ export default function DeviceLogsViewer({
 																</div>
 															</div>
 														);
-													};
+													}
 
-												return parseDeviceLogData(log.log_data, log.created_at).map(
-													(entry, subIndex) => (
-														<DeviceStatusStamp
-															key={`${log.id}-${subIndex}`}
-															deviceStatusStamp={entry.deviceStatusStamp}
-															logMessage={entry.message}
-															logCodeline={entry.codeline}
-															logSourcefile={entry.sourcefile}
-															timestamp={entry.timestamp}
-														/>
-													),
-												);
+													const {
+														wifi_rssi_level,
+														wifi_status,
+														battery_voltage,
+														refresh_rate,
+														free_heap_size,
+														current_fw_version,
+														wakeup_reason,
+														time_since_last_sleep_start,
+													} = deviceStatusStamp;
+
+													// Determine log type for prefix color
+													const logType = logMessage
+														.toLowerCase()
+														.includes("error")
+														? "error"
+														: logMessage.toLowerCase().includes("warn")
+															? "warning"
+															: "info";
+
+													return (
+														<div className="flex flex-col gap-2 py-1">
+															{/* Status Icons Row */}
+															<div className="flex flex-wrap items-center gap-3 text-xs">
+																{/* WiFi Signal */}
+																<div
+																	className="flex items-center gap-1 bg-blue-400/10 px-2 py-1 rounded-md"
+																	title="WiFi Signal"
+																>
+																	{wifi_status === "connected" && (
+																		<Wifi className="h-3.5 w-3.5 text-primary" />
+																	)}
+																	{wifi_status === "disconnected" && (
+																		<WifiOff className="h-3.5 w-3.5 text-red-500" />
+																	)}
+																	<span>{wifi_rssi_level || "N/A"} dBm</span>
+																</div>
+
+																{/* Battery */}
+																<div
+																	className="flex items-center gap-1 bg-green-400/10 px-2 py-1 rounded-md"
+																	title="Battery Voltage"
+																>
+																	<BatteryCharging className="h-3.5 w-3.5 text-green-500" />
+																	<span>
+																		{battery_voltage
+																			? battery_voltage.toFixed(2)
+																			: "N/A"}{" "}
+																		V
+																	</span>
+																</div>
+
+																{/* Refresh Rate */}
+																{refresh_rate !== undefined && (
+																	<div
+																		className="flex items-center gap-1 bg-purple-400/10 px-2 py-1 rounded-md"
+																		title="Refresh Rate"
+																	>
+																		<RefreshCw className="h-3.5 w-3.5 text-purple-500" />
+																		<span>{refresh_rate} s</span>
+																	</div>
+																)}
+
+																{/* Free Heap Size */}
+																{free_heap_size !== undefined && (
+																	<div
+																		className="flex items-center gap-1 bg-cyan-400/10 px-2 py-1 rounded-md"
+																		title="Free Heap Size"
+																	>
+																		<Cpu className="h-3.5 w-3.5 text-cyan-500" />
+																		<span>{free_heap_size} B</span>
+																	</div>
+																)}
+
+																{/* Firmware Version */}
+																{current_fw_version && (
+																	<div
+																		className="flex items-center gap-1 bg-gray-400/10 px-2 py-1 rounded-md"
+																		title="Firmware Version"
+																	>
+																		<HardDrive className="h-3.5 w-3.5 text-gray-500" />
+																		<span>v{current_fw_version}</span>
+																	</div>
+																)}
+
+																{/* Wakeup Reason */}
+																{wakeup_reason && (
+																	<div
+																		className="flex items-center gap-1 bg-amber-400/10 px-2 py-1 rounded-md"
+																		title="Wakeup Reason"
+																	>
+																		<Coffee className="h-3.5 w-3.5 text-amber-500" />
+																		<span>{wakeup_reason}</span>
+																	</div>
+																)}
+
+																{/* Time Since Last Sleep */}
+																{time_since_last_sleep_start !== undefined && (
+																	<div
+																		className="flex items-center gap-1 bg-indigo-400/10 px-2 py-1 rounded-md"
+																		title="Time Since Last Sleep"
+																	>
+																		<Timer className="h-3.5 w-3.5 text-indigo-500" />
+																		<span>{time_since_last_sleep_start}s</span>
+																	</div>
+																)}
+															</div>
+
+															{/* Log Message with Prefix */}
+															<div className="flex items-start gap-2 pl-1 text-xs font-mono ">
+																{/* Source Info Prefix */}
+																<FileCode className="h-3.5 w-3.5" />
+																<span>
+																	[{logSourcefile}:{logCodeline}]
+																</span>
+																<Clock className="h-3.5 w-3.5 ml-1" />
+																<span>
+																	{
+																		new Date(timestamp)
+																			.toISOString()
+																			.split("T")[1]
+																			.split(".")[0]
+																	}
+																</span>
+																{/* Log Message */}
+																<span className="break-words flex items-center gap-1">
+																	{logType === "error" && (
+																		<AlertTriangle className="inline h-3.5 w-3.5 text-red-500 mr-1" />
+																	)}
+																	{logMessage}
+																</span>
+															</div>
+														</div>
+													);
+												};
+
+												return parseDeviceLogData(
+													log.log_data,
+													log.created_at,
+												).map((entry, subIndex) => (
+													<DeviceStatusStamp
+														key={`${log.id}-${subIndex}`}
+														deviceStatusStamp={entry.deviceStatusStamp}
+														logMessage={entry.message}
+														logCodeline={entry.codeline}
+														logSourcefile={entry.sourcefile}
+														timestamp={entry.timestamp}
+													/>
+												));
 											})()}
 										</TableCell>
 									</TableRow>

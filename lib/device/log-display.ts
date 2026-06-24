@@ -23,9 +23,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function stringValue(value: unknown): string | undefined {
-	if (typeof value === "string" && value.trim()) return value;
+	if (typeof value === "string" && value.trim()) {
+		return value === "[object Object]" ? "Unstructured object log" : value;
+	}
 	if (typeof value === "number" || typeof value === "boolean") {
 		return String(value);
+	}
+	if (typeof value === "object" && value !== null) {
+		try {
+			return JSON.stringify(value);
+		} catch {
+			return "Unserializable object log";
+		}
 	}
 	return undefined;
 }
@@ -65,7 +74,7 @@ function normalizeEntry(
 ): DeviceLogDisplayEntry {
 	if (!isRecord(entry)) {
 		return {
-			message: String(entry),
+			message: stringValue(entry) ?? "No message",
 			codeline: 0,
 			sourcefile: "device",
 			timestamp: isoTimestamp(undefined, fallbackTimestamp),
@@ -80,6 +89,7 @@ function normalizeEntry(
 			stringValue(entry.log_message) ??
 			stringValue(entry.message) ??
 			stringValue(entry.level) ??
+			stringValue(entry) ??
 			"No message",
 		codeline: numberValue(entry.log_codeline) ?? numberValue(entry.line) ?? 0,
 		sourcefile:

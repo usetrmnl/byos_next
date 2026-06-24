@@ -26,8 +26,10 @@ interface LogEntry {
 	firmware_version?: string;
 }
 
+type NormalizedLogEntry = LogEntry & Record<string, unknown>;
+
 interface LogData {
-	logs_array: LogEntry[];
+	logs_array: NormalizedLogEntry[];
 	device_id?: string;
 	timestamp?: string;
 }
@@ -36,6 +38,59 @@ interface LogData {
 // TRMNL API format: { "logs": [] }
 interface LogRequestBody {
 	logs: unknown[]; // TRMNL API format - required
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function stringifyLogValue(value: unknown): string {
+	if (typeof value === "string") {
+		return value === "[object Object]" ? "Unstructured object log" : value;
+	}
+	if (typeof value === "number" || typeof value === "boolean") {
+		return String(value);
+	}
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return "Unserializable object log";
+	}
+}
+
+function normalizeIncomingLog(log: unknown): NormalizedLogEntry {
+	const now = Math.floor(Date.now() / 1000);
+
+	if (!isRecord(log)) {
+		return {
+			creation_timestamp: now,
+			message: stringifyLogValue(log),
+			timestamp: new Date().toISOString(),
+		};
+	}
+
+	const creationTimestamp =
+		typeof log.creation_timestamp === "number" &&
+		Number.isFinite(log.creation_timestamp)
+			? log.creation_timestamp
+			: now;
+	const normalized: NormalizedLogEntry = {
+		...log,
+		creation_timestamp: creationTimestamp,
+		timestamp: new Date(creationTimestamp * 1000).toISOString(),
+	};
+
+	if ("message" in normalized) {
+		normalized.message = stringifyLogValue(normalized.message);
+	}
+	if ("log_message" in normalized) {
+		normalized.log_message = stringifyLogValue(normalized.log_message);
+	}
+	if (!("message" in normalized) && !("log_message" in normalized)) {
+		normalized.message = stringifyLogValue(log);
+	}
+
+	return normalized;
 }
 
 function parseRefreshRateHeader(refreshRate: string | null): number {
@@ -870,28 +925,7 @@ export async function POST(request: Request) {
 
 		// Process log data - convert to internal format
 		const logData: LogData = {
-			logs_array: logsArray.map((log: unknown) => {
-				if (
-					typeof log === "object" &&
-					log !== null &&
-					"creation_timestamp" in log
-				) {
-					const logEntry = log as LogEntry;
-					return {
-						...logEntry,
-						timestamp: logEntry.creation_timestamp
-							? new Date(logEntry.creation_timestamp * 1000).toISOString()
-							: new Date().toISOString(),
-					};
-				}
-				// For simple string logs or other types
-				const now = Math.floor(Date.now() / 1000);
-				return {
-					creation_timestamp: now,
-					message: String(log),
-					timestamp: new Date().toISOString(),
-				};
-			}),
+			logs_array: logsArray.map(normalizeIncomingLog),
 		};
 
 		console.log("📦 Processed log data:", JSON.stringify(logData, null, 2));
