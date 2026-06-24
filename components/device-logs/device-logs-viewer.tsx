@@ -44,6 +44,10 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
+import {
+	parseDeviceLogData,
+	type DeviceStatusStamp as DeviceStatusStampData,
+} from "@/lib/device/log-display";
 import type { Log } from "@/lib/types";
 import { formatDate, getLogType } from "@/utils/helpers";
 
@@ -396,47 +400,14 @@ export default function DeviceLogsViewer({
 										</TableCell>
 										<TableCell className="px-4 py-3 text-sm">
 											{(() => {
-												interface subLogType {
-													creation_timestamp: number;
-													device_status_stamp: {
-														wifi_rssi_level: number;
-														wifi_status: string;
-														refresh_rate: number;
-														time_since_last_sleep_start: number;
-														current_fw_version: string;
-														special_function: string;
-														battery_voltage: number;
-														wakeup_reason: string;
-														free_heap_size: number;
-													};
-													log_id: number;
-													log_message: string;
-													log_codeline: number;
-													log_sourcefile: string;
-													additional_info?: {
-														retry_attempt: number;
-													};
-													timestamp: string;
-												}
-												interface subLogTypeII {
-													logs_array: subLogType[];
-												}
-												try {
-													const logData: subLogType | subLogTypeII = JSON.parse(
-														log.log_data,
-													);
-
-													// Define DeviceStatusStamp component
-													const DeviceStatusStamp = ({
+												const DeviceStatusStamp = ({
 														deviceStatusStamp,
 														logMessage,
 														logCodeline,
 														logSourcefile,
 														timestamp,
 													}: {
-														deviceStatusStamp:
-															| subLogType["device_status_stamp"]
-															| undefined;
+														deviceStatusStamp: DeviceStatusStampData | undefined;
 														logMessage: string;
 														logCodeline: number;
 														logSourcefile: string;
@@ -616,91 +587,18 @@ export default function DeviceLogsViewer({
 														);
 													};
 
-													// Check if it's a single log or an array of logs
-													if (Array.isArray(logData)) {
-														return logData.map(
-															(subLog: subLogType, subIndex: number) => (
-																<DeviceStatusStamp
-																	key={`${log.id}-${subIndex}`}
-																	deviceStatusStamp={
-																		subLog?.device_status_stamp
-																	}
-																	logMessage={
-																		subLog?.log_message || "No message"
-																	}
-																	logCodeline={subLog?.log_codeline || 0}
-																	logSourcefile={
-																		subLog?.log_sourcefile || "unknown"
-																	}
-																	timestamp={
-																		subLog?.timestamp ||
-																		new Date().toISOString()
-																	}
-																/>
-															),
-														);
-													}
-													if (
-														"logs_array" in logData &&
-														Array.isArray(logData.logs_array)
-													) {
-														return logData.logs_array.map(
-															(subLog: subLogType, subIndex: number) => (
-																<DeviceStatusStamp
-																	key={`${log.id}-${subIndex}`}
-																	deviceStatusStamp={
-																		subLog?.device_status_stamp
-																	}
-																	logMessage={
-																		subLog?.log_message || "No message"
-																	}
-																	logCodeline={subLog?.log_codeline || 0}
-																	logSourcefile={
-																		subLog?.log_sourcefile || "unknown"
-																	}
-																	timestamp={
-																		subLog?.timestamp ||
-																		new Date().toISOString()
-																	}
-																/>
-															),
-														);
-													}
-													if ("log_message" in logData) {
-														// Handle case where logData is a single log entry but not in an array
-														return (
-															<DeviceStatusStamp
-																deviceStatusStamp={logData?.device_status_stamp}
-																logMessage={
-																	logData?.log_message || "No message"
-																}
-																logCodeline={logData?.log_codeline || 0}
-																logSourcefile={
-																	logData?.log_sourcefile || "unknown"
-																}
-																timestamp={
-																	logData?.timestamp || new Date().toISOString()
-																}
-															/>
-														);
-													}
-													// If we can't determine the structure, just show the raw data
-													return (
-														<div className="max-w-[500px] truncate">
-															{log.log_data}
-														</div>
-													);
-												} catch (error) {
-													console.log(
-														"Failed to parse log data as JSON, fallback to plain string",
-														error,
-													);
-													return (
-														<div className="max-w-[500px] truncate">
-															{log.log_data}
-														</div>
-													);
-												}
+												return parseDeviceLogData(log.log_data, log.created_at).map(
+													(entry, subIndex) => (
+														<DeviceStatusStamp
+															key={`${log.id}-${subIndex}`}
+															deviceStatusStamp={entry.deviceStatusStamp}
+															logMessage={entry.message}
+															logCodeline={entry.codeline}
+															logSourcefile={entry.sourcefile}
+															timestamp={entry.timestamp}
+														/>
+													),
+												);
 											})()}
 										</TableCell>
 									</TableRow>
