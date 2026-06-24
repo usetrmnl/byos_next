@@ -262,7 +262,11 @@ export default function DeviceEditForm({
 									isPortrait ? "max-w-[260px]" : "max-w-[520px]",
 								)}
 							>
-								<DeviceFrame size="lg" portrait={isPortrait}>
+								<DeviceFrame
+									size="lg"
+									portrait={isPortrait}
+									screenAspectRatio={`${deviceWidth} / ${deviceHeight}`}
+								>
 									<Image
 										src={heroSrc}
 										alt="Device screen preview"
