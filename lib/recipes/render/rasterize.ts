@@ -27,7 +27,7 @@ export type RasterizeOptions = {
 	layoutWidth?: number;
 	layoutHeight?: number;
 	formats?: RasterizeFormat[];
-	grayscale?: number;
+	bmpGrayLevels?: number;
 	renderSettings?: RecipeRenderSettings | null;
 	model?: TrmnlModel | null;
 	paletteId?: string | null;
@@ -138,7 +138,7 @@ export async function rasterize(
 		imageWidth,
 		imageHeight,
 		formats = ["bitmap", "png"],
-		grayscale,
+		bmpGrayLevels,
 		renderSettings,
 		model,
 		paletteId,
@@ -241,7 +241,7 @@ export async function rasterize(
 				width: imageWidth,
 				height: imageHeight,
 				applyEdgeSnap: renderSettings?.applyEdgeSnap ?? true,
-				...(grayscale !== undefined && { grayscale }),
+				...(bmpGrayLevels !== undefined && { levels: bmpGrayLevels }),
 			});
 		} catch (error) {
 			console.error(`[rasterize:${slug}] Error generating bitmap:`, error);

@@ -1,12 +1,9 @@
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
-
 export const MAX_IMAGE_DIMENSION = 4096;
 export const MAX_IMAGE_PIXELS = 6_000_000;
 
 export type ParsedImageRequest = {
 	width?: number;
 	height?: number;
-	grayscaleLevels: number;
 	modelName: string | null;
 	paletteId: string | null;
 };
@@ -47,17 +44,6 @@ function parseDimension(
 	return { ok: true, value: parsed };
 }
 
-function parseGrayscale(value: string | null): ParseResult<number> {
-	if (value === null) return { ok: true, value: normalizeGrayscale(undefined) };
-	if (!/^\d+$/.test(value)) {
-		return {
-			ok: false,
-			response: validationError("grayscale must be a positive integer"),
-		};
-	}
-	return { ok: true, value: normalizeGrayscale(Number.parseInt(value, 10)) };
-}
-
 export function rejectOversizedImageArea(
 	width: number,
 	height: number,
@@ -86,12 +72,9 @@ export function parseImageRequest(
 		const oversized = rejectOversizedImageArea(width.value, height.value);
 		if (oversized) return oversized;
 	}
-	const grayscale = parseGrayscale(searchParams.get("grayscale"));
-	if (!grayscale.ok) return grayscale.response;
 	return {
 		width: width.value,
 		height: height.value,
-		grayscaleLevels: grayscale.value,
 		modelName: searchParams.get("model"),
 		paletteId: searchParams.get("palette_id"),
 	};

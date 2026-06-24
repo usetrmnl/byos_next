@@ -19,7 +19,6 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -257,7 +256,6 @@ function buildLatestScreenSrc(
 	const params = new URLSearchParams({
 		width: String(width),
 		height: String(height),
-		grayscale: String(normalizeGrayscale(device.grayscale)),
 		model: device.model?.trim() || DEFAULT_MODEL_NAME,
 	});
 	const paletteId = device.palette_id?.trim();

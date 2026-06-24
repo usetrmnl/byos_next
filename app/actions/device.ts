@@ -280,7 +280,6 @@ export async function updateDevice(
 		updateData.screen_height = device.screen_height;
 	if (device.screen_orientation !== undefined)
 		updateData.screen_orientation = device.screen_orientation;
-	if (device.grayscale !== undefined) updateData.grayscale = device.grayscale;
 	if (device.model !== undefined) updateData.model = device.model || null;
 	if (device.palette_id !== undefined)
 		updateData.palette_id = device.palette_id || null;

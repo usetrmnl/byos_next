@@ -3,7 +3,7 @@
 import { AlertTriangle, RefreshCw, Search, Trash2 } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
-import { type ChangeEvent, type ReactNode, useEffect, useMemo } from "react";
+import { type ChangeEvent, type ReactNode } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,6 @@ import {
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 import { type DeviceSizePreset } from "@/lib/trmnl/device-presets";
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import {
 	DEFAULT_MODEL_NAME,
 	type TrmnlModel,
@@ -78,28 +77,6 @@ interface DeviceEditFormProps {
 	onSubmit: (e: React.FormEvent) => void;
 	onCancel: () => void;
 }
-
-const GRAYSCALE_LEVELS_BY_PALETTE: Record<string, number> = {
-	bw: 2,
-	"gray-4": 4,
-	"gray-16": 16,
-	"gray-256": 256,
-};
-
-// Static Tailwind class map so the JIT compiler sees concrete class names.
-const GRID_COLS_BY_COUNT: Record<number, string> = {
-	1: "grid-cols-1",
-	2: "grid-cols-2",
-	3: "grid-cols-3",
-	4: "grid-cols-4",
-};
-
-const closestLevel = (target: number, available: readonly number[]): number => {
-	if (available.length === 0) return target;
-	return available.reduce((best, current) =>
-		Math.abs(current - target) < Math.abs(best - target) ? current : best,
-	);
-};
 
 function PanelHeader({ label, right }: { label: string; right?: ReactNode }) {
 	return (
@@ -143,7 +120,6 @@ export default function DeviceEditForm({
 	const deviceHeight = isPortrait
 		? editedDevice.screen_width || DEFAULT_IMAGE_WIDTH
 		: editedDevice.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const grayscaleLevels = normalizeGrayscale(editedDevice.grayscale);
 	const savedModelName = editedDevice.model?.trim() || null;
 	const savedModelMatch =
 		savedModelName != null
@@ -159,31 +135,10 @@ export default function DeviceEditForm({
 	const selectedPalette =
 		trmnlPalettes.find((palette) => palette.id === editedDevice.palette_id) ??
 		trmnlPalettes.find((palette) => palette.id === selectedPaletteIds[0]);
-	const availableGrayscaleLevels = useMemo(() => {
-		const set = new Set<number>();
-		for (const id of selectedPaletteIds) {
-			const levels = GRAYSCALE_LEVELS_BY_PALETTE[id];
-			if (levels) set.add(levels);
-		}
-		return Array.from(set).sort((a, b) => a - b);
-	}, [selectedPaletteIds]);
-	// Show the toggle only when the model offers a real choice (≥ 2 levels).
-	// One-level models (e.g. seeed_e1002 has only `bw`) are synchronized below.
-	const showGrayscaleField = availableGrayscaleLevels.length > 1;
-
-	useEffect(() => {
-		if (availableGrayscaleLevels.length === 0) return;
-		if (availableGrayscaleLevels.includes(grayscaleLevels)) return;
-		const next = closestLevel(grayscaleLevels, availableGrayscaleLevels);
-		if (next !== grayscaleLevels) {
-			onSelectChange("grayscale", String(next));
-		}
-	}, [availableGrayscaleLevels, grayscaleLevels, onSelectChange]);
 	const imageExtension = getModelImageExtension(selectedModel ?? undefined);
 	const profileQuery = new URLSearchParams({
 		width: String(deviceWidth),
 		height: String(deviceHeight),
-		grayscale: String(grayscaleLevels),
 	});
 	if (selectedModel?.name) {
 		profileQuery.set("model", selectedModel.name);
@@ -241,9 +196,6 @@ export default function DeviceEditForm({
 								<span className="capitalize">
 									{isPortrait ? "portrait" : "landscape"}
 								</span>
-								{availableGrayscaleLevels.length > 0
-									? ` · ${grayscaleLevels} levels`
-									: ""}
 								{selectedPalette ? ` · ${selectedPalette.name}` : ""}
 							</span>
 						}
@@ -670,33 +622,6 @@ export default function DeviceEditForm({
 									</SelectContent>
 								</Select>
 							</Field>
-
-							{showGrayscaleField && (
-								<Field
-									label="Grayscale levels"
-									hint="Choices reflect the grayscale palettes declared by the selected model."
-								>
-									<ToggleGroup
-										type="single"
-										value={String(grayscaleLevels)}
-										onValueChange={(value) => {
-											if (value) onSelectChange("grayscale", value);
-										}}
-										variant="outline"
-										className={cn(
-											"grid w-fit",
-											GRID_COLS_BY_COUNT[availableGrayscaleLevels.length] ??
-												"grid-flow-col",
-										)}
-									>
-										{availableGrayscaleLevels.map((level) => (
-											<ToggleGroupItem key={level} value={String(level)}>
-												{level}
-											</ToggleGroupItem>
-										))}
-									</ToggleGroup>
-								</Field>
-							)}
 
 							{editedDevice.supports_temperature_profile && (
 								<Field

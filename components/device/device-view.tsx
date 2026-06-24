@@ -15,7 +15,6 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -149,7 +148,6 @@ export default function DeviceView({
 	const deviceHeight = isPortrait
 		? device.screen_width || DEFAULT_IMAGE_WIDTH
 		: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const grayscaleLevels = normalizeGrayscale(device.grayscale);
 	const selectedModel =
 		trmnlModels.find((model) => model.name === device.model) ??
 		trmnlModels.find((model) => model.name === "og_plus") ??
@@ -164,7 +162,6 @@ export default function DeviceView({
 	const profileQuery = new URLSearchParams({
 		width: String(deviceWidth),
 		height: String(deviceHeight),
-		grayscale: String(grayscaleLevels),
 	});
 	if (selectedModel?.name) {
 		profileQuery.set("model", selectedModel.name);
@@ -212,8 +209,8 @@ export default function DeviceView({
 							{deviceWidth}×{deviceHeight}px ·{" "}
 							<span className="capitalize">
 								{isPortrait ? "portrait" : "landscape"}
-							</span>{" "}
-							· {grayscaleLevels} levels
+							</span>
+							{selectedPalette ? ` · ${selectedPalette.name}` : ""}
 						</span>
 					}
 				/>

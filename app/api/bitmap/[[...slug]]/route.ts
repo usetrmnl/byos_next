@@ -19,6 +19,7 @@ import {
 	type DeviceProfile,
 	getDeviceProfile,
 } from "@/lib/trmnl/device-profile";
+import { getBmpGrayLevelsForPalette } from "@/lib/trmnl/palette-gray-levels";
 import {
 	parseRequestHeaders,
 	type RequestHeaders,
@@ -40,9 +41,7 @@ export async function GET(
 		const imageRequest = parseImageRequest(searchParams);
 		if (imageRequest instanceof Response) return imageRequest;
 
-		logger.info(
-			`Bitmap request for: ${bitmapPath} with ${imageRequest.grayscaleLevels} gray levels`,
-		);
+		logger.info(`Bitmap request for: ${bitmapPath}`);
 
 		// Resolve the device owner so DB queries are scoped to the right user
 		const userId = headers.apiKey
@@ -65,7 +64,6 @@ export async function GET(
 				message: searchParams.get("message") ?? "Display error",
 				width: imageWidth,
 				height: imageHeight,
-				grayscale: imageRequest.grayscaleLevels,
 				profile,
 			});
 			return new Response(new Uint8Array(image.buffer), {
@@ -95,7 +93,6 @@ export async function GET(
 					message: `Could not render ${recipeSlug}`,
 					width: imageWidth,
 					height: imageHeight,
-					grayscale: imageRequest.grayscaleLevels,
 					profile,
 				});
 				return new Response(new Uint8Array(errorImage.buffer), {
@@ -117,7 +114,6 @@ export async function GET(
 			recipeSlug,
 			validWidth,
 			validHeight,
-			imageRequest.grayscaleLevels,
 			profile,
 			userId,
 			cookieHeader || undefined,
@@ -133,7 +129,7 @@ export async function GET(
 				message: `Could not render ${recipeSlug}`,
 				width: validWidth,
 				height: validHeight,
-				grayscale: imageRequest.grayscaleLevels,
+				profile,
 			});
 			return new Response(new Uint8Array(errorImage.buffer), {
 				status: 500,
@@ -170,10 +166,6 @@ export async function GET(
 			message: error instanceof Error ? error.message : "Image render failed",
 			width,
 			height,
-			grayscale:
-				imageRequest instanceof Response
-					? undefined
-					: imageRequest.grayscaleLevels,
 			profile,
 		});
 		return new Response(new Uint8Array(errorImage.buffer), {
@@ -237,7 +229,6 @@ const renderRecipeBitmap = cache(
 		recipeId: string,
 		width: number,
 		height: number,
-		grayscaleLevels: number = 2,
 		profile: DeviceProfile | null = null,
 		userId: string | null = null,
 		cookies?: string,
@@ -247,7 +238,7 @@ const renderRecipeBitmap = cache(
 			imageWidth: width,
 			imageHeight: height,
 			formats: ["bitmap"],
-			grayscale: grayscaleLevels,
+			bmpGrayLevels: getBmpGrayLevelsForPalette(profile?.palette),
 			model: profile?.model ?? null,
 			palette: profile?.palette ?? null,
 			paletteId: profile?.palette?.id ?? null,

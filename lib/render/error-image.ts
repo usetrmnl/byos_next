@@ -4,6 +4,7 @@ import {
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
+import { getBmpGrayLevelsForPalette } from "@/lib/trmnl/palette-gray-levels";
 import { renderBmp } from "@/utils/render-bmp";
 import {
 	type RenderDeviceImageResult,
@@ -14,7 +15,6 @@ type RenderErrorImageOptions = {
 	message: string;
 	width?: number;
 	height?: number;
-	grayscale?: number;
 	profile?: DeviceProfile | null;
 };
 
@@ -131,7 +131,6 @@ export async function renderErrorImage({
 	message,
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
-	grayscale = 2,
 	profile,
 }: RenderErrorImageOptions): Promise<RenderDeviceImageResult> {
 	const png = await renderErrorPng(message, width, height);
@@ -149,7 +148,11 @@ export async function renderErrorImage({
 		});
 	}
 	return {
-		buffer: await renderBmp(png, { width, height, grayscale }),
+		buffer: await renderBmp(png, {
+			width,
+			height,
+			levels: getBmpGrayLevelsForPalette(profile?.palette),
+		}),
 		mime_type: "image/bmp",
 		filename_ext: "bmp",
 		size_limit_exceeded: false,

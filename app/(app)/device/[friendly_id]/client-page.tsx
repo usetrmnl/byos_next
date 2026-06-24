@@ -176,13 +176,7 @@ export default function DeviceClientPage({
 				},
 			});
 		} else {
-			// Convert grayscale to number
-			if (name === "grayscale") {
-				setEditedDevice({
-					...editedDevice,
-					[name]: Number.parseInt(value, 10),
-				});
-			} else if (name === "model") {
+			if (name === "model") {
 				const model = trmnlModels.find((item) => item.name === value);
 				const nextPaletteId = model?.palette_ids[0] ?? null;
 				setEditedDevice({
@@ -298,7 +292,6 @@ export default function DeviceClientPage({
 				screen_width: editedDevice.screen_width,
 				screen_height: editedDevice.screen_height,
 				screen_orientation: editedDevice.screen_orientation,
-				grayscale: editedDevice.grayscale,
 				model: editedDevice.model,
 				palette_id: editedDevice.palette_id,
 				temperature_profile: editedDevice.temperature_profile,

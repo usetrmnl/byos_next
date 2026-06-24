@@ -51,7 +51,7 @@ type RenderRecipeArgs = {
 	imageWidth: number;
 	imageHeight: number;
 	formats?: RasterizeFormat[];
-	grayscale?: number;
+	bmpGrayLevels?: number;
 	userId?: string | null;
 	cookies?: string;
 	model?: TrmnlModel | null;
@@ -67,7 +67,7 @@ export async function renderRecipeToImage({
 	imageWidth,
 	imageHeight,
 	formats = ["bitmap", "png"],
-	grayscale,
+	bmpGrayLevels,
 	userId,
 	cookies,
 	model,
@@ -99,7 +99,7 @@ export async function renderRecipeToImage({
 			layoutWidth: screen.logicalWidth,
 			layoutHeight: screen.logicalHeight,
 			formats,
-			grayscale,
+			bmpGrayLevels,
 			cookies,
 			model,
 			paletteId,
@@ -120,7 +120,7 @@ export async function renderRecipeToImage({
 			imageWidth,
 			imageHeight,
 			formats,
-			grayscale,
+			bmpGrayLevels,
 			cookies,
 			model,
 			paletteId,

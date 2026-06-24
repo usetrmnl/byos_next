@@ -16,6 +16,7 @@ import { stripImageExtension } from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
+import { getBmpGrayLevelsForPalette } from "@/lib/trmnl/palette-gray-levels";
 import { DitheringMethod, renderBmp } from "@/utils/render-bmp";
 
 export async function GET(
@@ -36,7 +37,6 @@ export async function GET(
 			searchParams.get("access_token") ?? req.headers.get("Access-Token");
 		const width = imageRequest.width ?? DEFAULT_IMAGE_WIDTH;
 		const height = imageRequest.height ?? DEFAULT_IMAGE_HEIGHT;
-		const grayscaleLevels = imageRequest.grayscaleLevels;
 
 		const { ready } = await checkDbConnection();
 		if (!ready) {
@@ -45,7 +45,6 @@ export async function GET(
 				message: "Database not available",
 				width,
 				height,
-				grayscale: grayscaleLevels,
 			});
 			return imageResponse(image, 503);
 		}
@@ -163,7 +162,7 @@ export async function GET(
 							ditheringMethod: DitheringMethod.ATKINSON,
 							width,
 							height,
-							grayscale: grayscaleLevels,
+							levels: getBmpGrayLevelsForPalette(profile.palette),
 						}),
 						mime_type: "image/bmp",
 						size_limit_exceeded: false,

@@ -12,45 +12,42 @@ export interface RenderBmpOptions {
 	inverted?: boolean;
 	width?: number;
 	height?: number;
-	grayscale?: number; // Number of gray levels: 2 (black/white), 4, 16, or 256
+	levels?: number; // BMP palette levels: 2 (black/white), 4, 16, or 256
 	applyEdgeSnap?: boolean;
 }
 
-const createGrayscalePaletteEntries = (grayscale: number): number[] => {
-	const paletteStep = 255 / (grayscale - 1);
+const createGrayPaletteEntries = (levels: number): number[] => {
+	const paletteStep = 255 / (levels - 1);
 
-	return Array.from({ length: grayscale }, (_, index) => {
+	return Array.from({ length: levels }, (_, index) => {
 		const grayValue = Math.round(index * paletteStep);
 		return (grayValue << 16) | (grayValue << 8) | grayValue;
 	});
 };
 
-const mapGrayscaleValueToPaletteIndex = (
-	value: number,
-	grayscale: number,
-): number => {
-	const paletteStep = 255 / (grayscale - 1);
+const mapGrayValueToPaletteIndex = (value: number, levels: number): number => {
+	const paletteStep = 255 / (levels - 1);
 	return Math.round(value / paletteStep);
 };
 
 const shouldSetMonochromeBit = (
 	paletteIndex: number,
-	grayscale: number,
-): boolean => paletteIndex === grayscale - 1;
+	levels: number,
+): boolean => paletteIndex === levels - 1;
 
 export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	const {
 		ditheringMethod = DitheringMethod.FLOYD_STEINBERG,
 		inverted = false,
-		grayscale = 2,
+		levels = 2,
 		applyEdgeSnap = true,
 	} = options;
 
-	// Validate grayscale levels
+	// Validate BMP palette levels.
 	const validLevels = [2, 4, 16, 256];
-	if (!validLevels.includes(grayscale)) {
+	if (!validLevels.includes(levels)) {
 		throw new Error(
-			`Invalid grayscale value: ${grayscale}. Must be one of: ${validLevels.join(", ")}`,
+			`Invalid BMP palette levels: ${levels}. Must be one of: ${validLevels.join(", ")}`,
 		);
 	}
 
@@ -88,14 +85,14 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	const dithered = applyDithering(ditheringMethod, grayscaleData, {
 		width: targetWidth,
 		height: targetHeight,
-		levels: grayscale,
+		levels,
 		applyEdgeSnap,
 	});
 
-	// Determine BMP format based on grayscale levels
+	// Determine BMP format based on palette depth.
 	const bitsPerPixel =
-		grayscale === 2 ? 1 : grayscale === 4 ? 2 : grayscale === 16 ? 4 : 8;
-	const numColors = grayscale;
+		levels === 2 ? 1 : levels === 4 ? 2 : levels === 16 ? 4 : 8;
+	const numColors = levels;
 	const paletteSize = numColors * 4; // Each color is 4 bytes (BGR + reserved)
 
 	// BMP file header (14 bytes) + Info header (40 bytes)
@@ -130,13 +127,13 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 	// Color palette entries are ordered from black to white so monochrome BMPs
 	// match the device's expected pixel semantics.
 	const paletteOffset = fileHeaderSize + infoHeaderSize;
-	const paletteEntries = createGrayscalePaletteEntries(grayscale);
+	const paletteEntries = createGrayPaletteEntries(levels);
 	for (const [index, paletteEntry] of paletteEntries.entries()) {
 		buffer.writeUInt32LE(paletteEntry, paletteOffset + index * 4);
 	}
 
 	const valueToIndex = (value: number): number =>
-		mapGrayscaleValueToPaletteIndex(value, grayscale);
+		mapGrayValueToPaletteIndex(value, levels);
 
 	// Step 4: Generate the final bitmap
 	const dataOffset = fileHeaderSize + infoHeaderSize + paletteSize;
@@ -154,8 +151,8 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 				for (let bit = 0; bit < remainingPixels; bit++) {
 					const idx = yOffset + x + bit;
 					let paletteIndex = valueToIndex(dithered[idx]);
-					if (inverted) paletteIndex = grayscale - 1 - paletteIndex;
-					if (shouldSetMonochromeBit(paletteIndex, grayscale)) {
+					if (inverted) paletteIndex = levels - 1 - paletteIndex;
+					if (shouldSetMonochromeBit(paletteIndex, levels)) {
 						byte |= 1 << (7 - bit);
 					}
 				}
@@ -169,7 +166,7 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 				for (let bit = 0; bit < remainingPixels; bit++) {
 					const idx = yOffset + x + bit;
 					let paletteIndex = valueToIndex(dithered[idx]);
-					if (inverted) paletteIndex = grayscale - 1 - paletteIndex;
+					if (inverted) paletteIndex = levels - 1 - paletteIndex;
 					byte |= paletteIndex << (6 - bit * 2);
 				}
 				buffer[destRowOffset + (x >> 2)] = byte;
@@ -182,7 +179,7 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 				for (let bit = 0; bit < remainingPixels; bit++) {
 					const idx = yOffset + x + bit;
 					let paletteIndex = valueToIndex(dithered[idx]);
-					if (inverted) paletteIndex = grayscale - 1 - paletteIndex;
+					if (inverted) paletteIndex = levels - 1 - paletteIndex;
 					byte |= paletteIndex << (4 - bit * 4);
 				}
 				buffer[destRowOffset + (x >> 1)] = byte;
@@ -191,7 +188,7 @@ export async function renderBmp(png: Buffer, options: RenderBmpOptions = {}) {
 			for (let x = 0; x < targetWidth; x++) {
 				const idx = yOffset + x;
 				let paletteIndex = valueToIndex(dithered[idx]);
-				if (inverted) paletteIndex = grayscale - 1 - paletteIndex;
+				if (inverted) paletteIndex = levels - 1 - paletteIndex;
 				buffer[destRowOffset + x] = paletteIndex;
 			}
 		}

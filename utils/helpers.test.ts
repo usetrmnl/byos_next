@@ -48,7 +48,6 @@ function makeDevice(overrides: Partial<Device> = {}): Device {
 		screen_width: null,
 		screen_height: null,
 		screen_orientation: null,
-		grayscale: null,
 		model: null,
 		palette_id: null,
 		sleep_mode_enabled: false,
