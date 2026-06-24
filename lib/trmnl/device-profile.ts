@@ -8,6 +8,7 @@
  * don't drift from upstream.
  */
 
+import { resolveCompatiblePaletteId } from "./profile-resolution";
 import { findModel, findPalette } from "./registry";
 import {
 	DEFAULT_MODEL_NAME,
@@ -67,8 +68,7 @@ export async function getDeviceProfile(
 	}
 	model = applyFirmwareImageSizeLimit(model);
 
-	const desiredPaletteId =
-		paletteOverride?.trim() || model.palette_ids[0] || null;
+	const desiredPaletteId = resolveCompatiblePaletteId(model, paletteOverride);
 	const palette = desiredPaletteId ? await findPalette(desiredPaletteId) : null;
 	if (desiredPaletteId && !palette) {
 		throw new Error(`Unknown TRMNL palette: ${desiredPaletteId}`);
