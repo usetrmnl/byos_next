@@ -1,15 +1,12 @@
 import { connection, NextResponse } from "next/server";
+import { mapTrmnlDeviceSummary } from "@/lib/database/mappers";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
-import type { Device } from "@/lib/types";
 
 /**
  * GET /api/devices
  * List all devices
- *
- * Note: In TRMNL API, this requires bearer auth, but for BYOS we'll return all devices
- * since there's no user authentication system yet. This can be enhanced later.
  */
 export async function GET(_request: Request) {
 	await connection();
@@ -37,35 +34,7 @@ export async function GET(_request: Request) {
 				.execute(),
 		);
 
-		// Transform devices to match TRMNL API format
-		const deviceData = devices.map((device) => {
-			const deviceObj = device as unknown as Device;
-			return {
-				id: Number.parseInt(device.id.toString(), 10),
-				name: deviceObj.name,
-				friendly_id: deviceObj.friendly_id,
-				mac_address: deviceObj.mac_address,
-				battery_voltage: deviceObj.battery_voltage
-					? Number.parseFloat(deviceObj.battery_voltage.toString())
-					: null,
-				rssi: deviceObj.rssi,
-				percent_charged: deviceObj.battery_voltage
-					? Math.min(
-							100,
-							Math.max(
-								0,
-								((Number.parseFloat(deviceObj.battery_voltage.toString()) -
-									3.0) /
-									(4.2 - 3.0)) *
-									100,
-							),
-						)
-					: null,
-				wifi_strength: deviceObj.rssi
-					? Math.min(100, Math.max(0, ((deviceObj.rssi + 100) / 70) * 100))
-					: null,
-			};
-		});
+		const deviceData = devices.map((device) => mapTrmnlDeviceSummary(device));
 
 		logInfo("Devices list request successful", {
 			source: "api/devices",

@@ -1,3 +1,5 @@
+import { isRecord, stringifyLogValue } from "./log-values";
+
 export type DeviceStatusStamp = {
 	wifi_rssi_level?: number;
 	wifi_status?: string;
@@ -18,23 +20,15 @@ export type DeviceLogDisplayEntry = {
 	timestamp: string;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function stringValue(value: unknown): string | undefined {
 	if (typeof value === "string" && value.trim()) {
 		return value === "[object Object]" ? "Unstructured object log" : value;
 	}
 	if (typeof value === "number" || typeof value === "boolean") {
-		return String(value);
+		return stringifyLogValue(value);
 	}
 	if (typeof value === "object" && value !== null) {
-		try {
-			return JSON.stringify(value);
-		} catch {
-			return "Unserializable object log";
-		}
+		return stringifyLogValue(value);
 	}
 	return undefined;
 }

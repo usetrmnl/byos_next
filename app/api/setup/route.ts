@@ -7,12 +7,10 @@ import {
 } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
-	createDefaultRefreshSchedule,
 	DEFAULT_DEVICE_SCREEN,
-	DEFAULT_DEVICE_TIMEZONE,
 	DEVICE_SLEEP_REFRESH_SECONDS,
-	serializeRefreshSchedule,
 } from "@/lib/device/defaults";
+import { createProvisionedDevice } from "@/lib/device/provisioning";
 import { logError, logInfo, logWarn } from "@/lib/logger";
 import {
 	type ModelStorageResolution,
@@ -234,27 +232,16 @@ export async function GET(request: Request) {
 				const newDevice = await withExplicitUserScope(
 					currentUserId,
 					(scopedDb) =>
-						scopedDb
-							.insertInto("devices")
-							.values({
-								mac_address: macAddress,
-								name: `TRMNL Device ${friendly_id}`,
-								friendly_id: friendly_id,
-								api_key: api_key,
-								refresh_schedule: serializeRefreshSchedule(
-									createDefaultRefreshSchedule(),
-								),
-								last_update_time: new Date().toISOString(), // Current time as last update
-								next_expected_update: new Date(
-									Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
-								).toISOString(), // 1 hour from now
-								timezone: DEFAULT_DEVICE_TIMEZONE,
-								screen: DEFAULT_DEVICE_SCREEN,
-								model: modelResolution.modelName ?? null,
-								user_id: currentUserId,
-							})
-							.returningAll()
-							.executeTakeFirst(),
+						createProvisionedDevice(scopedDb, {
+							macAddress,
+							name: `TRMNL Device ${friendly_id}`,
+							friendlyId: friendly_id,
+							apiKey: api_key,
+							userId: currentUserId,
+							nextExpectedRefreshSeconds: DEVICE_SLEEP_REFRESH_SECONDS,
+							screen: DEFAULT_DEVICE_SCREEN,
+							model: modelResolution.modelName ?? null,
+						}),
 				);
 
 				if (!newDevice) {
@@ -397,7 +384,7 @@ export async function GET(request: Request) {
 				status: 500,
 				error: "Internal server error",
 			},
-			{ status: 200 },
+			{ status: 500 },
 		);
 	}
 }
