@@ -1,10 +1,14 @@
 import { z } from "zod";
+import { ScreenFooter } from "@/components/trmnl/screen-layout";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import {
+	createScreenProfile,
+	type ScreenProfile,
+} from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
 import getWikipediaData, { WikipediaData } from "./getData";
 
@@ -52,7 +56,13 @@ export default function Wikipedia({
 	displaytitle,
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
-}: WikipediaData & { width?: number; height?: number }) {
+	screen,
+}: WikipediaData & {
+	width?: number;
+	height?: number;
+	screen?: ScreenProfile;
+}) {
+	const screenProfile = screen ?? createScreenProfile({ width, height });
 	// Sanitize the data to ensure we only work with valid inputs
 	const safeTitle =
 		title ||
@@ -61,7 +71,7 @@ export default function Wikipedia({
 	const safeExtract = extract || "Article content is unavailable.";
 	const safeDescription = typeof description === "string" ? description : "";
 
-	const isHalfScreen = isHalfScreenLayout(width, height);
+	const isHalfScreen = screenProfile.isHalfScreen;
 
 	// Use fullurl if available, otherwise fall back to content_urls
 	const safeContentUrl =
@@ -82,10 +92,12 @@ export default function Wikipedia({
 	const calculateExtractLength = () => {
 		if (!safeExtract) return "";
 
-		// Base length for truncation - adjusted based on thumbnail presence
-		// and the actual canvas size (a 1872×1404 e-reader fits ~3× the text
-		// of an 800×480 device, so we let the extract grow with the canvas).
-		const canvasAreaScale = Math.max(1, (width * height) / (800 * 480));
+		// Base length for truncation follows logical canvas area, not physical
+		// output pixels, so high-density panels stay readable.
+		const canvasAreaScale = Math.max(
+			1,
+			(screenProfile.logicalWidth * screenProfile.logicalHeight) / (800 * 480),
+		);
 		const baseLengthRaw = hasValidThumbnail
 			? isHalfScreen
 				? 325
@@ -97,11 +109,8 @@ export default function Wikipedia({
 
 		if (safeExtract.length <= baseLength) return safeExtract;
 
-		console.log("baseLength", baseLength, "safeExtract", safeExtract.length);
-
 		// Find the last period within the limit to truncate at a natural break
 		const lastPeriodIndex = safeExtract.lastIndexOf(".", baseLength);
-		console.log("lastPeriodIndex", lastPeriodIndex);
 		if (lastPeriodIndex > baseLength * 0.8) {
 			return `${safeExtract.substring(0, lastPeriodIndex + 1)}`;
 		}
@@ -123,8 +132,13 @@ export default function Wikipedia({
 
 	// Thumbnail target width grows with canvas — 240px on TRMNL OG (800w),
 	// up to ~30% of canvas width on bigger devices.
-	const thumbnailDisplayWidth = Math.max(240, Math.round(width * 0.18));
-	const thumbnailDisplayMaxHeight = Math.round(height * 0.5);
+	const thumbnailDisplayWidth = Math.max(
+		240,
+		Math.round(screenProfile.logicalWidth * 0.18),
+	);
+	const thumbnailDisplayMaxHeight = Math.round(
+		screenProfile.logicalHeight * 0.5,
+	);
 
 	// Safe image dimensions calculation
 	const getImageDimensions = () => {
@@ -152,7 +166,10 @@ export default function Wikipedia({
 	const imageDimensions = getImageDimensions();
 
 	return (
-		<PreSatori width={width} height={height}>
+		<PreSatori
+			width={screenProfile.logicalWidth}
+			height={screenProfile.logicalHeight}
+		>
 			<div className="flex flex-col w-full h-full bg-white text-black">
 				<div className="flex-none p-4 lg:p-8 2xl:p-12 border-b border-black">
 					<h1
@@ -201,12 +218,11 @@ export default function Wikipedia({
 						</span>
 					</div>
 
-					<div className="w-full flex flex-col sm:flex-row sm:justify-between items-center text-2xl lg:text-3xl 2xl:text-4xl text-white p-2 lg:p-4 rounded-xl bg-gray-500">
-						<span>Wikipedia • Random Article</span>
-						<span>
-							{formattedDate && <span>Generated: {formattedDate}</span>}
-						</span>
-					</div>
+					<ScreenFooter
+						screen={screenProfile}
+						left="Wikipedia • Random Article"
+						right={formattedDate ? `Generated: ${formattedDate}` : ""}
+					/>
 				</div>
 			</div>
 		</PreSatori>
@@ -236,7 +252,12 @@ export const definition: RecipeDefinition<
 		const data = await getWikipediaData();
 		return data as z.infer<typeof dataSchema>;
 	},
-	Component: ({ width, height, data }) => (
-		<Wikipedia {...(data as WikipediaData)} width={width} height={height} />
+	Component: ({ width, height, screen, data }) => (
+		<Wikipedia
+			{...(data as WikipediaData)}
+			width={width}
+			height={height}
+			screen={screen}
+		/>
 	),
 };

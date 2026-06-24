@@ -1,10 +1,14 @@
 import { z } from "zod";
+import { ScreenFooter } from "@/components/trmnl/screen-layout";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import {
+	createScreenProfile,
+	type ScreenProfile,
+} from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
 import getLocalNews, {
 	compactNumber,
@@ -57,6 +61,7 @@ export const dataSchema = z.object({
 type LocalNewsProps = Partial<LocalNewsData> & {
 	width?: number;
 	height?: number;
+	screen?: ScreenProfile;
 };
 
 const fallbackStories: NewsStory[] = [
@@ -105,8 +110,11 @@ export default function LocalNews({
 	stories = fallbackStories,
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
+	screen,
 }: LocalNewsProps) {
-	const isHalfScreen = isHalfScreenLayout(width, height);
+	const screenProfile = screen ?? createScreenProfile({ width, height });
+	const isHalfScreen = screenProfile.isHalfScreen;
+	const isLarge = screenProfile.isLarge;
 	const lead = safeStory(stories[0]);
 	const secondary = stories
 		.slice(1, isHalfScreen ? 3 : 4)
@@ -116,16 +124,18 @@ export default function LocalNews({
 	const totalScore = stories.reduce((acc, s) => acc + (s.score ?? 0), 0);
 	const totalComments = stories.reduce((acc, s) => acc + (s.comments ?? 0), 0);
 
-	// Larger canvases (TRMNL X 1872×1404, e-readers) get more secondary posts +
-	// longer summary truncation. The truncate caps grow with available width
-	// so text fills the column width at every device size.
-	const titleCap = isHalfScreen ? 90 : width >= 1280 ? 220 : 130;
-	const summaryCap = isHalfScreen ? 140 : width >= 1280 ? 420 : 240;
-	const secondaryTitleCap = isHalfScreen ? 80 : width >= 1280 ? 160 : 95;
-	const secondarySummaryCap = width >= 1280 ? 220 : 120;
+	// Truncation follows device tier, not physical pixels. TRMNL X has a larger
+	// logical canvas than OG, but should not scale text from the 1872px output.
+	const titleCap = isHalfScreen ? 90 : isLarge ? 220 : 130;
+	const summaryCap = isHalfScreen ? 140 : isLarge ? 420 : 240;
+	const secondaryTitleCap = isHalfScreen ? 80 : isLarge ? 160 : 95;
+	const secondarySummaryCap = isLarge ? 220 : 120;
 
 	return (
-		<PreSatori width={width} height={height}>
+		<PreSatori
+			width={screenProfile.logicalWidth}
+			height={screenProfile.logicalHeight}
+		>
 			<div className="flex h-full w-full flex-col bg-white p-4 lg:p-6 2xl:p-10 gap-3 lg:gap-5 2xl:gap-8 text-black">
 				{/* Lead post */}
 				<div className="flex flex-col rounded-xl border-2 border-black p-3 lg:p-5 2xl:p-8">
@@ -176,7 +186,7 @@ export default function LocalNews({
 							key={`${story.title}-${index}`}
 							className="flex flex-1 flex-col rounded-xl border border-black p-2 lg:p-4 2xl:p-6"
 						>
-							<div className="flex items-center justify-between font-geneva9 text-xs lg:text-base 2xl:text-lg uppercase tracking-[0.1em]">
+							<div className="flex items-center justify-between font-geneva9 text-sm lg:text-base 2xl:text-lg uppercase tracking-[0.1em]">
 								<span>
 									{String(index + 2).padStart(2, "0")} · ▲{" "}
 									{compactNumber(story.score)}
@@ -187,11 +197,11 @@ export default function LocalNews({
 								{truncate(story.title, secondaryTitleCap)}
 							</div>
 							{story.summary ? (
-								<div className="mt-1 lg:mt-3 font-inter text-xs lg:text-base 2xl:text-lg leading-tight">
+								<div className="mt-1 lg:mt-3 font-inter text-sm lg:text-base 2xl:text-lg leading-tight">
 									{truncate(story.summary, secondarySummaryCap)}
 								</div>
 							) : null}
-							<div className="mt-auto pt-1 lg:pt-3 font-geneva9 text-xs lg:text-base 2xl:text-lg uppercase tracking-[0.08em]">
+							<div className="mt-auto pt-1 lg:pt-3 font-geneva9 text-sm lg:text-base 2xl:text-lg uppercase tracking-[0.08em]">
 								💬 {compactNumber(story.comments)} ·{" "}
 								{truncate(story.domain, 22)}
 							</div>
@@ -199,14 +209,11 @@ export default function LocalNews({
 					))}
 				</div>
 
-				{/* Footer */}
-				<div className="flex w-full flex-row justify-between items-center rounded-xl bg-gray-500 p-2 lg:p-4 text-xl lg:text-3xl 2xl:text-4xl text-white">
-					<div>
-						{stories.length} posts · ▲ {compactNumber(totalScore)} · 💬{" "}
-						{compactNumber(totalComments)}
-					</div>
-					<div>Updated {generatedAt}</div>
-				</div>
+				<ScreenFooter
+					screen={screenProfile}
+					left={`${stories.length} posts · ▲ ${compactNumber(totalScore)} · 💬 ${compactNumber(totalComments)}`}
+					right={`Updated ${generatedAt}`}
+				/>
 			</div>
 		</PreSatori>
 	);
@@ -236,11 +243,12 @@ export const definition: RecipeDefinition<
 		const data = await getLocalNews(params);
 		return data as z.infer<typeof dataSchema>;
 	},
-	Component: ({ width, height, data }) => (
+	Component: ({ width, height, screen, data }) => (
 		<LocalNews
 			{...(data as Partial<LocalNewsData>)}
 			width={width}
 			height={height}
+			screen={screen}
 		/>
 	),
 };
