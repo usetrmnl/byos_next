@@ -56,6 +56,12 @@ export default function SimpleText({
 				<div className="text-3xl lg:text-5xl 2xl:text-7xl font-inter">
 					Hello World - inter font not anti-aliased
 				</div>
+				<div className="text-[19px] font-geistpixelsquare leading-none">
+					Hello World - Geist Pixel Square
+				</div>
+				<div className="text-base lg:text-2xl 2xl:text-4xl font-geneva12">
+					small text with geneva12 font
+				</div>
 				<div className="text-3xl lg:text-5xl 2xl:text-7xl font-blockkie leading-none tracking-tight">
 					Hello World - leading none tracking tight
 				</div>

@@ -1,0 +1,147 @@
+{
+	"sources": [
+		{
+			"id": "blockKie",
+			"label": "BlockKie",
+			"license": "unknown — verify before redistribution",
+			"file": "BlockKie.ttf",
+			"format": "ttf",
+			"takumiName": "blockKie",
+			"tailwindSlug": "blockkie",
+			"cssVariable": "--font-blockkie",
+			"preloadSize": 8,
+			"dynamicWidth": false,
+			"traceMode": "pixelSnap",
+			"inkDetection": "luminance",
+			"weight": 400,
+			"bitmapGrids": [
+				{
+					"width": 8,
+					"height": 8,
+					"renderSize": 8
+				},
+				{
+					"width": 8,
+					"height": 16,
+					"renderSize": 16
+				}
+			],
+			"generatedJson": "components/bitmap-font/generated/block-kie.json"
+		},
+		{
+			"id": "geneva",
+			"label": "Geneva",
+			"license": "unknown — verify before redistribution",
+			"file": "geneva-9.ttf",
+			"format": "ttf",
+			"preloadSize": 9,
+			"dynamicWidth": false,
+			"traceMode": "pixelSnap",
+			"inkDetection": "nonWhite",
+			"weight": 400,
+			"bitmapGrids": [
+				{
+					"width": 7,
+					"height": 8,
+					"file": "geneva-9.ttf",
+					"renderSize": 8
+				},
+				{
+					"width": 12,
+					"height": 12,
+					"file": "geneva-12.otf",
+					"renderSize": 12
+				}
+			],
+			"generatedJson": "components/bitmap-font/generated/geneva.json"
+		},
+		{
+			"id": "geneva9",
+			"label": "Geneva 9",
+			"license": "unknown — verify before redistribution",
+			"file": "geneva-9.ttf",
+			"format": "ttf",
+			"takumiName": "geneva9",
+			"tailwindSlug": "geneva9",
+			"cssVariable": "--font-geneva9",
+			"preloadSize": 9,
+			"dynamicWidth": false,
+			"weight": 400
+		},
+		{
+			"id": "geneva12",
+			"label": "Geneva 12",
+			"license": "unknown — verify before redistribution",
+			"file": "geneva-12.otf",
+			"format": "otf",
+			"takumiName": "geneva12",
+			"tailwindSlug": "geneva12",
+			"cssVariable": "--font-geneva12",
+			"preloadSize": 12,
+			"dynamicWidth": false,
+			"weight": 400
+		},
+		{
+			"id": "geistPixelSquare",
+			"label": "Geist Pixel Square",
+			"license": "OFL-1.1",
+			"file": "GeistPixel-Square.woff2",
+			"format": "woff2",
+			"takumiName": "geistPixelSquare",
+			"tailwindSlug": "geistpixelsquare",
+			"cssVariable": "--font-geist-pixel-square",
+			"preloadSize": 19,
+			"dynamicWidth": true,
+			"discoverGrid": true,
+			"benchmarkProbes": "WgAyjpxQ",
+			"traceMode": "pixelSnap",
+			"inkDetection": "luminance",
+			"weight": 500,
+			"bitmapGrids": [
+				{
+					"renderSize": 19,
+					"dynamicWidth": true
+				}
+			],
+			"generatedJson": "components/bitmap-font/generated/geist-pixel-square.json"
+		},
+		{
+			"id": "inter",
+			"label": "Inter",
+			"license": "OFL-1.1",
+			"file": "Inter_18pt-Regular.ttf",
+			"format": "ttf",
+			"takumiName": "inter",
+			"tailwindSlug": "inter",
+			"cssVariable": "--font-inter",
+			"preloadSize": 18,
+			"dynamicWidth": false,
+			"weight": 400
+		}
+	],
+	"builtInPacks": [
+		{
+			"id": "ft",
+			"label": "FT (hand-edited)",
+			"packPath": "components/bitmap-font/bitmap-font.json"
+		},
+		{
+			"id": "geneva",
+			"label": "Geneva",
+			"packPath": "components/bitmap-font/generated/geneva.json",
+			"sourceId": "geneva"
+		},
+		{
+			"id": "blockKie",
+			"label": "BlockKie",
+			"packPath": "components/bitmap-font/generated/block-kie.json",
+			"sourceId": "blockKie"
+		},
+		{
+			"id": "geistPixelSquare",
+			"label": "Geist Pixel Square",
+			"packPath": "components/bitmap-font/generated/geist-pixel-square.json",
+			"sourceId": "geistPixelSquare"
+		}
+	]
+}

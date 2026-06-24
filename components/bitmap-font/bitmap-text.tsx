@@ -1,8 +1,24 @@
 // Types for the bitmap font structure
+import {
+	type BitmapFontMetrics,
+	binaryToPath,
+	getFontMetrics,
+	getGlyphAdvance,
+	getGlyphBitmapWidth,
+	layoutBitmapText,
+	layoutV2Text,
+	parseGridSize,
+	resolveV2Face,
+	type NewBitmapFont,
+} from "@/lib/bitmap-font";
+import { isV2BitmapFont } from "@/lib/bitmap-font/pack-utils";
+
 interface BitmapFontCharacter {
 	charCode: number;
 	char: string;
 	data: string;
+	width?: number;
+	advance?: number;
 }
 
 interface BitmapFont {
@@ -11,16 +27,14 @@ interface BitmapFont {
 	characters: BitmapFontCharacter[];
 }
 
-interface BitmapFontFile {
+interface LegacyBitmapFontFile {
 	metadata?: {
-		name: string;
-		creator: string;
-		createdAt: string;
-		version: string;
-		description: string;
+		metrics?: BitmapFontMetrics;
 	};
 	fonts: BitmapFont[];
 }
+
+type BitmapFontFile = LegacyBitmapFontFile | NewBitmapFont;
 
 interface BitmapTextProps {
 	text: string;
@@ -31,26 +45,17 @@ interface BitmapTextProps {
 	className?: string;
 }
 
-// Utility function to convert base64 to binary string
 const base64ToBinary = (base64: string): string => {
-	// Decode base64 to binary
 	const binary = atob(base64);
-	// Convert each byte to its binary representation
 	return Array.from(binary)
 		.map((char) => char.charCodeAt(0).toString(2).padStart(8, "0"))
 		.join("");
 };
 
-// Helper functions for bitmap processing
-function parseGridSize(gridSize: string): [number, number] {
-	const [w, h] = gridSize.split("x").map(Number);
-	return [w, h];
-}
-
 function parseFontData(fontData: BitmapFontFile | string): BitmapFontFile {
 	if (typeof fontData === "string") {
 		try {
-			return JSON.parse(fontData);
+			return JSON.parse(fontData) as BitmapFontFile;
 		} catch (error) {
 			console.error("Error parsing font data:", error);
 			return { fonts: [] };
@@ -60,23 +65,21 @@ function parseFontData(fontData: BitmapFontFile | string): BitmapFontFile {
 }
 
 function findMatchingFont(
-	parsedFontData: BitmapFontFile,
+	parsedFontData: LegacyBitmapFontFile,
 	width: number,
 	height: number,
 ): BitmapFont | null {
-	// Try to find exact match first
 	const exactMatch = parsedFontData.fonts.find(
-		(font) => font.width === width && font.height === height,
+		(font) =>
+			(font.width === width || (font.width === 0 && width === 0)) &&
+			font.height === height,
 	);
-
 	if (exactMatch) return exactMatch;
 
-	// If no exact match, return the first font if available
-	if (parsedFontData.fonts.length > 0) {
-		return parsedFontData.fonts[0];
-	}
+	const heightMatch = parsedFontData.fonts.find((font) => font.height === height);
+	if (heightMatch) return heightMatch;
 
-	return null;
+	return parsedFontData.fonts[0] ?? null;
 }
 
 function createCharMap(selectedFont: BitmapFont | null): Map<number, string> {
@@ -86,80 +89,19 @@ function createCharMap(selectedFont: BitmapFont | null): Map<number, string> {
 	selectedFont.characters.forEach((char: BitmapFontCharacter) => {
 		map.set(char.charCode, base64ToBinary(char.data));
 	});
-
 	return map;
 }
 
-function generateSvgData(
-	text: string,
+function createGlyphMetaMap(
 	selectedFont: BitmapFont | null,
-	charMap: Map<number, string>,
-	scale: number,
-	gap: number,
-) {
-	if (!selectedFont) return { width: 0, height: 0, paths: [] };
+): Map<number, { width?: number; advance?: number }> {
+	if (!selectedFont) return new Map();
 
-	const fontWidth = selectedFont.width;
-	const fontHeight = selectedFont.height;
-	const charWidth = fontWidth * scale;
-	const charHeight = fontHeight * scale;
-	const spaceWidth = fontWidth * scale * 0.5; // Space width is half a character
-	const gapWidth = gap;
-
-	// Calculate total width and generate paths
-	let totalWidth = 0;
-	const paths: { path: string; x: number }[] = [];
-
-	// Process each character in the text
-	Array.from(text).forEach((char) => {
-		const charCode = char.charCodeAt(0);
-
-		// Handle spaces
-		if (char === " ") {
-			totalWidth += spaceWidth;
-			return;
-		}
-
-		// Get the bitmap data for this character
-		const binaryString = charMap.get(charCode);
-
-		if (!binaryString) {
-			// If no data, just add the width
-			totalWidth += charWidth;
-			return;
-		}
-
-		// Generate path for this character
-		const binaryArray = binaryString
-			.padEnd(fontWidth * fontHeight, "0")
-			.slice(0, fontWidth * fontHeight);
-		const pathData = Array.from({ length: fontWidth * fontHeight })
-			.map((_, i) => {
-				if (i >= binaryArray.length) return "";
-				const isBlack = binaryArray[i] === "1";
-				if (!isBlack) return "";
-				const x = i % fontWidth;
-				const y = Math.floor(i / fontWidth);
-				return `M ${x} ${y} h 1 v 1 h -1 z`;
-			})
-			.join(" ");
-
-		// Add path with position
-		paths.push({
-			path: pathData,
-			x: totalWidth,
-		});
-
-		// Increase total width
-		totalWidth += charWidth;
-		totalWidth += gapWidth; // Add gap after each character
+	const map = new Map<number, { width?: number; advance?: number }>();
+	selectedFont.characters.forEach((char) => {
+		map.set(char.charCode, { width: char.width, advance: char.advance });
 	});
-
-	return {
-		width: totalWidth > 0 ? totalWidth : 100, // Minimum width if no text
-		height: charHeight,
-		paths,
-	};
+	return map;
 }
 
 function BitmapText({
@@ -170,38 +112,92 @@ function BitmapText({
 	gap = 0,
 	className = "",
 }: BitmapTextProps) {
-	// Parse font data and calculate properties without useMemo
 	const parsedFontData = parseFontData(fontData);
-	const [width, height] = parseGridSize(gridSize);
-	const selectedFont = findMatchingFont(parsedFontData, width, height);
-	const charMap = createCharMap(selectedFont);
-	const svgData = generateSvgData(text, selectedFont, charMap, scale, gap);
 
-	// If there's no font data or the text is empty, show nothing
+	if (isV2BitmapFont(parsedFontData)) {
+		const face = resolveV2Face(parsedFontData, gridSize);
+		if (!face || !text) return null;
+
+		const layout = layoutV2Text({
+			text,
+			glyphs: face.glyphs,
+			metrics: face.metrics,
+			gridWidth: face.gridWidth,
+			scale,
+			gap,
+		});
+
+		return (
+			<svg
+				width={layout.width}
+				height={layout.height}
+				viewBox={`0 0 ${layout.width} ${layout.height}`}
+				className={className}
+				style={{ maxWidth: "100%" }}
+				role="img"
+				aria-label={`Bitmap text: ${text}`}
+			>
+				{layout.lines.flatMap((line, lineIndex) =>
+					line.paths.map((item, index) => (
+						<g
+							key={`${lineIndex}-${index}`}
+							transform={`translate(${item.x}, ${item.y}) scale(${scale})`}
+						>
+							<path d={item.path} fill="currentColor" />
+						</g>
+					)),
+				)}
+			</svg>
+		);
+	}
+
+	const legacyPack = parsedFontData as LegacyBitmapFontFile;
+	const [width, height] = parseGridSize(gridSize);
+	const selectedFont = findMatchingFont(legacyPack, width, height);
+	const charMap = createCharMap(selectedFont);
+	const glyphMeta = createGlyphMetaMap(selectedFont);
+	const metrics = getFontMetrics(
+		legacyPack,
+		selectedFont ?? { width: 0, height: 0, characters: [] },
+	);
+
 	if (!selectedFont || !text) {
 		return null;
 	}
 
+	const layout = layoutBitmapText({
+		text,
+		font: selectedFont,
+		charMap,
+		glyphMeta,
+		metrics,
+		scale,
+		gap,
+	});
+
 	return (
 		<svg
-			width={svgData.width}
-			height={svgData.height}
-			viewBox={`0 0 ${svgData.width} ${svgData.height}`}
+			width={layout.width}
+			height={layout.height}
+			viewBox={`0 0 ${layout.width} ${layout.height}`}
 			className={className}
 			style={{ maxWidth: "100%" }}
 			role="img"
 			aria-label={`Bitmap text: ${text}`}
 		>
-			{svgData.paths.map((item: { path: string; x: number }, index: number) => (
-				<g key={index} transform={`translate(${item.x}, 0) scale(${scale})`}>
-					<path d={item.path} fill="currentColor" />
-				</g>
-			))}
+			{layout.lines.flatMap((line, lineIndex) =>
+				line.paths.map((item, index) => (
+					<g
+						key={`${lineIndex}-${index}`}
+						transform={`translate(${item.x}, ${item.y}) scale(${scale})`}
+					>
+						<path d={item.path} fill="currentColor" />
+					</g>
+				)),
+			)}
 		</svg>
 	);
 }
 
-// Export BitmapTextServer from its dedicated file
-// export { BitmapTextServer } from './bitmap-text-server';
-
-export { BitmapText };
+export { BitmapText, binaryToPath, getGlyphAdvance, getGlyphBitmapWidth };
+export type { BitmapFontMetrics };

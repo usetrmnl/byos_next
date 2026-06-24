@@ -128,7 +128,7 @@ export function hashString(
 	for (let i = 0; i < length; i++) {
 		result +=
 			charset[
-				Number.parseInt(hash.slice(i * 2, i * 2 + 2), 16) % charset.length
+			Number.parseInt(hash.slice(i * 2, i * 2 + 2), 16) % charset.length
 			];
 	}
 	return result;

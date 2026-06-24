@@ -1,14 +1,14 @@
 import fs from "fs";
 import { Geist_Mono as FontMono, Geist as FontSans } from "next/font/google";
 import localFont from "next/font/local";
-import path from "path";
 import { cache } from "react";
-
-const fontPaths = {
-	blockKie: path.join(process.cwd(), "public", "fonts", "BlockKie.ttf"),
-	geneva9: path.join(process.cwd(), "public", "fonts", "geneva-9.ttf"),
-	inter: path.join(process.cwd(), "public", "fonts", "Inter_18pt-Regular.ttf"),
-};
+import {
+	FONT_SOURCES,
+	getFontDiskPath,
+	getTakumiFontSources,
+	TAILWIND_SLUG_TO_TAKUMI,
+	type FontSource,
+} from "@/lib/font-sources";
 
 // System fonts configuration
 export const fontSans = FontSans({
@@ -16,7 +16,7 @@ export const fontSans = FontSans({
 	variable: "--font-sans",
 	display: "swap",
 	preload: true,
-	adjustFontFallback: true, // Automatically handles fallback fonts
+	adjustFontFallback: true,
 });
 
 export const fontMono = FontMono({
@@ -27,22 +27,29 @@ export const fontMono = FontMono({
 	adjustFontFallback: true,
 });
 
-// Display fonts configuration
 export const blockKie = localFont({
 	src: "../public/fonts/BlockKie.ttf",
 	variable: "--font-blockkie",
 	preload: true,
-	display: "block", // Block rendering until font is loaded for consistent display
+	display: "block",
 	weight: "400",
 	style: "normal",
 });
 
-// UI fonts configuration
 export const geneva9 = localFont({
 	src: "../public/fonts/geneva-9.ttf",
 	variable: "--font-geneva9",
 	preload: true,
-	display: "swap", // Use fallback while loading
+	display: "swap",
+	weight: "400",
+	style: "normal",
+});
+
+export const geneva12 = localFont({
+	src: "../public/fonts/geneva-12.otf",
+	variable: "--font-geneva12",
+	preload: true,
+	display: "swap",
 	weight: "400",
 	style: "normal",
 });
@@ -56,24 +63,45 @@ export const inter = localFont({
 	style: "normal",
 });
 
-// Font variables organized by purpose
+export const geistPixelSquare = localFont({
+	src: "../public/fonts/GeistPixel-Square.woff2",
+	variable: "--font-geist-pixel-square",
+	preload: true,
+	display: "swap",
+	weight: "500",
+	style: "normal",
+});
+
 export const fonts = {
 	sans: fontSans,
 	mono: fontMono,
-	blockKie: blockKie,
-	geneva9: geneva9,
-	inter: inter,
+	blockKie,
+	geneva9,
+	geneva12,
+	inter,
+	geistPixelSquare,
 } as const;
 
-// Helper to get all font variables
 export const getAllFontVariables = () =>
 	Object.values(fonts)
 		.map((font) => font.variable)
 		.join(" ");
 
+const takumiFontSources = getTakumiFontSources().filter(
+	(source): source is FontSource & { takumiName: string } =>
+		Boolean(source.takumiName),
+);
+
+const takumiFontPaths = Object.fromEntries(
+	takumiFontSources.map((source) => [
+		source.takumiName,
+		getFontDiskPath(source),
+	]),
+);
+
 export const loadFont = cache(() => {
 	try {
-		return Object.entries(fontPaths).reduce(
+		return Object.entries(takumiFontPaths).reduce(
 			(acc, [fontName, fontPath]) => {
 				acc[fontName] = Buffer.from(fs.readFileSync(fontPath));
 				return acc;
@@ -86,39 +114,33 @@ export const loadFont = cache(() => {
 	}
 });
 
-/**
- * Returns an array of Takumi-compatible font objects
- * @param fonts Object containing font buffers from loadFont()
- * @returns Array of font configurations for Takumi
- */
 export const getTakumiFonts = () => {
-	const fonts = loadFont();
-	if (!fonts) return [];
-	const weight = 400 as const;
-	const style = "normal" as const;
+	const fontBuffers = loadFont();
+	if (!fontBuffers) return [];
 
-	const takumiFonts = Object.entries(fonts).map(([fontName, fontBuffer]) => {
-		let data: ArrayBuffer;
-		if (fontBuffer instanceof ArrayBuffer) {
-			data = fontBuffer;
-		}
-		data = Uint8Array.from(fontBuffer).buffer;
+	return takumiFontSources.map((source) => {
+		const fontBuffer = fontBuffers[source.takumiName];
+		const data = Uint8Array.from(fontBuffer).buffer;
 
 		return {
-			name: fontName,
-			data: data,
-			weight: weight,
-			style: style,
+			name: source.takumiName,
+			data,
+			weight: source.weight as 400 | 500,
+			style: "normal" as const,
 		};
 	});
-
-	return takumiFonts;
 };
 
 export const extractFontFamily = (className?: string): string | undefined => {
-	const defaultFont = "blockkie";
+	const defaultFont =
+		TAILWIND_SLUG_TO_TAKUMI.blockkie ??
+		FONT_SOURCES[0]?.takumiName ??
+		"blockKie";
 	if (!className) return defaultFont;
 
 	const fontClass = className.split(" ").find((cls) => cls.startsWith("font-"));
-	return fontClass?.replace("font-", "") || defaultFont;
+	if (!fontClass) return defaultFont;
+
+	const slug = fontClass.replace("font-", "");
+	return TAILWIND_SLUG_TO_TAKUMI[slug] ?? slug;
 };

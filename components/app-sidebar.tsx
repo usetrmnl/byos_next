@@ -5,6 +5,7 @@ import {
 	ChevronRight,
 	Copy,
 	Dice5,
+	Info,
 	LayoutDashboard,
 	ListMusic,
 	Monitor,
@@ -23,6 +24,7 @@ import { addUserDevice, claimDeviceByCode } from "@/app/actions/device";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import type { ComponentConfig } from "@/components/component-config";
 import { NavUser } from "@/components/nav-user";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -55,6 +57,7 @@ import {
 	SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import type { Device, RecipeSidebarItem } from "@/lib/types";
+import { formatByosApiServerUrlForDevice } from "@/lib/byos-api-server-url";
 import packageJson from "@/package.json";
 import { generateRandomApiKey, getDeviceStatus } from "@/utils/helpers";
 
@@ -70,6 +73,7 @@ interface AppSidebarProps {
 		role?: string;
 	} | null;
 	authEnabled: boolean;
+	byosApiServerUrl: string;
 }
 
 export function AppSidebar({
@@ -79,6 +83,7 @@ export function AppSidebar({
 	currentPath,
 	user,
 	authEnabled,
+	byosApiServerUrl,
 }: AppSidebarProps) {
 	const router = useRouter();
 
@@ -88,6 +93,7 @@ export function AppSidebar({
 	const [newDeviceClaimCode, setNewDeviceClaimCode] = useState("");
 	const [newDeviceName, setNewDeviceName] = useState("");
 	const [addingDevice, setAddingDevice] = useState(false);
+	const deviceApiServerUrl = formatByosApiServerUrlForDevice(byosApiServerUrl);
 
 	const generateRandomDeviceApiKey = () => {
 		setNewDeviceApiKey(generateRandomApiKey());
@@ -123,6 +129,7 @@ export function AppSidebar({
 				toast.success(`Device added! API key: ${result.apiKey}`);
 				setAddDeviceOpen(false);
 				setNewDeviceApiKey("");
+				setNewDeviceMacAddress("");
 				setNewDeviceClaimCode("");
 				setNewDeviceName("");
 				router.refresh();
@@ -441,15 +448,87 @@ export function AppSidebar({
 
 			{/* Add Device Dialog */}
 			<Dialog open={addDeviceOpen} onOpenChange={setAddDeviceOpen}>
-				<DialogContent>
+				<DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
 					<DialogHeader>
 						<DialogTitle>Add or Claim a Device</DialogTitle>
 						<DialogDescription>
-							Enter the claim code shown on your device screen, or create a
-							device manually with an API key.
+							Point your device at this server during WiFi setup, then claim it
+							with an on-screen code or add it manually with an API key.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
+						<Alert>
+							<Info aria-hidden="true" />
+							<AlertTitle>Point the device API server here</AlertTitle>
+							<AlertDescription>
+								<ol className="list-decimal space-y-1 pl-4">
+									<li>Hold the back button for 5 seconds to reset the device.</li>
+									<li>
+										Connect to the <strong>TRMNL</strong> WiFi network and open
+										the captive portal.
+									</li>
+									<li>
+										Scroll to the bottom of the WiFi list and tap{" "}
+										<strong>Advanced</strong>.
+									</li>
+									<li>
+										Tap <strong>Custom Server</strong>, then <strong>Yes</strong>{" "}
+										on the warning.
+									</li>
+									<li>
+										In the <strong>API Server</strong> field, enter your server
+										URL with no trailing slash:
+									</li>
+								</ol>
+								<div className="mt-2 flex gap-2">
+									<code className="flex-1 break-all rounded-md border bg-muted px-2 py-1.5 font-mono text-xs text-foreground">
+										{deviceApiServerUrl.displayUrl}
+									</code>
+									<Button
+										type="button"
+										variant="outline"
+										size="icon"
+										onClick={() => {
+											if (deviceApiServerUrl.usesLocalhost) {
+												toast.message(
+													"Replace [your-ip] with your computer's LAN IP address.",
+												);
+												return;
+											}
+											navigator.clipboard.writeText(deviceApiServerUrl.displayUrl);
+											toast.success("API server URL copied!");
+										}}
+										title="Copy API server URL"
+										aria-label="Copy API server URL"
+									>
+										<Copy className="size-4" />
+									</Button>
+								</div>
+								{deviceApiServerUrl.usesLocalhost && (
+									<p className="mt-2 text-xs text-muted-foreground">
+										Do not use <strong>localhost</strong> — use your
+										computer&apos;s LAN IP on the same WiFi network (for example{" "}
+										<code className="font-mono">192.168.1.42</code>).
+									</p>
+								)}
+								<ol
+									className="mt-3 list-decimal space-y-1 pl-4"
+									start={6}
+								>
+									<li>
+										Scroll down and tap <strong>Back to Wi-Fi</strong>.
+									</li>
+									<li>
+										Select your WiFi network and enter the password.
+									</li>
+									<li>
+										Tap <strong>Connect</strong>, wait, and the device should
+										refresh.
+									</li>
+								</ol>
+							</AlertDescription>
+						</Alert>
+
 						<div className="space-y-2">
 							<Label htmlFor="device-claim-code">Claim Code</Label>
 							<Input
@@ -495,6 +574,18 @@ export function AppSidebar({
 									</Button>
 								)}
 							</div>
+							<p className="text-xs text-muted-foreground">
+								You can also find your API key at{" "}
+								<a
+									href="https://trmnl.com/devices/"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="underline underline-offset-2 hover:text-foreground"
+								>
+									trmnl.com/devices
+								</a>{" "}
+								under Developer Perks.
+							</p>
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="device-name">

@@ -2,6 +2,9 @@ import type { RefreshSchedule } from "@/lib/types";
 
 export const DEFAULT_DEVICE_SCREEN = "simple-text";
 
+export const NO_DEFAULT_RECIPE_MESSAGE =
+	"No default recipe. Set one from Edit device.";
+
 export const DEVICE_SETUP_REFRESH_SECONDS = 60;
 export const DISPLAY_FALLBACK_REFRESH_SECONDS = 180;
 export const DEVICE_SLEEP_REFRESH_SECONDS = 3600;
@@ -44,13 +47,13 @@ export function normalizeRefreshSchedule(
 	if (typeof candidate.default_refresh_rate !== "number") return null;
 	const timeRanges = Array.isArray(candidate.time_ranges)
 		? candidate.time_ranges.filter(
-				(range): range is RefreshSchedule["time_ranges"][number] =>
-					typeof range === "object" &&
-					range !== null &&
-					typeof range.start_time === "string" &&
-					typeof range.end_time === "string" &&
-					typeof range.refresh_rate === "number",
-			)
+			(range): range is RefreshSchedule["time_ranges"][number] =>
+				typeof range === "object" &&
+				range !== null &&
+				typeof range.start_time === "string" &&
+				typeof range.end_time === "string" &&
+				typeof range.refresh_rate === "number",
+		)
 		: [];
 	return {
 		default_refresh_rate: candidate.default_refresh_rate,

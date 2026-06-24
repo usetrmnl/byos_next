@@ -608,10 +608,6 @@ describe("generateApiKey", () => {
 	});
 });
 
-// ---------------------------------------------------------------------------
-// generateMockMacAddress
-// ---------------------------------------------------------------------------
-
 describe("generateMockMacAddress", () => {
 	it("returns a string in MAC address format", () => {
 		const mac = generateMockMacAddress("someApiKey1234567890");
