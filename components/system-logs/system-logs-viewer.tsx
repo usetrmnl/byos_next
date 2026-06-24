@@ -5,19 +5,11 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchSystemLogs } from "@/app/actions/system";
+import { LogPagination } from "@/components/common/log-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-	Pagination,
-	PaginationContent,
-	PaginationEllipsis,
-	PaginationItem,
-	PaginationLink,
-	PaginationNext,
-	PaginationPrevious,
-} from "@/components/ui/pagination";
 import {
 	Select,
 	SelectContent,
@@ -40,6 +32,14 @@ import type { SystemLog } from "@/lib/types";
 import { formatDate } from "@/utils/helpers";
 
 const DEFAULT_ITEMS_PER_PAGE = 100;
+
+function formatLogMetadata(metadata: string): string {
+	try {
+		return JSON.stringify(JSON.parse(metadata), null, 2);
+	} catch {
+		return metadata;
+	}
+}
 
 // Define the type for the fetch function parameters
 export type SystemLogsFetchParams = {
@@ -79,7 +79,6 @@ export default function SystemLogsViewer({
 	const router = useRouter();
 	const pathname = usePathname() ?? "/";
 	const searchParams = useSearchParams();
-	const scrollRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	// Get URL params with defaults
@@ -226,51 +225,12 @@ export default function SystemLogsViewer({
 		perPage,
 	]);
 
-	// Maintain scroll position
-	useEffect(() => {
-		if (scrollRef.current && !isLoading) {
-			scrollRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-		}
-	}, [isLoading]);
-
-	// Calculate pagination values
-	const totalPages = Math.ceil(totalLogs / perPage);
-	const showingFrom = (page - 1) * perPage + 1;
-	const showingTo = Math.min(page * perPage, totalLogs);
-
 	// Check if any filters are active
 	const hasActiveFilters =
 		searchQuery || levelFilter !== "all" || sourceFilter !== "all";
 
-	// Generate page numbers for pagination
-	const getPageNumbers = () => {
-		const pages: (number | "ellipsis")[] = [];
-		if (totalPages <= 5) {
-			for (let i = 1; i <= totalPages; i++) pages.push(i);
-		} else if (page <= 3) {
-			for (let i = 1; i <= Math.min(5, totalPages); i++) pages.push(i);
-			if (totalPages > 5) {
-				pages.push("ellipsis");
-				pages.push(totalPages);
-			}
-		} else if (page >= totalPages - 2) {
-			pages.push(1);
-			pages.push("ellipsis");
-			for (let i = totalPages - 4; i <= totalPages; i++) {
-				if (i > 1) pages.push(i);
-			}
-		} else {
-			pages.push(1);
-			pages.push("ellipsis");
-			for (let i = page - 1; i <= page + 1; i++) pages.push(i);
-			pages.push("ellipsis");
-			pages.push(totalPages);
-		}
-		return pages;
-	};
-
 	return (
-		<div ref={scrollRef} className="space-y-4">
+		<div className="space-y-4">
 			{/* Search and filters */}
 			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<div className="relative flex-1">
@@ -398,7 +358,7 @@ export default function SystemLogsViewer({
 						) : logs.length === 0 ? (
 							<TableRow>
 								<TableCell
-									colSpan={6}
+									colSpan={5}
 									className="px-4 py-8 text-center text-muted-foreground"
 								>
 									No logs found matching your criteria
@@ -464,11 +424,7 @@ export default function SystemLogsViewer({
 														{expandedLogs[log.id] ? (
 															<div className="pt-2 h-[200px] w-full overflow-auto">
 																<pre className="whitespace-pre-wrap break-words">
-																	{JSON.stringify(
-																		JSON.parse(log.metadata),
-																		null,
-																		2,
-																	)}
+																	{formatLogMetadata(log.metadata)}
 																</pre>
 															</div>
 														) : (
@@ -509,59 +465,12 @@ export default function SystemLogsViewer({
 
 			{/* Pagination */}
 			{!isLoading && logs.length > 0 && (
-				<div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-					<div className="text-sm text-muted-foreground">
-						Showing <span className="font-medium">{showingFrom}</span> to{" "}
-						<span className="font-medium">{showingTo}</span> of{" "}
-						<span className="font-medium">{totalLogs}</span> logs
-					</div>
-
-					<Pagination>
-						<PaginationContent>
-							<PaginationItem>
-								<PaginationPrevious
-									onClick={() => page > 1 && handlePageChange(page - 1)}
-									className={
-										page <= 1
-											? "pointer-events-none opacity-50"
-											: "cursor-pointer"
-									}
-								/>
-							</PaginationItem>
-
-							{getPageNumbers().map((pageNum, i) =>
-								pageNum === "ellipsis" ? (
-									<PaginationItem key={`ellipsis-${i}`}>
-										<PaginationEllipsis />
-									</PaginationItem>
-								) : (
-									<PaginationItem key={pageNum}>
-										<PaginationLink
-											isActive={page === pageNum}
-											onClick={() => handlePageChange(pageNum)}
-											className="cursor-pointer"
-										>
-											{pageNum}
-										</PaginationLink>
-									</PaginationItem>
-								),
-							)}
-
-							<PaginationItem>
-								<PaginationNext
-									onClick={() =>
-										page < totalPages && handlePageChange(page + 1)
-									}
-									className={
-										page >= totalPages
-											? "pointer-events-none opacity-50"
-											: "cursor-pointer"
-									}
-								/>
-							</PaginationItem>
-						</PaginationContent>
-					</Pagination>
-				</div>
+				<LogPagination
+					page={page}
+					perPage={perPage}
+					totalItems={totalLogs}
+					onPageChange={handlePageChange}
+				/>
 			)}
 		</div>
 	);
