@@ -115,9 +115,11 @@ Create `.env.local` (for `pnpm dev`) or `.env` (for Docker Compose) with the key
 | `BETTER_AUTH_SECRET` | Required when `AUTH_ENABLED=true`. Generate with `openssl rand -base64 32`. |
 | `BETTER_AUTH_URL` | Public URL of your deployment (defaults to `http://localhost:3000`). |
 | `AUTH_ENABLED` | Set to `false` to disable authentication (mono-user mode). |
-| `ADMIN_EMAIL` | Email that receives admin role on first sign-up. |
 | `REACT_RENDERER` | `takumi` (default), `satori`, or `browser`. See below. |
 | `ENABLE_EXTERNAL_CATALOG` | Allow fetching the community / TRMNL recipe catalog. |
+
+When authentication is enabled, visit `/setup` after configuring the database.
+The first account created during setup is assigned the admin role automatically.
 
 ### Renderer Options
 - **`takumi`** (default): fast Rust-backed Satori-compatible renderer.
