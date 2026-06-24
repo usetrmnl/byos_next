@@ -9,9 +9,41 @@
  */
 
 import { findModel, findPalette } from "./registry";
-import { DEFAULT_MODEL_NAME, type DeviceProfile } from "./types";
+import {
+	DEFAULT_MODEL_NAME,
+	type DeviceProfile,
+	type TrmnlModel,
+} from "./types";
 
 export { DEFAULT_MODEL_NAME, type DeviceProfile };
+
+/**
+ * Firmware-accurate image size budgets.
+ *
+ * The device firmware (`include/config.h`, `MAX_IMAGE_SIZE`) allocates the
+ * receive buffer per board class:
+ *   - X-class boards (ESP32-S3 + PSRAM, e.g. TRMNL X): 750000 bytes
+ *   - every other board:                                 90000 bytes
+ *
+ * TRMNL's model registry ships a generic ~92160 default for almost every model
+ * (even 2880x2160 panels), so it under-reports the real budget for high-res
+ * X-class panels. A 1872x1404 gray-16 screen legitimately exceeds 90KB while
+ * still being well within the X's 750KB buffer. Override the known X-class
+ * models so our size-limit check reflects what the hardware accepts instead of
+ * falsely flagging valid images. Keyed by registry model `name`.
+ */
+const X_CLASS_IMAGE_SIZE_LIMIT = 750_000;
+const X_CLASS_MODEL_NAMES = new Set<string>(["v2"]);
+
+function applyFirmwareImageSizeLimit(model: TrmnlModel): TrmnlModel {
+	if (!X_CLASS_MODEL_NAMES.has(model.name)) {
+		return model;
+	}
+	if (model.image_size_limit === X_CLASS_IMAGE_SIZE_LIMIT) {
+		return model;
+	}
+	return { ...model, image_size_limit: X_CLASS_IMAGE_SIZE_LIMIT };
+}
 
 /**
  * Resolve the render profile for a device.
@@ -33,6 +65,7 @@ export async function getDeviceProfile(
 			`Unknown TRMNL model: ${requested}; default ${DEFAULT_MODEL_NAME} is unavailable`,
 		);
 	}
+	model = applyFirmwareImageSizeLimit(model);
 
 	const desiredPaletteId =
 		paletteOverride?.trim() || model.palette_ids[0] || null;
