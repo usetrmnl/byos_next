@@ -1,10 +1,9 @@
-import { AlertCircle } from "lucide-react";
-import Link from "next/link";
+import { connection } from "next/server";
 import { Suspense } from "react";
 import { fetchSystemLogs } from "@/app/actions/system";
 import { PageTemplate } from "@/components/common/page-template";
+import DbNotConfiguredErrorCard from "@/components/error-cards/db-not-configured-error-card";
 import SystemLogsViewerSkeleton from "@/components/system-logs/system-logs-viewer-skeleton";
-import { Button } from "@/components/ui/button";
 import { getDbStatus } from "@/lib/database/utils";
 import { SystemLogsClientPage } from "./client-page";
 
@@ -22,20 +21,7 @@ const SystemLogsData = async () => {
 	if (!dbStatus.ready) {
 		return (
 			<>
-				<div className="rounded-lg border border-destructive/50 bg-destructive/10 p-6 text-center">
-					<div className="flex justify-center mb-4">
-						<AlertCircle className="h-12 w-12 text-destructive" />
-					</div>
-					<h3 className="text-xl font-semibold mb-2">
-						Database Connection Error
-					</h3>
-					<p className="text-muted-foreground mb-6">
-						Unable to connect to the database. System logs cannot be displayed.
-					</p>
-					<Button asChild>
-						<Link href="/">Go to Dashboard</Link>
-					</Button>
-				</div>
+				<DbNotConfiguredErrorCard status={dbStatus} pageName="System logs" />
 				<SystemLogsViewerSkeleton className="filter blur-[1px] pointer-events-none mt-6" />
 			</>
 		);
@@ -60,7 +46,9 @@ const SystemLogsData = async () => {
 	);
 };
 
-export default function SystemLogsPage() {
+export default async function SystemLogsPage() {
+	await connection();
+
 	return (
 		<PageTemplate
 			title="System Logs"

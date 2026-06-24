@@ -145,3 +145,9 @@ export type RecipeSidebarItem = {
 
 // Re-export for convenience
 export { DeviceDisplayMode } from "@/lib/mixup/constants";
+
+export type DbStatus = {
+	ready: boolean;
+	error?: string;
+	databaseConfigured: boolean;
+};
