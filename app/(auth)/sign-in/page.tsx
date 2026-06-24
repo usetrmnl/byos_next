@@ -17,7 +17,6 @@ async function SignInWithDbCheck() {
 }
 
 export default function SignInPage() {
-	console.log({ where: "SignInPage" });
 	return (
 		<Suspense fallback={<SignInForm dbReady={true} />}>
 			<SignInWithDbCheck />
