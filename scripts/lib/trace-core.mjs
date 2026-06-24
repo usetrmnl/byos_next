@@ -85,6 +85,38 @@ export function sampleToBinaryGrid(
 	return binary;
 }
 
+/** Place ink in a fixed cell, optionally centering horizontally. */
+export function embedInkInCell(
+	pixels,
+	sourceWidth,
+	sourceHeight,
+	bounds,
+	targetWidth,
+	targetHeight,
+	threshold = 128,
+	inkDetection = "luminance",
+	centerHorizontally = false,
+) {
+	const inkW = bounds.maxX - bounds.minX + 1;
+	const offsetX = centerHorizontally
+		? Math.floor((targetWidth - inkW) / 2) - bounds.minX
+		: 0;
+
+	let binary = "";
+	for (let y = 0; y < targetHeight; y++) {
+		for (let x = 0; x < targetWidth; x++) {
+			const sx = x - offsetX;
+			if (sx < 0 || sx >= sourceWidth || y >= sourceHeight) {
+				binary += "0";
+				continue;
+			}
+			const i = (y * sourceWidth + sx) * 4;
+			binary += isInkPixel(pixels, i, threshold, inkDetection) ? "1" : "0";
+		}
+	}
+	return binary;
+}
+
 /** 1:1 crop from canvas origin — preserves baseline / top alignment. */
 export function directCropToGrid(
 	pixels,
@@ -107,6 +139,29 @@ export function directCropToGrid(
 		}
 	}
 	return binary;
+}
+
+/** Center a glyph horizontally in a fixed-width cell without scaling ink. */
+export function measureHorizontalCenterOffset(
+	pixels,
+	sourceWidth,
+	sourceHeight,
+	targetWidth,
+	threshold = 128,
+	inkDetection = "luminance",
+) {
+	const bounds = findInkBounds(
+		pixels,
+		sourceWidth,
+		sourceHeight,
+		threshold,
+		"metricSnap",
+		inkDetection,
+	);
+	if (!bounds) return 0;
+
+	const inkW = bounds.maxX - bounds.minX + 1;
+	return Math.floor((targetWidth - inkW) / 2) - bounds.minX;
 }
 
 export function rgbaToBinaryGrid(
@@ -132,6 +187,30 @@ export function rgbaToBinaryGrid(
 			targetHeight,
 			threshold,
 			inkDetection,
+		);
+	}
+
+	if (mode === "metricSnap") {
+		const bounds = findInkBounds(
+			pixels,
+			sourceWidth,
+			sourceHeight,
+			threshold,
+			mode,
+			inkDetection,
+		);
+		if (!bounds) return "0".repeat(targetWidth * targetHeight);
+
+		return embedInkInCell(
+			pixels,
+			sourceWidth,
+			sourceHeight,
+			bounds,
+			targetWidth,
+			targetHeight,
+			threshold,
+			inkDetection,
+			options.centerHorizontally ?? false,
 		);
 	}
 

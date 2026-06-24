@@ -10,18 +10,19 @@
 			"tailwindSlug": "blockkie",
 			"cssVariable": "--font-blockkie",
 			"preloadSize": 8,
-			"dynamicWidth": false,
-			"traceMode": "pixelSnap",
+			"dynamicWidth": true,
+			"traceMode": "metricSnap",
+			"centerHorizontally": true,
 			"inkDetection": "luminance",
 			"weight": 400,
 			"bitmapGrids": [
 				{
-					"width": 8,
+					"width": 0,
 					"height": 8,
-					"renderSize": 8
+					"renderSize": 16
 				},
 				{
-					"width": 8,
+					"width": 0,
 					"height": 16,
 					"renderSize": 16
 				}
@@ -34,23 +35,57 @@
 			"license": "unknown — verify before redistribution",
 			"file": "geneva-9.ttf",
 			"format": "ttf",
-			"preloadSize": 9,
+			"preloadSize": 16,
 			"dynamicWidth": false,
-			"traceMode": "pixelSnap",
+			"discoverGrid": true,
+			"benchmarkProbes": "WgAyjpxQvS;.:",
+			"traceMode": "metricSnap",
+			"centerHorizontally": true,
 			"inkDetection": "nonWhite",
 			"weight": 400,
 			"bitmapGrids": [
 				{
-					"width": 7,
-					"height": 8,
 					"file": "geneva-9.ttf",
-					"renderSize": 8
+					"renderSize": 16,
+					"metricFontSize": 16,
+					"width": 7,
+					"height": 11,
+					"centerHorizontally": true,
+					"discoverGrid": false,
+					"v2Metrics": {
+						"minY": -3,
+						"descenderY": -2,
+						"baselineY": 0,
+						"xHeightY": 5,
+						"capHeightY": 7,
+						"maxY": 8,
+						"lineGap": 11,
+						"pixelUnitX": 1,
+						"pixelUnitY": 1,
+						"dynamicWidth": false
+					}
 				},
 				{
-					"width": 12,
-					"height": 12,
 					"file": "geneva-12.otf",
-					"renderSize": 12
+					"renderSize": 16,
+					"metricFontSize": 16,
+					"width": 0,
+					"height": 20,
+					"dynamicWidth": true,
+					"centerHorizontally": true,
+					"discoverGrid": false,
+					"v2Metrics": {
+						"minY": -5,
+						"descenderY": -3,
+						"baselineY": 0,
+						"xHeightY": 10,
+						"capHeightY": 12,
+						"maxY": 13,
+						"lineGap": 19,
+						"pixelUnitX": 1,
+						"pixelUnitY": 1,
+						"dynamicWidth": true
+					}
 				}
 			],
 			"generatedJson": "components/bitmap-font/generated/geneva.json"
@@ -82,28 +117,28 @@
 			"weight": 400
 		},
 		{
-			"id": "geistPixelSquare",
-			"label": "Geist Pixel Square",
+			"id": "geistPixelGrid",
+			"label": "Geist Pixel Grid",
 			"license": "OFL-1.1",
-			"file": "GeistPixel-Square.woff2",
+			"file": "GeistPixel-Grid.woff2",
 			"format": "woff2",
 			"takumiName": "geistPixelSquare",
 			"tailwindSlug": "geistpixelsquare",
 			"cssVariable": "--font-geist-pixel-square",
-			"preloadSize": 19,
+			"preloadSize": 30,
 			"dynamicWidth": true,
-			"discoverGrid": true,
-			"benchmarkProbes": "WgAyjpxQ",
 			"traceMode": "pixelSnap",
 			"inkDetection": "luminance",
 			"weight": 500,
 			"bitmapGrids": [
 				{
-					"renderSize": 19,
+					"file": "GeistPixel-Grid.woff2",
+					"renderSize": 30,
+					"height": 26,
 					"dynamicWidth": true
 				}
 			],
-			"generatedJson": "components/bitmap-font/generated/geist-pixel-square.json"
+			"generatedJson": "components/bitmap-font/generated/geist-pixel-grid.json"
 		},
 		{
 			"id": "inter",
@@ -138,10 +173,10 @@
 			"sourceId": "blockKie"
 		},
 		{
-			"id": "geistPixelSquare",
-			"label": "Geist Pixel Square",
-			"packPath": "components/bitmap-font/generated/geist-pixel-square.json",
-			"sourceId": "geistPixelSquare"
+			"id": "geistPixelGrid",
+			"label": "Geist Pixel Grid",
+			"packPath": "components/bitmap-font/generated/geist-pixel-grid.json",
+			"sourceId": "geistPixelGrid"
 		}
 	]
 }

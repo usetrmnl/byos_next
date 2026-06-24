@@ -123,6 +123,7 @@ function BitmapText({
 			glyphs: face.glyphs,
 			metrics: face.metrics,
 			gridWidth: face.gridWidth,
+			gridHeight: face.gridHeight,
 			scale,
 			gap,
 		});

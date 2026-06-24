@@ -19,7 +19,7 @@ import {
 } from "./pack-utils";
 import type { LegacyBitmapFontPack } from "./schema/legacy";
 import type { NewBitmapFont } from "./schema/v2";
-export { decodeCellData, base64CellDataToBinary } from "./decode-cell-data";
+export { decodeCellData, base64CellDataToBinary, legacyGlyphRowStride } from "./decode-cell-data";
 export {
 	convertLegacyBitmapFont,
 	convertLegacyFontFace,
@@ -49,15 +49,25 @@ export {
 	type BitmapLayoutResult,
 } from "./layout";
 export {
+	getV2BaselineEditorRow,
 	getV2CellHeight,
 	getV2DefaultAdvance,
+	getV2LayoutHeight,
+	getV2MetricGuides,
+	editorRowToV2Y,
 	glyphRunsToPath,
+	binaryGridToGlyphRows,
+	inkWidthFromBinary,
 	layoutV2Text,
-	lookupV2Glyph,
+	v2GlyphToEditorBinary,
+	v2YToEditorRow,
+	type V2MetricGuide,
 } from "./layout-v2";
+export { deriveTypographyMetrics, shiftGlyphsToMetrics } from "./metrics-derive";
 export {
 	gridSizeKey,
 	inferFaceWidth,
+	inferMetricsFromGlyphs,
 	isLegacyBitmapFontPack,
 	isV2BitmapFont,
 	listV2FaceKeys,

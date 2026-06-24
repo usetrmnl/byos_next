@@ -6,8 +6,8 @@
     "version": "1.0",
     "description": "Custom bitmap font created with Bitmap Font Designer",
     "metrics": {
-      "minY": 0,
-      "descenderY": 0,
+      "minY": -8,
+      "descenderY": -8,
       "baselineY": 0,
       "xHeightY": 4,
       "capHeightY": 7,
@@ -15,11 +15,23 @@
       "lineGap": 8,
       "pixelUnitX": 1,
       "pixelUnitY": 1,
-      "dynamicWidth": false
+      "dynamicWidth": true
     }
   },
   "faces": {
-    "7x8": {
+    "0x8": {
+      "metrics": {
+        "minY": 0,
+        "descenderY": 0,
+        "baselineY": 0,
+        "xHeightY": 4,
+        "capHeightY": 7,
+        "maxY": 7,
+        "lineGap": 8,
+        "pixelUnitX": 1,
+        "pixelUnitY": 1,
+        "dynamicWidth": true
+      },
       "glyphs": {
         "0": {
           "charCode": 48,
@@ -13347,7 +13359,19 @@
         }
       }
     },
-    "8x12": {
+    "0x12": {
+      "metrics": {
+        "minY": -4,
+        "descenderY": -4,
+        "baselineY": 0,
+        "xHeightY": 4,
+        "capHeightY": 7,
+        "maxY": 7,
+        "lineGap": 8,
+        "pixelUnitX": 1,
+        "pixelUnitY": 1,
+        "dynamicWidth": true
+      },
       "glyphs": {
         "!": {
           "charCode": 33,
@@ -19474,7 +19498,19 @@
         }
       }
     },
-    "8x16": {
+    "0x16": {
+      "metrics": {
+        "minY": -8,
+        "descenderY": -8,
+        "baselineY": 0,
+        "xHeightY": 4,
+        "capHeightY": 7,
+        "maxY": 7,
+        "lineGap": 8,
+        "pixelUnitX": 1,
+        "pixelUnitY": 1,
+        "dynamicWidth": true
+      },
       "glyphs": {
         "0": {
           "charCode": 48,

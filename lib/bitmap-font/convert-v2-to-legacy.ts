@@ -1,4 +1,11 @@
 import { base64CellDataToBinary } from "./decode-cell-data";
+import { getV2BaselineEditorRow, getV2LayoutHeight } from "./layout-v2";
+import {
+	gridSizeKey,
+	inferFaceWidth,
+	listV2FaceKeys,
+	parseGridSize,
+} from "./pack-utils";
 import type {
 	LegacyBitmapCharacter,
 	LegacyBitmapFace,
@@ -6,12 +13,6 @@ import type {
 	LegacyFontMetrics,
 } from "./schema/legacy";
 import type { Glyph, NewBitmapFont, NewBitmapFontMetrics } from "./schema/v2";
-import {
-	gridSizeKey,
-	inferFaceWidth,
-	listV2FaceKeys,
-	parseGridSize,
-} from "./pack-utils";
 
 function binaryToBase64(binary: string): string {
 	const bytes: number[] = [];
@@ -25,9 +26,13 @@ function binaryToBase64(binary: string): string {
 
 export function convertV2MetricsToLegacy(
 	metrics: NewBitmapFontMetrics,
+	gridHeight?: number,
 ): LegacyFontMetrics {
-	const cellHeight = metrics.maxY - metrics.minY + 1;
-	const baselineRow = metrics.maxY;
+	const cellHeight = getV2LayoutHeight(metrics, gridHeight);
+	const baselineRow =
+		gridHeight != null && gridHeight > 0
+			? getV2BaselineEditorRow(metrics, gridHeight)
+			: cellHeight - 1 + metrics.minY;
 
 	return {
 		cellHeight,
@@ -45,12 +50,25 @@ export function convertV2MetricsToLegacy(
 export function convertV2GlyphToLegacy(
 	glyph: Glyph,
 	metrics: NewBitmapFontMetrics,
+	faceWidth: number,
+	faceHeight: number,
 ): LegacyBitmapCharacter {
-	const cellHeight = metrics.maxY - metrics.minY + 1;
-	const baselineRow = metrics.maxY;
-	const width = glyph.width;
+	const dynamicWidth = metrics.dynamicWidth ?? faceWidth === 0;
+	const rowStride = dynamicWidth
+		? Math.max(glyph.advance ?? 0, glyph.width ?? 0, 1)
+		: faceWidth > 0
+			? faceWidth
+			: glyph.width;
+	const cellHeight = getV2LayoutHeight(
+		metrics,
+		faceHeight > 0 ? faceHeight : undefined,
+	);
+	const baselineRow =
+		faceHeight > 0
+			? getV2BaselineEditorRow(metrics, faceHeight)
+			: getV2BaselineEditorRow(metrics);
 	const grid = Array.from({ length: cellHeight }, () =>
-		Array.from({ length: width }, () => false),
+		Array.from({ length: rowStride }, () => false),
 	);
 
 	for (const { y, runs } of glyph.rows) {
@@ -59,14 +77,17 @@ export function convertV2GlyphToLegacy(
 
 		for (const [startX, endX] of runs) {
 			for (let x = startX; x < endX; x++) {
-				if (x >= 0 && x < width) {
+				if (x >= 0 && x < rowStride) {
 					grid[oldRow][x] = true;
 				}
 			}
 		}
 	}
 
-	const binary = grid.flat().map((filled) => (filled ? "1" : "0")).join("");
+	const binary = grid
+		.flat()
+		.map((filled) => (filled ? "1" : "0"))
+		.join("");
 
 	return {
 		charCode: glyph.charCode,
@@ -81,32 +102,41 @@ function convertV2FaceToLegacy(
 	faceKey: string,
 	glyphs: Record<string, Glyph>,
 	metrics: NewBitmapFontMetrics,
+	useDesignGridHeight: boolean,
 ): LegacyBitmapFace {
 	const [parsedWidth, parsedHeight] = parseGridSize(faceKey);
+	const designGridHeight =
+		useDesignGridHeight && parsedHeight > 0 ? parsedHeight : undefined;
 	const width =
 		parsedWidth > 0
 			? parsedWidth
 			: inferFaceWidth(glyphs, metrics.dynamicWidth);
-	const height = parsedHeight > 0 ? parsedHeight : metrics.maxY - metrics.minY + 1;
+	const height = getV2LayoutHeight(metrics, designGridHeight);
 
 	return {
 		width,
 		height,
 		characters: Object.values(glyphs)
-			.map((glyph) => convertV2GlyphToLegacy(glyph, metrics))
+			.map((glyph) =>
+				convertV2GlyphToLegacy(glyph, metrics, width, designGridHeight ?? 0),
+			)
 			.sort((a, b) => a.charCode - b.charCode),
+		metrics: convertV2MetricsToLegacy(metrics, designGridHeight),
 	};
 }
 
-export function convertV2PackToLegacy(pack: NewBitmapFont): LegacyBitmapFontPack {
+export function convertV2PackToLegacy(
+	pack: NewBitmapFont,
+): LegacyBitmapFontPack {
 	const sharedMetrics = pack.metadata.metrics;
 	const legacyMetrics = convertV2MetricsToLegacy(sharedMetrics);
 	const faceKeys = listV2FaceKeys(pack);
 
 	const fonts = faceKeys.map((faceKey) => {
-		const faceMetrics = pack.faces?.[faceKey]?.metrics ?? sharedMetrics;
-		const glyphs = pack.faces?.[faceKey]?.glyphs ?? pack.glyphs ?? {};
-		return convertV2FaceToLegacy(faceKey, glyphs, faceMetrics);
+		const face = pack.faces?.[faceKey];
+		const glyphs = face?.glyphs ?? pack.glyphs ?? {};
+		const faceMetrics = face?.metrics ?? sharedMetrics;
+		return convertV2FaceToLegacy(faceKey, glyphs, faceMetrics, Boolean(face));
 	});
 
 	return {
@@ -128,16 +158,45 @@ export function legacyGlyphDataToBinary(
 	width: number,
 	height: number,
 ): string {
+	const expected = width * height;
+	let binary: string;
+
 	if (/^[01]+$/.test(data)) {
-		return data.padEnd(width * height, "0").slice(0, width * height);
+		binary = data;
+	} else {
+		try {
+			binary = base64CellDataToBinary(data);
+		} catch {
+			return "0".repeat(expected);
+		}
 	}
 
-	try {
-		const binary = base64CellDataToBinary(data);
-		return binary.padEnd(width * height, "0").slice(0, width * height);
-	} catch {
-		return "0".repeat(width * height);
+	if (binary.length === expected) {
+		return binary;
 	}
+
+	// Same width, fewer rows — pad empty rows at the bottom.
+	if (binary.length < expected && width > 0 && binary.length % width === 0) {
+		return binary.padEnd(expected, "0");
+	}
+
+	// Row-major with a narrower stored width (e.g. 7-wide rows in an 8-wide grid).
+	if (binary.length < expected && height > 0 && binary.length % height === 0) {
+		const sourceWidth = binary.length / height;
+		if (sourceWidth > 0 && sourceWidth !== width) {
+			const rows: string[] = [];
+			for (let y = 0; y < height; y++) {
+				rows.push(
+					binary
+						.slice(y * sourceWidth, (y + 1) * sourceWidth)
+						.padEnd(width, "0"),
+				);
+			}
+			return rows.join("").slice(0, expected);
+		}
+	}
+
+	return binary.padEnd(expected, "0").slice(0, expected);
 }
 
 export function legacyFaceGridSize(face: LegacyBitmapFace): string {

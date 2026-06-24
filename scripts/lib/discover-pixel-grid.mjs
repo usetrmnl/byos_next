@@ -185,13 +185,34 @@ export function ensureDiscoveredFamily(source, root) {
 }
 
 export function discoverGridForSource(source, root) {
+	const grid = source.bitmapGrids?.[0];
+	if (grid) return discoverGridForGrid(source, grid, root);
+
 	const { fontPath, family } = ensureDiscoveredFamily(source, root);
-	const renderSize = source.preloadSize ?? source.bitmapGrids?.[0]?.renderSize ?? 19;
+	const renderSize = source.preloadSize ?? 19;
 	return discoverPixelGrid({
 		fontPath,
 		family,
 		renderSize,
 		probeChars: source.benchmarkProbes ?? DEFAULT_PROBES,
 		inkDetection: source.inkDetection ?? "luminance",
+	});
+}
+
+/** Discover metrics for a single bitmap grid entry (supports per-file / per-size faces). */
+export function discoverGridForGrid(source, grid, root) {
+	const fontFile = grid.file ?? source.file;
+	const fontPath = join(root, "public", "fonts", fontFile);
+	const family = `trace-${source.id}-${fontFile}`;
+	const renderSize =
+		grid.renderSize ?? source.preloadSize ?? grid.height ?? 19;
+
+	return discoverPixelGrid({
+		fontPath,
+		family,
+		renderSize,
+		probeChars:
+			grid.benchmarkProbes ?? source.benchmarkProbes ?? DEFAULT_PROBES,
+		inkDetection: grid.inkDetection ?? source.inkDetection ?? "luminance",
 	});
 }

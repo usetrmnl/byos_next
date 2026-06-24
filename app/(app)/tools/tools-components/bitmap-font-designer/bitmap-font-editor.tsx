@@ -16,11 +16,22 @@ import {
 	Trash,
 	Undo,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { binaryToGrid, gridToBinary } from "./bitmap-font-utils";
+import type { BitmapFontMetrics } from "@/lib/bitmap-font/layout";
+import type { GlyphMeta } from "./bitmap-font-designer-client";
+import {
+	binaryToGrid,
+	computeInkBoundsFromGrid,
+	getEffectiveGlyphWidth,
+	gridToBinary,
+	type InkBounds,
+	parseEditorGridSize,
+	resolveEditorFontMetrics,
+} from "./bitmap-font-utils";
 
 interface BitmapFontEditorProps {
 	selectedGridSize: string;
@@ -28,6 +39,10 @@ interface BitmapFontEditorProps {
 	currentCharacterBitmap?: string;
 	setCurrentCharacterBitmap?: (bitmap: string) => void;
 	onDataChange?: (newData: string, charCode: number) => void;
+	glyphMeta?: Map<number, GlyphMeta>;
+	packMetrics?: BitmapFontMetrics;
+	onPackMetricsChange?: (metrics: Partial<BitmapFontMetrics>) => void;
+	onGlyphMetaChange?: (charCode: number, meta: Partial<GlyphMeta>) => void;
 }
 
 // Line interpolation for fast dragging (Bresenham's line algorithm)
@@ -67,14 +82,38 @@ export default function BitmapFontEditor({
 	currentCharacterBitmap = "",
 	setCurrentCharacterBitmap,
 	onDataChange,
+	glyphMeta,
+	packMetrics = {},
+	onPackMetricsChange,
+	onGlyphMetaChange,
 }: BitmapFontEditorProps) {
-	const [width, height] = selectedGridSize.split("x").map(Number);
+	const [, gridHeight] = parseEditorGridSize(selectedGridSize);
+	const width = getEffectiveGlyphWidth(
+		selectedGridSize,
+		selectedCharCode,
+		glyphMeta,
+	);
+	const editorHeight =
+		currentCharacterBitmap.length > 0 &&
+		currentCharacterBitmap.length % width === 0
+			? currentCharacterBitmap.length / width
+			: (packMetrics.cellHeight ?? gridHeight);
 	const cellSize = 40; // Fixed cell size for better visibility
 	const previewRef = useRef<HTMLCanvasElement>(null);
+	const previewInnerSize = 84;
+	const previewDisplayScale = Math.min(
+		previewInnerSize / width,
+		previewInnerSize / editorHeight,
+		8,
+	);
 
-	// X-height and baseline position state
-	const [xHeight, setXHeight] = useState<number>(Math.floor(height * 0.6));
-	const [baseline, setBaseline] = useState<number>(Math.floor(height * 0.8));
+	const fontMetrics = useMemo(
+		() => resolveEditorFontMetrics(editorHeight, packMetrics),
+		[editorHeight, packMetrics],
+	);
+	const selectedGlyphMeta = glyphMeta?.get(selectedCharCode);
+	const [inkBounds, setInkBounds] = useState<InkBounds | null>(null);
+	const inkBoundsKeyRef = useRef("");
 
 	// Canvas and context refs
 	const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -209,6 +248,21 @@ export default function BitmapFontEditor({
 		ctx.fillStyle = "#ffffff";
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+		const typographicTop = Math.max(fontMetrics.maxYRow, fontMetrics.capTop);
+		const typographicBottom = Math.min(
+			actualHeight - 1,
+			Math.max(fontMetrics.descenderRow, fontMetrics.minYRow),
+		);
+		if (typographicBottom >= typographicTop) {
+			ctx.fillStyle = "rgba(59, 130, 246, 0.06)";
+			ctx.fillRect(
+				0,
+				typographicTop * cellSizeWithBorder,
+				canvas.width,
+				(typographicBottom - typographicTop + 1) * cellSizeWithBorder,
+			);
+		}
+
 		// Draw grid lines
 		ctx.strokeStyle = "#e2e8f0"; // border color
 		ctx.lineWidth = borderWidth;
@@ -229,32 +283,39 @@ export default function BitmapFontEditor({
 			}
 		}
 
-		// Draw x-height and baseline guides - adjust to actual dimensions
-		const safeXHeight = Math.min(xHeight, actualHeight - 1);
-		if (safeXHeight >= 0) {
-			ctx.strokeStyle = "rgba(0, 128, 255, 0.8)";
-			ctx.lineWidth = 2;
-			const xHeightY = safeXHeight * cellSizeWithBorder;
+		// Draw metric guides aligned to font JSON rows
+		const drawGuideLine = (row: number, color: string, lineWidth = 2) => {
+			if (row < 0 || row >= actualHeight) return;
+			ctx.strokeStyle = color;
+			ctx.lineWidth = lineWidth;
+			const guideY = row * cellSizeWithBorder;
 			ctx.beginPath();
-			ctx.moveTo(0, xHeightY);
-			ctx.lineTo(canvas.width, xHeightY);
+			ctx.moveTo(0, guideY);
+			ctx.lineTo(canvas.width, guideY);
 			ctx.stroke();
+		};
+
+		drawGuideLine(fontMetrics.maxYRow, "rgba(148, 163, 184, 0.55)", 1);
+		drawGuideLine(fontMetrics.minYRow, "rgba(148, 163, 184, 0.55)", 1);
+		drawGuideLine(0, "rgba(148, 163, 184, 0.25)", 1);
+		drawGuideLine(actualHeight - 1, "rgba(148, 163, 184, 0.25)", 1);
+		drawGuideLine(fontMetrics.capTop, "rgba(168, 85, 247, 0.85)");
+		drawGuideLine(fontMetrics.xHeightRow, "rgba(0, 128, 255, 0.8)");
+		drawGuideLine(fontMetrics.baselineRow, "rgba(255, 128, 0, 0.8)");
+		if (fontMetrics.descenderDepth > 0) {
+			drawGuideLine(fontMetrics.descenderRow, "rgba(239, 68, 68, 0.8)");
 		}
 
-		const safeBaseline = Math.min(baseline, actualHeight - 1);
-		if (safeBaseline >= 0) {
-			ctx.strokeStyle = "rgba(255, 128, 0, 0.8)";
-			ctx.lineWidth = 2;
-			const baselineY = safeBaseline * cellSizeWithBorder;
-			ctx.beginPath();
-			ctx.moveTo(0, baselineY);
-			ctx.lineTo(canvas.width, baselineY);
-			ctx.stroke();
+		const bounds = computeInkBoundsFromGrid(grid, fontMetrics.baselineRow);
+		const boundsKey = bounds ? JSON.stringify(bounds) : "";
+		if (boundsKey !== inkBoundsKeyRef.current) {
+			inkBoundsKeyRef.current = boundsKey;
+			setInkBounds(bounds);
 		}
 
 		// Update the preview
 		updatePreview();
-	}, [xHeight, baseline, updatePreview]);
+	}, [fontMetrics, updatePreview]);
 
 	// Reset grid when selectedCharacter changes
 	useEffect(() => {
@@ -262,14 +323,18 @@ export default function BitmapFontEditor({
 			// Save history for previous character
 			saveHistoryForCurrentChar();
 
-			// Always reset grid to match the component props dimensions when character changes
-			gridRef.current = Array(height)
+			// Always reset grid to match the active bitmap dimensions when character changes.
+			gridRef.current = Array(editorHeight)
 				.fill(0)
 				.map(() => Array(width).fill(0));
 
 			// Convert binary data to grid if available
 			if (currentCharacterBitmap) {
-				gridRef.current = binaryToGrid(currentCharacterBitmap, width, height);
+				gridRef.current = binaryToGrid(
+					currentCharacterBitmap,
+					width,
+					editorHeight,
+				);
 			}
 
 			// Update current character ref
@@ -285,7 +350,7 @@ export default function BitmapFontEditor({
 		selectedCharCode,
 		currentCharacterBitmap,
 		width,
-		height,
+		editorHeight,
 		drawGrid,
 		saveHistoryForCurrentChar,
 		loadHistoryForCurrentChar,
@@ -293,14 +358,18 @@ export default function BitmapFontEditor({
 
 	// Initialize grid when size changes or component mounts
 	useEffect(() => {
-		// Always reset grid to the component props dimensions when size changes
-		gridRef.current = Array(height)
+		// Always reset grid to the active bitmap dimensions when size changes.
+		gridRef.current = Array(editorHeight)
 			.fill(0)
 			.map(() => Array(width).fill(0));
 
 		// Convert binary data to grid if available
 		if (currentCharacterBitmap) {
-			gridRef.current = binaryToGrid(currentCharacterBitmap, width, height);
+			gridRef.current = binaryToGrid(
+				currentCharacterBitmap,
+				width,
+				editorHeight,
+			);
 		}
 
 		// Load or initialize history for current character
@@ -310,7 +379,7 @@ export default function BitmapFontEditor({
 		drawGrid();
 	}, [
 		width,
-		height,
+		editorHeight,
 		currentCharacterBitmap,
 		drawGrid,
 		loadHistoryForCurrentChar,
@@ -423,7 +492,9 @@ export default function BitmapFontEditor({
 			const [gridX, gridY] = canvasToGrid(x, y);
 
 			// Ensure coordinates are within bounds
-			if (gridX < 0 || gridX >= width || gridY < 0 || gridY >= height) return;
+			if (gridX < 0 || gridX >= width || gridY < 0 || gridY >= editorHeight) {
+				return;
+			}
 
 			// Set drawing state
 			isDraggingRef.current = true;
@@ -438,7 +509,7 @@ export default function BitmapFontEditor({
 			// Redraw
 			drawGrid();
 		},
-		[width, height, canvasToGrid, drawGrid],
+		[width, editorHeight, canvasToGrid, drawGrid],
 	);
 
 	// Handle mouse move
@@ -455,7 +526,9 @@ export default function BitmapFontEditor({
 			const [gridX, gridY] = canvasToGrid(x, y);
 
 			// Ensure coordinates are within bounds
-			if (gridX < 0 || gridX >= width || gridY < 0 || gridY >= height) return;
+			if (gridX < 0 || gridX >= width || gridY < 0 || gridY >= editorHeight) {
+				return;
+			}
 
 			// Update last interaction time
 			lastInteractionTimeRef.current = Date.now();
@@ -467,7 +540,7 @@ export default function BitmapFontEditor({
 
 				// Fill all points along the line
 				for (const [px, py] of points) {
-					if (px >= 0 && px < width && py >= 0 && py < height) {
+					if (px >= 0 && px < width && py >= 0 && py < editorHeight) {
 						gridRef.current[py][px] = drawModeRef.current;
 					}
 				}
@@ -483,7 +556,7 @@ export default function BitmapFontEditor({
 			// Redraw
 			drawGrid();
 		},
-		[width, height, canvasToGrid, drawGrid],
+		[width, editorHeight, canvasToGrid, drawGrid],
 	);
 
 	// Handle mouse up
@@ -526,7 +599,7 @@ export default function BitmapFontEditor({
 	// Helper function to reset grid to component dimensions
 	const resetToComponentDimensions = useCallback(() => {
 		// Create a new grid matching component dimensions
-		const newGrid: number[][] = Array(height)
+		const newGrid: number[][] = Array(editorHeight)
 			.fill(0)
 			.map(() => Array(width).fill(0));
 
@@ -536,14 +609,14 @@ export default function BitmapFontEditor({
 		const oldWidth = oldHeight > 0 ? oldGrid[0].length : 0;
 
 		// Copy as much data as will fit in the new dimensions
-		for (let y = 0; y < Math.min(height, oldHeight); y++) {
+		for (let y = 0; y < Math.min(editorHeight, oldHeight); y++) {
 			for (let x = 0; x < Math.min(width, oldWidth); x++) {
 				newGrid[y][x] = oldGrid[y][x];
 			}
 		}
 
 		return newGrid;
-	}, [width, height]);
+	}, [width, editorHeight]);
 
 	const rotateClockwise = useCallback(() => {
 		// Get current dimensions from grid reference
@@ -562,7 +635,7 @@ export default function BitmapFontEditor({
 		}
 
 		// Check if resulting dimensions would be compatible with the component
-		if (currentWidth === height && currentHeight === width) {
+		if (currentWidth === editorHeight && currentHeight === width) {
 			gridRef.current = newGrid;
 		} else {
 			// Rotations would result in incompatible dimensions - reset to component dimensions
@@ -573,7 +646,7 @@ export default function BitmapFontEditor({
 			const newHeight = newGrid.length;
 			const newWidth = newHeight > 0 ? newGrid[0].length : 0;
 
-			for (let y = 0; y < Math.min(height, newHeight); y++) {
+			for (let y = 0; y < Math.min(editorHeight, newHeight); y++) {
 				for (let x = 0; x < Math.min(width, newWidth); x++) {
 					resetGrid[y][x] = newGrid[y][x];
 				}
@@ -592,7 +665,7 @@ export default function BitmapFontEditor({
 		updateCharData,
 		resetToComponentDimensions,
 		width,
-		height,
+		editorHeight,
 	]);
 
 	const rotateCounterClockwise = useCallback(() => {
@@ -612,7 +685,7 @@ export default function BitmapFontEditor({
 		}
 
 		// Check if resulting dimensions would be compatible with the component
-		if (currentWidth === height && currentHeight === width) {
+		if (currentWidth === editorHeight && currentHeight === width) {
 			gridRef.current = newGrid;
 		} else {
 			// Rotations would result in incompatible dimensions - reset to component dimensions
@@ -623,7 +696,7 @@ export default function BitmapFontEditor({
 			const newHeight = newGrid.length;
 			const newWidth = newHeight > 0 ? newGrid[0].length : 0;
 
-			for (let y = 0; y < Math.min(height, newHeight); y++) {
+			for (let y = 0; y < Math.min(editorHeight, newHeight); y++) {
 				for (let x = 0; x < Math.min(width, newWidth); x++) {
 					resetGrid[y][x] = newGrid[y][x];
 				}
@@ -642,24 +715,24 @@ export default function BitmapFontEditor({
 		updateCharData,
 		resetToComponentDimensions,
 		width,
-		height,
+		editorHeight,
 	]);
 
 	const shift = useCallback(
 		(direction: "up" | "down" | "left" | "right") => {
-			const newGrid: number[][] = Array(height)
+			const newGrid: number[][] = Array(editorHeight)
 				.fill(0)
 				.map(() => Array(width).fill(0));
 
-			for (let y = 0; y < height; y++) {
+			for (let y = 0; y < editorHeight; y++) {
 				for (let x = 0; x < width; x++) {
 					let newX = x;
 					let newY = y;
 
 					if (direction === "up") {
-						newY = (y + height - 1) % height;
+						newY = (y + editorHeight - 1) % editorHeight;
 					} else if (direction === "down") {
-						newY = (y + 1) % height;
+						newY = (y + 1) % editorHeight;
 					} else if (direction === "left") {
 						newX = (x + width - 1) % width;
 					} else if (direction === "right") {
@@ -676,11 +749,11 @@ export default function BitmapFontEditor({
 			addToHistory();
 			updateCharData();
 		},
-		[width, height, drawGrid, addToHistory, updateCharData],
+		[width, editorHeight, drawGrid, addToHistory, updateCharData],
 	);
 
 	const clear = useCallback(() => {
-		gridRef.current = Array(height)
+		gridRef.current = Array(editorHeight)
 			.fill(0)
 			.map(() => Array(width).fill(0));
 
@@ -688,7 +761,7 @@ export default function BitmapFontEditor({
 		drawGrid();
 		addToHistory();
 		updateCharData();
-	}, [width, height, drawGrid, addToHistory, updateCharData]);
+	}, [width, editorHeight, drawGrid, addToHistory, updateCharData]);
 
 	const undo = useCallback(() => {
 		if (historyIndexRef.current > 0) {
@@ -803,33 +876,66 @@ export default function BitmapFontEditor({
 		return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
 	}, [handleMouseUp]);
 
-	// Handle x-height change
-	const handleXHeightChange = useCallback(
+	// Handle font metric changes (apply to entire face)
+	const handleCapTopChange = useCallback(
 		(value: number[]) => {
-			// Ensure x-height is within bounds and below baseline
-			const newXHeight = Math.min(Math.max(0, value[0]), height - 1);
-			setXHeight(newXHeight > baseline ? baseline - 1 : newXHeight);
+			const capTop = Math.min(Math.max(0, value[0]), editorHeight - 1);
+			onPackMetricsChange?.({ capTop });
 			drawGrid();
 		},
-		[height, baseline, drawGrid],
+		[editorHeight, onPackMetricsChange, drawGrid],
 	);
 
-	// Handle baseline change
+	const handleXHeightRowChange = useCallback(
+		(value: number[]) => {
+			const row = Math.min(Math.max(0, value[0]), editorHeight - 1);
+			const xHeight = Math.max(1, fontMetrics.baselineRow - row);
+			onPackMetricsChange?.({ xHeight });
+			drawGrid();
+		},
+		[editorHeight, fontMetrics.baselineRow, onPackMetricsChange, drawGrid],
+	);
+
 	const handleBaselineChange = useCallback(
 		(value: number[]) => {
-			// Ensure baseline is within bounds and above x-height
-			const newBaseline = Math.min(Math.max(0, value[0]), height - 1);
-			setBaseline(newBaseline < xHeight ? xHeight + 1 : newBaseline);
+			const baselineRow = Math.min(Math.max(0, value[0]), editorHeight - 1);
+			onPackMetricsChange?.({ baselineRow });
 			drawGrid();
 		},
-		[height, xHeight, drawGrid],
+		[editorHeight, onPackMetricsChange, drawGrid],
 	);
 
-	// Initialize x-height and baseline when size changes
+	const handleDescenderDepthChange = useCallback(
+		(value: number[]) => {
+			const descenderDepth = Math.min(Math.max(0, value[0]), editorHeight - 1);
+			onPackMetricsChange?.({ descenderDepth });
+			drawGrid();
+		},
+		[editorHeight, onPackMetricsChange, drawGrid],
+	);
+
+	const handleGlyphWidthChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const width = Number.parseInt(e.target.value, 10);
+			if (!Number.isFinite(width) || width < 1) return;
+			onGlyphMetaChange?.(selectedCharCode, { width });
+		},
+		[selectedCharCode, onGlyphMetaChange],
+	);
+
+	const handleGlyphAdvanceChange = useCallback(
+		(e: React.ChangeEvent<HTMLInputElement>) => {
+			const advance = Number.parseInt(e.target.value, 10);
+			if (!Number.isFinite(advance) || advance < 1) return;
+			onGlyphMetaChange?.(selectedCharCode, { advance });
+		},
+		[selectedCharCode, onGlyphMetaChange],
+	);
+
+	// Redraw guides when font metrics change
 	useEffect(() => {
-		setXHeight(Math.floor(height * 0.6));
-		setBaseline(Math.floor(height * 0.8));
-	}, [height]);
+		drawGrid();
+	}, [drawGrid]);
 
 	// After component mounts, capture initial state
 	useEffect(() => {
@@ -844,215 +950,347 @@ export default function BitmapFontEditor({
 	}, []);
 
 	return (
-		<div className="flex flex-col gap-6">
-			<div className="flex flex-wrap gap-2">
-				<Button
-					onClick={undo}
-					disabled={!canUndo}
-					variant="outline"
-					size="icon"
-					title="Undo"
-					aria-label="Undo"
-					className="active:bg-accent active:scale-95"
-				>
-					<Undo className="w-4 h-4" />
-				</Button>
-				<Button
-					onClick={redo}
-					disabled={!canRedo}
-					variant="outline"
-					size="icon"
-					title="Redo"
-					aria-label="Redo"
-					className="active:bg-accent active:scale-95"
-				>
-					<Redo className="w-4 h-4" />
-				</Button>
-				<Button
-					onClick={clear}
-					variant="outline"
-					size="icon"
-					title="Clear"
-					aria-label="Clear"
-					className="active:bg-accent active:scale-95"
-				>
-					<Trash className="w-4 h-4" />
-				</Button>
-				<Button
-					onClick={flipHorizontal}
-					variant="outline"
-					size="icon"
-					title="Flip Horizontal"
-					aria-label="Flip Horizontal"
-					className="active:bg-accent active:scale-95"
-				>
-					<FlipHorizontal className="w-4 h-4" />
-				</Button>
-				<Button
-					onClick={flipVertical}
-					variant="outline"
-					size="icon"
-					title="Flip Vertical"
-					aria-label="Flip Vertical"
-					className="active:bg-accent active:scale-95"
-				>
-					<FlipVertical className="w-4 h-4" />
-				</Button>
-				<Button
-					onClick={rotateClockwise}
-					variant="outline"
-					size="icon"
-					title="Rotate Clockwise"
-					aria-label="Rotate Clockwise"
-					className="active:bg-accent active:scale-95"
-				>
-					<RotateCw className="w-4 h-4" />
-				</Button>
-				<Button
-					onClick={rotateCounterClockwise}
-					variant="outline"
-					size="icon"
-					title="Rotate Counter-clockwise"
-					aria-label="Rotate Counter-clockwise"
-					className="active:bg-accent active:scale-95"
-				>
-					<RotateCcw className="w-4 h-4" />
-				</Button>
-
-				{/* Group the shifting buttons together with no gap */}
-				<div className="flex">
-					<Button
-						onClick={() => shift("up")}
-						variant="outline"
-						size="icon"
-						title="Shift Up"
-						aria-label="Shift Up"
-						className="active:bg-accent active:scale-95 rounded-r-none border-r-0"
-					>
-						<ArrowUp className="w-4 h-4" />
-					</Button>
-					<Button
-						onClick={() => shift("down")}
-						variant="outline"
-						size="icon"
-						title="Shift Down"
-						aria-label="Shift Down"
-						className="active:bg-accent active:scale-95 rounded-none border-r-0"
-					>
-						<ArrowDown className="w-4 h-4" />
-					</Button>
-					<Button
-						onClick={() => shift("left")}
-						variant="outline"
-						size="icon"
-						title="Shift Left"
-						aria-label="Shift Left"
-						className="active:bg-accent active:scale-95 rounded-none border-r-0"
-					>
-						<ArrowLeft className="w-4 h-4" />
-					</Button>
-					<Button
-						onClick={() => shift("right")}
-						variant="outline"
-						size="icon"
-						title="Shift Right"
-						aria-label="Shift Right"
-						className="active:bg-accent active:scale-95 rounded-l-none"
-					>
-						<ArrowRight className="w-4 h-4" />
-					</Button>
-				</div>
-
-				<Button
-					onClick={copy}
-					variant="outline"
-					size="icon"
-					title="Copy"
-					aria-label="Copy"
-					className="active:bg-accent active:scale-95 relative"
-				>
-					{showCopySuccess ? (
-						<Check className="w-4 h-4 text-primary" />
-					) : (
-						<ClipboardCopy className="w-4 h-4" />
-					)}
-				</Button>
-				<Button
-					onClick={paste}
-					disabled={!clipboardRef.current}
-					variant="outline"
-					size="icon"
-					title="Paste"
-					aria-label="Paste"
-					className="active:bg-accent active:scale-95"
-				>
-					<Paste className="w-4 h-4" />
-				</Button>
+		<div className="overflow-hidden rounded-2xl border bg-card">
+			<div className="border-b bg-muted/30 px-4 py-2">
+				<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+					Editor
+				</h3>
 			</div>
 
-			<div className="flex flex-row gap-4 items-start">
-				<div className="relative">
-					<canvas
-						ref={canvasRef}
-						className="cursor-crosshair dark:invert border-[0.5px] border-neutral-300"
-						onMouseDown={handleMouseDown}
-						onMouseMove={handleMouseMove}
-						onMouseUp={handleMouseUp}
-						onMouseLeave={handleMouseLeave}
-					/>
+			<div className="flex flex-col gap-4 p-4">
+				<div className="flex flex-wrap gap-2">
+					<Button
+						onClick={undo}
+						disabled={!canUndo}
+						variant="outline"
+						size="icon"
+						title="Undo"
+						aria-label="Undo"
+						className="active:bg-accent active:scale-95"
+					>
+						<Undo className="w-4 h-4" />
+					</Button>
+					<Button
+						onClick={redo}
+						disabled={!canRedo}
+						variant="outline"
+						size="icon"
+						title="Redo"
+						aria-label="Redo"
+						className="active:bg-accent active:scale-95"
+					>
+						<Redo className="w-4 h-4" />
+					</Button>
+					<Button
+						onClick={clear}
+						variant="outline"
+						size="icon"
+						title="Clear"
+						aria-label="Clear"
+						className="active:bg-accent active:scale-95"
+					>
+						<Trash className="w-4 h-4" />
+					</Button>
+					<Button
+						onClick={flipHorizontal}
+						variant="outline"
+						size="icon"
+						title="Flip Horizontal"
+						aria-label="Flip Horizontal"
+						className="active:bg-accent active:scale-95"
+					>
+						<FlipHorizontal className="w-4 h-4" />
+					</Button>
+					<Button
+						onClick={flipVertical}
+						variant="outline"
+						size="icon"
+						title="Flip Vertical"
+						aria-label="Flip Vertical"
+						className="active:bg-accent active:scale-95"
+					>
+						<FlipVertical className="w-4 h-4" />
+					</Button>
+					<Button
+						onClick={rotateClockwise}
+						variant="outline"
+						size="icon"
+						title="Rotate Clockwise"
+						aria-label="Rotate Clockwise"
+						className="active:bg-accent active:scale-95"
+					>
+						<RotateCw className="w-4 h-4" />
+					</Button>
+					<Button
+						onClick={rotateCounterClockwise}
+						variant="outline"
+						size="icon"
+						title="Rotate Counter-clockwise"
+						aria-label="Rotate Counter-clockwise"
+						className="active:bg-accent active:scale-95"
+					>
+						<RotateCcw className="w-4 h-4" />
+					</Button>
+
+					{/* Group the shifting buttons together with no gap */}
+					<div className="flex">
+						<Button
+							onClick={() => shift("up")}
+							variant="outline"
+							size="icon"
+							title="Shift Up"
+							aria-label="Shift Up"
+							className="active:bg-accent active:scale-95 rounded-r-none border-r-0"
+						>
+							<ArrowUp className="w-4 h-4" />
+						</Button>
+						<Button
+							onClick={() => shift("down")}
+							variant="outline"
+							size="icon"
+							title="Shift Down"
+							aria-label="Shift Down"
+							className="active:bg-accent active:scale-95 rounded-none border-r-0"
+						>
+							<ArrowDown className="w-4 h-4" />
+						</Button>
+						<Button
+							onClick={() => shift("left")}
+							variant="outline"
+							size="icon"
+							title="Shift Left"
+							aria-label="Shift Left"
+							className="active:bg-accent active:scale-95 rounded-none border-r-0"
+						>
+							<ArrowLeft className="w-4 h-4" />
+						</Button>
+						<Button
+							onClick={() => shift("right")}
+							variant="outline"
+							size="icon"
+							title="Shift Right"
+							aria-label="Shift Right"
+							className="active:bg-accent active:scale-95 rounded-l-none"
+						>
+							<ArrowRight className="w-4 h-4" />
+						</Button>
+					</div>
+
+					<Button
+						onClick={copy}
+						variant="outline"
+						size="icon"
+						title="Copy"
+						aria-label="Copy"
+						className="active:bg-accent active:scale-95 relative"
+					>
+						{showCopySuccess ? (
+							<Check className="w-4 h-4 text-primary" />
+						) : (
+							<ClipboardCopy className="w-4 h-4" />
+						)}
+					</Button>
+					<Button
+						onClick={paste}
+						disabled={!clipboardRef.current}
+						variant="outline"
+						size="icon"
+						title="Paste"
+						aria-label="Paste"
+						className="active:bg-accent active:scale-95"
+					>
+						<Paste className="w-4 h-4" />
+					</Button>
 				</div>
-				<div className="flex flex-col items-center w-[100px]">
-					<div className="flex items-center justify-center p-2 bg-card border mb-2 size-[100px]">
+
+				<div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+					<div className="max-w-full overflow-auto rounded-md border bg-background">
 						<canvas
-							ref={previewRef}
-							className="dark:invert border-[0.25px] border-neutral-300"
-							style={{
-								imageRendering: "pixelated",
-								transform: "scale(4)",
-								transformOrigin: "center",
-							}}
+							ref={canvasRef}
+							className="cursor-crosshair dark:invert border-[0.5px] border-neutral-300"
+							onMouseDown={handleMouseDown}
+							onMouseMove={handleMouseMove}
+							onMouseUp={handleMouseUp}
+							onMouseLeave={handleMouseLeave}
 						/>
 					</div>
-					<div className="text-lg font-mono p-2 rounded-md bg-card border w-full">
-						{String.fromCharCode(selectedCharCode)} {selectedCharCode}
-					</div>
+					<div className="flex w-full shrink-0 flex-col items-stretch lg:w-[240px]">
+						<div className="mb-2 flex size-[100px] items-center justify-center self-center overflow-hidden rounded-md border bg-card p-2">
+							<canvas
+								ref={previewRef}
+								className="dark:invert border-[0.25px] border-neutral-300"
+								style={{
+									imageRendering: "pixelated",
+									width: `${Math.max(1, width * previewDisplayScale)}px`,
+									height: `${Math.max(1, editorHeight * previewDisplayScale)}px`,
+								}}
+							/>
+						</div>
+						<div className="mb-3 rounded-md border bg-card p-2 text-center text-lg font-mono">
+							{String.fromCharCode(selectedCharCode)} {selectedCharCode}
+						</div>
 
-					<div className="flex flex-col gap-2 w-full">
-						<Label
-							htmlFor="x-height"
-							className="flex items-center justify-between"
-						>
-							<span>X-Height</span>
-							<span className="text-xs text-muted-foreground">{xHeight}</span>
-						</Label>
-						<Slider
-							id="x-height"
-							min={0}
-							max={height - 1}
-							step={1}
-							value={[xHeight]}
-							onValueChange={handleXHeightChange}
-							className="mb-3"
-						/>
-					</div>
+						<div className="max-h-[420px] space-y-4 overflow-y-auto pr-1">
+							<div className="space-y-3">
+								<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+									Font metrics
+								</p>
 
-					<div className="flex flex-col gap-2 w-full">
-						<Label
-							htmlFor="baseline"
-							className="flex items-center justify-between"
-						>
-							<span>Baseline</span>
-							<span className="text-xs text-muted-foreground">{baseline}</span>
-						</Label>
-						<Slider
-							id="baseline"
-							min={0}
-							max={height - 1}
-							step={1}
-							value={[baseline]}
-							onValueChange={handleBaselineChange}
-							className="mb-3"
-						/>
+								<div className="grid grid-cols-2 gap-x-2 gap-y-1 rounded-md border bg-muted/20 p-2 text-[11px] text-muted-foreground">
+									<span>maxY</span>
+									<span className="text-right font-mono text-foreground">
+										{fontMetrics.maxY}
+									</span>
+									<span>minY</span>
+									<span className="text-right font-mono text-foreground">
+										{fontMetrics.minY}
+									</span>
+									<span>lineGap</span>
+									<span className="text-right font-mono text-foreground">
+										{fontMetrics.lineHeight}
+									</span>
+									<span>cell</span>
+									<span className="text-right font-mono text-foreground">
+										{fontMetrics.cellHeight}
+									</span>
+								</div>
+
+								<div className="flex flex-col gap-2">
+									<Label
+										htmlFor="cap-top"
+										className="flex items-center justify-between"
+									>
+										<span>Cap height</span>
+										<span className="text-xs text-muted-foreground">
+											row {fontMetrics.capTop} · y {fontMetrics.capHeightY}
+										</span>
+									</Label>
+									<Slider
+										id="cap-top"
+										min={0}
+										max={editorHeight - 1}
+										step={1}
+										value={[fontMetrics.capTop]}
+										onValueChange={handleCapTopChange}
+									/>
+								</div>
+
+								<div className="flex flex-col gap-2">
+									<Label
+										htmlFor="x-height"
+										className="flex items-center justify-between"
+									>
+										<span>X-Height</span>
+										<span className="text-xs text-muted-foreground">
+											row {fontMetrics.xHeightRow} · y {fontMetrics.xHeightY}
+										</span>
+									</Label>
+									<Slider
+										id="x-height"
+										min={0}
+										max={editorHeight - 1}
+										step={1}
+										value={[fontMetrics.xHeightRow]}
+										onValueChange={handleXHeightRowChange}
+									/>
+								</div>
+
+								<div className="flex flex-col gap-2">
+									<Label
+										htmlFor="baseline"
+										className="flex items-center justify-between"
+									>
+										<span>Baseline</span>
+										<span className="text-xs text-muted-foreground">
+											row {fontMetrics.baselineRow} · y 0
+										</span>
+									</Label>
+									<Slider
+										id="baseline"
+										min={0}
+										max={editorHeight - 1}
+										step={1}
+										value={[fontMetrics.baselineRow]}
+										onValueChange={handleBaselineChange}
+									/>
+								</div>
+
+								<div className="flex flex-col gap-2">
+									<Label
+										htmlFor="descender"
+										className="flex items-center justify-between"
+									>
+										<span>Descender</span>
+										<span className="text-xs text-muted-foreground">
+											{fontMetrics.descenderDepth}px · y{" "}
+											{fontMetrics.descenderY}
+										</span>
+									</Label>
+									<Slider
+										id="descender"
+										min={0}
+										max={editorHeight - 1}
+										step={1}
+										value={[fontMetrics.descenderDepth]}
+										onValueChange={handleDescenderDepthChange}
+									/>
+								</div>
+							</div>
+
+							<div className="space-y-3 border-t pt-3">
+								<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+									Glyph metrics
+								</p>
+
+								<div className="grid grid-cols-[auto_1fr] items-center gap-2">
+									<Label htmlFor="glyph-width" className="text-xs">
+										Width
+									</Label>
+									<Input
+										id="glyph-width"
+										type="number"
+										min={1}
+										value={selectedGlyphMeta?.width ?? width}
+										onChange={handleGlyphWidthChange}
+										className="h-8 font-mono text-xs"
+									/>
+									<Label htmlFor="glyph-advance" className="text-xs">
+										Advance
+									</Label>
+									<Input
+										id="glyph-advance"
+										type="number"
+										min={1}
+										value={
+											selectedGlyphMeta?.advance ??
+											selectedGlyphMeta?.width ??
+											width
+										}
+										onChange={handleGlyphAdvanceChange}
+										className="h-8 font-mono text-xs"
+									/>
+								</div>
+
+								<div className="grid grid-cols-2 gap-x-2 gap-y-1 rounded-md border bg-muted/20 p-2 text-[11px] text-muted-foreground">
+									<span>bounds.minX</span>
+									<span className="text-right font-mono text-foreground">
+										{inkBounds?.minX ?? "—"}
+									</span>
+									<span>bounds.maxX</span>
+									<span className="text-right font-mono text-foreground">
+										{inkBounds?.maxX ?? "—"}
+									</span>
+									<span>bounds.minY</span>
+									<span className="text-right font-mono text-foreground">
+										{inkBounds?.minY ?? "—"}
+									</span>
+									<span>bounds.maxY</span>
+									<span className="text-right font-mono text-foreground">
+										{inkBounds?.maxY ?? "—"}
+									</span>
+								</div>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>

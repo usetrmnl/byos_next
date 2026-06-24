@@ -4,8 +4,15 @@ import {
 	convertLegacyPackToV2,
 } from "./convert-legacy-font";
 import { convertV2PackToLegacy } from "./convert-v2-to-legacy";
-import { layoutV2Text } from "./layout-v2";
+import {
+	getV2BaselineEditorRow,
+	getV2LayoutHeight,
+	layoutV2Text,
+	v2GlyphToEditorBinary,
+	v2YToEditorRow,
+} from "./layout-v2";
 import { resolveV2Face } from "./pack-utils";
+import type { Glyph, NewBitmapFontMetrics } from "./schema/v2";
 
 describe("convertLegacyBitmapFont", () => {
 	const samplePack = {
@@ -78,7 +85,15 @@ describe("convertLegacyBitmapFont", () => {
 			},
 		);
 
-		expect(quote.rows).toEqual([{ y: 0, runs: [[0, 2], [4, 6]] }]);
+		expect(quote.rows).toEqual([
+			{
+				y: 0,
+				runs: [
+					[0, 2],
+					[4, 6],
+				],
+			},
+		]);
 		expect(quote.bounds).toEqual({
 			minX: 0,
 			maxX: 6,
@@ -196,6 +211,60 @@ describe("v2 roundtrip", () => {
 	});
 });
 
+describe("baseline editor anchoring", () => {
+	const genevaMetrics: NewBitmapFontMetrics = {
+		minY: -3,
+		descenderY: -2,
+		baselineY: 0,
+		xHeightY: 5,
+		capHeightY: 7,
+		maxY: 8,
+		lineGap: 11,
+		pixelUnitX: 1,
+		pixelUnitY: 1,
+		dynamicWidth: false,
+	};
+
+	it("keeps baseline ink on the design grid bottom when metrics extend below", () => {
+		const gridHeight = 11;
+		const glyph: Glyph = {
+			charCode: 65,
+			char: "A",
+			width: 7,
+			advance: 7,
+			leftBearing: 0,
+			bounds: { minX: 0, maxX: 7, minY: 0, maxY: 7 },
+			rows: [{ y: 0, runs: [[1, 2]] }],
+		};
+
+		expect(getV2BaselineEditorRow(genevaMetrics, gridHeight)).toBe(10);
+		expect(getV2LayoutHeight(genevaMetrics, gridHeight)).toBe(14);
+		expect(v2YToEditorRow(0, genevaMetrics, gridHeight)).toBe(10);
+
+		const binary = v2GlyphToEditorBinary(glyph, genevaMetrics, gridHeight);
+		expect(binary.indexOf("1")).toBe(10 * 7 + 1);
+	});
+
+	it("pads dynamic Geneva 20px faces below the design grid baseline", () => {
+		const metrics: NewBitmapFontMetrics = {
+			minY: -5,
+			descenderY: -3,
+			baselineY: 0,
+			xHeightY: 10,
+			capHeightY: 12,
+			maxY: 13,
+			lineGap: 19,
+			pixelUnitX: 1,
+			pixelUnitY: 1,
+			dynamicWidth: true,
+		};
+
+		expect(getV2BaselineEditorRow(metrics, 20)).toBe(19);
+		expect(getV2LayoutHeight(metrics, 20)).toBe(25);
+		expect(v2YToEditorRow(-3, metrics, 20)).toBe(22);
+	});
+});
+
 describe("layoutV2Text", () => {
 	it("lays out baseline-relative glyph runs", () => {
 		const pack = convertLegacyPackToV2({
@@ -228,12 +297,13 @@ describe("layoutV2Text", () => {
 
 		const face = resolveV2Face(pack, "8x1");
 		expect(face).not.toBeNull();
+		if (!face) throw new Error("Expected 8x1 face to resolve");
 
 		const layout = layoutV2Text({
 			text: '"',
-			glyphs: face!.glyphs,
-			metrics: face!.metrics,
-			gridWidth: face!.gridWidth,
+			glyphs: face.glyphs,
+			metrics: face.metrics,
+			gridWidth: face.gridWidth,
 			scale: 1,
 			gap: 0,
 		});

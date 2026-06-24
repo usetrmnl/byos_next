@@ -14,6 +14,7 @@
 		"generate:recipes": "node scripts/generate-recipes-index.mjs && biome format --write lib/recipes/screens.generated.ts",
 		"generate:fonts": "node scripts/generate-bitmap-fonts.mjs && biome format --write components/bitmap-font/generated",
 		"benchmark:fonts": "node scripts/benchmark-pixel-grid.mjs",
+		"benchmark:glyphs": "node scripts/benchmark-font-glyphs.mjs",
 		"convert:font": "node scripts/convert-bitmap-font.mjs",
 		"prebuild": "pnpm generate:sql && pnpm generate:recipes && pnpm generate:fonts",
 		"dev": "pnpm generate:sql && pnpm generate:recipes && pnpm generate:fonts && next dev --turbopack",

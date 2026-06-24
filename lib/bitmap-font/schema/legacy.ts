@@ -25,6 +25,8 @@ export type LegacyBitmapFace = {
 	width: number;
 	height: number;
 	characters: LegacyBitmapCharacter[];
+	/** Per-face metrics when a pack has multiple grid sizes. */
+	metrics?: LegacyFontMetrics;
 };
 
 export type LegacyBitmapFontPack = {

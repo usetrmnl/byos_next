@@ -2,7 +2,7 @@ import manifest from "./font-sources.json";
 
 export type FontFormat = "ttf" | "otf" | "woff2";
 
-export type TraceMode = "fit" | "pixelSnap";
+export type TraceMode = "fit" | "pixelSnap" | "metricSnap";
 export type InkDetection = "luminance" | "nonWhite" | "anyDark";
 
 export type BitmapGrid = {
@@ -14,6 +14,7 @@ export type BitmapGrid = {
 	renderSize?: number;
 	traceMode?: TraceMode;
 	pixelSnap?: boolean;
+	centerHorizontally?: boolean;
 	inkDetection?: InkDetection;
 	dynamicWidth?: boolean;
 	/** Run probe benchmark to derive cell height / line metrics. */
@@ -34,6 +35,7 @@ export type FontSource = {
 	dynamicWidth: boolean;
 	traceMode?: TraceMode;
 	pixelSnap?: boolean;
+	centerHorizontally?: boolean;
 	inkDetection?: InkDetection;
 	discoverGrid?: boolean;
 	benchmarkProbes?: string;

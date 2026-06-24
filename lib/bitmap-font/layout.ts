@@ -112,8 +112,11 @@ export function layoutBitmapText({
 	gap: number;
 }): BitmapLayoutResult {
 	const fontHeight = font.height;
-	const lineStep = (metrics.lineHeight ?? fontHeight) * scale;
 	const cellHeight = (metrics.cellHeight ?? fontHeight) * scale;
+	const lineStep = Math.max(
+		cellHeight,
+		(metrics.lineHeight ?? fontHeight) * scale,
+	);
 	const defaultAdvance =
 		(metrics.dynamicWidth
 			? (metrics.cellWidth ?? fontHeight)

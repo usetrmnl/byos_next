@@ -1,6 +1,6 @@
 import ftPack from "@/components/bitmap-font/bitmap-font.json";
 import blockKiePack from "@/components/bitmap-font/generated/block-kie.json";
-import geistPixelSquarePack from "@/components/bitmap-font/generated/geist-pixel-square.json";
+import geistPixelGridPack from "@/components/bitmap-font/generated/geist-pixel-grid.json";
 import genevaPack from "@/components/bitmap-font/generated/geneva.json";
 import type { BuiltInBitmapPack } from "@/lib/font-sources";
 import { BUILT_IN_BITMAP_PACKS } from "@/lib/font-sources";
@@ -13,7 +13,7 @@ const PACK_DATA_BY_ID: Record<string, BitmapFontPackData> = {
 	ft: ftPack as unknown as BitmapFontPackData,
 	geneva: genevaPack as unknown as BitmapFontPackData,
 	blockKie: blockKiePack as unknown as BitmapFontPackData,
-	geistPixelSquare: geistPixelSquarePack as unknown as BitmapFontPackData,
+	geistPixelGrid: geistPixelGridPack as unknown as BitmapFontPackData,
 };
 
 export function getBuiltInPackOptions(): BuiltInBitmapPack[] {

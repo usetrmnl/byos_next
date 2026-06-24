@@ -1,5 +1,19 @@
 const BASE64_PATTERN = /^[A-Za-z0-9+/]+={0,2}$/;
 
+/** Row stride for legacy/dynamic glyph bitmap data (advance when dynamic, else face width). */
+export function legacyGlyphRowStride(
+	character: { width?: number; advance?: number },
+	face: { width: number },
+	dynamicWidth?: boolean,
+): number {
+	const dynamic = dynamicWidth ?? face.width === 0;
+	if (dynamic) {
+		return Math.max(character.advance ?? 0, character.width ?? 0, 1);
+	}
+	if (face.width > 0) return face.width;
+	return character.width ?? 8;
+}
+
 /** Decode legacy base64-packed binary (0/1 bits) used by the generator. */
 export function base64CellDataToBinary(base64: string): string {
 	if (typeof Buffer !== "undefined") {

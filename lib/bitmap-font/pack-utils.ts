@@ -56,6 +56,41 @@ export function inferFaceWidth(
 	return maxWidth > 0 ? maxWidth : 8;
 }
 
+/** Derive v2 metrics from glyph ink when a face has no explicit metrics block. */
+export function inferMetricsFromGlyphs(
+	glyphs: Record<string, Glyph>,
+	fallback: NewBitmapFontMetrics,
+): NewBitmapFontMetrics {
+	let minY = Number.POSITIVE_INFINITY;
+	let maxY = Number.NEGATIVE_INFINITY;
+
+	for (const glyph of Object.values(glyphs)) {
+		if (glyph.bounds) {
+			minY = Math.min(minY, glyph.bounds.minY);
+			maxY = Math.max(maxY, glyph.bounds.maxY);
+		}
+
+		for (const { y } of glyph.rows) {
+			minY = Math.min(minY, y);
+			maxY = Math.max(maxY, y);
+		}
+	}
+
+	if (!Number.isFinite(minY) || !Number.isFinite(maxY)) {
+		return fallback;
+	}
+
+	return {
+		...fallback,
+		minY,
+		maxY,
+		descenderY: Math.min(fallback.descenderY, minY),
+		capHeightY: Math.max(fallback.capHeightY, maxY),
+		xHeightY: fallback.xHeightY,
+		baselineY: 0,
+	};
+}
+
 export function listV2FaceKeys(pack: NewBitmapFont): string[] {
 	if (pack.faces && Object.keys(pack.faces).length > 0) {
 		return Object.keys(pack.faces);
@@ -87,12 +122,17 @@ export function resolveV2Face(
 
 	const [gridWidth, gridHeight] = parseGridSize(selectedKey);
 	const face: NewBitmapFontFace | undefined = pack.faces?.[selectedKey];
+	const glyphs = face?.glyphs ?? pack.glyphs ?? {};
+	const sharedMetrics = pack.metadata.metrics;
+	const metrics = face?.metrics
+		? face.metrics
+		: inferMetricsFromGlyphs(glyphs, sharedMetrics);
 
 	return {
 		gridSize: selectedKey,
 		gridWidth,
 		gridHeight,
-		metrics: face?.metrics ?? pack.metadata.metrics,
-		glyphs: face?.glyphs ?? pack.glyphs ?? {},
+		metrics,
+		glyphs,
 	};
 }

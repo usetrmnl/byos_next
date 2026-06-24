@@ -25,6 +25,26 @@ export const binaryToBase64 = (binary: string): string => {
 	return btoa(String.fromCharCode(...bytes));
 };
 
+export const parseEditorGridSize = (gridSize: string): [number, number] => {
+	const [width, height] = gridSize.split("x").map(Number);
+	return [width, height];
+};
+
+export const getEffectiveGlyphWidth = (
+	gridSize: string,
+	charCode: number,
+	glyphMeta?: Map<number, { width?: number; advance?: number }>,
+): number => {
+	const [gridWidth] = parseEditorGridSize(gridSize);
+	if (gridWidth > 0) return gridWidth;
+
+	const meta = glyphMeta?.get(charCode);
+	return meta?.advance ?? meta?.width ?? 8;
+};
+
+/** Row stride for decoding editor/grid binary (advance when dynamic). */
+export const getGlyphBitmapStride = getEffectiveGlyphWidth;
+
 // Convert binary string to 2D grid
 export const binaryToGrid = (
 	binary: string,
@@ -50,4 +70,90 @@ export const binaryToGrid = (
 // Convert 2D grid to binary string
 export const gridToBinary = (grid: number[][]): string => {
 	return grid.flat().join("");
+};
+
+export type EditorFontMetrics = {
+	baselineRow: number;
+	capTop: number;
+	xHeightRow: number;
+	xHeightY: number;
+	capHeightY: number;
+	descenderDepth: number;
+	descenderRow: number;
+	descenderY: number;
+	minY: number;
+	maxY: number;
+	minYRow: number;
+	maxYRow: number;
+	cellHeight: number;
+	lineHeight: number;
+};
+
+export const resolveEditorFontMetrics = (
+	height: number,
+	packMetrics?: {
+		cellHeight?: number;
+		capTop?: number;
+		baselineRow?: number;
+		descenderDepth?: number;
+		xHeight?: number;
+		lineHeight?: number;
+	},
+): EditorFontMetrics => {
+	const cellHeight = packMetrics?.cellHeight ?? height;
+	const baselineRow = packMetrics?.baselineRow ?? height - 1;
+	const capTop = packMetrics?.capTop ?? 0;
+	const xHeightY =
+		packMetrics?.xHeight ?? Math.max(1, Math.floor(height * 0.6));
+	const descenderDepth = packMetrics?.descenderDepth ?? 0;
+	const minY = baselineRow - (cellHeight - 1);
+	const maxY = baselineRow;
+
+	return {
+		baselineRow,
+		capTop,
+		xHeightRow: baselineRow - xHeightY,
+		xHeightY,
+		capHeightY: baselineRow - capTop,
+		descenderDepth,
+		descenderRow: Math.min(height - 1, baselineRow + descenderDepth),
+		descenderY: -descenderDepth,
+		minY,
+		maxY,
+		minYRow: Math.min(height - 1, Math.max(0, baselineRow - minY)),
+		maxYRow: Math.max(0, baselineRow - maxY),
+		cellHeight,
+		lineHeight: packMetrics?.lineHeight ?? height,
+	};
+};
+
+export type InkBounds = {
+	minX: number;
+	maxX: number;
+	minY: number;
+	maxY: number;
+};
+
+export const computeInkBoundsFromGrid = (
+	grid: number[][],
+	baselineRow: number,
+): InkBounds | null => {
+	let minX = Number.POSITIVE_INFINITY;
+	let maxX = Number.NEGATIVE_INFINITY;
+	let minY = Number.POSITIVE_INFINITY;
+	let maxY = Number.NEGATIVE_INFINITY;
+
+	for (let row = 0; row < grid.length; row++) {
+		for (let col = 0; col < (grid[row]?.length ?? 0); col++) {
+			if (!grid[row]?.[col]) continue;
+			minX = Math.min(minX, col);
+			maxX = Math.max(maxX, col);
+			const y = baselineRow - row;
+			minY = Math.min(minY, y);
+			maxY = Math.max(maxY, y);
+		}
+	}
+
+	if (!Number.isFinite(minX)) return null;
+	return { minX, maxX, minY, maxY };
 };

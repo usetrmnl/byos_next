@@ -1,4 +1,4 @@
-import { decodeCellData } from "./decode-cell-data";
+import { decodeCellData, legacyGlyphRowStride } from "./decode-cell-data";
 import type {
 	LegacyBitmapCharacter,
 	LegacyBitmapFace,
@@ -80,10 +80,12 @@ export function convertLegacyGlyph(
 	face: LegacyBitmapFace,
 	metrics: LegacyFontMetrics,
 ): Glyph {
-	const cellHeight = face.height;
+	const cellHeight = metrics.cellHeight ?? face.height;
 	const baselineRow = metrics.baselineRow;
-	const glyphWidth = character.width ?? (face.width > 0 ? face.width : 1);
-	const grid = decodeCellData(character.data, glyphWidth, cellHeight);
+	const dynamicWidth = metrics.dynamicWidth ?? face.width === 0;
+	const rowStride = legacyGlyphRowStride(character, face, dynamicWidth);
+	const glyphWidth = character.width ?? (face.width > 0 ? face.width : rowStride);
+	const grid = decodeCellData(character.data, rowStride, cellHeight);
 
 	const rows: GlyphRowRun[] = [];
 	let minX = Number.POSITIVE_INFINITY;
@@ -205,17 +207,25 @@ export function convertLegacyPackToV2(
 			throw new Error("Legacy font pack has no faces");
 		}
 
+		const faceLegacyMetrics = face.metrics ?? legacyMetrics;
+		const faceMetrics = convertLegacyMetrics(faceLegacyMetrics);
+
 		return {
-			metadata,
-			glyphs: convertLegacyFontFace(face, legacyMetrics, options),
+			metadata: {
+				...metadata,
+				metrics: faceMetrics,
+			},
+			glyphs: convertLegacyFontFace(face, faceLegacyMetrics, options),
 		};
 	}
 
 	const faces: Record<string, NewBitmapFontFace> = {};
 	for (const face of pack.fonts) {
+		const faceLegacyMetrics = face.metrics ?? legacyMetrics;
 		const key = gridSizeKey(face.width, face.height);
 		faces[key] = {
-			glyphs: convertLegacyFontFace(face, legacyMetrics, options),
+			metrics: convertLegacyMetrics(faceLegacyMetrics),
+			glyphs: convertLegacyFontFace(face, faceLegacyMetrics, options),
 		};
 	}
 

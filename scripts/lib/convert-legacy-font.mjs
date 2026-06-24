@@ -52,10 +52,14 @@ function emptyBounds() {
 }
 
 export function convertLegacyGlyph(character, face, metrics) {
-	const cellHeight = face.height;
+	const cellHeight = metrics.cellHeight ?? face.height;
 	const baselineRow = metrics.baselineRow;
-	const glyphWidth = character.width ?? (face.width > 0 ? face.width : 1);
-	const grid = decodeCellData(character.data, glyphWidth, cellHeight);
+	const dynamicWidth = metrics.dynamicWidth ?? face.width === 0;
+	const rowStride = dynamicWidth
+		? Math.max(character.advance ?? 0, character.width ?? 0, 1)
+		: character.width ?? (face.width > 0 ? face.width : 1);
+	const glyphWidth = character.width ?? (face.width > 0 ? face.width : rowStride);
+	const grid = decodeCellData(character.data, rowStride, cellHeight);
 
 	const rows = [];
 	let minX = Number.POSITIVE_INFINITY;
@@ -171,17 +175,25 @@ export function convertLegacyPackToV2(pack, options = {}) {
 			throw new Error("Legacy font pack has no faces");
 		}
 
+		const faceLegacyMetrics = face.metrics ?? legacyMetrics;
+		const faceMetrics = convertLegacyMetrics(faceLegacyMetrics);
+
 		return {
-			metadata,
-			glyphs: convertLegacyFontFace(face, legacyMetrics, options),
+			metadata: {
+				...metadata,
+				metrics: faceMetrics,
+			},
+			glyphs: convertLegacyFontFace(face, faceLegacyMetrics, options),
 		};
 	}
 
 	const faces = {};
 	for (const face of pack.fonts) {
+		const faceLegacyMetrics = face.metrics ?? legacyMetrics;
 		const key = gridSizeKey(face.width, face.height);
 		faces[key] = {
-			glyphs: convertLegacyFontFace(face, legacyMetrics, options),
+			metrics: convertLegacyMetrics(faceLegacyMetrics),
+			glyphs: convertLegacyFontFace(face, faceLegacyMetrics, options),
 		};
 	}
 
