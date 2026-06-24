@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth/auth";
 import { getCurrentUser } from "@/lib/auth/get-user";
 import { SQL_STATEMENTS } from "@/lib/database/sql-statements";
 import { getDatabaseSetupStatus } from "@/lib/database/utils";
+import { formatErrorMessage } from "@/lib/errors";
 
 export type SqlExecutionStatus =
 	| "idle"
@@ -173,7 +174,7 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 				status: "error",
 				result: [],
 				notices: [],
-				error: error instanceof Error ? error.message : String(error),
+				error: formatErrorMessage(error),
 			};
 		}
 
@@ -235,8 +236,7 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 			} catch (error) {
 				console.error(`Error executing SQL for ${key}:`, error);
 
-				const errorMessage =
-					error instanceof Error ? error.message : String(error);
+				const errorMessage = formatErrorMessage(error);
 
 				resultState[key as keyof typeof SQL_STATEMENTS] = {
 					status: "error",
@@ -282,7 +282,7 @@ export async function executeSqlStatements(): Promise<SqlExecutionState> {
 			status: "error",
 			result: [],
 			notices: [],
-			error: error instanceof Error ? error.message : String(error),
+			error: formatErrorMessage(error),
 		};
 	} finally {
 		// Close the main connection
