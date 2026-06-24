@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import type { Device, Log } from "@/lib/types";
 import {
@@ -104,7 +105,7 @@ describe("compareVersions", () => {
 // ---------------------------------------------------------------------------
 
 describe("formatDate", () => {
-	const FIXED_NOW = new Date("2024-01-15T12:00:00.000Z").getTime();
+	const FIXED_NOW = new Date(2024, 0, 15, 12, 0, 0).getTime();
 
 	beforeEach(() => {
 		jest.useFakeTimers();
@@ -143,14 +144,14 @@ describe("formatDate", () => {
 		const date = new Date(FIXED_NOW - 8 * 86_400_000).toISOString();
 		const result = formatDate(date);
 		// Should contain month/day digits rather than a weekday
-		expect(result).toBe("01/07, 07:00");
+		expect(result).toBe("01/07, 12:00");
 	});
 
 	it("shows weekday format for 1-6 days ago", () => {
 		const date = new Date(FIXED_NOW - 2 * 86_400_000).toISOString();
 		const result = formatDate(date);
-		// Weekday abbreviated like "Sat 07:00"
-		expect(result).toBe("Sat 07:00");
+		// Weekday abbreviated like "Sat 12:00"
+		expect(result).toBe("Sat 12:00");
 	});
 });
 
