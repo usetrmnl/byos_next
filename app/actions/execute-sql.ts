@@ -1,13 +1,11 @@
 "use server";
 
 import { createHash } from "crypto";
-import { sql as kyselySql } from "kysely";
 import postgres from "postgres";
 import { auth } from "@/lib/auth/auth";
 import { getCurrentUser } from "@/lib/auth/get-user";
-import { db } from "@/lib/database/db";
 import { SQL_STATEMENTS } from "@/lib/database/sql-statements";
-import { checkDbConnection } from "@/lib/database/utils";
+import { getDatabaseSetupStatus } from "@/lib/database/utils";
 
 export type SqlExecutionStatus =
 	| "idle"
@@ -40,20 +38,6 @@ function migrationEntries() {
 	);
 }
 
-async function authTablesExist(): Promise<boolean> {
-	const result = await kyselySql<{
-		count: string | number | bigint;
-	}>`
-		SELECT COUNT(*) AS count
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-			AND table_name IN ('user', 'session')
-	`.execute(db);
-
-	const count = Number(result.rows[0]?.count ?? 0);
-	return count >= 2;
-}
-
 async function canRunSetupSql(): Promise<boolean> {
 	if (!auth) {
 		return true;
@@ -64,14 +48,8 @@ async function canRunSetupSql(): Promise<boolean> {
 		return true;
 	}
 
-	const status = await checkDbConnection();
-	if (!status.ready && status.error?.startsWith("Missing required tables:")) {
-		// Fresh installs do not have auth tables yet, so setup must be runnable
-		// before anyone can sign in. Once auth tables exist, require admin.
-		return !(await authTablesExist().catch(() => false));
-	}
-
-	return false;
+	const status = await getDatabaseSetupStatus();
+	return status.needsSetup;
 }
 
 async function getAppliedMigrations(

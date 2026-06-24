@@ -6,15 +6,17 @@ import {
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import {
+	createScreenProfile,
+	type ScreenProfile,
+} from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
 
 export const paramsSchema = z.object({});
 export const dataSchema = paramsSchema;
 
-// Tailwind responsive breakpoints used here: sm≥640, md≥768, lg≥1024, xl≥1280,
-// 2xl≥1536. Tuned so the layout stays readable at 800×480 (TRMNL OG) and
-// scales up cleanly at 1872×1404 (TRMNL X / e-readers) without scaling
-// rasterized bitmap output.
+// Bitmap fonts need integer scale factors, so derive the raster scale from the
+// logical screen tier instead of physical output pixels.
 const BITMAP_FONT_SCALE: Record<string, number> = {
 	sm: 2,
 	md: 2,
@@ -23,22 +25,27 @@ const BITMAP_FONT_SCALE: Record<string, number> = {
 	"2xl": 4,
 };
 
-function bitmapFontScaleForWidth(width: number): number {
-	if (width >= 1536) return BITMAP_FONT_SCALE["2xl"];
-	if (width >= 1280) return BITMAP_FONT_SCALE.xl;
-	if (width >= 1024) return BITMAP_FONT_SCALE.lg;
+function bitmapFontScaleForScreen(screen: ScreenProfile): number {
+	if (screen.isLarge) return BITMAP_FONT_SCALE["2xl"];
+	if (screen.logicalWidth >= 1024) return BITMAP_FONT_SCALE.lg;
 	return 2;
 }
 
 export default function SimpleText({
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
+	screen,
 }: {
 	width?: number;
 	height?: number;
+	screen?: ScreenProfile;
 }) {
+	const screenProfile = screen ?? createScreenProfile({ width, height });
 	return (
-		<PreSatori width={width} height={height}>
+		<PreSatori
+			width={screenProfile.logicalWidth}
+			height={screenProfile.logicalHeight}
+		>
 			<div className="w-full h-full p-4 sm:p-6 lg:p-12 2xl:p-20 bg-white flex flex-col items-center justify-center gap-2 lg:gap-4 2xl:gap-6 text-center text-black">
 				<div className="text-4xl lg:text-6xl 2xl:text-8xl font-blockkie">
 					Hello World - blockkie font
@@ -59,7 +66,7 @@ export default function SimpleText({
 					text={`FT font: Great for headlines`}
 					fontData={fontData}
 					gridSize={`8x16`}
-					scale={bitmapFontScaleForWidth(width)}
+					scale={bitmapFontScaleForScreen(screenProfile)}
 					gap={0}
 				/>
 			</div>
@@ -83,7 +90,7 @@ export const definition: RecipeDefinition<typeof paramsSchema> = {
 	},
 	paramsSchema,
 	dataSchema,
-	Component: ({ width, height }) => (
-		<SimpleText width={width} height={height} />
+	Component: ({ width, height, screen }) => (
+		<SimpleText width={width} height={height} screen={screen} />
 	),
 };

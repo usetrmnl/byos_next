@@ -26,6 +26,8 @@ export interface GraphProps {
 	lineColor?: string;
 	/** Line width in pixels */
 	lineWidth?: number;
+	/** Axis label font size in pixels */
+	axisFontSize?: number;
 	/** Whether to show grid lines */
 	showGrid?: boolean;
 	/** Grid line style */
@@ -57,6 +59,7 @@ export function Graph({
 			: value.toString(),
 	lineColor = "currentColor",
 	lineWidth = 3,
+	axisFontSize,
 	showGrid = true,
 	gridStyle = {
 		opacity: 1,
@@ -69,7 +72,10 @@ export function Graph({
 	const innerWidth = width - margin.left - margin.right;
 	const innerHeight = height - margin.top - margin.bottom;
 
-	const fontSize = Math.round((50 * Math.max(innerWidth, innerHeight)) / 800);
+	const fontSize = Math.max(
+		14,
+		axisFontSize ?? Math.round((50 * Math.max(innerWidth, innerHeight)) / 800),
+	);
 
 	// Create scales
 	const xScale = isTimeData
@@ -245,7 +251,7 @@ export function Graph({
 					style={{
 						display: "flex",
 						position: "relative",
-						height: "30px",
+						height: `${Math.round(fontSize * 1.35)}px`,
 						width: innerWidth,
 					}}
 				>

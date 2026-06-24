@@ -27,6 +27,10 @@ separate registry file to keep in sync.
 ```tsx
 import { z } from "zod";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import {
+  createScreenProfile,
+  type ScreenProfile,
+} from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
 
 export const paramsSchema = z.object({
@@ -41,14 +45,23 @@ export const dataSchema = paramsSchema;
 export default function MyRecipe({
   width,
   height,
+  screen,
   data,
 }: {
   width?: number;
   height?: number;
+  screen?: ScreenProfile;
   data: z.infer<typeof dataSchema>;
 }) {
+  const screenProfile = screen ?? createScreenProfile({
+    width: width ?? 800,
+    height: height ?? 480,
+  });
   return (
-    <PreSatori width={width} height={height}>
+    <PreSatori
+      width={screenProfile.logicalWidth}
+      height={screenProfile.logicalHeight}
+    >
       <div className="flex h-full w-full items-center justify-center text-4xl">
         {data.message}
       </div>
@@ -68,8 +81,8 @@ export const definition: RecipeDefinition<typeof paramsSchema> = {
   },
   paramsSchema,
   dataSchema,
-  Component: ({ width, height, data }) => (
-    <MyRecipe width={width} height={height} data={data} />
+  Component: ({ width, height, screen, data }) => (
+    <MyRecipe width={width} height={height} screen={screen} data={data} />
   ),
 };
 ```
@@ -137,10 +150,16 @@ Set `REACT_RENDERER=takumi|satori|browser` to switch renderers.
 
 ## Responsive Design
 
-Recipes are rendered at fixed pixel dimensions. Use Tailwind's responsive
-classes (`sm:`, `md:`, `lg:`, …) to adapt layouts to portrait vs
-landscape orientations. The recipe preview lets you switch orientations
-at runtime via `?format=portrait`.
+Recipes are rendered at fixed physical dimensions, but React recipe
+components receive logical dimensions for layout. For example, TRMNL X is
+rendered at `1872x1404` physical pixels but recipes lay out against its
+`1040x780` logical canvas.
+
+Use the `screen` prop and the shared primitives in
+`components/trmnl/screen-layout.tsx` for responsive layout decisions.
+Avoid scaling typography and spacing directly from physical width.
+See `docs/trmnl-screen-design.md` for the full screen design model and
+LLM authoring rules.
 
 Special dither classes (`dither-100`, etc.) work with Satori for
 gradients on 1-bit displays.

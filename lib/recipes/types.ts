@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { z } from "zod";
+import type { ScreenProfile } from "@/lib/trmnl/screen-profile";
 
 export type RecipeAuthor = {
 	name?: string;
@@ -34,6 +35,7 @@ export type RecipeMeta = {
 export type RecipeRenderProps = {
 	width?: number;
 	height?: number;
+	screen?: ScreenProfile;
 };
 
 /**

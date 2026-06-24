@@ -160,6 +160,7 @@ export default function DeviceView({
 			(palette) => palette.id === selectedModel?.palette_ids[0],
 		);
 	const imageExtension = getModelImageExtension(selectedModel);
+	const screenAspectRatio = `${deviceWidth} / ${deviceHeight}`;
 	const profileQuery = new URLSearchParams({
 		width: String(deviceWidth),
 		height: String(deviceHeight),
@@ -223,7 +224,11 @@ export default function DeviceView({
 							isPortrait ? "max-w-[260px]" : "max-w-[520px]",
 						)}
 					>
-						<DeviceFrame size="lg" portrait={isPortrait}>
+						<DeviceFrame
+							size="lg"
+							portrait={isPortrait}
+							screenAspectRatio={screenAspectRatio}
+						>
 							<Image
 								src={heroSrc}
 								alt="Device screen"
@@ -250,7 +255,12 @@ export default function DeviceView({
 									key={`${screen.screen}-${i}`}
 									className="w-[110px] shrink-0 space-y-1"
 								>
-									<DeviceFrame size="sm" portrait={isPortrait} flat>
+									<DeviceFrame
+										size="sm"
+										portrait={isPortrait}
+										screenAspectRatio={screenAspectRatio}
+										flat
+									>
 										<Image
 											src={
 												screen.screen

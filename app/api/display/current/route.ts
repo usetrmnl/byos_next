@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	DISPLAY_FALLBACK_REFRESH_SECONDS,
@@ -9,7 +9,7 @@ import { selectDisplayForDevice } from "@/lib/display/select";
 import { logError, logInfo } from "@/lib/logger";
 import { buildDeviceImageFilename } from "@/lib/render/device-image-url";
 import type { Device } from "@/lib/types";
-import { parseRequestHeaders } from "../utils";
+import { parseRequestHeaders, resolveUserIdFromApiKey } from "../utils";
 
 /**
  * GET /api/display/current
@@ -43,11 +43,18 @@ export async function GET(request: Request) {
 	}
 
 	try {
-		const device = await db
-			.selectFrom("devices")
-			.selectAll()
-			.where("api_key", "=", apiKey)
-			.executeTakeFirst();
+		const userId = await resolveUserIdFromApiKey(apiKey, {
+			assumeDbReady: true,
+		});
+		const device = userId
+			? await withExplicitUserScope(userId, (scopedDb) =>
+					scopedDb
+						.selectFrom("devices")
+						.selectAll()
+						.where("api_key", "=", apiKey)
+						.executeTakeFirst(),
+				)
+			: null;
 
 		if (!device) {
 			return NextResponse.json(

@@ -24,9 +24,14 @@ export async function getDeviceProfile(
 	paletteOverride?: string | null,
 ): Promise<DeviceProfile> {
 	const requested = modelName?.trim() || DEFAULT_MODEL_NAME;
-	const model = await findModel(requested);
+	let model = await findModel(requested);
 	if (!model) {
-		throw new Error(`Unknown TRMNL model: ${requested}`);
+		model = await findModel(DEFAULT_MODEL_NAME);
+	}
+	if (!model) {
+		throw new Error(
+			`Unknown TRMNL model: ${requested}; default ${DEFAULT_MODEL_NAME} is unavailable`,
+		);
 	}
 
 	const desiredPaletteId =

@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { db } from "@/lib/database/db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	DISPLAY_FALLBACK_REFRESH_SECONDS,
@@ -14,6 +14,7 @@ import {
 	buildDeviceImageUrl,
 } from "@/lib/render/device-image-url";
 import {
+	buildClaimResponse,
 	buildDisplayResponse,
 	buildErrorResponse,
 	calculateRefreshRate,
@@ -34,19 +35,21 @@ function errorImageQuery(baseQueryParams: string, message: string): string {
 
 export async function GET(request: Request) {
 	const headers = parseRequestHeaders(request);
-
-	if (!headers.apiKey) {
-		return NextResponse.json(
-			{ status: 401, error: "Access-Token header is required" },
-			{ status: 401 },
-		);
-	}
-
-	const { ready } = await checkDbConnection();
 	const baseUrl = `${headers.hostUrl}/api/bitmap`;
 	const uniqueId =
 		Math.random().toString(36).substring(2, 7) +
 		Date.now().toString(36).slice(-3);
+
+	if (!headers.apiKey) {
+		return buildErrorResponse(
+			"Access-Token header is required",
+			baseUrl,
+			uniqueId,
+			401,
+		);
+	}
+
+	const { ready } = await checkDbConnection();
 
 	if (!ready) {
 		logError("Database not available for display request", {
@@ -61,9 +64,20 @@ export async function GET(request: Request) {
 	});
 
 	try {
-		const device = await findOrCreateDevice(headers);
+		const lookup = await findOrCreateDevice(headers);
+		const { device } = lookup;
 
 		if (!device) {
+			if (lookup.claimCode) {
+				logInfo("Returning pending device claim code", {
+					source: "api/display",
+					metadata: {
+						apiKey: headers.apiKey?.slice(0, 6),
+						macAddress: headers.macAddress,
+					},
+				});
+				return buildClaimResponse(lookup.claimCode, baseUrl, uniqueId);
+			}
 			logError("Error fetching/creating device", {
 				source: "api/display",
 				metadata: { apiKey: headers.apiKey?.slice(0, 6) },
@@ -94,11 +108,17 @@ export async function GET(request: Request) {
 					if (activeItem) {
 						screenToDisplay = activeItem.screen_id;
 						dynamicRefreshRate = activeItem.duration;
-						await db
-							.updateTable("devices")
-							.set({ current_playlist_index: activeItem.order_index })
-							.where("id", "=", device.id.toString())
-							.execute();
+						const updatePlaylistIndex = (scopedDb: typeof db) =>
+							scopedDb
+								.updateTable("devices")
+								.set({ current_playlist_index: activeItem.order_index })
+								.where("id", "=", device.id.toString())
+								.execute();
+						if (device.user_id) {
+							await withExplicitUserScope(device.user_id, updatePlaylistIndex);
+						} else {
+							await updatePlaylistIndex(db);
+						}
 					} else {
 						logInfo("No active playlist item found", {
 							source: "api/display",
@@ -219,9 +239,14 @@ export async function GET(request: Request) {
 			dynamicRefreshRate,
 			firmwareExtra,
 		);
-	} catch (_error) {
-		logError("Internal server error", {
+	} catch (error) {
+		logError(error instanceof Error ? error : new Error(String(error)), {
 			source: "api/display",
+			metadata: {
+				apiKey: headers.apiKey?.slice(0, 6),
+				reportedModel: headers.model,
+				uniqueId,
+			},
 		});
 		return buildErrorResponse("Internal server error", baseUrl, uniqueId);
 	}

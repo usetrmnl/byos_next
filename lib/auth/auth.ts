@@ -4,6 +4,12 @@ import { Pool } from "pg";
 import { sendEmail } from "@/lib/email";
 
 const AUTH_ENABLED = process.env.AUTH_ENABLED !== "false";
+const BYOS_MONO_USER_ID = "byos_mono_user";
+// Arbitrary, app-wide-unique advisory lock id used only to serialize first-admin
+// promotion across concurrent sign-ups. The two ints are not persisted; they
+// just need to stay unique among any advisory locks this app takes.
+const FIRST_ADMIN_LOCK_NAMESPACE = 20260623;
+const FIRST_ADMIN_LOCK_KEY = 1;
 
 function createAuth() {
 	if (!AUTH_ENABLED) {
@@ -14,7 +20,36 @@ function createAuth() {
 		connectionString: process.env.DATABASE_URL,
 	});
 
-	const ADMIN_EMAIL = process.env.ADMIN_EMAIL;
+	async function promoteFirstRealUserToAdmin(userId: string) {
+		const client = await pool.connect();
+		try {
+			await client.query("BEGIN");
+			await client.query("SELECT pg_advisory_xact_lock($1, $2)", [
+				FIRST_ADMIN_LOCK_NAMESPACE,
+				FIRST_ADMIN_LOCK_KEY,
+			]);
+			const existingAdmin = await client.query<{ exists: boolean }>(
+				'SELECT EXISTS (SELECT 1 FROM "user" WHERE role = $1 AND id <> $2) AS exists',
+				["admin", BYOS_MONO_USER_ID],
+			);
+
+			if (!existingAdmin.rows[0]?.exists) {
+				await client.query('UPDATE "user" SET role = $1 WHERE id = $2', [
+					"admin",
+					userId,
+				]);
+			}
+			await client.query("COMMIT");
+		} catch (error) {
+			await client.query("ROLLBACK").catch(() => undefined);
+			// Best-effort: a failed promotion must not break account creation. The
+			// instance stays in admin-bootstrap mode (no admin yet), so the next
+			// sign-up retries the promotion.
+			console.error("[auth] Failed to promote first user to admin:", error);
+		} finally {
+			client.release();
+		}
+	}
 
 	return betterAuth({
 		database: pool,
@@ -54,17 +89,8 @@ function createAuth() {
 		databaseHooks: {
 			user: {
 				create: {
-					before: async (user: { email: string; role?: string }) => {
-						// Auto-assign admin role if email matches ADMIN_EMAIL
-						if (ADMIN_EMAIL && user.email === ADMIN_EMAIL) {
-							return {
-								data: {
-									...user,
-									role: "admin",
-								},
-							};
-						}
-						return { data: user };
+					after: async (user: { id: string }) => {
+						await promoteFirstRealUserToAdmin(user.id);
 					},
 				},
 			},
