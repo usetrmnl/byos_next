@@ -4,31 +4,19 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { getAllFontVariables } from "@/lib/fonts";
-import { cn } from "@/lib/utils";
+import { cn, getAppBaseUrl } from "@/lib/utils";
 
 const META_THEME_COLORS = {
 	light: "#ffffff",
 	dark: "#09090b",
 };
 
-function getMetadataBase(): URL {
-	const raw = process.env.NEXT_PUBLIC_BASE_URL?.trim();
-	if (raw) {
-		try {
-			return new URL(raw);
-		} catch {
-			// fall through to the default below
-		}
-	}
-	return new URL("http://localhost:3000");
-}
-
 const APP_NAME = "TRMNL BYOS";
 const APP_DESCRIPTION =
 	"Self-hosted server and device management dashboard for TRMNL e-ink displays.";
 
 export const metadata: Metadata = {
-	metadataBase: getMetadataBase(),
+	metadataBase: getAppBaseUrl(),
 	title: {
 		default: APP_NAME,
 		template: `%s · ${APP_NAME}`,

@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { admin } from "better-auth/plugins";
 import { Pool } from "pg";
 import { sendEmail } from "@/lib/email";
+import { getAppBaseUrl } from "../utils";
 
 const AUTH_ENABLED = process.env.AUTH_ENABLED !== "false";
 const BYOS_MONO_USER_ID = "byos_mono_user";
@@ -52,6 +53,7 @@ function createAuth() {
 	}
 
 	return betterAuth({
+		baseURL: getAppBaseUrl().toString(),
 		database: pool,
 		emailAndPassword: {
 			enabled: true,
