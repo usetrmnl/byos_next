@@ -219,9 +219,14 @@ export async function GET(request: Request) {
 			dynamicRefreshRate,
 			firmwareExtra,
 		);
-	} catch (_error) {
-		logError("Internal server error", {
+	} catch (error) {
+		logError(error instanceof Error ? error : new Error(String(error)), {
 			source: "api/display",
+			metadata: {
+				apiKey: headers.apiKey?.slice(0, 6),
+				reportedModel: headers.model,
+				uniqueId,
+			},
 		});
 		return buildErrorResponse("Internal server error", baseUrl, uniqueId);
 	}

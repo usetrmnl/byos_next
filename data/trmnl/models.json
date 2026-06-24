@@ -71,8 +71,7 @@
       "offset_y": 0,
       "kind": "trmnl",
       "palette_ids": [
-        "bw",
-        "color-4bwry"
+        "bw"
       ],
       "preview_white_point": "true_white",
       "image_size_limit": 92160,

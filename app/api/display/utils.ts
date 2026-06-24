@@ -10,8 +10,12 @@ import {
 	DEVICE_SLEEP_REFRESH_SECONDS,
 	serializeRefreshSchedule,
 } from "@/lib/device/defaults";
-import { logError, logInfo } from "@/lib/logger";
+import { logError, logInfo, logWarn } from "@/lib/logger";
 import { logger } from "@/lib/recipes/recipe-renderer";
+import {
+	type ModelStorageResolution,
+	resolveModelForStorage,
+} from "@/lib/trmnl/model-storage";
 import type {
 	Device,
 	PlaylistItem,
@@ -292,6 +296,24 @@ export const updateDeviceStatus = async (
 	}
 };
 
+function logUnknownReportedModel(
+	modelResolution: ModelStorageResolution,
+	deviceId: string,
+): void {
+	if (!modelResolution.reportedUnknown) return;
+
+	logWarn("Device reported unknown TRMNL model; using stored/default model", {
+		source: "api/display",
+		metadata: {
+			deviceId,
+			reportedModel: modelResolution.reportedUnknown,
+			resolvedModel: modelResolution.resolvedModelName,
+			preservedExisting: modelResolution.preservedExisting,
+			defaulted: modelResolution.defaulted,
+		},
+	});
+}
+
 export const findOrCreateDevice = async (
 	headers: RequestHeaders,
 ): Promise<Device | null> => {
@@ -308,11 +330,19 @@ export const findOrCreateDevice = async (
 		if (deviceByApiKey) {
 			const device = deviceByApiKey as unknown as Device;
 			const patch: Partial<Device> = {};
+			const modelResolution = await resolveModelForStorage(
+				headers.model,
+				device.model,
+			);
 			if (macAddress && macAddress !== device.mac_address) {
 				patch.mac_address = macAddress;
 			}
-			if (headers.model && headers.model !== device.model) {
-				patch.model = headers.model;
+			if (
+				modelResolution.modelName &&
+				modelResolution.modelName !== device.model
+			) {
+				patch.model = modelResolution.modelName;
+				logUnknownReportedModel(modelResolution, device.friendly_id);
 			}
 			if (Object.keys(patch).length > 0) {
 				patch.updated_at = new Date().toISOString();
@@ -345,6 +375,10 @@ export const findOrCreateDevice = async (
 		if (deviceByMac) {
 			const device = deviceByMac as unknown as Device;
 			const patch: Partial<Device> = {};
+			const modelResolution = await resolveModelForStorage(
+				headers.model,
+				device.model,
+			);
 			if (apiKey && apiKey !== device.api_key) {
 				const currentUserId = await getCurrentUserId();
 				if (!currentUserId || device.user_id !== currentUserId) {
@@ -360,8 +394,12 @@ export const findOrCreateDevice = async (
 				}
 				patch.api_key = apiKey;
 			}
-			if (headers.model && headers.model !== device.model) {
-				patch.model = headers.model;
+			if (
+				modelResolution.modelName &&
+				modelResolution.modelName !== device.model
+			) {
+				patch.model = modelResolution.modelName;
+				logUnknownReportedModel(modelResolution, device.friendly_id);
 			}
 			if (Object.keys(patch).length > 0) {
 				patch.updated_at = new Date().toISOString();
@@ -400,6 +438,7 @@ export const findOrCreateDevice = async (
 
 		// New device by explicit MAC
 		if (macAddress) {
+			const modelResolution = await resolveModelForStorage(headers.model);
 			const friendly_id = generateFriendlyId(
 				macAddress,
 				new Date().toISOString().replace(/[-:Z]/g, ""),
@@ -424,13 +463,14 @@ export const findOrCreateDevice = async (
 						).toISOString(),
 						timezone: DEFAULT_DEVICE_TIMEZONE,
 						screen: DEFAULT_DEVICE_SCREEN,
-						model: headers.model,
+						model: modelResolution.modelName ?? null,
 						user_id: currentUserId,
 					})
 					.returningAll()
 					.executeTakeFirst();
 
 				if (newDevice) {
+					logUnknownReportedModel(modelResolution, friendly_id);
 					logInfo("Created new device with provided MAC address", {
 						source: "api/display",
 						metadata: { friendly_id },
@@ -470,6 +510,7 @@ export const findOrCreateDevice = async (
 		}
 
 		// Create Mock Device
+		const modelResolution = await resolveModelForStorage(headers.model);
 		const friendly_id = generateFriendlyId(
 			mockMacAddress,
 			new Date().toISOString().replace(/[-:Z]/g, ""),
@@ -498,13 +539,14 @@ export const findOrCreateDevice = async (
 					).toISOString(),
 					timezone: DEFAULT_DEVICE_TIMEZONE,
 					screen: DEFAULT_DEVICE_SCREEN,
-					model: headers.model,
+					model: modelResolution.modelName ?? null,
 					user_id: currentUserId,
 				})
 				.returningAll()
 				.executeTakeFirst();
 
 			if (newDevice) {
+				logUnknownReportedModel(modelResolution, friendly_id);
 				logger.info(`Created new mock device: ${friendly_id}`);
 				return newDevice as unknown as Device;
 			}
@@ -545,12 +587,13 @@ export const buildErrorResponse = (
 	baseUrl: string,
 	uniqueId: string,
 	status = 500,
+	options: { resetFirmware?: boolean } = {},
 ) => {
 	const errorImageUrl = `${baseUrl}/error.png?message=${encodeURIComponent(message)}`;
 	return NextResponse.json(
 		{
 			status,
-			reset_firmware: true,
+			reset_firmware: options.resetFirmware ?? false,
 			message,
 			image_url: errorImageUrl,
 			filename: `error_${uniqueId}.png`,

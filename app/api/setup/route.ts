@@ -5,12 +5,34 @@ import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	createDefaultRefreshSchedule,
+	DEFAULT_DEVICE_SCREEN,
 	DEFAULT_DEVICE_TIMEZONE,
 	DEVICE_SLEEP_REFRESH_SECONDS,
 	serializeRefreshSchedule,
 } from "@/lib/device/defaults";
-import { logError, logInfo } from "@/lib/logger";
+import { logError, logInfo, logWarn } from "@/lib/logger";
+import {
+	type ModelStorageResolution,
+	resolveModelForStorage,
+} from "@/lib/trmnl/model-storage";
 import { generateApiKey, generateFriendlyId } from "@/utils/helpers";
+
+function logUnknownSetupModel(
+	modelResolution: ModelStorageResolution,
+	friendlyId: string,
+): void {
+	if (!modelResolution.reportedUnknown) return;
+
+	logWarn("Device setup reported unknown TRMNL model; using default model", {
+		source: "api/setup",
+		metadata: {
+			friendly_id: friendlyId,
+			reportedModel: modelResolution.reportedUnknown,
+			resolvedModel: modelResolution.resolvedModelName,
+			defaulted: modelResolution.defaulted,
+		},
+	});
+}
 
 export async function GET(request: Request) {
 	// Tell the cache-components prerender the route is request-scoped so it
@@ -179,6 +201,7 @@ export async function GET(request: Request) {
 					macAddress,
 					new Date().toISOString().replace(/[-:Z]/g, ""),
 				);
+			const modelResolution = await resolveModelForStorage(model);
 
 			try {
 				const newDevice = await db
@@ -196,6 +219,8 @@ export async function GET(request: Request) {
 							Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
 						).toISOString(), // 1 hour from now
 						timezone: DEFAULT_DEVICE_TIMEZONE,
+						screen: DEFAULT_DEVICE_SCREEN,
+						model: modelResolution.modelName ?? null,
 						user_id: currentUserId,
 					})
 					.returningAll()
@@ -213,6 +238,7 @@ export async function GET(request: Request) {
 						has_api_key: Boolean(api_key),
 					},
 				});
+				logUnknownSetupModel(modelResolution, newDevice.friendly_id);
 				return NextResponse.json(
 					{
 						status: 200,
