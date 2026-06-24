@@ -1110,6 +1110,38 @@ WHERE slot.recipe_id IS NULL
 
 ALTER TABLE mixup_slots DROP COLUMN IF EXISTS recipe_slug;`,
 	},
+	"0019_add_device_api_key_rls_policy": {
+		title: "Add device access-token RLS lookup",
+		description:
+			"Allows TRMNL device callbacks to resolve their owning user from the Access-Token header before switching to normal user-scoped RLS.",
+		sql: `DROP POLICY IF EXISTS devices_api_key_select_policy ON devices;
+
+CREATE POLICY devices_api_key_select_policy ON devices
+    FOR SELECT
+    USING (
+        current_setting('app.device_api_key', true) <> ''
+        AND api_key = current_setting('app.device_api_key', true)
+    );`,
+	},
+	"0020_add_pending_device_claims": {
+		title: "Add Pending Device Claims",
+		description:
+			"Stores server-side claim mappings for unowned devices that show claim codes on /api/display.",
+		sql: `CREATE TABLE IF NOT EXISTS pending_device_claims (
+    claim_hash TEXT PRIMARY KEY,
+    api_key TEXT NOT NULL,
+    api_key_suffix TEXT NOT NULL,
+    mac_address TEXT,
+    model TEXT,
+    width INTEGER,
+    height INTEGER,
+    first_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS pending_device_claims_last_seen_idx
+    ON pending_device_claims (last_seen_at DESC);`,
+	},
 	validate_schema: {
 		title: "Validate Database Schema",
 		description:
@@ -1118,7 +1150,7 @@ ALTER TABLE mixup_slots DROP COLUMN IF EXISTS recipe_slug;`,
 -- Returns empty result if all tables exist, or rows with missing table names if any are missing
 SELECT 
   expected_table as missing_table
-FROM unnest(ARRAY['account', 'devices', 'logs', 'mixup_slots', 'mixups', 'playlist_items', 'playlists', 'plugin_settings', 'recipe_files', 'recipes', 'schema_migrations', 'screen_configs', 'session', 'system_logs', 'user', 'verification']::text[]) as expected_table
+FROM unnest(ARRAY['account', 'devices', 'logs', 'mixup_slots', 'mixups', 'pending_device_claims', 'playlist_items', 'playlists', 'plugin_settings', 'recipe_files', 'recipes', 'schema_migrations', 'screen_configs', 'session', 'system_logs', 'user', 'verification']::text[]) as expected_table
 WHERE NOT EXISTS (
   SELECT 1 
   FROM information_schema.tables 

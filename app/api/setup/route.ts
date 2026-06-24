@@ -1,7 +1,10 @@
 import { connection, NextResponse } from "next/server";
 import type { CustomError } from "@/lib/api/types";
 import { getCurrentUserId } from "@/lib/auth/get-user";
-import { db } from "@/lib/database/db";
+import {
+	withDeviceApiKey,
+	withExplicitUserScope,
+} from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	createDefaultRefreshSchedule,
@@ -32,6 +35,23 @@ function logUnknownSetupModel(
 			defaulted: modelResolution.defaulted,
 		},
 	});
+}
+
+async function resolveSetupUserId(
+	apiKey: string | null,
+): Promise<string | null> {
+	if (apiKey) {
+		const device = await withDeviceApiKey(apiKey, (scopedDb) =>
+			scopedDb
+				.selectFrom("devices")
+				.select("user_id")
+				.where("api_key", "=", apiKey)
+				.executeTakeFirst(),
+		);
+		if (device?.user_id) return device.user_id;
+	}
+
+	return getCurrentUserId();
 }
 
 export async function GET(request: Request) {
@@ -103,34 +123,62 @@ export async function GET(request: Request) {
 			);
 		}
 
-		const currentUserId = await getCurrentUserId();
+		const currentUserId = await resolveSetupUserId(apiKey);
+		if (!currentUserId) {
+			logError("Refusing to set up an unowned device", {
+				source: "api/setup",
+				metadata: {
+					macAddress,
+					hasApiKey: Boolean(apiKey),
+					model,
+				},
+			});
+			return NextResponse.json(
+				{
+					status: 403,
+					api_key: null,
+					friendly_id: null,
+					image_url: null,
+					message: "Device setup requires an authenticated owner",
+				},
+				{ status: 403 },
+			);
+		}
 
 		// First check if the device exists by MAC address
-		const device = await db
-			.selectFrom("devices")
-			.selectAll()
-			.where("mac_address", "=", macAddress)
-			.executeTakeFirst();
+		const device = await withExplicitUserScope(currentUserId, (scopedDb) =>
+			scopedDb
+				.selectFrom("devices")
+				.selectAll()
+				.where("mac_address", "=", macAddress)
+				.executeTakeFirst(),
+		);
 
 		// If API key is provided and device not found by MAC, check if the API key exists
 		if (!device && apiKey) {
-			const deviceByApiKey = await db
-				.selectFrom("devices")
-				.selectAll()
-				.where("api_key", "=", apiKey)
-				.executeTakeFirst();
+			const deviceByApiKey = await withExplicitUserScope(
+				currentUserId,
+				(scopedDb) =>
+					scopedDb
+						.selectFrom("devices")
+						.selectAll()
+						.where("api_key", "=", apiKey)
+						.executeTakeFirst(),
+			);
 
 			if (deviceByApiKey) {
 				// Device found by API key, update its MAC address
 				try {
-					await db
-						.updateTable("devices")
-						.set({
-							mac_address: macAddress,
-							updated_at: new Date().toISOString(),
-						})
-						.where("friendly_id", "=", deviceByApiKey.friendly_id)
-						.execute();
+					await withExplicitUserScope(currentUserId, (scopedDb) =>
+						scopedDb
+							.updateTable("devices")
+							.set({
+								mac_address: macAddress,
+								updated_at: new Date().toISOString(),
+							})
+							.where("friendly_id", "=", deviceByApiKey.friendly_id)
+							.execute(),
+					);
 
 					logInfo("Updated device MAC address", {
 						source: "api/setup",
@@ -169,27 +217,6 @@ export async function GET(request: Request) {
 
 		// If device not found by MAC address or API key, create a new one
 		if (!device) {
-			if (!currentUserId) {
-				logError("Refusing to set up an unowned device", {
-					source: "api/setup",
-					metadata: {
-						macAddress,
-						hasApiKey: Boolean(apiKey),
-						model,
-					},
-				});
-				return NextResponse.json(
-					{
-						status: 403,
-						api_key: null,
-						friendly_id: null,
-						image_url: null,
-						message: "Device setup requires an authenticated owner",
-					},
-					{ status: 403 },
-				);
-			}
-
 			const friendly_id = generateFriendlyId(
 				macAddress,
 				new Date().toISOString().replace(/[-:Z]/g, ""),
@@ -204,27 +231,31 @@ export async function GET(request: Request) {
 			const modelResolution = await resolveModelForStorage(model);
 
 			try {
-				const newDevice = await db
-					.insertInto("devices")
-					.values({
-						mac_address: macAddress,
-						name: `TRMNL Device ${friendly_id}`,
-						friendly_id: friendly_id,
-						api_key: api_key,
-						refresh_schedule: serializeRefreshSchedule(
-							createDefaultRefreshSchedule(),
-						),
-						last_update_time: new Date().toISOString(), // Current time as last update
-						next_expected_update: new Date(
-							Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
-						).toISOString(), // 1 hour from now
-						timezone: DEFAULT_DEVICE_TIMEZONE,
-						screen: DEFAULT_DEVICE_SCREEN,
-						model: modelResolution.modelName ?? null,
-						user_id: currentUserId,
-					})
-					.returningAll()
-					.executeTakeFirst();
+				const newDevice = await withExplicitUserScope(
+					currentUserId,
+					(scopedDb) =>
+						scopedDb
+							.insertInto("devices")
+							.values({
+								mac_address: macAddress,
+								name: `TRMNL Device ${friendly_id}`,
+								friendly_id: friendly_id,
+								api_key: api_key,
+								refresh_schedule: serializeRefreshSchedule(
+									createDefaultRefreshSchedule(),
+								),
+								last_update_time: new Date().toISOString(), // Current time as last update
+								next_expected_update: new Date(
+									Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
+								).toISOString(), // 1 hour from now
+								timezone: DEFAULT_DEVICE_TIMEZONE,
+								screen: DEFAULT_DEVICE_SCREEN,
+								model: modelResolution.modelName ?? null,
+								user_id: currentUserId,
+							})
+							.returningAll()
+							.executeTakeFirst(),
+				);
 
 				if (!newDevice) {
 					throw new Error("Failed to create new device record");
@@ -305,14 +336,16 @@ export async function GET(request: Request) {
 
 		if (apiKey && apiKey !== device.api_key) {
 			try {
-				await db
-					.updateTable("devices")
-					.set({
-						api_key: apiKey,
-						updated_at: new Date().toISOString(),
-					})
-					.where("friendly_id", "=", device.friendly_id)
-					.execute();
+				await withExplicitUserScope(currentUserId, (scopedDb) =>
+					scopedDb
+						.updateTable("devices")
+						.set({
+							api_key: apiKey,
+							updated_at: new Date().toISOString(),
+						})
+						.where("friendly_id", "=", device.friendly_id)
+						.execute(),
+				);
 
 				logInfo("Updated API key for device", {
 					source: "api/setup",

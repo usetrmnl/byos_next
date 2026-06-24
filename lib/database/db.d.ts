@@ -161,6 +161,18 @@ export interface MixupSlots {
 	slot_id: string;
 }
 
+export interface PendingDeviceClaims {
+	api_key: string;
+	api_key_suffix: string;
+	claim_hash: string;
+	first_seen_at: Generated<Timestamp>;
+	height: number | null;
+	last_seen_at: Generated<Timestamp>;
+	mac_address: string | null;
+	model: string | null;
+	width: number | null;
+}
+
 export interface PlaylistItems {
 	created_at: Generated<Timestamp | null>;
 	days_of_week: Json | null;
@@ -292,6 +304,7 @@ export interface DB {
 	logs: Logs;
 	mixup_slots: MixupSlots;
 	mixups: Mixups;
+	pending_device_claims: PendingDeviceClaims;
 	playlist_items: PlaylistItems;
 	plugin_settings: PluginSettings;
 	playlists: Playlists;

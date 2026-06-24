@@ -82,6 +82,37 @@ export async function withCapabilityUuid<T>(
 }
 
 /**
+ * Execute a database operation with only a device access token available.
+ *
+ * This is intentionally limited to the RLS policy keyed by
+ * `app.device_api_key`; callers should use it to resolve the owning user, then
+ * switch to `withExplicitUserScope` for normal tenant-scoped work.
+ */
+export async function withDeviceApiKey<T>(
+	apiKey: string,
+	callback: (scopedDb: typeof db) => Promise<T>,
+): Promise<T> {
+	return db.connection().execute(async (conn) => {
+		await sql`SET ROLE ${sql.ref(APP_ROLE)}`.execute(conn);
+		await sql`SELECT set_config('app.device_api_key', ${apiKey}, false)`.execute(
+			conn,
+		);
+		try {
+			return await callback(conn);
+		} finally {
+			try {
+				await sql`SELECT set_config('app.device_api_key', '', false)`.execute(
+					conn,
+				);
+				await sql`RESET ROLE`.execute(conn);
+			} catch {
+				// Connection already broken; the pool will discard it.
+			}
+		}
+	});
+}
+
+/**
  * Execute the boot-time shared-recipe seed under RLS. Migration 0016 adds an
  * INSERT/UPDATE policy for rows with `user_id IS NULL` that only fires when
  * `app.shared_recipe_seed = 'on'`. The flag is intentionally scoped to this
