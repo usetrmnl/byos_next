@@ -1,6 +1,7 @@
 import { connection, NextResponse } from "next/server";
 import type { CustomError } from "@/lib/api/types";
 import { getCurrentUserId } from "@/lib/auth/get-user";
+import { db } from "@/lib/database/db";
 import {
 	withDeviceApiKey,
 	withExplicitUserScope,
@@ -11,6 +12,7 @@ import {
 	DEVICE_SLEEP_REFRESH_SECONDS,
 } from "@/lib/device/defaults";
 import { createProvisionedDevice } from "@/lib/device/provisioning";
+import { summarizeDeviceRequest } from "@/lib/device/request-debug";
 import { logError, logInfo, logWarn } from "@/lib/logger";
 import {
 	type ModelStorageResolution,
@@ -37,6 +39,7 @@ function logUnknownSetupModel(
 
 async function resolveSetupUserId(
 	apiKey: string | null,
+	macAddress: string | null,
 ): Promise<string | null> {
 	if (apiKey) {
 		const device = await withDeviceApiKey(apiKey, (scopedDb) =>
@@ -49,6 +52,17 @@ async function resolveSetupUserId(
 		if (device?.user_id) return device.user_id;
 	}
 
+	// TRMNL /api/setup often omits Access-Token. Allow setup when the device was
+	// pre-registered with its hardware MAC from trmnl.com/devices.
+	if (macAddress) {
+		const device = await db
+			.selectFrom("devices")
+			.select("user_id")
+			.where("mac_address", "=", macAddress)
+			.executeTakeFirst();
+		if (device?.user_id) return device.user_id;
+	}
+
 	return getCurrentUserId();
 }
 
@@ -56,11 +70,17 @@ export async function GET(request: Request) {
 	// Tell the cache-components prerender the route is request-scoped so it
 	// doesn't try to evaluate the body at build time and bail on header reads.
 	await connection();
+	const requestSummary = summarizeDeviceRequest(request);
 	try {
 		const macAddress = request.headers.get("ID")?.toUpperCase();
 		const apiKey = request.headers.get("Access-Token");
 		const model = request.headers.get("Model");
 		const { ready } = await checkDbConnection();
+
+		logInfo("Device setup request", {
+			source: "api/setup",
+			metadata: requestSummary,
+		});
 
 		if (!ready) {
 			console.warn(
@@ -121,14 +141,15 @@ export async function GET(request: Request) {
 			);
 		}
 
-		const currentUserId = await resolveSetupUserId(apiKey);
+		const currentUserId = await resolveSetupUserId(apiKey, macAddress ?? null);
 		if (!currentUserId) {
 			logError("Refusing to set up an unowned device", {
 				source: "api/setup",
 				metadata: {
-					macAddress,
-					hasApiKey: Boolean(apiKey),
-					model,
+					...requestSummary,
+					hint: requestSummary.hasApiKey
+						? "Access-Token did not match any registered device. Check the API key from trmnl.com/devices."
+						: "Device did not send Access-Token. Add the device in BYOS with its MAC address from trmnl.com/devices, or use a claim code after pointing the device at this server.",
 				},
 			});
 			return NextResponse.json(

@@ -90,6 +90,7 @@ export function AppSidebar({
 	// Add device dialog state
 	const [addDeviceOpen, setAddDeviceOpen] = useState(false);
 	const [newDeviceApiKey, setNewDeviceApiKey] = useState("");
+	const [newDeviceMacAddress, setNewDeviceMacAddress] = useState("");
 	const [newDeviceClaimCode, setNewDeviceClaimCode] = useState("");
 	const [newDeviceName, setNewDeviceName] = useState("");
 	const [addingDevice, setAddingDevice] = useState(false);
@@ -112,6 +113,7 @@ export function AppSidebar({
 					toast.success("Device claimed!");
 					setAddDeviceOpen(false);
 					setNewDeviceApiKey("");
+					setNewDeviceMacAddress("");
 					setNewDeviceClaimCode("");
 					setNewDeviceName("");
 					router.refresh();
@@ -123,6 +125,7 @@ export function AppSidebar({
 
 			const result = await addUserDevice({
 				apiKey: newDeviceApiKey,
+				macAddress: newDeviceMacAddress || undefined,
 				name: newDeviceName || undefined,
 			});
 			if (result.success) {
@@ -541,6 +544,36 @@ export function AppSidebar({
 							/>
 							<p className="text-xs text-muted-foreground">
 								Use this when an unclaimed TRMNL shows a claim code on screen.
+							</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="device-mac-address">
+								MAC Address{" "}
+								<span className="text-muted-foreground">(recommended)</span>
+							</Label>
+							<Input
+								id="device-mac-address"
+								value={newDeviceMacAddress}
+								onChange={(e) =>
+									setNewDeviceMacAddress(e.target.value.toUpperCase())
+								}
+								placeholder="D8:3B:DA:F3:97:B4"
+								autoComplete="off"
+								spellCheck={false}
+							/>
+							<p className="text-xs text-muted-foreground">
+								Copy from{" "}
+								<a
+									href="https://trmnl.com/devices/"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="underline underline-offset-2 hover:text-foreground"
+								>
+									trmnl.com/devices
+								</a>
+								. TRMNL firmware calls <code className="font-mono">/api/setup</code>{" "}
+								with MAC only, so BYOS needs the hardware address to recognize
+								devices you import from the TRMNL cloud.
 							</p>
 						</div>
 						<div className="space-y-2">
