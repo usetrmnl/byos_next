@@ -40,6 +40,18 @@ export async function getCurrentUser(): Promise<CurrentUser> {
 }
 
 /**
+ * Ensure the current user is a signed-in admin; throws "Unauthorized" otherwise.
+ * Shared by admin server actions.
+ */
+export async function requireAdmin(): Promise<NonNullable<CurrentUser>> {
+	const user = await getCurrentUser();
+	if (user?.role !== "admin") {
+		throw new Error("Unauthorized");
+	}
+	return user;
+}
+
+/**
  * Get the current user ID for row-level security scoping.
  * When auth is disabled, returns {@link BYOS_MONO_USER_ID} so inserts pass recipes RLS and FK checks.
  * When auth is enabled, returns the signed-in user's id, or null if not authenticated.

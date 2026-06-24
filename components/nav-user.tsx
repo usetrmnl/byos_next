@@ -8,7 +8,6 @@ import {
 	Monitor,
 	Settings,
 } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -157,28 +156,6 @@ export function NavUser({ user }: NavUserProps) {
 						</DropdownMenuItem>
 					</DropdownMenuContent>
 				</DropdownMenu>
-			</SidebarMenuItem>
-		</SidebarMenu>
-	);
-}
-
-// Fallback for when auth is disabled or no user
-export function NavUserFallback() {
-	return (
-		<SidebarMenu>
-			<SidebarMenuItem>
-				<div className="flex items-center gap-2 px-2 py-1.5">
-					<Image
-						src="/trmnl-glyphs/trmnl-glyph--brand.svg"
-						alt="TRMNL"
-						width={24}
-						height={24}
-						className="opacity-50"
-					/>
-					<span className="text-xs text-muted-foreground font-mono">
-						v{packageJson.version}
-					</span>
-				</div>
 			</SidebarMenuItem>
 		</SidebarMenu>
 	);

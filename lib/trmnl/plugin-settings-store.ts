@@ -1,6 +1,4 @@
-import type { Kysely } from "kysely";
 import { getCurrentUserId } from "@/lib/auth/get-user";
-import type { DB } from "@/lib/database/db.d";
 import {
 	withCapabilityUuid,
 	withExplicitUserScope,
@@ -128,21 +126,4 @@ export async function requirePluginSettingsUser(): Promise<
 	}
 
 	return { userId };
-}
-
-/**
- * Look up a plugin setting by its public id (BIGINT) or uuid (TEXT) inside a
- * caller-provided `withExplicitUserScope`. Kept for the list route; per-row
- * routes go through `requirePluginSettingsAccess` instead so the
- * capability-URL semantics stay in one place.
- */
-export async function findPluginSetting(
-	scopedDb: Kysely<DB>,
-	identifier: string,
-): Promise<PluginSettingRow | undefined> {
-	const query = scopedDb.selectFrom("plugin_settings").selectAll();
-
-	return isNumericPluginSettingId(identifier)
-		? query.where("id", "=", identifier).executeTakeFirst()
-		: query.where("uuid", "=", identifier).executeTakeFirst();
 }
