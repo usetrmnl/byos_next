@@ -46,7 +46,7 @@ export default function SignInForm({ dbReady, dbError }: SignInFormProps) {
 			}
 
 			if (session) {
-				// explicitly use brower navigation to force root ("/") page reload.
+				// explicitly use browser navigation to force root ("/") page reload.
 				window.location.href = "/";
 			}
 		} catch (_err) {
