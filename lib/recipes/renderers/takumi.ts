@@ -68,7 +68,13 @@ export async function renderWithTakumi(
 		fetchedResources,
 	});
 	const rawBuffer = Buffer.from(raw);
-	const channels = Math.round(rawBuffer.length / (width * height));
+	const pixelCount = width * height;
+	if (pixelCount <= 0 || rawBuffer.length % pixelCount !== 0) {
+		throw new Error(
+			`Unexpected Takumi raw buffer: ${rawBuffer.length} bytes for ${width}x${height}`,
+		);
+	}
+	const channels = rawBuffer.length / pixelCount;
 	if (channels !== 3 && channels !== 4) {
 		throw new Error(
 			`Unexpected Takumi raw buffer: ${rawBuffer.length} bytes for ${width}x${height}`,

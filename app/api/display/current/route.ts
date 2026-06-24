@@ -43,7 +43,9 @@ export async function GET(request: Request) {
 	}
 
 	try {
-		const userId = await resolveUserIdFromApiKey(apiKey);
+		const userId = await resolveUserIdFromApiKey(apiKey, {
+			assumeDbReady: true,
+		});
 		const device = userId
 			? await withExplicitUserScope(userId, (scopedDb) =>
 					scopedDb

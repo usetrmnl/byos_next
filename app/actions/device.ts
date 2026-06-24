@@ -426,9 +426,9 @@ export async function claimDeviceByCode(input: {
 		const claimHash = hashClaimCode(normalizedClaimCode);
 		const claimed = await db.transaction().execute(async (trx) => {
 			const pendingClaim = await trx
-				.selectFrom("pending_device_claims")
-				.selectAll()
+				.deleteFrom("pending_device_claims")
 				.where("claim_hash", "=", claimHash)
+				.returningAll()
 				.executeTakeFirst();
 
 			if (!pendingClaim) {
@@ -470,10 +470,6 @@ export async function claimDeviceByCode(input: {
 					})
 					.where("id", "=", existingDevice.id)
 					.execute();
-				await trx
-					.deleteFrom("pending_device_claims")
-					.where("claim_hash", "=", claimHash)
-					.execute();
 				return { friendlyId };
 			}
 
@@ -497,10 +493,6 @@ export async function claimDeviceByCode(input: {
 					screen: DEFAULT_DEVICE_SCREEN,
 					model: pendingClaim.model,
 				})
-				.execute();
-			await trx
-				.deleteFrom("pending_device_claims")
-				.where("claim_hash", "=", claimHash)
 				.execute();
 			return { friendlyId };
 		});

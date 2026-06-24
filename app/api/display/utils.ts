@@ -246,9 +246,12 @@ export const getActivePlaylistItem = async (
  */
 export const resolveUserIdFromApiKey = async (
 	apiKey: string,
+	options: { assumeDbReady?: boolean } = {},
 ): Promise<string | null> => {
-	const { ready } = await checkDbConnection();
-	if (!ready) return null;
+	if (!options.assumeDbReady) {
+		const { ready } = await checkDbConnection();
+		if (!ready) return null;
+	}
 
 	const device = await withDeviceApiKey(apiKey, (scopedDb) =>
 		scopedDb
@@ -337,7 +340,9 @@ export const findOrCreateDevice = async (
 	headers: RequestHeaders,
 ): Promise<DeviceLookupResult> => {
 	const { apiKey, macAddress } = headers;
-	const apiKeyOwnerId = apiKey ? await resolveUserIdFromApiKey(apiKey) : null;
+	const apiKeyOwnerId = apiKey
+		? await resolveUserIdFromApiKey(apiKey, { assumeDbReady: true })
+		: null;
 	const currentUserId = apiKeyOwnerId ?? (await getCurrentUserId());
 
 	if (!currentUserId) {
@@ -378,6 +383,7 @@ export const findOrCreateDevice = async (
 					headers.model,
 					device.model,
 				);
+				logUnknownReportedModel(modelResolution, device.friendly_id);
 				if (macAddress && macAddress !== device.mac_address) {
 					patch.mac_address = macAddress;
 				}
@@ -386,7 +392,6 @@ export const findOrCreateDevice = async (
 					modelResolution.modelName !== device.model
 				) {
 					patch.model = modelResolution.modelName;
-					logUnknownReportedModel(modelResolution, device.friendly_id);
 				}
 				if (Object.keys(patch).length > 0) {
 					patch.updated_at = new Date().toISOString();
@@ -423,6 +428,7 @@ export const findOrCreateDevice = async (
 					headers.model,
 					device.model,
 				);
+				logUnknownReportedModel(modelResolution, device.friendly_id);
 				if (apiKey && apiKey !== device.api_key) {
 					if (device.user_id !== currentUserId) {
 						logError("Refusing to rotate device API key from MAC-only match", {
@@ -442,7 +448,6 @@ export const findOrCreateDevice = async (
 					modelResolution.modelName !== device.model
 				) {
 					patch.model = modelResolution.modelName;
-					logUnknownReportedModel(modelResolution, device.friendly_id);
 				}
 				if (Object.keys(patch).length > 0) {
 					patch.updated_at = new Date().toISOString();
