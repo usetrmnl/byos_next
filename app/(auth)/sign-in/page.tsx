@@ -1,12 +1,17 @@
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
-import { getDbStatus } from "@/lib/database/utils";
+import { getDatabaseSetupStatus } from "@/lib/database/utils";
 import SignInForm from "./sign-in-form";
 
 // Next.js Cache Components require that uncached data fetches live inside a
 // <Suspense> boundary, so the DB probe is isolated to a child component.
 async function SignInWithDbCheck() {
-	const db = await getDbStatus();
-	return <SignInForm dbReady={db.ready} dbError={db.error} />;
+	const setup = await getDatabaseSetupStatus();
+	if (setup.needsSetup) {
+		redirect("/setup");
+	}
+
+	return <SignInForm dbReady={setup.ready} dbError={setup.error} />;
 }
 
 export default function SignInPage() {

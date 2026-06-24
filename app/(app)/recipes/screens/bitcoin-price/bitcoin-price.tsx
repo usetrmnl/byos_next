@@ -1,11 +1,23 @@
 import { z } from "zod";
 import { Graph } from "@/components/common/graph";
 import {
+	MIN_SCREEN_BODY_FONT_SIZE,
+	MIN_SCREEN_STAT_LABEL_FONT_SIZE,
+	ScreenCanvas,
+	ScreenFooter,
+	StatsGrid,
+	screenFontSize,
+	screenMetric,
+} from "@/components/trmnl/screen-layout";
+import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { isHalfScreenLayout } from "@/lib/recipes/layout";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import {
+	createScreenProfile,
+	type ScreenProfile,
+} from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
 import getCryptoData from "./getData";
 
@@ -47,6 +59,31 @@ interface CryptoPriceProps {
 	cryptoImage?: string;
 	width?: number;
 	height?: number;
+	screen?: ScreenProfile;
+}
+
+/** Prefix a `$` only when the value is a real number string. */
+function displayCurrency(value: string): string {
+	if (value === "Loading..." || value === "N/A") return value;
+	return value.startsWith("$") ? value : `$${value}`;
+}
+
+/** Compact axis price: 62000 -> "$62k". */
+function formatAxisPrice(value: number): string {
+	const abs = Math.abs(value);
+	if (abs >= 1_000_000_000) return `$${(value / 1_000_000_000).toFixed(1)}B`;
+	if (abs >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+	if (abs >= 1_000) return `$${Math.round(value / 1_000)}k`;
+	return `$${Math.round(value)}`;
+}
+
+/** Compact axis time: 18:00 -> "6p". */
+function formatAxisTime(value: number | Date): string {
+	const date = value instanceof Date ? value : new Date(value);
+	return date
+		.toLocaleTimeString("en-US", { hour: "numeric", hour12: true })
+		.replace(" AM", "a")
+		.replace(" PM", "p");
 }
 
 export default function CryptoPrice({
@@ -62,12 +99,12 @@ export default function CryptoPrice({
 	cryptoImage,
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
+	screen,
 }: CryptoPriceProps) {
-	// Calculate if price change is positive or negative
+	const screenProfile = screen ?? createScreenProfile({ width, height });
 	const isPositive = !change24h.startsWith("-");
 	const changeValue = isPositive ? change24h : change24h.substring(1);
 
-	// Pre-generated array for Bitcoin price statistics
 	const priceStats = [
 		{ label: "Market Cap", value: marketCap },
 		{ label: "24h Volume", value: volume24h },
@@ -80,72 +117,174 @@ export default function CryptoPrice({
 		y: d.price,
 	}));
 
-	const isHalfScreen = isHalfScreenLayout(width, height);
+	const showGraph = screenProfile.logicalHeight >= 420 && graphData.length > 1;
+
+	const pad = screenMetric(screenProfile, screenProfile.isCompact ? 14 : 22);
+	const gap = screenMetric(screenProfile, screenProfile.isCompact ? 8 : 12);
+	const statColumns =
+		screenProfile.isHalfScreen || screenProfile.orientation === "portrait"
+			? 2
+			: 4;
+	const statRows = Math.ceil(priceStats.length / statColumns);
+	const footerHeight = screenMetric(
+		screenProfile,
+		screenProfile.isCompact ? 34 : 42,
+	);
+	const headerHeight = screenMetric(
+		screenProfile,
+		screenProfile.isHalfScreen ? 86 : screenProfile.isLarge ? 120 : 104,
+	);
+	const statRowHeight = screenMetric(
+		screenProfile,
+		screenProfile.isCompact ? 58 : 70,
+	);
+	const statsHeight = statRows * statRowHeight + (statRows - 1) * gap;
+	const availableGraphHeight =
+		screenProfile.logicalHeight -
+		pad * 2 -
+		headerHeight -
+		statsHeight -
+		footerHeight -
+		gap * 3;
+	const graphWidth = Math.max(220, screenProfile.logicalWidth - pad * 2);
+	const graphHeight = Math.max(
+		screenMetric(screenProfile, 130),
+		availableGraphHeight,
+	);
+	const axisFontSize = screenFontSize(
+		screenProfile,
+		screenProfile.isCompact ? 14 : 18,
+		MIN_SCREEN_BODY_FONT_SIZE,
+	);
+	const graphMargin = {
+		top: screenMetric(screenProfile, 8),
+		right: screenMetric(screenProfile, 14),
+		bottom: Math.round(axisFontSize * 1.8),
+		left: screenMetric(screenProfile, screenProfile.isCompact ? 54 : 66),
+	};
+
+	const logoSize = screenMetric(screenProfile, screenProfile.isLarge ? 64 : 48);
+	const priceSize = screenMetric(
+		screenProfile,
+		screenProfile.isHalfScreen ? 44 : screenProfile.isLarge ? 76 : 64,
+	);
+	const changeSize = screenMetric(
+		screenProfile,
+		screenProfile.isHalfScreen ? 18 : screenProfile.isLarge ? 30 : 24,
+	);
+	const statLabelSize = screenFontSize(
+		screenProfile,
+		!showGraph ? 18 : screenProfile.isCompact ? 16 : 17,
+		MIN_SCREEN_STAT_LABEL_FONT_SIZE,
+	);
+	const statValueSize = screenFontSize(
+		screenProfile,
+		!showGraph ? 26 : screenProfile.isCompact ? 18 : 22,
+		MIN_SCREEN_BODY_FONT_SIZE,
+	);
 
 	return (
-		<PreSatori width={width} height={height}>
-			<div className="flex h-full w-full flex-col bg-white justify-between p-4 text-black">
-				<div className="flex flex-col">
-					<div className="flex flex-col">
-						<div className="flex items-center justify-between">
-							<h2 className="text-6xl sm:text-8xl lg:text-9xl font-inter">
-								${price}
-							</h2>
-							{cryptoImage && (
-								<picture>
-									{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI/TAKUMI DOES NOT SUPPORT IT */}
-									<img
-										src={cryptoImage}
-										alt={`${cryptoName} Logo`}
-										width={100}
-										height={100}
-										className="grayscale w-[100px] h-[100px] lg:w-[200px] lg:h-[200px]"
-									/>
-								</picture>
-							)}
+		<PreSatori
+			width={screenProfile.logicalWidth}
+			height={screenProfile.logicalHeight}
+		>
+			<ScreenCanvas screen={screenProfile} style={{ padding: pad, gap }}>
+				<div
+					className="flex flex-none flex-row items-start justify-between border-b border-black"
+					style={{ height: headerHeight, paddingBottom: gap }}
+				>
+					<div className="flex min-w-0 flex-col">
+						<div
+							className="font-inter tracking-tight"
+							style={{ fontSize: priceSize, lineHeight: 0.86 }}
+						>
+							{displayCurrency(price)}
 						</div>
-						<div className="text-4xl lg:text-5xl font-inter">
-							{isPositive ? "↑" : "↓"} {changeValue}%
+						<div
+							className="font-inter"
+							style={{
+								fontSize: changeSize,
+								lineHeight: 1,
+								marginTop: screenMetric(screenProfile, 6),
+							}}
+						>
+							{isPositive ? "Up" : "Down"} {changeValue}%
 						</div>
 					</div>
-				</div>
-				<div className="w-full flex flex-col sm:flex-row lg:flex-col  sm:items-center sm:justify-between px-4">
-					{!isHalfScreen && (
-						<div>
-							<div className="hidden sm:flex lg:hidden">
-								<Graph data={graphData} isTimeData={true} />
-							</div>
-							<div className="flex sm:hidden lg:flex pb-4">
-								<Graph
-									data={graphData}
-									isTimeData={true}
-									width={width - 60}
-									height={height - 500}
+
+					<div
+						className="flex flex-none flex-col items-end font-geneva9 uppercase"
+						style={{
+							gap: screenMetric(screenProfile, 6),
+							fontSize: screenFontSize(
+								screenProfile,
+								screenProfile.isCompact ? 10 : 13,
+							),
+							letterSpacing: "0.08em",
+						}}
+					>
+						{cryptoImage ? (
+							<picture>
+								{/* Satori/Takumi do not support the Next.js Image component. */}
+								<img
+									src={cryptoImage}
+									alt={`${cryptoName} logo`}
+									width={logoSize}
+									height={logoSize}
+									className="grayscale"
+									style={{ width: logoSize, height: logoSize }}
 								/>
-							</div>
-						</div>
-					)}
-					<div className="flex flex-col lg:flex-row w-full gap-4 sm:ml-4">
-						{priceStats.map((stat, index) => (
-							<div
-								key={index}
-								className="w-full p-2 lg:p-6 rounded-xl border border-black flex flex-row font-geneva9 justify-between"
-							>
-								<div className="text-2xl lg:text-5xl leading-none m-0">
-									{stat.label}
-								</div>
-								<div className="text-2xl lg:text-5xl leading-none m-0">
-									${stat.value}
-								</div>
-							</div>
-						))}
+							</picture>
+						) : null}
 					</div>
 				</div>
-				<div className="w-full flex flex-col sm:flex-row sm:justify-between items-center text-2xl lg:text-5xl text-white p-2 rounded-xl bg-gray-500">
-					<div>{cryptoName} Price Tracker</div>
-					<div>{lastUpdated && <span>Last updated: {lastUpdated}</span>}</div>
-				</div>
-			</div>
+
+				{showGraph && (
+					<div
+						className="flex flex-none items-center justify-center overflow-hidden"
+						style={{ height: graphHeight }}
+					>
+						<Graph
+							data={graphData}
+							isTimeData={true}
+							width={graphWidth}
+							height={graphHeight}
+							margin={graphMargin}
+							xTicks={4}
+							yTicks={4}
+							xAxisFormat={formatAxisTime}
+							yAxisFormat={formatAxisPrice}
+							axisFontSize={axisFontSize}
+							lineWidth={screenMetric(
+								screenProfile,
+								screenProfile.isLarge ? 3 : 2,
+							)}
+							curveType="monotone"
+						/>
+					</div>
+				)}
+
+				<StatsGrid
+					screen={screenProfile}
+					stats={priceStats.map((stat) => ({
+						label: stat.label,
+						value: displayCurrency(stat.value),
+					}))}
+					columns={statColumns}
+					fill={!showGraph}
+					gapSize={gap}
+					rowHeight={showGraph ? statRowHeight : undefined}
+					labelSize={statLabelSize}
+					valueSize={statValueSize}
+				/>
+
+				<ScreenFooter
+					screen={screenProfile}
+					left={`${cryptoName} price tracker`}
+					right={lastUpdated ? `Updated ${lastUpdated}` : ""}
+					style={{ height: footerHeight }}
+				/>
+			</ScreenCanvas>
 		</PreSatori>
 	);
 }
@@ -173,7 +312,7 @@ export const definition: RecipeDefinition<
 		const data = await getCryptoData({ cryptoSymbol: params.cryptoSymbol });
 		return data as z.infer<typeof dataSchema>;
 	},
-	Component: ({ width, height, data }) => (
-		<CryptoPrice {...data} width={width} height={height} />
+	Component: ({ width, height, screen, data }) => (
+		<CryptoPrice {...data} width={width} height={height} screen={screen} />
 	),
 };

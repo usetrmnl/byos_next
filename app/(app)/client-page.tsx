@@ -15,6 +15,10 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import type { Device, SystemLog } from "@/lib/types";
@@ -48,8 +52,16 @@ export default function DashboardClientPage({
 			: null;
 
 	const isPortrait = lastUpdatedDevice?.screen_orientation === "portrait";
+	// Orientation-adjusted device resolution, used for BOTH the rendered image
+	// and the frame aspect ratio so the preview isn't cropped by object-cover.
+	const previewWidth = isPortrait
+		? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
+		: lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
+	const previewHeight = isPortrait
+		? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
+		: lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
 	const latestScreenSrc = lastUpdatedDevice
-		? buildLatestScreenSrc(lastUpdatedDevice)
+		? buildLatestScreenSrc(lastUpdatedDevice, previewWidth, previewHeight)
 		: "";
 
 	return (
@@ -87,7 +99,11 @@ export default function DashboardClientPage({
 									isPortrait ? "max-w-[260px]" : "max-w-[520px]",
 								)}
 							>
-								<DeviceFrame size="lg" portrait={isPortrait}>
+								<DeviceFrame
+									size="lg"
+									portrait={isPortrait}
+									screenAspectRatio={`${previewWidth} / ${previewHeight}`}
+								>
 									<Image
 										src={latestScreenSrc}
 										alt={`${lastUpdatedDevice.name} screen`}
@@ -233,8 +249,14 @@ export default function DashboardClientPage({
 	);
 }
 
-function buildLatestScreenSrc(device: Device): string {
+function buildLatestScreenSrc(
+	device: Device,
+	width: number,
+	height: number,
+): string {
 	const params = new URLSearchParams({
+		width: String(width),
+		height: String(height),
 		grayscale: String(normalizeGrayscale(device.grayscale)),
 		model: device.model?.trim() || DEFAULT_MODEL_NAME,
 	});

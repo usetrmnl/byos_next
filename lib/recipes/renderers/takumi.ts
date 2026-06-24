@@ -2,6 +2,7 @@ import { extractResourceUrls, Renderer } from "@takumi-rs/core";
 import { fetchResources } from "@takumi-rs/helpers";
 import { fromJsx } from "@takumi-rs/helpers/jsx";
 import React from "react";
+import sharp from "sharp";
 import { getTakumiFonts } from "@/lib/fonts";
 
 const renderer = new Renderer({ fonts: getTakumiFonts() });
@@ -54,11 +55,34 @@ export async function renderWithTakumi(
 			}
 		}
 	}
-	const png = await renderer.render(normalizedNode, {
+	// Render raw RGBA pixels and encode the PNG with sharp instead of asking
+	// Takumi for `format: "png"`. Takumi 1.8.6's PNG encoder emits a corrupt
+	// IDAT zlib stream once the output gets large (fails at 1872x1404 and the
+	// 2x supersample, valid below ~1600x1200), which libspng/sharp then reject
+	// with "pngload_buffer: libspng read error". The raw path is exact and
+	// size-independent.
+	const raw = await renderer.render(normalizedNode, {
 		width,
 		height,
-		format: "png",
+		format: "raw",
 		fetchedResources,
 	});
-	return Buffer.from(png);
+	const rawBuffer = Buffer.from(raw);
+	const pixelCount = width * height;
+	if (pixelCount <= 0 || rawBuffer.length % pixelCount !== 0) {
+		throw new Error(
+			`Unexpected Takumi raw buffer: ${rawBuffer.length} bytes for ${width}x${height}`,
+		);
+	}
+	const channels = rawBuffer.length / pixelCount;
+	if (channels !== 3 && channels !== 4) {
+		throw new Error(
+			`Unexpected Takumi raw buffer: ${rawBuffer.length} bytes for ${width}x${height}`,
+		);
+	}
+	return await sharp(rawBuffer, {
+		raw: { width, height, channels: channels as 3 | 4 },
+	})
+		.png()
+		.toBuffer();
 }

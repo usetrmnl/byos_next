@@ -1,15 +1,20 @@
 "use server";
 
-import { getCurrentUserId } from "@/lib/auth/get-user";
+import { BYOS_MONO_USER_ID, getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
 	createDefaultRefreshSchedule,
+	DEFAULT_DEVICE_SCREEN,
 	DEFAULT_DEVICE_TIMEZONE,
 	DEVICE_SLEEP_REFRESH_SECONDS,
 	serializeRefreshSchedule,
 } from "@/lib/device/defaults";
+import {
+	hashClaimCode,
+	normalizeClaimCode,
+} from "@/lib/device/pending-device-claims";
 import type { Device, Log } from "@/lib/types";
 import { generateFriendlyId, generateMockMacAddress } from "@/utils/helpers";
 
@@ -381,6 +386,120 @@ export async function addUserDevice(input: {
 		return { success: true, apiKey, friendlyId };
 	} catch (error) {
 		console.error("Error adding device:", error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : String(error),
+		};
+	}
+}
+
+/**
+ * Claim a device that is showing a claim code on its /api/display screen.
+ */
+export async function claimDeviceByCode(input: {
+	claimCode: string;
+	name?: string;
+}): Promise<{
+	success: boolean;
+	friendlyId?: string;
+	error?: string;
+}> {
+	const { ready } = await checkDbConnection();
+	if (!ready) {
+		return { success: false, error: "Database not available" };
+	}
+
+	const userId = await getCurrentUserId();
+	if (!userId) {
+		return { success: false, error: "You must be signed in to claim a device" };
+	}
+
+	const normalizedClaimCode = normalizeClaimCode(input.claimCode);
+	if (normalizedClaimCode.length !== 8) {
+		return {
+			success: false,
+			error: "Claim code must be 8 characters",
+		};
+	}
+
+	try {
+		const claimHash = hashClaimCode(normalizedClaimCode);
+		const claimed = await db.transaction().execute(async (trx) => {
+			const pendingClaim = await trx
+				.deleteFrom("pending_device_claims")
+				.where("claim_hash", "=", claimHash)
+				.returningAll()
+				.executeTakeFirst();
+
+			if (!pendingClaim) {
+				throw new Error("Claim code was not found or has expired");
+			}
+
+			const existingDevice = await trx
+				.selectFrom("devices")
+				.selectAll()
+				.where("api_key", "=", pendingClaim.api_key)
+				.executeTakeFirst();
+
+			if (
+				existingDevice?.user_id &&
+				existingDevice.user_id !== userId &&
+				existingDevice.user_id !== BYOS_MONO_USER_ID
+			) {
+				throw new Error("This device has already been claimed");
+			}
+
+			const now = new Date();
+			const deviceName = input.name?.trim();
+			const macAddress =
+				pendingClaim.mac_address ??
+				generateMockMacAddress(pendingClaim.api_key);
+			const timestamp = now.toISOString().replace(/[-:Z]/g, "");
+
+			if (existingDevice) {
+				const friendlyId = existingDevice.friendly_id;
+				await trx
+					.updateTable("devices")
+					.set({
+						user_id: userId,
+						mac_address: macAddress,
+						name: deviceName || existingDevice.name,
+						screen: existingDevice.screen ?? DEFAULT_DEVICE_SCREEN,
+						model: pendingClaim.model ?? existingDevice.model,
+						updated_at: now.toISOString(),
+					})
+					.where("id", "=", existingDevice.id)
+					.execute();
+				return { friendlyId };
+			}
+
+			const friendlyId = generateFriendlyId(macAddress, timestamp);
+			await trx
+				.insertInto("devices")
+				.values({
+					mac_address: macAddress,
+					name: deviceName || `TRMNL Device ${friendlyId}`,
+					friendly_id: friendlyId,
+					api_key: pendingClaim.api_key,
+					user_id: userId,
+					refresh_schedule: serializeRefreshSchedule(
+						createDefaultRefreshSchedule(),
+					),
+					last_update_time: now.toISOString(),
+					next_expected_update: new Date(
+						now.getTime() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
+					).toISOString(),
+					timezone: DEFAULT_DEVICE_TIMEZONE,
+					screen: DEFAULT_DEVICE_SCREEN,
+					model: pendingClaim.model,
+				})
+				.execute();
+			return { friendlyId };
+		});
+
+		return { success: true, friendlyId: claimed.friendlyId };
+	} catch (error) {
+		console.error("Error claiming device:", error);
 		return {
 			success: false,
 			error: error instanceof Error ? error.message : String(error),

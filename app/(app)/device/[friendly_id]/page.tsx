@@ -1,8 +1,8 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { fetchRecipes } from "@/app/actions/mixup";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInitData } from "@/lib/getInitData";
+import { listAllRecipes } from "@/lib/recipes/catalog";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 import { getDeviceStatus } from "@/utils/helpers";
 import DeviceClientPage from "./client-page";
@@ -44,7 +44,7 @@ const DeviceData = async ({ friendlyId }: { friendlyId: string }) => {
 		trmnlPalettes,
 	] = await Promise.all([
 		getInitData(),
-		fetchRecipes(),
+		listAllRecipes(),
 		listModels(),
 		listPalettes(),
 	]);
@@ -62,7 +62,7 @@ const DeviceData = async ({ friendlyId }: { friendlyId: string }) => {
 		status: getDeviceStatus(device),
 	};
 
-	// Convert recipes to availableScreens array
+	// Convert renderable recipe catalog rows to screen dropdown options.
 	const availableScreens = recipes.map((recipe) => ({
 		id: recipe.slug,
 		title: recipe.name,

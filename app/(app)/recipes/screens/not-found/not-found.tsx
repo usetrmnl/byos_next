@@ -4,6 +4,10 @@ import {
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import {
+	createScreenProfile,
+	type ScreenProfile,
+} from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
 
 export const paramsSchema = z.object({});
@@ -15,13 +19,19 @@ export default function NotFoundScreen({
 	slug,
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
+	screen,
 }: {
 	slug?: string;
 	width?: number;
 	height?: number;
+	screen?: ScreenProfile;
 }) {
+	const screenProfile = screen ?? createScreenProfile({ width, height });
 	return (
-		<PreSatori width={width} height={height}>
+		<PreSatori
+			width={screenProfile.logicalWidth}
+			height={screenProfile.logicalHeight}
+		>
 			<div className="w-full h-full p-4 sm:p-8 lg:p-16 bg-white flex flex-col items-center justify-center text-black">
 				<div className="text-6xl lg:text-8xl 2xl:text-9xl text-center">
 					Screen Not Found
@@ -59,7 +69,12 @@ export const definition: RecipeDefinition<
 	},
 	paramsSchema,
 	dataSchema,
-	Component: ({ width, height, data }) => (
-		<NotFoundScreen slug={data.slug} width={width} height={height} />
+	Component: ({ width, height, screen, data }) => (
+		<NotFoundScreen
+			slug={data.slug}
+			width={width}
+			height={height}
+			screen={screen}
+		/>
 	),
 };

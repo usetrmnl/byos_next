@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, RefreshCw, Search, Trash2 } from "lucide-react";
 import Image from "next/image";
 import type React from "react";
 import { type ChangeEvent, type ReactNode, useEffect, useMemo } from "react";
@@ -74,6 +74,7 @@ interface DeviceEditFormProps {
 	onRegenerateApiKey: () => void;
 	onRegenerateFriendlyId: () => void;
 	onAddTimeRange: () => void;
+	onRemoveTimeRange: (index: number) => void;
 	onSubmit: (e: React.FormEvent) => void;
 	onCancel: () => void;
 }
@@ -131,6 +132,7 @@ export default function DeviceEditForm({
 	onRegenerateApiKey,
 	onRegenerateFriendlyId,
 	onAddTimeRange,
+	onRemoveTimeRange,
 	onSubmit,
 	onCancel: _onCancel,
 }: DeviceEditFormProps) {
@@ -262,7 +264,11 @@ export default function DeviceEditForm({
 									isPortrait ? "max-w-[260px]" : "max-w-[520px]",
 								)}
 							>
-								<DeviceFrame size="lg" portrait={isPortrait}>
+								<DeviceFrame
+									size="lg"
+									portrait={isPortrait}
+									screenAspectRatio={`${deviceWidth} / ${deviceHeight}`}
+								>
 									<Image
 										src={heroSrc}
 										alt="Device screen preview"
@@ -758,7 +764,10 @@ export default function DeviceEditForm({
 									<div className="divide-y rounded-lg border">
 										{editedDevice.refresh_schedule.time_ranges.map(
 											(range, index) => (
-												<div key={index} className="grid grid-cols-3 gap-2 p-3">
+												<div
+													key={index}
+													className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 p-3"
+												>
 													<div className="space-y-1">
 														<Label
 															htmlFor={`start_time_${index}`}
@@ -815,6 +824,18 @@ export default function DeviceEditForm({
 																)
 															}
 														/>
+													</div>
+													<div className="flex items-end">
+														<Button
+															type="button"
+															variant="ghost"
+															size="icon"
+															className="text-muted-foreground hover:text-destructive"
+															aria-label={`Remove time range ${index + 1}`}
+															onClick={() => onRemoveTimeRange(index)}
+														>
+															<Trash2 className="h-4 w-4" />
+														</Button>
 													</div>
 												</div>
 											),

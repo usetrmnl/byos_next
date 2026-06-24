@@ -19,7 +19,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { addUserDevice } from "@/app/actions/device";
+import { addUserDevice, claimDeviceByCode } from "@/app/actions/device";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import type { ComponentConfig } from "@/components/component-config";
 import { NavUser } from "@/components/nav-user";
@@ -85,6 +85,7 @@ export function AppSidebar({
 	// Add device dialog state
 	const [addDeviceOpen, setAddDeviceOpen] = useState(false);
 	const [newDeviceApiKey, setNewDeviceApiKey] = useState("");
+	const [newDeviceClaimCode, setNewDeviceClaimCode] = useState("");
 	const [newDeviceName, setNewDeviceName] = useState("");
 	const [addingDevice, setAddingDevice] = useState(false);
 
@@ -95,6 +96,25 @@ export function AppSidebar({
 	const handleAddDevice = async () => {
 		setAddingDevice(true);
 		try {
+			const claimCode = newDeviceClaimCode.trim();
+			if (claimCode) {
+				const result = await claimDeviceByCode({
+					claimCode,
+					name: newDeviceName || undefined,
+				});
+				if (result.success) {
+					toast.success("Device claimed!");
+					setAddDeviceOpen(false);
+					setNewDeviceApiKey("");
+					setNewDeviceClaimCode("");
+					setNewDeviceName("");
+					router.refresh();
+				} else {
+					toast.error(result.error || "Failed to claim device");
+				}
+				return;
+			}
+
 			const result = await addUserDevice({
 				apiKey: newDeviceApiKey,
 				name: newDeviceName || undefined,
@@ -103,6 +123,7 @@ export function AppSidebar({
 				toast.success(`Device added! API key: ${result.apiKey}`);
 				setAddDeviceOpen(false);
 				setNewDeviceApiKey("");
+				setNewDeviceClaimCode("");
 				setNewDeviceName("");
 				router.refresh();
 			} else {
@@ -422,13 +443,27 @@ export function AppSidebar({
 			<Dialog open={addDeviceOpen} onOpenChange={setAddDeviceOpen}>
 				<DialogContent>
 					<DialogHeader>
-						<DialogTitle>Add a Device</DialogTitle>
+						<DialogTitle>Add or Claim a Device</DialogTitle>
 						<DialogDescription>
-							Enter an API key for your new device. When the physical device
-							connects via setup, its MAC address will be linked automatically.
+							Enter the claim code shown on your device screen, or create a
+							device manually with an API key.
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4">
+						<div className="space-y-2">
+							<Label htmlFor="device-claim-code">Claim Code</Label>
+							<Input
+								id="device-claim-code"
+								value={newDeviceClaimCode}
+								onChange={(e) =>
+									setNewDeviceClaimCode(e.target.value.toUpperCase())
+								}
+								placeholder="AB12-CD34"
+							/>
+							<p className="text-xs text-muted-foreground">
+								Use this when an unclaimed TRMNL shows a claim code on screen.
+							</p>
+						</div>
 						<div className="space-y-2">
 							<Label htmlFor="device-api-key">API Key</Label>
 							<div className="flex gap-2">
@@ -480,9 +515,18 @@ export function AppSidebar({
 						</Button>
 						<Button
 							onClick={handleAddDevice}
-							disabled={addingDevice || !newDeviceApiKey.trim()}
+							disabled={
+								addingDevice ||
+								(!newDeviceApiKey.trim() && !newDeviceClaimCode.trim())
+							}
 						>
-							{addingDevice ? "Adding..." : "Add Device"}
+							{addingDevice
+								? newDeviceClaimCode.trim()
+									? "Claiming..."
+									: "Adding..."
+								: newDeviceClaimCode.trim()
+									? "Claim Device"
+									: "Add Device"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

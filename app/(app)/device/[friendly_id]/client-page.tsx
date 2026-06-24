@@ -396,6 +396,21 @@ export default function DeviceClientPage({
 		});
 	};
 
+	const handleRemoveTimeRange = (index: number) => {
+		if (!editedDevice.refresh_schedule) return;
+
+		setEditedDevice({
+			...editedDevice,
+			refresh_schedule: {
+				default_refresh_rate:
+					editedDevice.refresh_schedule.default_refresh_rate,
+				time_ranges: editedDevice.refresh_schedule.time_ranges.filter(
+					(_, currentIndex) => currentIndex !== index,
+				),
+			},
+		});
+	};
+
 	useEffect(() => {
 		if (editedDevice.playlist_id) {
 			const playlistScreens = playlistItems
@@ -490,6 +505,7 @@ export default function DeviceClientPage({
 					onRegenerateApiKey={handleRegenerateApiKey}
 					onRegenerateFriendlyId={handleRegenerateFriendlyId}
 					onAddTimeRange={handleAddTimeRange}
+					onRemoveTimeRange={handleRemoveTimeRange}
 					onSubmit={handleSubmit}
 					onCancel={handleCancel}
 				/>

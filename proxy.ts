@@ -29,6 +29,7 @@ const PUBLIC_PATHS = [
 	"/sign-in",
 	"/sign-up",
 	"/recover",
+	"/setup",
 ];
 
 export async function proxy(request: NextRequest) {

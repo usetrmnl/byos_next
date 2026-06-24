@@ -118,6 +118,7 @@ export async function GET(
 			validWidth,
 			validHeight,
 			imageRequest.grayscaleLevels,
+			profile,
 			userId,
 			cookieHeader || undefined,
 		);
@@ -237,6 +238,7 @@ const renderRecipeBitmap = cache(
 		width: number,
 		height: number,
 		grayscaleLevels: number = 2,
+		profile: DeviceProfile | null = null,
 		userId: string | null = null,
 		cookies?: string,
 	) => {
@@ -246,6 +248,9 @@ const renderRecipeBitmap = cache(
 			imageHeight: height,
 			formats: ["bitmap"],
 			grayscale: grayscaleLevels,
+			model: profile?.model ?? null,
+			palette: profile?.palette ?? null,
+			paletteId: profile?.palette?.id ?? null,
 			userId,
 			cookies,
 		});
