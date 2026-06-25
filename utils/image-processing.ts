@@ -145,7 +145,7 @@ export const ditherWhiteNoise = (
 	const mean =
 		meanLightness ??
 		grayscale.reduce((sum, value) => sum + value, 0) /
-		Math.max(grayscale.length, 1);
+			Math.max(grayscale.length, 1);
 	const lightness = mean / 255;
 	const clarity = 4 * lightness * (1 - lightness);
 	const step = 255 / (levels - 1);

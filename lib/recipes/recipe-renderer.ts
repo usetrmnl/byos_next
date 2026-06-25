@@ -73,18 +73,15 @@ export async function renderRecipeToImage({
 		});
 		let renderData = data;
 		if (definition.prepareForDevice) {
-			const levels = getPaletteGrayLevels(palette);
-			if (levels !== null) {
-				renderData = await definition.prepareForDevice(data, {
-					levels,
-					width: imageWidth,
-					height: imageHeight,
-					logicalWidth: screen.logicalWidth,
-					logicalHeight: screen.logicalHeight,
-					pixelRatio: screen.pixelRatio,
-					salt: DEFAULT_DITHER_SALT,
-				});
-			}
+			renderData = await definition.prepareForDevice(data, {
+				levels: getPaletteGrayLevels(palette),
+				width: imageWidth,
+				height: imageHeight,
+				logicalWidth: screen.logicalWidth,
+				logicalHeight: screen.logicalHeight,
+				pixelRatio: screen.pixelRatio,
+				salt: DEFAULT_DITHER_SALT,
+			});
 		}
 		const element = createElement(definition.Component, {
 			width: screen.logicalWidth,
@@ -150,13 +147,13 @@ export async function renderRecipeForDevice({
 	const renderProfile =
 		width !== undefined || height !== undefined
 			? {
-				...profile,
-				model: {
-					...profile.model,
-					width: width ?? profile.model.width,
-					height: height ?? profile.model.height,
-				},
-			}
+					...profile,
+					model: {
+						...profile.model,
+						width: width ?? profile.model.width,
+						height: height ?? profile.model.height,
+					},
+				}
 			: profile;
 
 	const resolved = await resolveReactRecipe(slug, userId ?? undefined);

@@ -4,6 +4,7 @@ import {
 	ditherImageToDataUrl,
 	ditherImageToDataUrlUncached,
 } from "./dither-image";
+import { DitheringMethod } from "@/utils/image-processing";
 
 async function makeSolidGrayPng(
 	width: number,
@@ -101,5 +102,26 @@ describe("ditherImageToDataUrl", () => {
 		});
 
 		expect(result).toBe(source);
+	});
+
+	it("supports Bayer ordered dithering with configurable matrix size", async () => {
+		const source = await makeSolidGrayPng(32, 32, 128);
+		const bayer8 = await ditherImageToDataUrlUncached(source, {
+			width: 32,
+			height: 32,
+			levels: 2,
+			method: DitheringMethod.BAYER,
+			bayerPatternSize: 8,
+		});
+		const bayer4 = await ditherImageToDataUrlUncached(source, {
+			width: 32,
+			height: 32,
+			levels: 2,
+			method: DitheringMethod.BAYER,
+			bayerPatternSize: 4,
+		});
+
+		expect(bayer8.startsWith("data:image/png;base64,")).toBe(true);
+		expect(bayer4).not.toBe(bayer8);
 	});
 });

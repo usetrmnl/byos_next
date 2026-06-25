@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BitmapMarker } from "@/components/bitmap-font/bitmap-marker";
 import { screenFontSize } from "@/components/trmnl/screen-layout";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -209,9 +210,11 @@ export default function Calendar({
 								borderLeft: `${lineW}px solid #000`,
 							}}
 						>
-							<div style={{ fontSize: f(13), marginBottom: s(2) }}>
-								{day.weekday}
-							</div>
+							<BitmapMarker
+								text={day.weekday}
+								sizePx={f(13)}
+								className={day.isToday ? "text-black" : undefined}
+							/>
 							<div
 								className={day.isToday ? "bg-black text-white" : undefined}
 								style={{
@@ -221,10 +224,14 @@ export default function Calendar({
 									display: "flex",
 									alignItems: "center",
 									justifyContent: "center",
-									fontSize: day.isToday ? f(18) : f(22),
+									marginTop: s(2),
 								}}
 							>
-								{day.dayNum}
+								<BitmapMarker
+									text={String(day.dayNum)}
+									sizePx={day.isToday ? f(18) : f(22)}
+									className={day.isToday ? "text-white" : undefined}
+								/>
 							</div>
 						</div>
 					))}
@@ -242,7 +249,7 @@ export default function Calendar({
 								fontSize: f(12),
 							}}
 						>
-							all-day
+							<BitmapMarker text="all-day" sizePx={f(12)} />
 						</div>
 						<div
 							style={{
@@ -316,7 +323,7 @@ export default function Calendar({
 									fontSize: f(13),
 								}}
 							>
-								{fmtHour(hour)}
+								<BitmapMarker text={fmtHour(hour)} sizePx={f(13)} />
 							</div>
 						))}
 					</div>
@@ -404,7 +411,13 @@ export default function Calendar({
 										<div style={{ overflow: "hidden" }}>
 											{clip(event.title, 26)}
 										</div>
-										<div style={{ fontSize: f(12) }}>{event.timeLabel}</div>
+										<div style={{ fontSize: f(12) }}>
+											<BitmapMarker
+												text={event.timeLabel}
+												sizePx={f(12)}
+												className="text-white"
+											/>
+										</div>
 									</div>
 								);
 							})}
@@ -449,7 +462,7 @@ export default function Calendar({
 						borderTop: `${lineW}px solid #000`,
 					}}
 				>
-					{footer}
+					<BitmapMarker text={footer} sizePx={f(13)} />
 				</div>
 			</div>
 		</PreSatori>

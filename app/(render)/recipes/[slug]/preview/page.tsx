@@ -14,6 +14,8 @@ import { resolveImageDitherPolicy } from "@/lib/recipes/render/image-dither-poli
 import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
+import { buildRecipeDeviceContext } from "@/lib/recipes/device-context";
+import { DEFAULT_DITHER_SALT } from "@/utils/image-processing";
 
 export default async function RecipePreviewPage({
 	params,
@@ -59,13 +61,24 @@ export default async function RecipePreviewPage({
 		palette: profile?.palette,
 	});
 
+	const deviceContext = buildRecipeDeviceContext({
+		palette: profile?.palette ?? null,
+		screen,
+		salt: DEFAULT_DITHER_SALT,
+	});
+
+	let renderData = data;
+	if (definition.prepareForDevice) {
+		renderData = await definition.prepareForDevice(data, deviceContext);
+	}
+
 	const recipe = (
 		<Component
 			width={screen.logicalWidth}
 			height={screen.logicalHeight}
 			screen={screen}
 			params={parsedParams}
-			data={data}
+			data={renderData}
 		/>
 	);
 	const imageDitherPolicy = resolveImageDitherPolicy({

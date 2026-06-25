@@ -1,6 +1,10 @@
 import { cloneElement, type ReactElement } from "react";
 import { z } from "zod";
 import {
+	BitmapMarker,
+	bitmapSizeFromTarget,
+} from "@/components/bitmap-font/bitmap-marker";
+import {
 	ScreenFooter,
 	StatsGrid,
 	screenMetric,
@@ -113,7 +117,6 @@ export default function Weather({
 	screen,
 }: WeatherProps) {
 	const screenProfile = screen ?? createScreenProfile({ width, height });
-	// Weather statistics
 	const weatherStats = [
 		{ label: "Feels Like", value: `${feelsLike}°C`, icon: tempIcon },
 		{ label: "Humidity", value: `${humidity}%`, icon: humidityIcon },
@@ -123,7 +126,6 @@ export default function Weather({
 		{ label: "Sunset", value: `${sunset}`, icon: sunsetIcon },
 	];
 
-	// Get weather icon based on description
 	const getWeatherIcon = (desc: string) => {
 		const lowerDesc = desc.toLowerCase();
 		if (lowerDesc.includes("rain") || lowerDesc.includes("drizzle"))
@@ -134,12 +136,28 @@ export default function Weather({
 			return SunIcon;
 		if (lowerDesc.includes("fog") || lowerDesc.includes("mist")) return FogIcon;
 		if (lowerDesc.includes("thunder")) return ThunderIcon;
-		return CloudIcon; // default
+		return CloudIcon;
 	};
 
 	const isHalfScreen = screenProfile.isHalfScreen;
-	// Icons are static <svg> constants and Takumi needs explicit pixel sizes
-	// (percent sizes render nothing), so scale them from logical screen metrics.
+	const heroTempSize = screenMetric(
+		screenProfile,
+		isHalfScreen ? 88 : screenProfile.isLarge ? 128 : 108,
+	);
+	const highLowSize = bitmapSizeFromTarget(
+		screenMetric(
+			screenProfile,
+			isHalfScreen ? 32 : screenProfile.isLarge ? 40 : 34,
+		),
+		0.7,
+	);
+	const statIconSize = screenMetric(screenProfile, isHalfScreen ? 36 : 40);
+	const headerPad = screenMetric(screenProfile, isHalfScreen ? 12 : 16);
+	const bodyPad = screenMetric(screenProfile, isHalfScreen ? 12 : 16);
+	const statGridGap = screenMetric(screenProfile, isHalfScreen ? 10 : 12);
+	const statLabelSize = screenMetric(screenProfile, isHalfScreen ? 18 : 20);
+	const statTextGap = screenMetric(screenProfile, isHalfScreen ? 4 : 5);
+	const statIconGap = screenMetric(screenProfile, isHalfScreen ? 8 : 10);
 	const sizeIcon = (icon: ReactElement, base: number) => {
 		const px = screenMetric(screenProfile, base);
 		return cloneElement(
@@ -153,52 +171,87 @@ export default function Weather({
 			width={screenProfile.logicalWidth}
 			height={screenProfile.logicalHeight}
 		>
-			<div className="flex flex-col w-full h-full bg-white text-black">
+			<div className="flex flex-col w-full h-full bg-white text-black overflow-hidden">
 				<div
-					className={`flex p-4 lg:p-8 2xl:p-12 sm:flex-row items-center justify-between ${isHalfScreen ? "flex-row" : "flex-col sm:flex-row"}`}
+					style={{
+						display: "flex",
+						flexDirection: "row",
+						alignItems: "center",
+						justifyContent: "space-between",
+						padding: headerPad,
+						gap: screenMetric(screenProfile, 8),
+						minWidth: 0,
+						overflow: "hidden",
+					}}
 				>
-					<h2
-						className={`font-inter leading-none ${isHalfScreen ? "text-8xl" : "text-9xl 2xl:text-[12rem]"}`}
+					<div style={{ display: "flex", flex: "none", minWidth: 0 }}>
+						<BitmapMarker text={`${temperature}°C`} sizePx={heroTempSize} />
+					</div>
+					<div
+						style={{
+							display: "flex",
+							flexDirection: "column",
+							alignItems: "center",
+							justifyContent: "center",
+							flex: "1 1 auto",
+							minWidth: 0,
+							overflow: "hidden",
+						}}
 					>
-						{temperature}°C
-					</h2>
-					<div className="flex flex-col items-center justify-center">
-						<div className="flex items-center justify-center">
-							{sizeIcon(getWeatherIcon(description), 128)}
+						<div style={{ display: "flex", alignItems: "center" }}>
+							{sizeIcon(getWeatherIcon(description), isHalfScreen ? 96 : 112)}
 						</div>
 						{!isHalfScreen && (
-							<div className="text-4xl lg:text-5xl 2xl:text-6xl mt-4 font-blockkie">
-								<div className="flex flex-row items-center gap-2">
-									{sizeIcon(tempUp, 40)} {highTemp}°C
-									{sizeIcon(tempDown, 40)} {lowTemp}°C
-								</div>
+							<div
+								style={{
+									display: "flex",
+									flexDirection: "row",
+									alignItems: "center",
+									gap: screenMetric(screenProfile, 4),
+									marginTop: screenMetric(screenProfile, 8),
+									minWidth: 0,
+									overflow: "hidden",
+								}}
+							>
+								{sizeIcon(tempUp, 28)}
+								<BitmapMarker text={`${highTemp}°C`} sizePx={highLowSize} />
+								{sizeIcon(tempDown, 28)}
+								<BitmapMarker text={`${lowTemp}°C`} sizePx={highLowSize} />
 							</div>
 						)}
 					</div>
 				</div>
 				<div
-					className="p-4 lg:p-8 2xl:p-12 pt-0 lg:pt-0 2xl:pt-0 flex flex-col flex-1"
-					style={{ gap: screenMetric(screenProfile, isHalfScreen ? 8 : 16) }}
+					style={{
+						display: "flex",
+						flex: 1,
+						flexDirection: "column",
+						minHeight: 0,
+						padding: bodyPad,
+						paddingTop: 0,
+					}}
 				>
 					<StatsGrid
 						screen={screenProfile}
+						bitmap
+						bitmapLabelFont="geneva12"
+						gapSize={statGridGap}
+						bitmapTextGap={statTextGap}
+						bitmapIconGap={statIconGap}
+						labelSize={statLabelSize}
 						stats={weatherStats.map((stat) => ({
 							label: stat.label,
 							value: stat.value,
-							icon: sizeIcon(stat.icon, 48),
+							icon: sizeIcon(stat.icon, statIconSize),
 						}))}
 						columns={isHalfScreen ? 2 : 3}
-						fill
 					/>
+					<div style={{ flex: 1, minHeight: 0 }} />
 					<ScreenFooter
 						screen={screenProfile}
-						left={suggestion || location}
-						right={
-							location
-								? `${location}${lastUpdated ? ` · ${lastUpdated}` : ""}`
-								: lastUpdated
-						}
-						style={{ backgroundColor: "#000" }}
+						bitmap
+						left={location}
+						right={lastUpdated ? `Updated ${lastUpdated}` : ""}
 					/>
 				</div>
 			</div>
