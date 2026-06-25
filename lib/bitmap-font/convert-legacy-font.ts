@@ -1,11 +1,11 @@
 import { decodeCellData, legacyGlyphRowStride } from "./decode-cell-data";
+import { gridSizeKey } from "./pack-utils";
 import type {
 	LegacyBitmapCharacter,
 	LegacyBitmapFace,
 	LegacyBitmapFontPack,
 	LegacyFontMetrics,
 } from "./schema/legacy";
-import { gridSizeKey } from "./pack-utils";
 import type {
 	Glyph,
 	GlyphBounds,

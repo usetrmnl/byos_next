@@ -3,10 +3,10 @@ import blockKiePack from "@/components/bitmap-font/generated/block-kie.json";
 import geistPixelGridPack from "@/components/bitmap-font/generated/geist-pixel-grid.json";
 import genevaPack from "@/components/bitmap-font/generated/geneva.json";
 import pixelifySansPack from "@/components/bitmap-font/generated/pixelify-sans.json";
-import type { BuiltInBitmapPack } from "@/lib/font-sources";
-import { BUILT_IN_BITMAP_PACKS } from "@/lib/font-sources";
 import type { LegacyBitmapFontPack } from "@/lib/bitmap-font/schema/legacy";
 import type { NewBitmapFont } from "@/lib/bitmap-font/schema/v2";
+import type { BuiltInBitmapPack } from "@/lib/font-sources";
+import { BUILT_IN_BITMAP_PACKS } from "@/lib/font-sources";
 
 export type BitmapFontPackData = LegacyBitmapFontPack | NewBitmapFont;
 

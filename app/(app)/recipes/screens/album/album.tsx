@@ -7,9 +7,9 @@ import {
 } from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import {
+	DitheringMethod,
 	ditherImageToDataUrl,
 	embedImageToDataUrl,
-	DitheringMethod,
 } from "@/lib/render/dither-image";
 import {
 	createScreenProfile,

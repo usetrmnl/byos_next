@@ -1,10 +1,10 @@
 import {
+	type ConvertLegacyFontOptions,
 	convertLegacyBitmapFont,
 	convertLegacyFontFace,
 	convertLegacyGlyph,
 	convertLegacyMetrics,
 	convertLegacyPackToV2,
-	type ConvertLegacyFontOptions,
 } from "./convert-legacy-font";
 import {
 	convertV2GlyphToLegacy,
@@ -16,55 +16,41 @@ import {
 import { isLegacyBitmapFontPack, isV2BitmapFont } from "./pack-utils";
 import type { LegacyBitmapFontPack } from "./schema/legacy";
 import type { NewBitmapFont } from "./schema/v2";
+
 export {
-	decodeCellData,
 	base64CellDataToBinary,
+	decodeCellData,
 	legacyGlyphRowStride,
 } from "./decode-cell-data";
 export {
-	convertLegacyBitmapFont,
-	convertLegacyFontFace,
-	convertLegacyGlyph,
-	convertLegacyMetrics,
-	convertLegacyPackToV2,
-	type ConvertLegacyFontOptions,
-};
-export {
-	convertV2GlyphToLegacy,
-	convertV2MetricsToLegacy,
-	convertV2PackToLegacy,
-	legacyFaceGridSize,
-	legacyGlyphDataToBinary,
-};
-export {
+	type BitmapFontFace,
+	type BitmapFontMetrics,
+	type BitmapFontPack,
+	type BitmapGlyph,
+	type BitmapLayoutLine,
+	type BitmapLayoutResult,
 	binaryToPath,
 	getFontMetrics,
 	getGlyphAdvance,
 	getGlyphBitmapWidth,
 	layoutBitmapText,
-	type BitmapFontMetrics,
-	type BitmapFontPack,
-	type BitmapFontFace,
-	type BitmapGlyph,
-	type BitmapLayoutLine,
-	type BitmapLayoutResult,
 } from "./layout";
 export {
+	binaryGridToGlyphRows,
+	editorRowToV2Y,
 	getV2BaselineEditorRow,
 	getV2CellHeight,
 	getV2DefaultAdvance,
 	getV2DefaultCharGap,
 	getV2LayoutHeight,
 	getV2MetricGuides,
-	resolveV2CharGap,
-	editorRowToV2Y,
 	glyphRunsToPath,
-	binaryGridToGlyphRows,
 	inkWidthFromBinary,
 	layoutV2Text,
+	resolveV2CharGap,
+	type V2MetricGuide,
 	v2GlyphToEditorBinary,
 	v2YToEditorRow,
-	type V2MetricGuide,
 } from "./layout-v2";
 export {
 	deriveTypographyMetrics,
@@ -78,9 +64,10 @@ export {
 	isV2BitmapFont,
 	listV2FaceKeys,
 	parseGridSize,
-	resolveV2Face,
 	type ResolvedV2Face,
+	resolveV2Face,
 } from "./pack-utils";
+export type { BitmapFontPackData } from "./packs";
 export type {
 	LegacyBitmapCharacter,
 	LegacyBitmapFace,
@@ -95,7 +82,19 @@ export type {
 	NewBitmapFontFace,
 	NewBitmapFontMetrics,
 } from "./schema/v2";
-export type { BitmapFontPackData } from "./packs";
+export {
+	type ConvertLegacyFontOptions,
+	convertLegacyBitmapFont,
+	convertLegacyFontFace,
+	convertLegacyGlyph,
+	convertLegacyMetrics,
+	convertLegacyPackToV2,
+	convertV2GlyphToLegacy,
+	convertV2MetricsToLegacy,
+	convertV2PackToLegacy,
+	legacyFaceGridSize,
+	legacyGlyphDataToBinary,
+};
 
 /** Normalize any supported pack file into v2 format. */
 export function normalizeToV2Pack(pack: unknown): NewBitmapFont {

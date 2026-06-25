@@ -1,7 +1,7 @@
 import {
+	type AlbumCityId,
 	DEFAULT_ALBUM_CITY_ID,
 	getAlbumCity,
-	type AlbumCityId,
 } from "./album-cities";
 
 export const dynamic = "force-dynamic";

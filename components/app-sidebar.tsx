@@ -56,8 +56,8 @@ import {
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
-import type { Device, RecipeSidebarItem } from "@/lib/types";
 import { formatByosApiServerUrlForDevice } from "@/lib/byos-api-server-url";
+import type { Device, RecipeSidebarItem } from "@/lib/types";
 import packageJson from "@/package.json";
 import { generateRandomApiKey, getDeviceStatus } from "@/utils/helpers";
 

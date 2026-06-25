@@ -1,10 +1,10 @@
 /// <reference types="jest" />
 import sharp from "sharp";
+import { DitheringMethod } from "@/utils/image-processing";
 import {
 	ditherImageToDataUrl,
 	ditherImageToDataUrlUncached,
 } from "./dither-image";
-import { DitheringMethod } from "@/utils/image-processing";
 
 async function makeSolidGrayPng(
 	width: number,

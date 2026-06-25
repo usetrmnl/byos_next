@@ -98,7 +98,7 @@ function useDebounce<T>(value: T, delay: number): T {
 
 const initialLegacyPack = normalizeToLegacyPack(bitmapFontFile);
 
-const gridSizeKey = (font: BitmapFont) =>
+const _gridSizeKey = (font: BitmapFont) =>
 	font.width > 0 ? `${font.width}x${font.height}` : `0x${font.height}`;
 
 const formatGridSizeLabel = (size: string) => {
@@ -724,7 +724,6 @@ const SentencePreview = memo(
 			v2Face,
 			previewMetrics,
 			getEditorGlyphs,
-			editorGlyphsRevision,
 			selectedGridSize,
 			glyphMeta,
 			packMetrics,

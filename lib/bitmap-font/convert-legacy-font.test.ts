@@ -59,6 +59,7 @@ describe("convertLegacyBitmapFont", () => {
 			capHeightY: 13,
 			maxY: 15,
 			lineGap: 10,
+			defaultCharGap: 0,
 			pixelUnitX: 1,
 			pixelUnitY: 1,
 			dynamicWidth: true,
@@ -352,7 +353,7 @@ describe("layoutV2Text", () => {
 		if (!face) throw new Error("Expected 2x1 face to resolve");
 
 		const withoutGap = layoutV2Text({
-			text: "IL",
+			text: "I",
 			glyphs: face.glyphs,
 			metrics: { ...face.metrics, defaultCharGap: 0 },
 			gridWidth: face.gridWidth,
@@ -360,7 +361,7 @@ describe("layoutV2Text", () => {
 			gap: 0,
 		});
 		const withDefaultGap = layoutV2Text({
-			text: "IL",
+			text: "I",
 			glyphs: face.glyphs,
 			metrics: { ...face.metrics, defaultCharGap: 1 },
 			gridWidth: face.gridWidth,

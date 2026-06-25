@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 import type { GlyphMeta } from "./bitmap-font-designer-client";
 import {
 	binaryToGrid,
-	getEffectiveGlyphWidth,
 	type EditorFontMetrics,
+	getEffectiveGlyphWidth,
 } from "./bitmap-font-utils";
 
 export type DrawMiniGlyphOptions = {
@@ -148,7 +148,7 @@ export const EditorGlyphStrip = ({
 			block: "nearest",
 			inline: "center",
 		});
-	}, [selectedCharCode]);
+	}, []);
 
 	return (
 		<div className="flex items-stretch gap-1 border-b pb-3">

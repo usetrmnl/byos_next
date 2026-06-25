@@ -1,8 +1,8 @@
 import { z } from "zod";
 import fontData from "@/components/bitmap-font/bitmap-font.json";
+import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 import genevaFontData from "@/components/bitmap-font/generated/geneva.json";
 import pixelifySansFontData from "@/components/bitmap-font/generated/pixelify-sans.json";
-import { BitmapText } from "@/components/bitmap-font/bitmap-text";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,

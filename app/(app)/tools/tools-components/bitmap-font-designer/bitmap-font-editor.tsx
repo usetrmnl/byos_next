@@ -133,7 +133,7 @@ export default function BitmapFontEditor({
 
 	useEffect(() => {
 		setBaselinePreviewRow(null);
-	}, [editorHeight, packMetrics.baselineRow, selectedGridSize]);
+	}, []);
 	const selectedGlyphMeta = glyphMeta?.get(selectedCharCode);
 	const [inkBounds, setInkBounds] = useState<InkBounds | null>(null);
 	const inkBoundsKeyRef = useRef("");

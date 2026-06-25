@@ -7,9 +7,9 @@ import {
 	getGlyphBitmapWidth,
 	layoutBitmapText,
 	layoutV2Text,
+	type NewBitmapFont,
 	parseGridSize,
 	resolveV2Face,
-	type NewBitmapFont,
 } from "@/lib/bitmap-font";
 import { isV2BitmapFont } from "@/lib/bitmap-font/pack-utils";
 
@@ -202,5 +202,5 @@ function BitmapText({
 	);
 }
 
-export { BitmapText, binaryToPath, getGlyphAdvance, getGlyphBitmapWidth };
 export type { BitmapFontMetrics };
+export { BitmapText, binaryToPath, getGlyphAdvance, getGlyphBitmapWidth };

@@ -4,10 +4,10 @@ import localFont from "next/font/local";
 import { cache } from "react";
 import {
 	FONT_SOURCES,
+	type FontSource,
 	getFontDiskPath,
 	getTakumiFontSources,
 	TAILWIND_SLUG_TO_TAKUMI,
-	type FontSource,
 } from "@/lib/font-sources";
 
 // System fonts configuration

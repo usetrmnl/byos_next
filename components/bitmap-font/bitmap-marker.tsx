@@ -1,6 +1,6 @@
 import ftFont from "@/components/bitmap-font/bitmap-font.json";
-import genevaFont from "@/components/bitmap-font/generated/geneva.json";
 import { BitmapText } from "@/components/bitmap-font/bitmap-text";
+import genevaFont from "@/components/bitmap-font/generated/geneva.json";
 
 const FT_FACE_HEIGHTS = [8, 12, 16] as const;
 const GENEVA12_GRID = "0x20";

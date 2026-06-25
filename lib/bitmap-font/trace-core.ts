@@ -41,7 +41,7 @@ export function findInkBounds(
 	width: number,
 	height: number,
 	threshold = 128,
-	mode: TraceMode = "fit",
+	_mode: TraceMode = "fit",
 	inkDetection: InkDetection = "luminance",
 ): { minX: number; minY: number; maxX: number; maxY: number } | null {
 	let minX = width;
