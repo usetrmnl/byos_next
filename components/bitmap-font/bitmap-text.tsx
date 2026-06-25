@@ -76,7 +76,9 @@ function findMatchingFont(
 	);
 	if (exactMatch) return exactMatch;
 
-	const heightMatch = parsedFontData.fonts.find((font) => font.height === height);
+	const heightMatch = parsedFontData.fonts.find(
+		(font) => font.height === height,
+	);
 	if (heightMatch) return heightMatch;
 
 	return parsedFontData.fonts[0] ?? null;

@@ -465,7 +465,9 @@ export function AppSidebar({
 							<AlertTitle>Point the device API server here</AlertTitle>
 							<AlertDescription>
 								<ol className="list-decimal space-y-1 pl-4">
-									<li>Hold the back button for 5 seconds to reset the device.</li>
+									<li>
+										Hold the back button for 5 seconds to reset the device.
+									</li>
 									<li>
 										Connect to the <strong>TRMNL</strong> WiFi network and open
 										the captive portal.
@@ -475,8 +477,8 @@ export function AppSidebar({
 										<strong>Advanced</strong>.
 									</li>
 									<li>
-										Tap <strong>Custom Server</strong>, then <strong>Yes</strong>{" "}
-										on the warning.
+										Tap <strong>Custom Server</strong>, then{" "}
+										<strong>Yes</strong> on the warning.
 									</li>
 									<li>
 										In the <strong>API Server</strong> field, enter your server
@@ -498,7 +500,9 @@ export function AppSidebar({
 												);
 												return;
 											}
-											navigator.clipboard.writeText(deviceApiServerUrl.displayUrl);
+											navigator.clipboard.writeText(
+												deviceApiServerUrl.displayUrl,
+											);
 											toast.success("API server URL copied!");
 										}}
 										title="Copy API server URL"
@@ -514,16 +518,11 @@ export function AppSidebar({
 										<code className="font-mono">192.168.1.42</code>).
 									</p>
 								)}
-								<ol
-									className="mt-3 list-decimal space-y-1 pl-4"
-									start={6}
-								>
+								<ol className="mt-3 list-decimal space-y-1 pl-4" start={6}>
 									<li>
 										Scroll down and tap <strong>Back to Wi-Fi</strong>.
 									</li>
-									<li>
-										Select your WiFi network and enter the password.
-									</li>
+									<li>Select your WiFi network and enter the password.</li>
 									<li>
 										Tap <strong>Connect</strong>, wait, and the device should
 										refresh.
@@ -571,9 +570,10 @@ export function AppSidebar({
 								>
 									trmnl.com/devices
 								</a>
-								. TRMNL firmware calls <code className="font-mono">/api/setup</code>{" "}
-								with MAC only, so BYOS needs the hardware address to recognize
-								devices you import from the TRMNL cloud.
+								. TRMNL firmware calls{" "}
+								<code className="font-mono">/api/setup</code> with MAC only, so
+								BYOS needs the hardware address to recognize devices you import
+								from the TRMNL cloud.
 							</p>
 						</div>
 						<div className="space-y-2">

@@ -124,8 +124,8 @@ export function syncPackMetricsFromV2(
 
 	const capHeightY = clampMetricY(
 		merged.capHeightY ??
-		merged.maxY ??
-		Math.max(0, baselineRow - (merged.capTop ?? 0)),
+			merged.maxY ??
+			Math.max(0, baselineRow - (merged.capTop ?? 0)),
 		0,
 		METRIC_Y_SLIDER_MAX,
 	);
@@ -136,9 +136,7 @@ export function syncPackMetricsFromV2(
 	);
 	const xHeightY = clampMetricY(
 		Math.min(
-			merged.xHeightY ??
-			merged.xHeight ??
-			Math.max(1, Math.floor(maxY * 0.6)),
+			merged.xHeightY ?? merged.xHeight ?? Math.max(1, Math.floor(maxY * 0.6)),
 			maxY,
 		),
 		0,
@@ -204,10 +202,7 @@ export const resolveEditorFontMetrics = (
 	const xHeightRow = baselineRow - xHeightY;
 	const descenderDepth = Math.max(0, -descenderY);
 	const descenderRow = Math.min(height - 1, baselineRow - descenderY);
-	const minYRow = Math.min(
-		height - 1,
-		Math.max(0, baselineRow - minY),
-	);
+	const minYRow = Math.min(height - 1, Math.max(0, baselineRow - minY));
 	const maxYRow = Math.max(0, baselineRow - maxY);
 
 	return {
@@ -268,7 +263,7 @@ export function packMetricsToLegacySave(
 	const height = gridHeight ?? packMetrics.cellHeight ?? 8;
 	const baselineRow = packMetrics.baselineRow ?? height - 1;
 	return syncPackMetricsFromV2(packMetrics, {}, baselineRow);
-};
+}
 
 /** V2 metrics for layout/preview from designer packMetrics (preserves maxY, minY, etc.). */
 export function packMetricsToV2PreviewMetrics(
@@ -279,26 +274,16 @@ export function packMetricsToV2PreviewMetrics(
 		minY: packMetrics.minY ?? fallbacks.minY,
 		descenderY: packMetrics.descenderY ?? fallbacks.descenderY,
 		baselineY: 0,
-		xHeightY:
-			packMetrics.xHeightY ??
-			packMetrics.xHeight ??
-			fallbacks.xHeightY,
+		xHeightY: packMetrics.xHeightY ?? packMetrics.xHeight ?? fallbacks.xHeightY,
 		capHeightY: packMetrics.capHeightY ?? fallbacks.capHeightY,
 		maxY: packMetrics.maxY ?? fallbacks.maxY,
 		lineGap:
-			packMetrics.lineHeight ??
-			packMetrics.cellHeight ??
-			fallbacks.lineGap,
-		defaultCharGap:
-			packMetrics.defaultCharGap ?? fallbacks.defaultCharGap ?? 0,
+			packMetrics.lineHeight ?? packMetrics.cellHeight ?? fallbacks.lineGap,
+		defaultCharGap: packMetrics.defaultCharGap ?? fallbacks.defaultCharGap ?? 0,
 		pixelUnitX:
-			packMetrics.pixelUnitX ??
-			packMetrics.pixelUnit ??
-			fallbacks.pixelUnitX,
+			packMetrics.pixelUnitX ?? packMetrics.pixelUnit ?? fallbacks.pixelUnitX,
 		pixelUnitY:
-			packMetrics.pixelUnitY ??
-			packMetrics.pixelUnit ??
-			fallbacks.pixelUnitY,
+			packMetrics.pixelUnitY ?? packMetrics.pixelUnit ?? fallbacks.pixelUnitY,
 		dynamicWidth: packMetrics.dynamicWidth ?? fallbacks.dynamicWidth,
 	};
 }
@@ -340,7 +325,11 @@ export const shiftBinaryVertical = (
 	deltaRows: number,
 ): string =>
 	gridToBinary(
-		shiftEditorGridVertical(binaryToGrid(binary, width, height), deltaRows, height),
+		shiftEditorGridVertical(
+			binaryToGrid(binary, width, height),
+			deltaRows,
+			height,
+		),
 	);
 
 export const packBaselineEditorRow = (
@@ -542,13 +531,7 @@ export const binaryToEditorGlyph = (
 	gridHeight: number,
 	advance = width,
 ): EditorGlyph => ({
-	rows: binaryGridToGlyphRows(
-		binary,
-		width,
-		layoutHeight,
-		metrics,
-		gridHeight,
-	),
+	rows: binaryGridToGlyphRows(binary, width, layoutHeight, metrics, gridHeight),
 	width,
 	advance,
 });
@@ -635,19 +618,14 @@ export const buildPreviewGlyphsFromEditorStore = (
 			glyphMeta,
 		);
 		const rows = packMetrics
-			? packBinaryGridToGlyphRows(
-				binary,
-				rowWidth,
-				cellHeight,
-				packMetrics,
-			)
+			? packBinaryGridToGlyphRows(binary, rowWidth, cellHeight, packMetrics)
 			: binaryGridToGlyphRows(
-				binary,
-				rowWidth,
-				cellHeight,
-				metrics,
-				gridHeight,
-			);
+					binary,
+					rowWidth,
+					cellHeight,
+					metrics,
+					gridHeight,
+				);
 
 		if (rows.length === 0 && !binary.includes("1")) {
 			delete glyphs[char];

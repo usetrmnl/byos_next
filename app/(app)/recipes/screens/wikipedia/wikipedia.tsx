@@ -181,7 +181,7 @@ export default function Wikipedia({
 					</h1>
 				</div>
 				<div className="flex flex-col flex-1 p-4 lg:p-8 2xl:p-12 pb-0 sm:flex-row">
-					<div className="text-2xl lg:text-4xl 2xl:text-5xl flex flex-grow tracking-tight leading-tight lg:leading-snug">
+					<div className="text-2xl lg:text-4xl 2xl:text-5xl flex grow tracking-tight leading-tight lg:leading-snug">
 						{truncatedExtract}
 					</div>
 					{hasValidThumbnail && thumbnail?.source && !isHalfScreen && (
@@ -244,9 +244,6 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-13T00:00:00Z",
-		renderSettings: {
-			supersample: true,
-		},
 	},
 	paramsSchema,
 	dataSchema,

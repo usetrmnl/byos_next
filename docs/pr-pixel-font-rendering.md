@@ -127,6 +127,19 @@ Copy and trim when opening the PR:
 
 ---
 
+## Follow-up: vector-font recipe migration (rendering audit)
+
+After removing 2× supersampling, these recipes still use Takumi/Satori vector fonts and may look softer until migrated to pixel-aligned `BitmapText` packs:
+
+- `wikipedia` — uses `renderSettings: { dither: true }` for article thumbnails; body text still vector-rendered
+- `hacker-news`
+- `calendar`
+- `local-news`
+
+**Goal:** replace Inter/Geneva vector text with traced bitmap font packs so text stays crisp at 1× physical resolution without pipeline heuristics (edge snap, supersample, or forced dither).
+
+---
+
 ## Changelog (append as you go)
 
 | Date | Note |

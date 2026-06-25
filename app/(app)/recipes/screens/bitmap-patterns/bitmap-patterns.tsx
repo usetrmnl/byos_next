@@ -160,9 +160,6 @@ export const definition: RecipeDefinition<typeof paramsSchema> = {
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-01T00:00:00Z",
-		renderSettings: {
-			applyEdgeSnap: false,
-		},
 	},
 	paramsSchema,
 	dataSchema,

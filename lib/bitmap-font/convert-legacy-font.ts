@@ -85,7 +85,8 @@ export function convertLegacyGlyph(
 	const baselineRow = metrics.baselineRow;
 	const dynamicWidth = metrics.dynamicWidth ?? face.width === 0;
 	const rowStride = legacyGlyphRowStride(character, face, dynamicWidth);
-	const glyphWidth = character.width ?? (face.width > 0 ? face.width : rowStride);
+	const glyphWidth =
+		character.width ?? (face.width > 0 ? face.width : rowStride);
 	const grid = decodeCellData(character.data, rowStride, cellHeight);
 
 	const rows: GlyphRowRun[] = [];
@@ -114,11 +115,11 @@ export function convertLegacyGlyph(
 		rows.length === 0
 			? emptyBounds()
 			: {
-				minX,
-				maxX: maxX + 1,
-				minY,
-				maxY,
-			};
+					minX,
+					maxX: maxX + 1,
+					minY,
+					maxY,
+				};
 
 	return {
 		charCode: character.charCode,
@@ -131,9 +132,14 @@ export function convertLegacyGlyph(
 	};
 }
 
-function glyphKey(character: LegacyBitmapCharacter, useCharCodeKeys: boolean): string {
+function glyphKey(
+	character: LegacyBitmapCharacter,
+	useCharCodeKeys: boolean,
+): string {
 	if (useCharCodeKeys) return String(character.charCode);
-	return character.char.length > 0 ? character.char : String(character.charCode);
+	return character.char.length > 0
+		? character.char
+		: String(character.charCode);
 }
 
 export function convertLegacyFontFace(

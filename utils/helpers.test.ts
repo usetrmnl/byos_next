@@ -611,15 +611,11 @@ describe("generateApiKey", () => {
 
 describe("normalizeMacAddress", () => {
 	it("accepts colon-separated MAC addresses", () => {
-		expect(normalizeMacAddress("d8:3b:da:f3:97:b4")).toBe(
-			"D8:3B:DA:F3:97:B4",
-		);
+		expect(normalizeMacAddress("d8:3b:da:f3:97:b4")).toBe("D8:3B:DA:F3:97:B4");
 	});
 
 	it("accepts hyphen-separated MAC addresses", () => {
-		expect(normalizeMacAddress("D8-3B-DA-F3-97-B4")).toBe(
-			"D8:3B:DA:F3:97:B4",
-		);
+		expect(normalizeMacAddress("D8-3B-DA-F3-97-B4")).toBe("D8:3B:DA:F3:97:B4");
 	});
 
 	it("rejects invalid values", () => {

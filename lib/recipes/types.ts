@@ -8,7 +8,9 @@ export type RecipeAuthor = {
 };
 
 export type RecipeRenderSettings = {
-	supersample?: boolean;
+	/** Opt-in Floyd-Steinberg during device palette quantization (default off). */
+	dither?: boolean;
+	/** Legacy BMP path only: snap high-contrast edges instead of dithering them. */
 	applyEdgeSnap?: boolean;
 	/**
 	 * Image preparation is enabled by default for reducible device palettes.

@@ -158,13 +158,7 @@ export function rgbaToBinaryGrid(
 		return "0".repeat(options.targetWidth * options.targetHeight);
 	}
 
-	return sampleToBinaryGrid(
-		pixels,
-		sourceWidth,
-		sourceHeight,
-		bounds,
-		options,
-	);
+	return sampleToBinaryGrid(pixels, sourceWidth, sourceHeight, bounds, options);
 }
 
 /** Basic printable ASCII used for build-time bitmap generation. */

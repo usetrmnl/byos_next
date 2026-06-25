@@ -90,7 +90,9 @@ export function binaryToPath(
 	bitmapWidth: number,
 	fontHeight: number,
 ): string {
-	const binaryArray = binary.padEnd(bitmapWidth * fontHeight, "0").slice(0, bitmapWidth * fontHeight);
+	const binaryArray = binary
+		.padEnd(bitmapWidth * fontHeight, "0")
+		.slice(0, bitmapWidth * fontHeight);
 	return Array.from({ length: bitmapWidth * fontHeight })
 		.map((_, i) => {
 			if (i >= binaryArray.length || binaryArray[i] !== "1") return "";
@@ -130,8 +132,9 @@ export function layoutBitmapText({
 			? (metrics.cellWidth ?? fontHeight)
 			: font.width || fontHeight) * scale;
 	const spaceAdvance =
-		(metrics.dynamicWidth ? Math.ceil(defaultAdvance * 0.5) : defaultAdvance * 0.5) +
-		gap;
+		(metrics.dynamicWidth
+			? Math.ceil(defaultAdvance * 0.5)
+			: defaultAdvance * 0.5) + gap;
 
 	const lines = text.split("\n");
 	const layoutLines: BitmapLayoutLine[] = [];

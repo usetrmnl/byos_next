@@ -109,7 +109,8 @@ export function resolveV2Face(
 	const faceKeys = listV2FaceKeys(pack);
 	if (faceKeys.length === 0) return null;
 
-	let selectedKey = gridSize && faceKeys.includes(gridSize) ? gridSize : faceKeys[0];
+	let selectedKey =
+		gridSize && faceKeys.includes(gridSize) ? gridSize : faceKeys[0];
 
 	if (gridSize && !faceKeys.includes(gridSize)) {
 		const [, requestedHeight] = parseGridSize(gridSize);

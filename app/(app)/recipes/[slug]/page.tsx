@@ -283,12 +283,6 @@ export default async function RecipePage({
 									{meta.description}
 								</p>
 							)}
-							{meta.renderSettings?.supersample && (
-								<p className="mt-1 text-xs text-muted-foreground max-w-prose">
-									Supersampling enabled: image renders at 2× resolution, then
-									downsamples to the selected device size.
-								</p>
-							)}
 						</>
 					}
 					left={meta.system ? null : <DeleteRecipeButton slug={slug} />}

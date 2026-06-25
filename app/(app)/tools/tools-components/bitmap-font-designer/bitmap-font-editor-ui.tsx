@@ -99,7 +99,11 @@ export const drawMiniGlyphOnCanvas = (
 	return { width: canvasW, height: canvasH };
 };
 
-const binaryToSvgPath = (binary: string, bitmapWidth: number, bitmapHeight: number) =>
+const binaryToSvgPath = (
+	binary: string,
+	bitmapWidth: number,
+	bitmapHeight: number,
+) =>
 	Array.from({ length: bitmapWidth * bitmapHeight })
 		.map((_, i) => {
 			if (binary[i] !== "1") return "";
@@ -170,7 +174,9 @@ export const EditorGlyphStrip = ({
 					const hasInk = bitmap.includes("1");
 					const pathData = hasInk
 						? binaryToSvgPath(
-								bitmap.padEnd(stride * bitmapHeight, "0").slice(0, stride * bitmapHeight),
+								bitmap
+									.padEnd(stride * bitmapHeight, "0")
+									.slice(0, stride * bitmapHeight),
 								stride,
 								bitmapHeight,
 							)

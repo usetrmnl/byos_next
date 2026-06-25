@@ -1,0 +1,45 @@
+---
+description: BYOS fork-friendly authoring and e-ink rendering philosophy
+alwaysApply: true
+---
+
+# BYOS Design Philosophy
+
+## Mission
+
+BYOS is for forking. Authors write recipes in **React + Tailwind** with minimal BYOS-specific API. Verify locally at `/recipes/[slug]` (React, PNG, BMP) before deploy (`docs/recipes.md`). Framework HTML, Puppeteer, and heavy runtime are parity/legacy lanes only.
+
+## Authoring
+
+- Recipes: Zod schemas + `RecipeDefinition` in `app/(app)/recipes/screens/<slug>/`.
+- Layout via **`ScreenProfile`** (`bitDepth`, `colors`, `isCompact`) — not `screen--*` Framework classes (`docs/trmnl-screen-design.md`).
+- Wrap Takumi-safe UI in **`PreSatori`**; reuse `components/trmnl/` primitives.
+- `REACT_RENDERER=browser` and Liquid/Puppeteer are optional — not the default (`lib/recipes/render/rasterize.ts`).
+
+## Pipeline
+
+Default: React → PreSatori → Takumi/Satori → sharp quantizer → BMP/WebP. Do not add browser-head deps to the default path. Do not port Framework Runtime (clamp, overflow, fit-value, `md:2bit:` prefixes) into Takumi.
+
+## Multi-device (PR #78 / #80)
+
+No longer OG 2-bit-only — support color e-ink, larger canvases, 4/8/16-bit grayscale. **`data/trmnl/palettes.json`** is the single source of truth. Derive dither `levels` from `getPaletteGrayLevels(palette)`; use `screen.bitDepth` / `screen.colors` in React — never an independent grayscale knob.
+
+## Quantization
+
+Avoid legacy offline optimizations that create stair-step text artifacts — worse than honest quantization. Hard-quantize to the target palette: 2-bit → 2 levels, higher bit-depth → discrete levels, color → Lab nearest-color (`lib/render/device-image.ts`).
+
+```typescript
+// BAD: const levels = params.grayscale ?? 2;
+// GOOD:
+const levels = getPaletteGrayLevels(palette);
+```
+
+## Graphics
+
+- Tailwind grays (`dither-50` via `utils/dither-patterns.ts`): pipeline quantizes to device dither — no prep needed.
+- Photos/complex images: authors pre-dither via `prepareForDevice` + server helpers; provide CPU-friendly methods, not opaque runtime magic.
+- Match TRMNL `image-dither` semantics server-side; document API gaps, don't block on CSS parity.
+
+## Agent checklist
+
+Forker-friendly React/Tailwind? `palettes.json` + `ScreenProfile`? Hard quantize, not text smoothing? Takumi default? Verifiable at `/recipes/[slug]`?

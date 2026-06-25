@@ -47,13 +47,13 @@ export function normalizeRefreshSchedule(
 	if (typeof candidate.default_refresh_rate !== "number") return null;
 	const timeRanges = Array.isArray(candidate.time_ranges)
 		? candidate.time_ranges.filter(
-			(range): range is RefreshSchedule["time_ranges"][number] =>
-				typeof range === "object" &&
-				range !== null &&
-				typeof range.start_time === "string" &&
-				typeof range.end_time === "string" &&
-				typeof range.refresh_rate === "number",
-		)
+				(range): range is RefreshSchedule["time_ranges"][number] =>
+					typeof range === "object" &&
+					range !== null &&
+					typeof range.start_time === "string" &&
+					typeof range.end_time === "string" &&
+					typeof range.refresh_rate === "number",
+			)
 		: [];
 	return {
 		default_refresh_rate: candidate.default_refresh_rate,

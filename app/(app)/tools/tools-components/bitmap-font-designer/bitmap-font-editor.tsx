@@ -234,10 +234,7 @@ export default function BitmapFontEditor({
 		ctx.fillStyle = "#ffffff";
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-		const typographicTop = Math.max(
-			guideMetrics.maxYRow,
-			guideMetrics.capTop,
-		);
+		const typographicTop = Math.max(guideMetrics.maxYRow, guideMetrics.capTop);
 		const typographicBottom = Math.min(
 			actualHeight - 1,
 			Math.max(guideMetrics.descenderRow, guideMetrics.minYRow),
@@ -431,11 +428,7 @@ export default function BitmapFontEditor({
 		prevBitmapRef.current = currentCharacterBitmap;
 
 		if (widthChanged && !bitmapChanged && gridRef.current.length > 0) {
-			gridRef.current = resizeEditorGrid(
-				gridRef.current,
-				width,
-				editorHeight,
-			);
+			gridRef.current = resizeEditorGrid(gridRef.current, width, editorHeight);
 			gridChangedRef.current = true;
 			drawGrid();
 			updateCharData();
@@ -783,11 +776,7 @@ export default function BitmapFontEditor({
 		(partial: Partial<BitmapFontMetrics>) => {
 			if (!onPackMetricsChange) return;
 			onPackMetricsChange(
-				syncPackMetricsFromV2(
-					packMetrics,
-					partial,
-					fontMetrics.baselineRow,
-				),
+				syncPackMetricsFromV2(packMetrics, partial, fontMetrics.baselineRow),
 			);
 			drawGrid();
 		},
@@ -834,7 +823,10 @@ export default function BitmapFontEditor({
 	const handleBaselinePreviewChange = useCallback(
 		(value: number[]) => {
 			setBaselinePreviewRow(
-				Math.min(baselineRowMax, Math.max(0, value[0] ?? fontMetrics.baselineRow)),
+				Math.min(
+					baselineRowMax,
+					Math.max(0, value[0] ?? fontMetrics.baselineRow),
+				),
 			);
 			drawGrid();
 		},

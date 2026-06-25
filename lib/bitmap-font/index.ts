@@ -13,13 +13,14 @@ import {
 	legacyFaceGridSize,
 	legacyGlyphDataToBinary,
 } from "./convert-v2-to-legacy";
-import {
-	isLegacyBitmapFontPack,
-	isV2BitmapFont,
-} from "./pack-utils";
+import { isLegacyBitmapFontPack, isV2BitmapFont } from "./pack-utils";
 import type { LegacyBitmapFontPack } from "./schema/legacy";
 import type { NewBitmapFont } from "./schema/v2";
-export { decodeCellData, base64CellDataToBinary, legacyGlyphRowStride } from "./decode-cell-data";
+export {
+	decodeCellData,
+	base64CellDataToBinary,
+	legacyGlyphRowStride,
+} from "./decode-cell-data";
 export {
 	convertLegacyBitmapFont,
 	convertLegacyFontFace,
@@ -65,7 +66,10 @@ export {
 	v2YToEditorRow,
 	type V2MetricGuide,
 } from "./layout-v2";
-export { deriveTypographyMetrics, shiftGlyphsToMetrics } from "./metrics-derive";
+export {
+	deriveTypographyMetrics,
+	shiftGlyphsToMetrics,
+} from "./metrics-derive";
 export {
 	gridSizeKey,
 	inferFaceWidth,

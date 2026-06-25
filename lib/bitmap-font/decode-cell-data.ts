@@ -31,7 +31,11 @@ export function base64CellDataToBinary(base64: string): string {
 		.join("");
 }
 
-function decodeLiteralCellData(data: string, width: number, cellHeight: number): boolean[][] {
+function decodeLiteralCellData(
+	data: string,
+	width: number,
+	cellHeight: number,
+): boolean[][] {
 	const total = width * cellHeight;
 	const padded = data.padEnd(total, "A").slice(0, total);
 	const grid: boolean[][] = [];
@@ -48,7 +52,11 @@ function decodeLiteralCellData(data: string, width: number, cellHeight: number):
 	return grid;
 }
 
-function decodeBinaryCellData(data: string, width: number, cellHeight: number): boolean[][] {
+function decodeBinaryCellData(
+	data: string,
+	width: number,
+	cellHeight: number,
+): boolean[][] {
 	const total = width * cellHeight;
 	const binary = data.padEnd(total, "0").slice(0, total);
 	const grid: boolean[][] = [];

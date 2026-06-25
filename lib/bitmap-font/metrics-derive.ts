@@ -5,7 +5,9 @@ const DESC_CHARS = /^[gjpqy]$/;
 const X_HEIGHT_CHARS = /^[acemnorsuvxz]$/;
 
 const glyphChar = (glyph: Glyph, key: string): string =>
-	glyph.char?.length ? glyph.char : String.fromCharCode(glyph.charCode ?? Number(key));
+	glyph.char?.length
+		? glyph.char
+		: String.fromCharCode(glyph.charCode ?? Number(key));
 
 /** Derive typographic metric lines from traced glyph ink (post-generation pass). */
 export function shiftGlyphsToMetrics(
@@ -101,9 +103,6 @@ export function deriveTypographyMetrics(
 		capHeightY: maxY,
 		xHeightY,
 		baselineY: 0,
-		lineGap: Math.max(
-			fallback.lineGap,
-			maxY - minY + 1,
-		),
+		lineGap: Math.max(fallback.lineGap, maxY - minY + 1),
 	};
 }

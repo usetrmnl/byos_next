@@ -76,7 +76,9 @@ export default async function MainLayout({
 		)
 		.sort((a, b) => a[1].title.localeCompare(b[1].title));
 
-	const byosApiServerUrl = getByosApiServerUrlFromRequestHeaders(await headers());
+	const byosApiServerUrl = getByosApiServerUrlFromRequestHeaders(
+		await headers(),
+	);
 
 	// Pass all data to the ClientMainLayout
 	// This ensures data is shared across pages through the centralized cache
