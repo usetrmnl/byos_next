@@ -231,6 +231,18 @@ export function getV2DefaultAdvance(
 	return first?.advance ?? first?.width ?? 8;
 }
 
+export function getV2DefaultCharGap(metrics: NewBitmapFontMetrics): number {
+	return metrics.defaultCharGap ?? 0;
+}
+
+/** Font default char gap plus optional extra gap from the caller (e.g. preview slider). */
+export function resolveV2CharGap(
+	metrics: NewBitmapFontMetrics,
+	extraGap = 0,
+): number {
+	return getV2DefaultCharGap(metrics) + extraGap;
+}
+
 export function layoutV2Text({
 	text,
 	glyphs,
@@ -253,7 +265,8 @@ export function layoutV2Text({
 	const lineStep = Math.max(cellSpan, metrics.lineGap * scale);
 	const defaultAdvance =
 		getV2DefaultAdvance(metrics, glyphs, gridWidth) * scale;
-	const spaceAdvance = Math.ceil(defaultAdvance * 0.5) + gap;
+	const charGap = resolveV2CharGap(metrics, gap);
+	const spaceAdvance = Math.ceil(defaultAdvance * 0.5) + charGap;
 
 	const lines = text.split("\n");
 	const layoutLines: BitmapLayoutLine[] = [];
@@ -271,7 +284,7 @@ export function layoutV2Text({
 
 			const glyph = lookupV2Glyph(glyphs, char);
 			if (!glyph) {
-				lineWidth += defaultAdvance + gap;
+				lineWidth += defaultAdvance + charGap;
 				return;
 			}
 
@@ -283,7 +296,7 @@ export function layoutV2Text({
 				x: lineWidth + glyph.leftBearing * scale,
 				y: 0,
 			});
-			lineWidth += advance + gap;
+			lineWidth += advance + charGap;
 		});
 
 		layoutLines.push({ paths, width: lineWidth });

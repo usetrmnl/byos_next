@@ -3,28 +3,36 @@
 		{
 			"id": "blockKie",
 			"label": "BlockKie",
-			"license": "unknown — verify before redistribution",
+			"license": "CC-BY 4.0 — Joohn Fonts / FontStruct",
 			"file": "BlockKie.ttf",
 			"format": "ttf",
 			"takumiName": "blockKie",
 			"tailwindSlug": "blockkie",
 			"cssVariable": "--font-blockkie",
-			"preloadSize": 8,
-			"dynamicWidth": true,
-			"traceMode": "metricSnap",
-			"centerHorizontally": true,
-			"inkDetection": "luminance",
+			"preloadSize": 16,
+			"dynamicWidth": false,
+			"traceMode": "pixelSnap",
+			"centerHorizontally": false,
+			"inkDetection": "nonWhite",
 			"weight": 400,
 			"bitmapGrids": [
 				{
-					"width": 0,
-					"height": 8,
-					"renderSize": 16
+					"width": 10,
+					"height": 12,
+					"renderSize": 12,
+					"traceMode": "pixelSnap",
+					"inkDetection": "nonWhite",
+					"dynamicWidth": false,
+					"centerHorizontally": false
 				},
 				{
-					"width": 0,
+					"width": 10,
 					"height": 16,
-					"renderSize": 16
+					"renderSize": 16,
+					"traceMode": "pixelSnap",
+					"inkDetection": "nonWhite",
+					"dynamicWidth": false,
+					"centerHorizontally": false
 				}
 			],
 			"generatedJson": "components/bitmap-font/generated/block-kie.json"
@@ -152,6 +160,32 @@
 			"preloadSize": 18,
 			"dynamicWidth": false,
 			"weight": 400
+		},
+		{
+			"id": "pixelifySans",
+			"label": "Pixelify Sans",
+			"license": "OFL-1.1",
+			"file": "PixelifySans-VariableFont_wght.ttf",
+			"format": "ttf",
+			"takumiName": "pixelifySans",
+			"tailwindSlug": "pixelifysans",
+			"cssVariable": "--font-pixelify-sans",
+			"preloadSize": 32,
+			"dynamicWidth": true,
+			"traceMode": "pixelSnap",
+			"inkDetection": "nonWhite",
+			"discoverGrid": true,
+			"benchmarkProbes": "WgAyjpxQvS;.:",
+			"weight": 400,
+			"bitmapGrids": [
+				{
+					"renderSize": 32,
+					"height": 32,
+					"dynamicWidth": true,
+					"discoverGrid": true
+				}
+			],
+			"generatedJson": "components/bitmap-font/generated/pixelify-sans.json"
 		}
 	],
 	"builtInPacks": [
@@ -170,13 +204,21 @@
 			"id": "blockKie",
 			"label": "BlockKie",
 			"packPath": "components/bitmap-font/generated/block-kie.json",
-			"sourceId": "blockKie"
+			"sourceId": "blockKie",
+			"hidden": true
 		},
 		{
 			"id": "geistPixelGrid",
 			"label": "Geist Pixel Grid",
 			"packPath": "components/bitmap-font/generated/geist-pixel-grid.json",
-			"sourceId": "geistPixelGrid"
+			"sourceId": "geistPixelGrid",
+			"hidden": true
+		},
+		{
+			"id": "pixelifySans",
+			"label": "Pixelify Sans",
+			"packPath": "components/bitmap-font/generated/pixelify-sans.json",
+			"sourceId": "pixelifySans"
 		}
 	]
 }

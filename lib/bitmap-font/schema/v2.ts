@@ -6,6 +6,8 @@ export type NewBitmapFontMetrics = {
 	capHeightY: number;
 	maxY: number;
 	lineGap: number;
+	/** Extra pixels between glyphs when rendering text (scaled at layout time). */
+	defaultCharGap?: number;
 	pixelUnitX: number;
 	pixelUnitY: number;
 	dynamicWidth: boolean;

@@ -311,4 +311,65 @@ describe("layoutV2Text", () => {
 		expect(layout.lines[0]?.paths[0]?.path).toContain("M 0 0");
 		expect(layout.lines[0]?.paths[0]?.path).toContain("M 4 0");
 	});
+
+	it("applies metrics.defaultCharGap when laying out text", () => {
+		const pack = convertLegacyPackToV2({
+			metadata: {
+				metrics: {
+					cellHeight: 1,
+					capTop: 0,
+					baselineRow: 0,
+					descenderDepth: 0,
+					xHeight: 1,
+					lineHeight: 1,
+				},
+			},
+			fonts: [
+				{
+					width: 2,
+					height: 1,
+					characters: [
+						{
+							charCode: 73,
+							char: "I",
+							width: 2,
+							advance: 2,
+							data: "AAAA",
+						},
+						{
+							charCode: 76,
+							char: "L",
+							width: 2,
+							advance: 2,
+							data: "AAAA",
+						},
+					],
+				},
+			],
+		});
+
+		const face = resolveV2Face(pack, "2x1");
+		if (!face) throw new Error("Expected 2x1 face to resolve");
+
+		const withoutGap = layoutV2Text({
+			text: "IL",
+			glyphs: face.glyphs,
+			metrics: { ...face.metrics, defaultCharGap: 0 },
+			gridWidth: face.gridWidth,
+			scale: 1,
+			gap: 0,
+		});
+		const withDefaultGap = layoutV2Text({
+			text: "IL",
+			glyphs: face.glyphs,
+			metrics: { ...face.metrics, defaultCharGap: 1 },
+			gridWidth: face.gridWidth,
+			scale: 1,
+			gap: 0,
+		});
+
+		expect(withDefaultGap.lines[0]?.width).toBe(
+			(withoutGap.lines[0]?.width ?? 0) + 1,
+		);
+	});
 });

@@ -45,6 +45,7 @@ export function convertLegacyMetrics(
 		capHeightY: baselineRow - capTop,
 		maxY: baselineRow,
 		lineGap: lineHeight,
+		defaultCharGap: 0,
 		pixelUnitX,
 		pixelUnitY,
 		dynamicWidth,

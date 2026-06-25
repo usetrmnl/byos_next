@@ -24,13 +24,21 @@ import { Slider } from "@/components/ui/slider";
 import type { BitmapFontMetrics } from "@/lib/bitmap-font/layout";
 import type { GlyphMeta } from "./bitmap-font-designer-client";
 import {
+	EditorGlyphComparison,
+	EditorGlyphStrip,
+} from "./bitmap-font-editor-ui";
+import {
 	binaryToGrid,
 	computeInkBoundsFromGrid,
 	getEffectiveGlyphWidth,
 	gridToBinary,
 	type InkBounds,
+	METRIC_Y_SLIDER_SYMMETRIC,
 	parseEditorGridSize,
+	resizeEditorGrid,
 	resolveEditorFontMetrics,
+	rotateEditorGrid,
+	syncPackMetricsFromV2,
 } from "./bitmap-font-utils";
 
 interface BitmapFontEditorProps {
@@ -42,7 +50,11 @@ interface BitmapFontEditorProps {
 	glyphMeta?: Map<number, GlyphMeta>;
 	packMetrics?: BitmapFontMetrics;
 	onPackMetricsChange?: (metrics: Partial<BitmapFontMetrics>) => void;
+	onBaselineReanchor?: (newBaselineRow: number) => void;
 	onGlyphMetaChange?: (charCode: number, meta: Partial<GlyphMeta>) => void;
+	characterCharCodes?: number[];
+	characterBitmaps?: Map<number, string>;
+	onCharacterSelect?: (charCode: number) => void;
 }
 
 // Line interpolation for fast dragging (Bresenham's line algorithm)
@@ -85,7 +97,11 @@ export default function BitmapFontEditor({
 	glyphMeta,
 	packMetrics = {},
 	onPackMetricsChange,
+	onBaselineReanchor,
 	onGlyphMetaChange,
+	characterCharCodes = [],
+	characterBitmaps = new Map(),
+	onCharacterSelect,
 }: BitmapFontEditorProps) {
 	const [, gridHeight] = parseEditorGridSize(selectedGridSize);
 	const width = getEffectiveGlyphWidth(
@@ -99,18 +115,25 @@ export default function BitmapFontEditor({
 			? currentCharacterBitmap.length / width
 			: (packMetrics.cellHeight ?? gridHeight);
 	const cellSize = 40; // Fixed cell size for better visibility
-	const previewRef = useRef<HTMLCanvasElement>(null);
-	const previewInnerSize = 84;
-	const previewDisplayScale = Math.min(
-		previewInnerSize / width,
-		previewInnerSize / editorHeight,
-		8,
-	);
 
 	const fontMetrics = useMemo(
 		() => resolveEditorFontMetrics(editorHeight, packMetrics),
 		[editorHeight, packMetrics],
 	);
+	const [baselinePreviewRow, setBaselinePreviewRow] = useState<number | null>(
+		null,
+	);
+	const guideMetrics = useMemo(() => {
+		if (baselinePreviewRow == null) return fontMetrics;
+		return resolveEditorFontMetrics(editorHeight, {
+			...packMetrics,
+			baselineRow: baselinePreviewRow,
+		});
+	}, [baselinePreviewRow, editorHeight, fontMetrics, packMetrics]);
+
+	useEffect(() => {
+		setBaselinePreviewRow(null);
+	}, [editorHeight, packMetrics.baselineRow, selectedGridSize]);
 	const selectedGlyphMeta = glyphMeta?.get(selectedCharCode);
 	const [inkBounds, setInkBounds] = useState<InkBounds | null>(null);
 	const inkBoundsKeyRef = useRef("");
@@ -127,6 +150,8 @@ export default function BitmapFontEditor({
 	const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 	const gridChangedRef = useRef(false);
 	const currentCharRef = useRef<number>(selectedCharCode);
+	const prevWidthRef = useRef(width);
+	const prevBitmapRef = useRef(currentCharacterBitmap);
 
 	// Persistent history storage keyed by character code and grid size
 	const historyMapRef = useRef<
@@ -181,45 +206,6 @@ export default function BitmapFontEditor({
 		});
 	}, [getHistoryKey]);
 
-	// Update the preview canvas
-	const updatePreview = useCallback(() => {
-		const canvas = previewRef.current;
-		const ctx = canvas?.getContext("2d");
-		if (!canvas || !ctx) return;
-
-		// Clear canvas
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-		// Get actual grid dimensions
-		const grid = gridRef.current;
-		const actualHeight = grid.length;
-		const actualWidth = actualHeight > 0 ? grid[0].length : 0;
-
-		// Safety check for empty grid
-		if (actualHeight === 0 || actualWidth === 0) return;
-
-		// Set pixel size (1 pixel per grid cell)
-		const pixelSize = 1;
-
-		// Calculate dimensions
-		const canvasWidth = actualWidth * pixelSize;
-		const canvasHeight = actualHeight * pixelSize;
-
-		// Resize canvas to match bitmap dimensions exactly
-		canvas.width = canvasWidth;
-		canvas.height = canvasHeight;
-
-		// Draw cells - only filled cells (1s)
-		ctx.fillStyle = "#000000";
-		for (let y = 0; y < actualHeight; y++) {
-			for (let x = 0; x < actualWidth; x++) {
-				if (gridRef.current[y]?.[x]) {
-					ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
-				}
-			}
-		}
-	}, []);
-
 	// Draw the grid on the canvas
 	const drawGrid = useCallback(() => {
 		const canvas = canvasRef.current;
@@ -248,10 +234,13 @@ export default function BitmapFontEditor({
 		ctx.fillStyle = "#ffffff";
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-		const typographicTop = Math.max(fontMetrics.maxYRow, fontMetrics.capTop);
+		const typographicTop = Math.max(
+			guideMetrics.maxYRow,
+			guideMetrics.capTop,
+		);
 		const typographicBottom = Math.min(
 			actualHeight - 1,
-			Math.max(fontMetrics.descenderRow, fontMetrics.minYRow),
+			Math.max(guideMetrics.descenderRow, guideMetrics.minYRow),
 		);
 		if (typographicBottom >= typographicTop) {
 			ctx.fillStyle = "rgba(59, 130, 246, 0.06)";
@@ -295,33 +284,33 @@ export default function BitmapFontEditor({
 			ctx.stroke();
 		};
 
-		drawGuideLine(fontMetrics.maxYRow, "rgba(148, 163, 184, 0.55)", 1);
-		drawGuideLine(fontMetrics.minYRow, "rgba(148, 163, 184, 0.55)", 1);
+		drawGuideLine(guideMetrics.maxYRow, "rgba(148, 163, 184, 0.55)", 1);
+		drawGuideLine(guideMetrics.minYRow, "rgba(148, 163, 184, 0.55)", 1);
 		drawGuideLine(0, "rgba(148, 163, 184, 0.25)", 1);
 		drawGuideLine(actualHeight - 1, "rgba(148, 163, 184, 0.25)", 1);
-		drawGuideLine(fontMetrics.capTop, "rgba(168, 85, 247, 0.85)");
-		drawGuideLine(fontMetrics.xHeightRow, "rgba(0, 128, 255, 0.8)");
-		drawGuideLine(fontMetrics.baselineRow, "rgba(255, 128, 0, 0.8)");
-		if (fontMetrics.descenderDepth > 0) {
-			drawGuideLine(fontMetrics.descenderRow, "rgba(239, 68, 68, 0.8)");
+		drawGuideLine(guideMetrics.capTop, "rgba(168, 85, 247, 0.85)");
+		drawGuideLine(guideMetrics.xHeightRow, "rgba(0, 128, 255, 0.8)");
+		drawGuideLine(guideMetrics.baselineRow, "rgba(255, 128, 0, 0.8)");
+		if (guideMetrics.descenderDepth > 0) {
+			drawGuideLine(guideMetrics.descenderRow, "rgba(239, 68, 68, 0.8)");
 		}
 
-		const bounds = computeInkBoundsFromGrid(grid, fontMetrics.baselineRow);
+		const bounds = computeInkBoundsFromGrid(grid, guideMetrics.baselineRow);
 		const boundsKey = bounds ? JSON.stringify(bounds) : "";
 		if (boundsKey !== inkBoundsKeyRef.current) {
 			inkBoundsKeyRef.current = boundsKey;
 			setInkBounds(bounds);
 		}
-
-		// Update the preview
-		updatePreview();
-	}, [fontMetrics, updatePreview]);
+	}, [guideMetrics]);
 
 	// Reset grid when selectedCharacter changes
 	useEffect(() => {
 		if (currentCharRef.current !== selectedCharCode) {
 			// Save history for previous character
 			saveHistoryForCurrentChar();
+
+			prevWidthRef.current = width;
+			prevBitmapRef.current = currentCharacterBitmap;
 
 			// Always reset grid to match the active bitmap dimensions when character changes.
 			gridRef.current = Array(editorHeight)
@@ -356,46 +345,9 @@ export default function BitmapFontEditor({
 		loadHistoryForCurrentChar,
 	]);
 
-	// Initialize grid when size changes or component mounts
-	useEffect(() => {
-		// Always reset grid to the active bitmap dimensions when size changes.
-		gridRef.current = Array(editorHeight)
-			.fill(0)
-			.map(() => Array(width).fill(0));
-
-		// Convert binary data to grid if available
-		if (currentCharacterBitmap) {
-			gridRef.current = binaryToGrid(
-				currentCharacterBitmap,
-				width,
-				editorHeight,
-			);
-		}
-
-		// Load or initialize history for current character
-		loadHistoryForCurrentChar();
-
-		// Redraw the grid
-		drawGrid();
-	}, [
-		width,
-		editorHeight,
-		currentCharacterBitmap,
-		drawGrid,
-		loadHistoryForCurrentChar,
-	]);
-
 	// Initialize canvas
 	useEffect(() => {
-		const canvas = canvasRef.current;
-		const previewCanvas = previewRef.current;
-		if (!canvas || !previewCanvas) return;
-
-		// Initial size will be set in drawGrid which handles actual dimensions
-		previewCanvas.width = 100;
-		previewCanvas.height = 100;
-
-		// Initial draw (will set the correct canvas size based on actual grid)
+		if (!canvasRef.current) return;
 		drawGrid();
 	}, [drawGrid]);
 
@@ -469,6 +421,52 @@ export default function BitmapFontEditor({
 		selectedCharCode,
 		setCurrentCharacterBitmap,
 		saveHistoryForCurrentChar,
+	]);
+
+	// Load from binary or crop/expand grid when width changes (never wrap rows)
+	useEffect(() => {
+		const widthChanged = prevWidthRef.current !== width;
+		const bitmapChanged = prevBitmapRef.current !== currentCharacterBitmap;
+		prevWidthRef.current = width;
+		prevBitmapRef.current = currentCharacterBitmap;
+
+		if (widthChanged && !bitmapChanged && gridRef.current.length > 0) {
+			gridRef.current = resizeEditorGrid(
+				gridRef.current,
+				width,
+				editorHeight,
+			);
+			gridChangedRef.current = true;
+			drawGrid();
+			updateCharData();
+			return;
+		}
+
+		if (!bitmapChanged && !widthChanged && gridRef.current.length > 0) {
+			return;
+		}
+
+		gridRef.current = Array(editorHeight)
+			.fill(0)
+			.map(() => Array(width).fill(0));
+
+		if (currentCharacterBitmap) {
+			gridRef.current = binaryToGrid(
+				currentCharacterBitmap,
+				width,
+				editorHeight,
+			);
+		}
+
+		loadHistoryForCurrentChar();
+		drawGrid();
+	}, [
+		width,
+		editorHeight,
+		currentCharacterBitmap,
+		drawGrid,
+		loadHistoryForCurrentChar,
+		updateCharData,
 	]);
 
 	// Convert canvas coordinates to grid coordinates
@@ -596,127 +594,31 @@ export default function BitmapFontEditor({
 		updateCharData();
 	}, [drawGrid, addToHistory, updateCharData]);
 
-	// Helper function to reset grid to component dimensions
-	const resetToComponentDimensions = useCallback(() => {
-		// Create a new grid matching component dimensions
-		const newGrid: number[][] = Array(editorHeight)
-			.fill(0)
-			.map(() => Array(width).fill(0));
-
-		// Copy over data from old grid where possible
-		const oldGrid = gridRef.current;
-		const oldHeight = oldGrid.length;
-		const oldWidth = oldHeight > 0 ? oldGrid[0].length : 0;
-
-		// Copy as much data as will fit in the new dimensions
-		for (let y = 0; y < Math.min(editorHeight, oldHeight); y++) {
-			for (let x = 0; x < Math.min(width, oldWidth); x++) {
-				newGrid[y][x] = oldGrid[y][x];
-			}
-		}
-
-		return newGrid;
-	}, [width, editorHeight]);
-
 	const rotateClockwise = useCallback(() => {
-		// Get current dimensions from grid reference
-		const currentHeight = gridRef.current.length;
-		const currentWidth = currentHeight > 0 ? gridRef.current[0].length : 0;
-
-		// Create a new grid with swapped dimensions
-		const newGrid: number[][] = Array(currentWidth)
-			.fill(0)
-			.map(() => Array(currentHeight).fill(0));
-
-		for (let y = 0; y < currentHeight; y++) {
-			for (let x = 0; x < currentWidth; x++) {
-				newGrid[x][currentHeight - 1 - y] = gridRef.current[y][x];
-			}
-		}
-
-		// Check if resulting dimensions would be compatible with the component
-		if (currentWidth === editorHeight && currentHeight === width) {
-			gridRef.current = newGrid;
-		} else {
-			// Rotations would result in incompatible dimensions - reset to component dimensions
-			// and copy over what will fit
-			const resetGrid = resetToComponentDimensions();
-
-			// Copy rotated data where it will fit
-			const newHeight = newGrid.length;
-			const newWidth = newHeight > 0 ? newGrid[0].length : 0;
-
-			for (let y = 0; y < Math.min(editorHeight, newHeight); y++) {
-				for (let x = 0; x < Math.min(width, newWidth); x++) {
-					resetGrid[y][x] = newGrid[y][x];
-				}
-			}
-
-			gridRef.current = resetGrid;
-		}
-
+		gridRef.current = rotateEditorGrid(
+			gridRef.current,
+			width,
+			editorHeight,
+			"cw",
+		);
 		gridChangedRef.current = true;
 		drawGrid();
 		addToHistory();
 		updateCharData();
-	}, [
-		drawGrid,
-		addToHistory,
-		updateCharData,
-		resetToComponentDimensions,
-		width,
-		editorHeight,
-	]);
+	}, [width, editorHeight, drawGrid, addToHistory, updateCharData]);
 
 	const rotateCounterClockwise = useCallback(() => {
-		// Get current dimensions from grid reference
-		const currentHeight = gridRef.current.length;
-		const currentWidth = currentHeight > 0 ? gridRef.current[0].length : 0;
-
-		// Create a new grid with swapped dimensions
-		const newGrid: number[][] = Array(currentWidth)
-			.fill(0)
-			.map(() => Array(currentHeight).fill(0));
-
-		for (let y = 0; y < currentHeight; y++) {
-			for (let x = 0; x < currentWidth; x++) {
-				newGrid[currentWidth - 1 - x][y] = gridRef.current[y][x];
-			}
-		}
-
-		// Check if resulting dimensions would be compatible with the component
-		if (currentWidth === editorHeight && currentHeight === width) {
-			gridRef.current = newGrid;
-		} else {
-			// Rotations would result in incompatible dimensions - reset to component dimensions
-			// and copy over what will fit
-			const resetGrid = resetToComponentDimensions();
-
-			// Copy rotated data where it will fit
-			const newHeight = newGrid.length;
-			const newWidth = newHeight > 0 ? newGrid[0].length : 0;
-
-			for (let y = 0; y < Math.min(editorHeight, newHeight); y++) {
-				for (let x = 0; x < Math.min(width, newWidth); x++) {
-					resetGrid[y][x] = newGrid[y][x];
-				}
-			}
-
-			gridRef.current = resetGrid;
-		}
-
+		gridRef.current = rotateEditorGrid(
+			gridRef.current,
+			width,
+			editorHeight,
+			"ccw",
+		);
 		gridChangedRef.current = true;
 		drawGrid();
 		addToHistory();
 		updateCharData();
-	}, [
-		drawGrid,
-		addToHistory,
-		updateCharData,
-		resetToComponentDimensions,
-		width,
-		editorHeight,
-	]);
+	}, [width, editorHeight, drawGrid, addToHistory, updateCharData]);
 
 	const shift = useCallback(
 		(direction: "up" | "down" | "left" | "right") => {
@@ -876,43 +778,85 @@ export default function BitmapFontEditor({
 		return () => window.removeEventListener("mouseup", handleGlobalMouseUp);
 	}, [handleMouseUp]);
 
-	// Handle font metric changes (apply to entire face)
-	const handleCapTopChange = useCallback(
-		(value: number[]) => {
-			const capTop = Math.min(Math.max(0, value[0]), editorHeight - 1);
-			onPackMetricsChange?.({ capTop });
+	// Handle font metric changes (v2 Y coordinates, baseline fixed at y=0)
+	const applyMetricChange = useCallback(
+		(partial: Partial<BitmapFontMetrics>) => {
+			if (!onPackMetricsChange) return;
+			onPackMetricsChange(
+				syncPackMetricsFromV2(
+					packMetrics,
+					partial,
+					fontMetrics.baselineRow,
+				),
+			);
 			drawGrid();
 		},
-		[editorHeight, onPackMetricsChange, drawGrid],
+		[packMetrics, fontMetrics.baselineRow, onPackMetricsChange, drawGrid],
 	);
 
-	const handleXHeightRowChange = useCallback(
+	const handleMaxYChange = useCallback(
 		(value: number[]) => {
-			const row = Math.min(Math.max(0, value[0]), editorHeight - 1);
-			const xHeight = Math.max(1, fontMetrics.baselineRow - row);
-			onPackMetricsChange?.({ xHeight });
-			drawGrid();
+			applyMetricChange({ maxY: value[0] });
 		},
-		[editorHeight, fontMetrics.baselineRow, onPackMetricsChange, drawGrid],
+		[applyMetricChange],
 	);
 
-	const handleBaselineChange = useCallback(
+	const handleCapHeightYChange = useCallback(
 		(value: number[]) => {
-			const baselineRow = Math.min(Math.max(0, value[0]), editorHeight - 1);
-			onPackMetricsChange?.({ baselineRow });
-			drawGrid();
+			applyMetricChange({ capHeightY: value[0] });
 		},
-		[editorHeight, onPackMetricsChange, drawGrid],
+		[applyMetricChange],
 	);
 
-	const handleDescenderDepthChange = useCallback(
+	const handleXHeightYChange = useCallback(
 		(value: number[]) => {
-			const descenderDepth = Math.min(Math.max(0, value[0]), editorHeight - 1);
-			onPackMetricsChange?.({ descenderDepth });
+			applyMetricChange({ xHeightY: value[0], xHeight: value[0] });
+		},
+		[applyMetricChange],
+	);
+
+	const handleDescenderYChange = useCallback(
+		(value: number[]) => {
+			applyMetricChange({ descenderY: value[0] });
+		},
+		[applyMetricChange],
+	);
+
+	const handleMinYChange = useCallback(
+		(value: number[]) => {
+			applyMetricChange({ minY: value[0] });
+		},
+		[applyMetricChange],
+	);
+
+	const baselineRowMax = Math.max(0, editorHeight - 1);
+
+	const handleBaselinePreviewChange = useCallback(
+		(value: number[]) => {
+			setBaselinePreviewRow(
+				Math.min(baselineRowMax, Math.max(0, value[0] ?? fontMetrics.baselineRow)),
+			);
 			drawGrid();
 		},
-		[editorHeight, onPackMetricsChange, drawGrid],
+		[baselineRowMax, drawGrid, fontMetrics.baselineRow],
 	);
+
+	const handleBaselineCommit = useCallback(
+		(value: number[]) => {
+			const nextRow = Math.min(
+				baselineRowMax,
+				Math.max(0, value[0] ?? fontMetrics.baselineRow),
+			);
+			if (nextRow !== fontMetrics.baselineRow) {
+				onBaselineReanchor?.(nextRow);
+			}
+			setBaselinePreviewRow(null);
+		},
+		[baselineRowMax, fontMetrics.baselineRow, onBaselineReanchor],
+	);
+
+	const ySliderMin = -METRIC_Y_SLIDER_SYMMETRIC;
+	const ySliderMax = METRIC_Y_SLIDER_SYMMETRIC;
 
 	const handleGlyphWidthChange = useCallback(
 		(e: React.ChangeEvent<HTMLInputElement>) => {
@@ -958,6 +902,19 @@ export default function BitmapFontEditor({
 			</div>
 
 			<div className="flex flex-col gap-4 p-4">
+				{characterCharCodes.length > 0 ? (
+					<EditorGlyphStrip
+						characterCharCodes={characterCharCodes}
+						selectedCharCode={selectedCharCode}
+						selectedGridSize={selectedGridSize}
+						characterBitmaps={characterBitmaps}
+						currentCharacterBitmap={currentCharacterBitmap}
+						glyphMeta={glyphMeta}
+						cellHeight={editorHeight}
+						onCharacterSelect={onCharacterSelect}
+					/>
+				) : null}
+
 				<div className="flex flex-wrap gap-2">
 					<Button
 						onClick={undo}
@@ -1114,37 +1071,28 @@ export default function BitmapFontEditor({
 							onMouseLeave={handleMouseLeave}
 						/>
 					</div>
-					<div className="flex w-full shrink-0 flex-col items-stretch lg:w-[240px]">
-						<div className="mb-2 flex size-[100px] items-center justify-center self-center overflow-hidden rounded-md border bg-card p-2">
-							<canvas
-								ref={previewRef}
-								className="dark:invert border-[0.25px] border-neutral-300"
-								style={{
-									imageRendering: "pixelated",
-									width: `${Math.max(1, width * previewDisplayScale)}px`,
-									height: `${Math.max(1, editorHeight * previewDisplayScale)}px`,
-								}}
-							/>
-						</div>
-						<div className="mb-3 rounded-md border bg-card p-2 text-center text-lg font-mono">
-							{String.fromCharCode(selectedCharCode)} {selectedCharCode}
-						</div>
+					<div className="flex w-full shrink-0 flex-col items-stretch gap-3 lg:w-[260px]">
+						<EditorGlyphComparison
+							selectedCharCode={selectedCharCode}
+							characterCharCodes={characterCharCodes}
+							characterBitmaps={characterBitmaps}
+							currentCharacterBitmap={currentCharacterBitmap}
+							selectedGridSize={selectedGridSize}
+							glyphMeta={glyphMeta}
+							fontMetrics={guideMetrics}
+							editorHeight={editorHeight}
+						/>
 
-						<div className="max-h-[420px] space-y-4 overflow-y-auto pr-1">
-							<div className="space-y-3">
+						<div className="max-h-[480px] space-y-4 overflow-y-auto pr-1">
+							<div className="space-y-3 rounded-lg border border-border/80 bg-muted/10 p-3">
 								<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
 									Font metrics
+									<span className="ml-1 normal-case tracking-normal text-muted-foreground/70">
+										(face-wide)
+									</span>
 								</p>
 
 								<div className="grid grid-cols-2 gap-x-2 gap-y-1 rounded-md border bg-muted/20 p-2 text-[11px] text-muted-foreground">
-									<span>maxY</span>
-									<span className="text-right font-mono text-foreground">
-										{fontMetrics.maxY}
-									</span>
-									<span>minY</span>
-									<span className="text-right font-mono text-foreground">
-										{fontMetrics.minY}
-									</span>
 									<span>lineGap</span>
 									<span className="text-right font-mono text-foreground">
 										{fontMetrics.lineHeight}
@@ -1157,21 +1105,41 @@ export default function BitmapFontEditor({
 
 								<div className="flex flex-col gap-2">
 									<Label
-										htmlFor="cap-top"
+										htmlFor="max-y"
+										className="flex items-center justify-between"
+									>
+										<span>maxY</span>
+										<span className="text-xs text-muted-foreground">
+											y {fontMetrics.maxY}
+										</span>
+									</Label>
+									<Slider
+										id="max-y"
+										min={ySliderMin}
+										max={ySliderMax}
+										step={1}
+										value={[fontMetrics.maxY]}
+										onValueChange={handleMaxYChange}
+									/>
+								</div>
+
+								<div className="flex flex-col gap-2">
+									<Label
+										htmlFor="cap-height"
 										className="flex items-center justify-between"
 									>
 										<span>Cap height</span>
 										<span className="text-xs text-muted-foreground">
-											row {fontMetrics.capTop} · y {fontMetrics.capHeightY}
+											y {fontMetrics.capHeightY}
 										</span>
 									</Label>
 									<Slider
-										id="cap-top"
-										min={0}
-										max={editorHeight - 1}
+										id="cap-height"
+										min={ySliderMin}
+										max={ySliderMax}
 										step={1}
-										value={[fontMetrics.capTop]}
-										onValueChange={handleCapTopChange}
+										value={[fontMetrics.capHeightY]}
+										onValueChange={handleCapHeightYChange}
 									/>
 								</div>
 
@@ -1180,18 +1148,18 @@ export default function BitmapFontEditor({
 										htmlFor="x-height"
 										className="flex items-center justify-between"
 									>
-										<span>X-Height</span>
+										<span>X-height</span>
 										<span className="text-xs text-muted-foreground">
-											row {fontMetrics.xHeightRow} · y {fontMetrics.xHeightY}
+											y {fontMetrics.xHeightY}
 										</span>
 									</Label>
 									<Slider
 										id="x-height"
-										min={0}
-										max={editorHeight - 1}
+										min={ySliderMin}
+										max={ySliderMax}
 										step={1}
-										value={[fontMetrics.xHeightRow]}
-										onValueChange={handleXHeightRowChange}
+										value={[fontMetrics.xHeightY]}
+										onValueChange={handleXHeightYChange}
 									/>
 								</div>
 
@@ -1202,16 +1170,19 @@ export default function BitmapFontEditor({
 									>
 										<span>Baseline</span>
 										<span className="text-xs text-muted-foreground">
-											row {fontMetrics.baselineRow} · y 0
+											{baselinePreviewRow != null
+												? `row ${guideMetrics.baselineRow} · release to apply`
+												: `row ${guideMetrics.baselineRow} · y 0`}
 										</span>
 									</Label>
 									<Slider
 										id="baseline"
 										min={0}
-										max={editorHeight - 1}
+										max={baselineRowMax}
 										step={1}
-										value={[fontMetrics.baselineRow]}
-										onValueChange={handleBaselineChange}
+										value={[guideMetrics.baselineRow]}
+										onValueChange={handleBaselinePreviewChange}
+										onValueCommit={handleBaselineCommit}
 									/>
 								</div>
 
@@ -1222,24 +1193,46 @@ export default function BitmapFontEditor({
 									>
 										<span>Descender</span>
 										<span className="text-xs text-muted-foreground">
-											{fontMetrics.descenderDepth}px · y{" "}
-											{fontMetrics.descenderY}
+											y {fontMetrics.descenderY}
 										</span>
 									</Label>
 									<Slider
 										id="descender"
-										min={0}
-										max={editorHeight - 1}
+										min={ySliderMin}
+										max={ySliderMax}
 										step={1}
-										value={[fontMetrics.descenderDepth]}
-										onValueChange={handleDescenderDepthChange}
+										value={[fontMetrics.descenderY]}
+										onValueChange={handleDescenderYChange}
+									/>
+								</div>
+
+								<div className="flex flex-col gap-2">
+									<Label
+										htmlFor="min-y"
+										className="flex items-center justify-between"
+									>
+										<span>minY</span>
+										<span className="text-xs text-muted-foreground">
+											y {fontMetrics.minY}
+										</span>
+									</Label>
+									<Slider
+										id="min-y"
+										min={ySliderMin}
+										max={ySliderMax}
+										step={1}
+										value={[fontMetrics.minY]}
+										onValueChange={handleMinYChange}
 									/>
 								</div>
 							</div>
 
-							<div className="space-y-3 border-t pt-3">
+							<div className="space-y-3 rounded-lg border border-primary/25 bg-card p-3 shadow-sm">
 								<p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
 									Glyph metrics
+									<span className="ml-1 normal-case tracking-normal text-muted-foreground/70">
+										(this character)
+									</span>
 								</p>
 
 								<div className="grid grid-cols-[auto_1fr] items-center gap-2">

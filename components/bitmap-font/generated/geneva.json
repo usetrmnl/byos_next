@@ -2,7 +2,7 @@
   "metadata": {
     "name": "Geneva",
     "creator": "generate-bitmap-fonts",
-    "createdAt": "2026-06-24T16:58:59.297Z",
+    "createdAt": "2026-06-24T18:44:26.165Z",
     "version": "1.0",
     "description": "Generated from Geneva (7×11, dynamic×20) — unknown — verify before redistribution",
     "metrics": {
@@ -15,7 +15,8 @@
       "lineGap": 11,
       "pixelUnitX": 1,
       "pixelUnitY": 1,
-      "dynamicWidth": false
+      "dynamicWidth": false,
+      "defaultCharGap": 0
     }
   },
   "faces": {
@@ -30,7 +31,8 @@
         "lineGap": 11,
         "pixelUnitX": 1,
         "pixelUnitY": 1,
-        "dynamicWidth": false
+        "dynamicWidth": false,
+        "defaultCharGap": 0
       },
       "glyphs": {
         "0": {
@@ -7637,7 +7639,8 @@
         "lineGap": 19,
         "pixelUnitX": 1,
         "pixelUnitY": 1,
-        "dynamicWidth": true
+        "dynamicWidth": true,
+        "defaultCharGap": 0
       },
       "glyphs": {
         "0": {

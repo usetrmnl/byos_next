@@ -11,6 +11,14 @@ export type BitmapFontMetrics = {
 	pixelUnitX?: number;
 	pixelUnitY?: number;
 	dynamicWidth?: boolean;
+	/** v2 typographic coordinates (baseline = 0). Used by the font designer. */
+	minY?: number;
+	maxY?: number;
+	capHeightY?: number;
+	xHeightY?: number;
+	descenderY?: number;
+	baselineY?: number;
+	defaultCharGap?: number;
 };
 
 export type BitmapGlyph = {

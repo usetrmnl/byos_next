@@ -10,6 +10,7 @@ import {
 	legacyMetricsFromTraceLayout,
 	resolveMetricFontSize,
 	resolveTraceLayout,
+	resolveTraceLayoutWithMetrics,
 } from "./trace-layout.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -131,7 +132,7 @@ export function traceGlyphNode(source, char, grid, metrics) {
 	const { family } = createTraceContext(source, grid);
 	const traceMode = resolveTraceMode(source, grid);
 	const inkDetection = resolveInkDetection(source, grid);
-	const layout = resolveTraceLayout(grid);
+	const layout = resolveTraceLayoutWithMetrics(grid, metrics);
 	const { traceHeight, baselineRow, gridHeight } = layout;
 	const metricAnchored = Boolean(grid.v2Metrics);
 	const requestedRenderSize =
@@ -283,7 +284,10 @@ export function generateBitmapFontJson(source) {
 
 		const dynamicWidth =
 			grid.dynamicWidth ?? source.dynamicWidth ?? false;
-		const layout = resolveTraceLayout(grid);
+		const layout = resolveTraceLayoutWithMetrics(
+			grid,
+			metrics ?? null,
+		);
 		const cellHeight = layout.traceHeight;
 		const cellWidth = dynamicWidth ? 0 : (grid.width ?? metrics?.cellWidth);
 

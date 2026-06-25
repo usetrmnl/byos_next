@@ -15,7 +15,8 @@
       "lineGap": 10,
       "pixelUnitX": 1,
       "pixelUnitY": 1,
-      "dynamicWidth": true
+      "dynamicWidth": true,
+      "defaultCharGap": 0
     }
   },
   "glyphs": {

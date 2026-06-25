@@ -87,6 +87,7 @@ export default function RootLayout({
 					"bg-background overscroll-none font-sans antialiased",
 					getAllFontVariables(),
 				)}
+				suppressHydrationWarning
 			>
 				<ThemeProvider>
 					<TooltipProvider>

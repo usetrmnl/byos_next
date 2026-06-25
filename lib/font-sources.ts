@@ -49,6 +49,8 @@ export type BuiltInBitmapPack = {
 	label: string;
 	packPath: string;
 	sourceId?: string;
+	/** Omit from bitmap font designer pickers (still generated at build). */
+	hidden?: boolean;
 };
 
 export const FONT_SOURCES: FontSource[] = manifest.sources as FontSource[];

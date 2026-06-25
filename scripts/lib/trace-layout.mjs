@@ -28,6 +28,22 @@ export function resolveTraceLayout(grid) {
 	};
 }
 
+/** Apply discovered/probed legacy metrics (cellHeight, baselineRow) when grid has no v2Metrics. */
+export function resolveTraceLayoutWithMetrics(grid, metrics) {
+	const layout = resolveTraceLayout(grid);
+	if (grid.v2Metrics) return layout;
+
+	if (metrics?.cellHeight != null && metrics?.baselineRow != null) {
+		return {
+			...layout,
+			traceHeight: metrics.cellHeight,
+			baselineRow: metrics.baselineRow,
+		};
+	}
+
+	return layout;
+}
+
 /** Font size for metric-anchored tracing: 1 em row = 1 grid pixel row (no per-glyph bbox scale). */
 export function resolveMetricFontSize(grid, layout) {
 	return grid.metricFontSize ?? layout.gridHeight;

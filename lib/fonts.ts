@@ -72,6 +72,15 @@ export const geistPixelSquare = localFont({
 	style: "normal",
 });
 
+export const pixelifySans = localFont({
+	src: "../public/fonts/PixelifySans-VariableFont_wght.ttf",
+	variable: "--font-pixelify-sans",
+	preload: true,
+	display: "swap",
+	weight: "400",
+	style: "normal",
+});
+
 export const fonts = {
 	sans: fontSans,
 	mono: fontMono,
@@ -80,6 +89,7 @@ export const fonts = {
 	geneva12,
 	inter,
 	geistPixelSquare,
+	pixelifySans,
 } as const;
 
 export const getAllFontVariables = () =>
