@@ -7,6 +7,16 @@ export type RecipeAuthor = {
 	github?: string;
 };
 
+export type RecipeDeviceContext = {
+	levels: number | null;
+	width: number;
+	height: number;
+	logicalWidth: number;
+	logicalHeight: number;
+	pixelRatio: number;
+	salt: number;
+};
+
 export type RecipeRenderSettings = {
 	/** Opt-in Floyd-Steinberg during device palette quantization (default off). */
 	dither?: boolean;
@@ -67,6 +77,10 @@ export type RecipeDefinition<
 	paramsSchema: P;
 	dataSchema: D;
 	getData?: (params: z.infer<P>) => Promise<z.infer<D>>;
+	prepareForDevice?: (
+		data: Record<string, unknown>,
+		ctx: RecipeDeviceContext,
+	) => Promise<Record<string, unknown>>;
 	Component: ComponentType<
 		RecipeRenderProps & {
 			params: z.infer<P>;

@@ -4,6 +4,7 @@ import {
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 import type { RecipeDefinition } from "@/lib/recipes/types";
+import { ditherImageToDataUrl } from "@/lib/render/dither-image";
 import {
 	createScreenProfile,
 	type ScreenProfile,
@@ -29,6 +30,10 @@ interface AlbumProps {
 	params?: {
 		imageUrl?: string;
 	};
+	data?: {
+		imageUrl?: string;
+		ditheredImageUrl?: string;
+	};
 }
 
 export default async function Album({
@@ -36,10 +41,12 @@ export default async function Album({
 	height: renderHeight = DEFAULT_IMAGE_HEIGHT,
 	screen,
 	params,
+	data,
 }: AlbumProps) {
 	const screenProfile =
 		screen ?? createScreenProfile({ width: renderWidth, height: renderHeight });
-	const imageUrl = params?.imageUrl || DEFAULT_IMAGE_URL;
+	const imageUrl =
+		data?.ditheredImageUrl || params?.imageUrl || DEFAULT_IMAGE_URL;
 
 	return (
 		<PreSatori
@@ -98,7 +105,28 @@ export const definition: RecipeDefinition<typeof paramsSchema> = {
 	},
 	paramsSchema,
 	dataSchema,
-	Component: ({ width, height, screen, params }) => (
-		<Album width={width} height={height} screen={screen} params={params} />
+	prepareForDevice: async (data, ctx) => {
+		const imageUrl = data.imageUrl;
+		if (typeof imageUrl !== "string" || !imageUrl || ctx.levels === null) {
+			return data;
+		}
+
+		const ditheredImageUrl = await ditherImageToDataUrl(imageUrl, {
+			width: ctx.width,
+			height: ctx.height,
+			levels: ctx.levels,
+			salt: ctx.salt,
+		});
+
+		return { ...data, ditheredImageUrl };
+	},
+	Component: ({ width, height, screen, params, data }) => (
+		<Album
+			width={width}
+			height={height}
+			screen={screen}
+			params={params}
+			data={data}
+		/>
 	),
 };

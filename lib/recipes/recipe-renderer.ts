@@ -4,8 +4,10 @@ import {
 	renderDeviceImage,
 } from "@/lib/render/device-image";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
+import { getPaletteGrayLevels } from "@/lib/trmnl/palette-colors";
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
+import { DEFAULT_DITHER_SALT } from "@/utils/image-processing";
 import {
 	customFieldsToParamDefinitions,
 	fetchLiquidRecipeSettings,
@@ -69,12 +71,27 @@ export async function renderRecipeToImage({
 			model,
 			palette,
 		});
+		let renderData = data;
+		if (definition.prepareForDevice) {
+			const levels = getPaletteGrayLevels(palette);
+			if (levels !== null) {
+				renderData = await definition.prepareForDevice(data, {
+					levels,
+					width: imageWidth,
+					height: imageHeight,
+					logicalWidth: screen.logicalWidth,
+					logicalHeight: screen.logicalHeight,
+					pixelRatio: screen.pixelRatio,
+					salt: DEFAULT_DITHER_SALT,
+				});
+			}
+		}
 		const element = createElement(definition.Component, {
 			width: screen.logicalWidth,
 			height: screen.logicalHeight,
 			screen,
 			params,
-			data,
+			data: renderData,
 		});
 		return rasterize({
 			slug,

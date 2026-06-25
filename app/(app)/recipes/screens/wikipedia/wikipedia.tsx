@@ -4,13 +4,47 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import type { RecipeDefinition } from "@/lib/recipes/types";
+import type {
+	RecipeDefinition,
+	RecipeDeviceContext,
+} from "@/lib/recipes/types";
+import { ditherImageToDataUrl } from "@/lib/render/dither-image";
 import {
 	createScreenProfile,
 	type ScreenProfile,
 } from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
 import getWikipediaData, { WikipediaData } from "./getData";
+
+const getWikipediaThumbnailPhysicalSize = (
+	ctx: RecipeDeviceContext,
+	thumbnail: { width?: number; height?: number },
+): { width: number; height: number } | null => {
+	if (
+		typeof thumbnail.width !== "number" ||
+		thumbnail.width <= 0 ||
+		typeof thumbnail.height !== "number" ||
+		thumbnail.height <= 0
+	) {
+		return null;
+	}
+
+	const thumbnailDisplayWidth = Math.max(
+		240,
+		Math.round(ctx.logicalWidth * 0.18),
+	);
+	const thumbnailDisplayMaxHeight = Math.round(ctx.logicalHeight * 0.5);
+	const aspectRatio = thumbnail.height / thumbnail.width;
+	const displayHeight = Math.min(
+		Math.round(thumbnailDisplayWidth * aspectRatio),
+		thumbnailDisplayMaxHeight,
+	);
+
+	return {
+		width: Math.max(1, Math.round(thumbnailDisplayWidth * ctx.pixelRatio)),
+		height: Math.max(1, Math.round(displayHeight * ctx.pixelRatio)),
+	};
+};
 
 export const paramsSchema = z.object({});
 
@@ -80,7 +114,8 @@ export default function Wikipedia({
 	// Enhanced thumbnail validation to catch more edge cases
 	const hasValidThumbnail = thumbnail?.source
 		? typeof thumbnail.source === "string" &&
-			thumbnail.source.startsWith("https://") &&
+			(thumbnail.source.startsWith("https://") ||
+				thumbnail.source.startsWith("data:")) &&
 			typeof thumbnail.width === "number" &&
 			thumbnail.width > 0 &&
 			typeof thumbnail.height === "number" &&
@@ -191,7 +226,9 @@ export default function Wikipedia({
 						>
 							<picture>
 								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}
-								<source srcSet={thumbnail.source} type="image/webp" />
+								{!thumbnail.source.startsWith("data:") && (
+									<source srcSet={thumbnail.source} type="image/webp" />
+								)}
 								<img
 									src={thumbnail.source}
 									alt={safeTitle}
@@ -201,7 +238,13 @@ export default function Wikipedia({
 										width: imageDimensions.width,
 										height: imageDimensions.height,
 										objectFit: "contain",
-										filter: "grayscale(100%) contrast(0.9) brightness(1.05)",
+										imageRendering: "pixelated",
+										...(thumbnail.source.startsWith("data:")
+											? {}
+											: {
+													filter:
+														"grayscale(100%) contrast(0.9) brightness(1.05)",
+												}),
 									}}
 								/>
 							</picture>
@@ -250,6 +293,36 @@ export const definition: RecipeDefinition<
 	getData: async () => {
 		const data = await getWikipediaData();
 		return data as z.infer<typeof dataSchema>;
+	},
+	prepareForDevice: async (data, ctx) => {
+		const thumbnail = data.thumbnail as
+			| { source?: string; width?: number; height?: number }
+			| undefined;
+		if (
+			!thumbnail?.source ||
+			typeof thumbnail.source !== "string" ||
+			ctx.levels === null
+		) {
+			return data;
+		}
+
+		const size = getWikipediaThumbnailPhysicalSize(ctx, thumbnail);
+		if (!size) return data;
+
+		const ditheredSource = await ditherImageToDataUrl(thumbnail.source, {
+			width: size.width,
+			height: size.height,
+			levels: ctx.levels,
+			salt: ctx.salt,
+		});
+
+		return {
+			...data,
+			thumbnail: {
+				...thumbnail,
+				source: ditheredSource,
+			},
+		};
 	},
 	Component: ({ width, height, screen, data }) => (
 		<Wikipedia
