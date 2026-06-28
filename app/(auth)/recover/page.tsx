@@ -45,7 +45,7 @@ function RecoverPageContent() {
 		}
 	}, [error]);
 
-	const handleRequestReset = async (e: React.FormEvent) => {
+	const handleRequestReset = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		setErrorMessage("");
 		setSuccessMessage("");
@@ -77,7 +77,7 @@ function RecoverPageContent() {
 		}
 	};
 
-	const handleResetPassword = async (e: React.FormEvent) => {
+	const handleResetPassword = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		setErrorMessage("");
 		setSuccessMessage("");

@@ -132,7 +132,7 @@ export function ScreenParamsForm({
 		[values, initial],
 	);
 
-	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+	const handleSubmit = (event: React.SubmitEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setFormStatus("idle");
 		setStatusMessage("");

@@ -75,7 +75,7 @@ interface DeviceEditFormProps {
 	onRegenerateFriendlyId: () => void;
 	onAddTimeRange: () => void;
 	onRemoveTimeRange: (index: number) => void;
-	onSubmit: (e: React.FormEvent) => void;
+	onSubmit: (e: React.SubmitEvent) => void;
 	onCancel: () => void;
 }
 
