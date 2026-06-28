@@ -53,7 +53,7 @@ function createAuth() {
 	}
 
 	return betterAuth({
-		baseURL: getAppBaseUrl().toString(),
+		baseURL: getAppBaseUrl().origin,
 		database: pool,
 		emailAndPassword: {
 			enabled: true,

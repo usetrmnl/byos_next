@@ -53,8 +53,7 @@ export async function renderWithBrowser(
 	options: RenderWithBrowserOptions = {},
 ): Promise<Buffer> {
 	const port = process.env.PORT || 3000;
-	const baseUrl =
-		process.env.NEXT_PUBLIC_BASE_URL ?? `http://127.0.0.1:${port}`;
+	const baseUrl = `http://127.0.0.1:${port}`;
 	const params = new URLSearchParams({
 		width: String(width),
 		height: String(height),

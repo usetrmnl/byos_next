@@ -32,12 +32,10 @@ export default function SignInForm({ dbReady, dbError }: SignInFormProps) {
 		setIsLoading(true);
 
 		try {
-			const { data: session, error: authError } = await authClient.signIn.email(
-				{
-					email,
-					password,
-				},
-			);
+			const { data, error: authError } = await authClient.signIn.email({
+				email,
+				password,
+			});
 
 			if (authError) {
 				setError(authError.message || "Failed to sign in. Please try again.");
@@ -45,8 +43,7 @@ export default function SignInForm({ dbReady, dbError }: SignInFormProps) {
 				return;
 			}
 
-			if (session) {
-				// explicitly use browser navigation to force root ("/") page reload.
+			if (data) {
 				window.location.href = "/";
 			}
 		} catch (_err) {

@@ -6,13 +6,19 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function getAppBaseUrl(): URL {
-	const raw = process.env.NEXT_PUBLIC_BASE_URL?.trim();
-	if (raw) {
-		try {
+	const candidates: Array<string | undefined> = [
+		process.env.BETTER_AUTH_URL,
+		process.env.VERCEL_PROJECT_PRODUCTION_URL &&
+			`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`,
+		process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+	];
+
+	for (const candidate of candidates) {
+		const raw = candidate?.trim();
+		if (raw && URL.canParse(raw)) {
 			return new URL(raw);
-		} catch {
-			// fall through to the default below
 		}
 	}
+
 	return new URL("http://localhost:3000");
 }
