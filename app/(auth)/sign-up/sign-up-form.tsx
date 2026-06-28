@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +15,6 @@ import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth/auth-client";
 
 export default function SignUpForm() {
-	const router = useRouter();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
@@ -24,7 +22,7 @@ export default function SignUpForm() {
 	const [error, setError] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		setError("");
 
@@ -56,9 +54,7 @@ export default function SignUpForm() {
 			}
 
 			if (data) {
-				// Redirect to home page on successful sign up
-				router.push("/");
-				router.refresh();
+				window.location.href = "/";
 			}
 		} catch (_err) {
 			setError("An unexpected error occurred. Please try again.");

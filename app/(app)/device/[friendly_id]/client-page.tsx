@@ -260,7 +260,7 @@ export default function DeviceClientPage({
 	};
 
 	// Handle form submission
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.SyntheticEvent) => {
 		e.preventDefault();
 
 		// Validate API key

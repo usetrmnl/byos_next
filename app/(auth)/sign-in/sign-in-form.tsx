@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,13 +20,12 @@ interface SignInFormProps {
 }
 
 export default function SignInForm({ dbReady, dbError }: SignInFormProps) {
-	const router = useRouter();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 
-	const handleSubmit = async (e: React.FormEvent) => {
+	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
 		if (!dbReady) return;
 		setError("");
@@ -46,8 +44,7 @@ export default function SignInForm({ dbReady, dbError }: SignInFormProps) {
 			}
 
 			if (data) {
-				router.push("/");
-				router.refresh();
+				window.location.href = "/";
 			}
 		} catch (_err) {
 			setError("An unexpected error occurred. Please try again.");
