@@ -1,10 +1,10 @@
 import type { NextRequest } from "next/server";
-import { cache } from "react";
-import { withDeviceApiKey } from "@/lib/database/scoped-db";
-import { checkDbConnection } from "@/lib/database/utils";
+import {
+	resolveDeviceProfileForRequest,
+	resolveDeviceProfileOrNull,
+} from "@/lib/device/device-profile-request";
 import {
 	parseRequestHeaders,
-	type RequestHeaders,
 	resolveUserIdFromApiKey,
 } from "@/lib/device/request-headers";
 import {
@@ -12,10 +12,7 @@ import {
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
 import { logger } from "@/lib/recipes/logger";
-import {
-	renderRecipeForDevice,
-	renderRecipeToImage,
-} from "@/lib/recipes/recipe-renderer";
+import { renderRecipeForDevice } from "@/lib/recipes/recipe-renderer";
 import { stripImageExtension } from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import {
@@ -23,11 +20,6 @@ import {
 	rejectOversizedImageArea,
 } from "@/lib/render/image-request";
 import { imageResponse } from "@/lib/render/image-response";
-import {
-	type DeviceProfile,
-	getDeviceProfile,
-} from "@/lib/trmnl/device-profile";
-import { getBmpGrayLevelsForPalette } from "@/lib/trmnl/palette-gray-levels";
 
 export async function GET(
 	req: NextRequest,
@@ -72,65 +64,32 @@ export async function GET(
 			return imageResponse(image);
 		}
 
-		// Profile + extension are both pinned by the URL (model and palette_id
-		// are query params), so dispatch on profile MIME alone.
-		if (profile.model.mime_type !== "image/bmp") {
-			const imageWidth = imageRequest.width ?? profile.model.width;
-			const imageHeight = imageRequest.height ?? profile.model.height;
-			const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
-			if (oversized) return oversized;
-			const image = await renderRecipeForDevice({
-				slug: recipeSlug,
-				profile,
-				width: imageWidth,
-				height: imageHeight,
-				userId,
-				cookies: cookieHeader || undefined,
-			});
-
-			if (!image?.buffer.length) {
-				logger.warn(`Failed to generate device image for ${recipeSlug}`);
-				const errorImage = await renderErrorImage({
-					message: `Could not render ${recipeSlug}`,
-					width: imageWidth,
-					height: imageHeight,
-					profile,
-				});
-				return imageResponse(errorImage, 500);
-			}
-
-			return imageResponse(image);
-		}
-
-		const validWidth = imageRequest.width ?? profile.model.width;
-		const validHeight = imageRequest.height ?? profile.model.height;
-		const oversized = rejectOversizedImageArea(validWidth, validHeight);
+		const imageWidth = imageRequest.width ?? profile.model.width;
+		const imageHeight = imageRequest.height ?? profile.model.height;
+		const oversized = rejectOversizedImageArea(imageWidth, imageHeight);
 		if (oversized) return oversized;
-		const recipeBuffer = await renderRecipeBitmap(
-			recipeSlug,
-			validWidth,
-			validHeight,
-			profile,
-			userId,
-			cookieHeader || undefined,
-		);
 
-		if (
-			!recipeBuffer ||
-			!(recipeBuffer instanceof Buffer) ||
-			recipeBuffer.length === 0
-		) {
-			logger.warn(`Failed to generate bitmap for ${recipeSlug}`);
+		const image = await renderRecipeForDevice({
+			slug: recipeSlug,
+			profile,
+			width: imageWidth,
+			height: imageHeight,
+			userId,
+			cookies: cookieHeader || undefined,
+		});
+
+		if (!image?.buffer.length) {
+			logger.warn(`Failed to generate device image for ${recipeSlug}`);
 			const errorImage = await renderErrorImage({
 				message: `Could not render ${recipeSlug}`,
-				width: validWidth,
-				height: validHeight,
+				width: imageWidth,
+				height: imageHeight,
 				profile,
 			});
 			return imageResponse(errorImage, 500);
 		}
 
-		return imageResponse({ buffer: recipeBuffer, mime_type: "image/bmp" });
+		return imageResponse(image);
 	} catch (error) {
 		logger.error("Error generating image:", error);
 		const { searchParams } = new URL(req.url);
@@ -138,7 +97,7 @@ export async function GET(
 		const profile =
 			imageRequest instanceof Response
 				? null
-				: await resolveProfileOrNull(headers, {
+				: await resolveDeviceProfileOrNull(headers, {
 						modelName: imageRequest.modelName,
 						paletteId: imageRequest.paletteId,
 					});
@@ -161,65 +120,3 @@ export async function GET(
 		return imageResponse(errorImage, 500);
 	}
 }
-
-async function resolveProfileOrNull(
-	headers: RequestHeaders,
-	query: { modelName?: string | null; paletteId?: string | null },
-): Promise<DeviceProfile | null> {
-	try {
-		return await resolveDeviceProfileForRequest(headers, query);
-	} catch {
-		return null;
-	}
-}
-
-async function resolveDeviceProfileForRequest(
-	headers: RequestHeaders,
-	query: { modelName?: string | null; paletteId?: string | null } = {},
-): Promise<DeviceProfile> {
-	let modelName = query.modelName || headers.model;
-	let paletteId: string | null = query.paletteId || null;
-
-	if (headers.apiKey && !query.modelName) {
-		const { ready } = await checkDbConnection();
-		if (ready) {
-			const device = await withDeviceApiKey(headers.apiKey, (scopedDb) =>
-				scopedDb
-					.selectFrom("devices")
-					.select(["model", "palette_id"])
-					.where("api_key", "=", headers.apiKey)
-					.executeTakeFirst(),
-			);
-
-			modelName = device?.model ?? modelName;
-			paletteId = query.paletteId ?? device?.palette_id ?? null;
-		}
-	}
-
-	return getDeviceProfile(modelName, paletteId);
-}
-
-const renderRecipeBitmap = cache(
-	async (
-		recipeId: string,
-		width: number,
-		height: number,
-		profile: DeviceProfile | null = null,
-		userId: string | null = null,
-		cookies?: string,
-	) => {
-		const renders = await renderRecipeToImage({
-			slug: recipeId,
-			imageWidth: width,
-			imageHeight: height,
-			formats: ["bitmap"],
-			bmpGrayLevels: getBmpGrayLevelsForPalette(profile?.palette),
-			model: profile?.model ?? null,
-			palette: profile?.palette ?? null,
-			paletteId: profile?.palette?.id ?? null,
-			userId,
-			cookies,
-		});
-		return renders.bitmap ?? Buffer.from([]);
-	},
-);

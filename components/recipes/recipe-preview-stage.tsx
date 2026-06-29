@@ -18,7 +18,7 @@ import { buildScreenPreviewSrc } from "@/lib/render/preview-image";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import { cn } from "@/lib/utils";
 
-type FormatKey = "bmp" | "png" | "react";
+type FormatKey = "device" | "react";
 
 type PreviewModel = {
 	name: string;
@@ -45,14 +45,12 @@ function chooseDefaultPaletteId(model: PreviewModel | null): string {
 interface RecipePreviewStageProps {
 	slug: string;
 	isPortrait: boolean;
-	bmpNode?: ReactNode;
-	pngNode?: ReactNode;
+	deviceNode?: ReactNode;
 	reactNode?: ReactNode;
-	bmpPipeline?: ReactNode;
-	pngPipeline?: ReactNode;
+	devicePipeline?: ReactNode;
 	reactPipeline?: ReactNode;
 	defaultFormat?: FormatKey;
-	/** When provided, a model selector drives BMP / React preview resolution. */
+	/** When provided, a model selector drives device / React preview resolution. */
 	trmnlModels?: PreviewModel[];
 	trmnlPalettes?: PreviewPalette[];
 	/**
@@ -63,21 +61,18 @@ interface RecipePreviewStageProps {
 }
 
 const FORMAT_LABELS: Record<FormatKey, string> = {
-	bmp: "BMP",
-	png: "PNG",
+	device: "Device",
 	react: "React",
 };
 
 export function RecipePreviewStage({
 	slug,
 	isPortrait,
-	bmpNode,
-	pngNode,
+	deviceNode,
 	reactNode,
-	bmpPipeline,
-	pngPipeline,
+	devicePipeline,
 	reactPipeline,
-	defaultFormat = "bmp",
+	defaultFormat = "device",
 	trmnlModels,
 	trmnlPalettes,
 	simulateReactPreviewInIframe = true,
@@ -145,8 +140,7 @@ export function RecipePreviewStage({
 			: null;
 
 	const formats: { key: FormatKey; node: ReactNode; pipeline: ReactNode }[] = [
-		{ key: "bmp", node: bmpNode, pipeline: bmpPipeline },
-		{ key: "png", node: pngNode, pipeline: pngPipeline },
+		{ key: "device", node: deviceNode, pipeline: devicePipeline },
 		{ key: "react", node: reactNode, pipeline: reactPipeline },
 	].filter((f) => f.node !== undefined) as typeof formats;
 
@@ -157,8 +151,7 @@ export function RecipePreviewStage({
 		deviceSimActive &&
 		simWidth != null &&
 		simHeight != null &&
-		(activeKey === "bmp" ||
-			activeKey === "png" ||
+		(activeKey === "device" ||
 			(activeKey === "react" && simulateReactPreviewInIframe));
 
 	const screenAspectRatio =
@@ -237,7 +230,7 @@ export function RecipePreviewStage({
 		) {
 			return active?.node;
 		}
-		if ((activeKey === "bmp" || activeKey === "png") && devicePreviewSrc) {
+		if (activeKey === "device" && devicePreviewSrc) {
 			return (
 				<Image
 					width={simWidth}
@@ -417,8 +410,8 @@ export function RecipePreviewStage({
 							</span>
 						)}
 						<span className="text-muted-foreground/80">
-							BMP/PNG use <code className="font-mono">/api/bitmap</code>; React
-							scales the selected screen size into the frame.
+							Device preview uses <code className="font-mono">/api/bitmap</code>
+							; React scales the selected screen size into the frame.
 						</span>
 					</div>
 				)}

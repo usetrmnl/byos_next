@@ -3,9 +3,10 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import type { DeviceProfile } from "@/lib/trmnl/device-profile";
-import { getBmpGrayLevelsForPalette } from "@/lib/trmnl/palette-gray-levels";
-import { renderBmp } from "@/utils/render-bmp";
+import {
+	type DeviceProfile,
+	getDeviceProfile,
+} from "@/lib/trmnl/device-profile";
 import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
@@ -134,27 +135,16 @@ export async function renderErrorImage({
 	profile,
 }: RenderErrorImageOptions): Promise<RenderDeviceImageResult> {
 	const png = await renderErrorPng(message, width, height);
-	if (profile && profile.model.mime_type !== "image/bmp") {
-		return renderDeviceImage({
-			png,
-			profile: {
-				...profile,
-				model: {
-					...profile.model,
-					width,
-					height,
-				},
+	const resolvedProfile = profile ?? (await getDeviceProfile(null, null));
+	return renderDeviceImage({
+		png,
+		profile: {
+			...resolvedProfile,
+			model: {
+				...resolvedProfile.model,
+				width,
+				height,
 			},
-		});
-	}
-	return {
-		buffer: await renderBmp(png, {
-			width,
-			height,
-			levels: getBmpGrayLevelsForPalette(profile?.palette),
-		}),
-		mime_type: "image/bmp",
-		filename_ext: "bmp",
-		size_limit_exceeded: false,
-	};
+		},
+	});
 }

@@ -89,7 +89,6 @@ export async function GET(request: Request) {
 			hostUrl: headers.hostUrl,
 			width: headers.width,
 			height: headers.height,
-			base64: headers.base64,
 		});
 
 		let { screen: screenToDisplay, imageUrl } = selection;

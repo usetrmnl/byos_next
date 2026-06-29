@@ -12,18 +12,14 @@ import {
 	isLiquidRecipe,
 	renderLiquidRecipe,
 } from "./liquid-renderer";
-import {
-	type RasterizeFormat,
-	type RasterizeResults,
-	rasterize,
-} from "./render/rasterize";
+import { type RasterizeResults, rasterize } from "./render/rasterize";
 import { resolveReactRecipe } from "./runtime/react";
 
 /**
  * Thin orchestrator. The heavy lifting now lives in:
  *   - `lib/recipes/registry.ts`        (built-in React recipe lookup)
  *   - `lib/recipes/runtime/react.ts`   (params + data resolution)
- *   - `lib/recipes/render/rasterize.ts` (PNG / bitmap pipeline)
+ *   - `lib/recipes/render/rasterize.ts` (PNG pipeline)
  *   - `lib/recipes/liquid-renderer.ts` (TRMNL-plugin liquid path)
  *
  * Two top-level entry points: `renderRecipeToImage` and
@@ -38,13 +34,12 @@ type RenderRecipeArgs = {
 	slug: string;
 	imageWidth: number;
 	imageHeight: number;
-	formats?: RasterizeFormat[];
-	bmpGrayLevels?: number;
 	userId?: string | null;
 	cookies?: string;
 	model?: TrmnlModel | null;
 	palette?: TrmnlPalette | null;
 	paletteId?: string | null;
+	deviceProfile?: DeviceProfile | null;
 };
 
 /**
@@ -54,14 +49,16 @@ export async function renderRecipeToImage({
 	slug,
 	imageWidth,
 	imageHeight,
-	formats = ["bitmap", "png"],
-	bmpGrayLevels,
 	userId,
 	cookies,
 	model,
 	palette,
 	paletteId,
+	deviceProfile,
 }: RenderRecipeArgs): Promise<RasterizeResults> {
+	const profile =
+		deviceProfile ?? (model ? { model, palette: palette ?? null } : null);
+
 	// React path
 	const resolved = await resolveReactRecipe(slug, userId ?? undefined);
 	if (resolved) {
@@ -86,10 +83,9 @@ export async function renderRecipeToImage({
 			imageHeight,
 			layoutWidth: screen.logicalWidth,
 			layoutHeight: screen.logicalHeight,
-			formats,
-			bmpGrayLevels,
 			cookies,
 			model,
+			profile,
 			paletteId,
 			userId,
 			renderSettings: definition.meta.renderSettings ?? null,
@@ -107,10 +103,9 @@ export async function renderRecipeToImage({
 			html,
 			imageWidth,
 			imageHeight,
-			formats,
-			bmpGrayLevels,
 			cookies,
 			model,
+			profile,
 			paletteId,
 			renderSettings: null,
 		});
@@ -150,7 +145,6 @@ export async function renderRecipeForDevice({
 		slug,
 		imageWidth: renderProfile.model.width,
 		imageHeight: renderProfile.model.height,
-		formats: ["png"],
 		userId,
 		cookies,
 		model: profile.model,

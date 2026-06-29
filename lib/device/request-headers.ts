@@ -12,7 +12,6 @@ export interface RequestHeaders {
 	height: number | null;
 	model: string | null;
 	specialFunction: boolean;
-	base64: boolean;
 	supportsTemperatureProfile: boolean;
 	hostUrl: string;
 }
@@ -33,7 +32,6 @@ export function parseRequestHeaders(request: Request): RequestHeaders {
 		height: heightStr ? Number.parseInt(heightStr, 10) : null,
 		model: headers.get("Model")?.trim() || null,
 		specialFunction: headers.get("Special-Function") === "true",
-		base64: headers.get("BASE64") === "true",
 		supportsTemperatureProfile: headers.get("temperature-profile") === "true",
 		hostUrl:
 			(headers.get("x-forwarded-proto") || "http") +

@@ -92,7 +92,7 @@ export async function updateScreenParams(
 				.execute(),
 		);
 		revalidatePath(`/recipes/${slug}`);
-		revalidatePath(`/api/bitmap/${slug}.bmp`);
+		revalidatePath(`/api/bitmap/${slug}.png`);
 		return { success: true };
 	} catch (error) {
 		console.error("Failed to save screen params", error);

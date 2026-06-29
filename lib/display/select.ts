@@ -25,7 +25,6 @@ type RequestHints = {
 	hostUrl: string;
 	width?: number | null;
 	height?: number | null;
-	base64?: boolean;
 };
 
 export type DisplaySelection = {
@@ -88,9 +87,6 @@ export async function selectDisplayForDevice(
 	}
 	if (profile.palette?.id) {
 		params.set("palette_id", profile.palette.id);
-	}
-	if (hints.base64) {
-		params.set("base64", "true");
 	}
 	const baseQueryParams = params.toString();
 

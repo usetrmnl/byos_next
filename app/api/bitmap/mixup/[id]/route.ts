@@ -6,6 +6,8 @@ import {
 	withExplicitUserScope,
 } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
+import { resolveDeviceProfileForRequest } from "@/lib/device/device-profile-request";
+import { parseRequestHeaders } from "@/lib/device/request-headers";
 import { getLayoutById, type LayoutSlot } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
@@ -18,14 +20,13 @@ import { stripImageExtension } from "@/lib/render/device-image-url";
 import { renderErrorImage } from "@/lib/render/error-image";
 import { parseImageRequest } from "@/lib/render/image-request";
 import { imageResponse } from "@/lib/render/image-response";
-import { getDeviceProfile } from "@/lib/trmnl/device-profile";
-import { getBmpGrayLevelsForPalette } from "@/lib/trmnl/palette-gray-levels";
-import { renderBmp } from "@/utils/render-bmp";
+import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 
 export async function GET(
 	req: NextRequest,
 	{ params }: { params: Promise<{ id: string }> },
 ) {
+	const headers = parseRequestHeaders(req);
 	try {
 		const { id } = await params;
 		const mixupId = stripImageExtension(id);
@@ -38,8 +39,10 @@ export async function GET(
 		if (imageRequest instanceof Response) return imageRequest;
 		const accessToken =
 			searchParams.get("access_token") ?? req.headers.get("Access-Token");
+		const profileHeaders = { ...headers, apiKey: accessToken };
 		const width = imageRequest.width ?? DEFAULT_IMAGE_WIDTH;
 		const height = imageRequest.height ?? DEFAULT_IMAGE_HEIGHT;
+		const cookieHeader = req.headers.get("cookie");
 
 		const { ready } = await checkDbConnection();
 		if (!ready) {
@@ -59,10 +62,6 @@ export async function GET(
 		//     (mixup-list, device-view, device-edit-form) which can't add an
 		//     access_token to <img> srcs.
 		let userId: string | null = null;
-		let profileSource: {
-			model: string | null;
-			palette_id: string | null;
-		} | null = null;
 
 		if (accessToken) {
 			const device = await withDeviceApiKey(accessToken, (scopedDb) =>
@@ -77,7 +76,6 @@ export async function GET(
 				return new Response("Mixup not found", { status: 404 });
 			}
 			userId = device.user_id;
-			profileSource = { model: device.model, palette_id: device.palette_id };
 		} else {
 			const sessionUserId = await getCurrentUserId();
 			if (!sessionUserId) {
@@ -96,14 +94,10 @@ export async function GET(
 			userId = sessionUserId;
 		}
 
-		// Query-string overrides win — keeps mixup preview URLs self-contained
-		// the same way `/api/bitmap` URLs are. Without this, a `<img>` whose URL
-		// includes `model` and `palette_id` would still render against the
-		// device-row defaults.
-		const profile = await getDeviceProfile(
-			imageRequest.modelName ?? profileSource?.model,
-			imageRequest.paletteId ?? profileSource?.palette_id,
-		);
+		const profile = await resolveDeviceProfileForRequest(profileHeaders, {
+			modelName: imageRequest.modelName,
+			paletteId: imageRequest.paletteId,
+		});
 
 		// Fetch mixup and its slots (join with recipes to get slug)
 		const [mixup, slots] = await withExplicitUserScope(userId, (scopedDb) =>
@@ -156,22 +150,11 @@ export async function GET(
 			assignments,
 			width,
 			height,
+			profile,
 			userId,
+			cookieHeader || undefined,
 		);
-		// Dispatch on profile MIME — model/palette_id are URL query params, so
-		// the same URL always picks the same renderer.
-		const image =
-			profile.model.mime_type === "image/bmp"
-				? {
-						buffer: await renderBmp(compositedPng, {
-							width,
-							height,
-							levels: getBmpGrayLevelsForPalette(profile.palette),
-						}),
-						mime_type: "image/bmp",
-						size_limit_exceeded: false,
-					}
-				: await renderDeviceImage({ png: compositedPng, profile });
+		const image = await renderDeviceImage({ png: compositedPng, profile });
 
 		return imageResponse(image);
 	} catch (error) {
@@ -190,15 +173,18 @@ export async function GET(
 async function renderSlot(
 	slot: LayoutSlot,
 	recipeSlug: string,
+	profile: DeviceProfile,
 	userId: string,
+	cookies?: string,
 ): Promise<Buffer | null> {
 	try {
 		const renders = await renderRecipeToImage({
 			slug: recipeSlug,
 			imageWidth: slot.width,
 			imageHeight: slot.height,
-			formats: ["png"],
+			deviceProfile: profile,
 			userId,
+			cookies,
 		});
 		return renders.png;
 	} catch (error) {
@@ -218,7 +204,9 @@ async function renderMixupCompositePng(
 	assignments: Record<string, string | null>,
 	width: number,
 	height: number,
+	profile: DeviceProfile,
 	userId: string,
+	cookies?: string,
 ): Promise<Buffer> {
 	// Render all slots in parallel
 	const slotRenders = await Promise.all(
@@ -228,7 +216,13 @@ async function renderMixupCompositePng(
 				return { slot, buffer: null };
 			}
 
-			const buffer = await renderSlot(slot, recipeSlug, userId);
+			const buffer = await renderSlot(
+				slot,
+				recipeSlug,
+				profile,
+				userId,
+				cookies,
+			);
 			return { slot, buffer };
 		}),
 	);

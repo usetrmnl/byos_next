@@ -10,6 +10,11 @@ export type RecipeAuthor = {
 export type RecipeRenderSettings = {
 	supersample?: boolean;
 	applyEdgeSnap?: boolean;
+	/**
+	 * Image preparation is enabled by default for reducible device palettes.
+	 * Set to false to opt out, or use "floyd-steinberg" for explicitness.
+	 */
+	imageDither?: false | "floyd-steinberg";
 	[key: string]: boolean | string | number | undefined;
 };
 

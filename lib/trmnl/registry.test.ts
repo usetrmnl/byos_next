@@ -1,6 +1,12 @@
 /// <reference types="jest" />
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import {
+	getPaletteChannelBitDepth,
+	getPaletteGrayLevels,
+	paletteSupportsColor,
+	resolveDeviceRenderTarget,
+} from "./palette-colors";
 import { parseRegistryList } from "./registry";
 import { trmnlModelSchema, trmnlPaletteSchema } from "./types";
 
@@ -61,6 +67,68 @@ describe("TRMNL registry contracts", () => {
 			grays: null,
 			channel_bit_depth: 8,
 		});
+	});
+
+	it("derives gray levels from palette grays rather than palette ids", () => {
+		const palettes = parseRegistryList("palettes", trmnlPaletteSchema, {
+			data: loadSnapshot("palettes.json"),
+		});
+
+		expect(getPaletteGrayLevels(palettes.find((p) => p.id === "bw"))).toBe(2);
+		expect(getPaletteGrayLevels(palettes.find((p) => p.id === "gray-4"))).toBe(
+			4,
+		);
+		expect(getPaletteGrayLevels(palettes.find((p) => p.id === "gray-16"))).toBe(
+			16,
+		);
+		expect(
+			getPaletteGrayLevels(palettes.find((p) => p.id === "gray-256")),
+		).toBe(256);
+		expect(
+			getPaletteGrayLevels(palettes.find((p) => p.id === "color-12bit")),
+		).toBe(2);
+	});
+
+	it("centralizes palette color and channel bit-depth detection", () => {
+		const palettes = parseRegistryList("palettes", trmnlPaletteSchema, {
+			data: loadSnapshot("palettes.json"),
+		});
+
+		const bw = palettes.find((p) => p.id === "bw");
+		const color6 = palettes.find((p) => p.id === "color-6a");
+		const color12 = palettes.find((p) => p.id === "color-12bit");
+
+		expect(paletteSupportsColor(bw)).toBe(false);
+		expect(paletteSupportsColor(color6)).toBe(true);
+		expect(paletteSupportsColor(color12)).toBe(true);
+		expect(getPaletteChannelBitDepth(color6)).toBe(1);
+		expect(getPaletteChannelBitDepth(color12)).toBe(4);
+	});
+
+	it("resolves render targets without mixing palette colors and grayscale levels", () => {
+		const palettes = parseRegistryList("palettes", trmnlPaletteSchema, {
+			data: loadSnapshot("palettes.json"),
+		});
+
+		const bw = resolveDeviceRenderTarget(palettes.find((p) => p.id === "bw"));
+		const gray16 = resolveDeviceRenderTarget(
+			palettes.find((p) => p.id === "gray-16"),
+		);
+		const color6 = resolveDeviceRenderTarget(
+			palettes.find((p) => p.id === "color-6a"),
+		);
+		const color12 = resolveDeviceRenderTarget(
+			palettes.find((p) => p.id === "color-12bit"),
+		);
+		const color24 = resolveDeviceRenderTarget(
+			palettes.find((p) => p.id === "color-24bit"),
+		);
+
+		expect(bw.targetPalette).toHaveLength(2);
+		expect(gray16.targetPalette).toHaveLength(16);
+		expect(color6.targetPalette).toHaveLength(6);
+		expect(color12).toEqual({ channelBitDepth: 4 });
+		expect(color24).toEqual({ channelBitDepth: 8 });
 	});
 
 	it("accepts nullable fields allowed by the upstream model/palette contract", () => {
