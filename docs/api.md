@@ -53,8 +53,8 @@ curl -X GET http://<BASE_URL>/api/display \
 ```json
 {
   "status": 0,
-  "image_url": "https://<BASE_URL>/api/bitmap/DEVICE_ID_TIMESTAMP.bmp",
-  "filename": "DEVICE_ID_TIMESTAMP.bmp",
+  "image_url": "https://<BASE_URL>/api/bitmap/DEVICE_ID_TIMESTAMP.png",
+  "filename": "DEVICE_ID_TIMESTAMP.png",
   "refresh_rate": 180,
   "reset_firmware": false,
   "update_firmware": false,
@@ -89,9 +89,11 @@ The server records the following fields on display requests to aid debugging and
 - Last refresh duration
 
 ## Screen Generation Pipeline
-- Image format: 800x480 pixel 1-bit BMP.
+- Image format: derived from the selected device model (`image/png` for TRMNL
+  e-ink models, `image/webp` for WebP-capable displays).
 - Renderer: Takumi (default) or Satori (`REACT_RENDERER` env var).
-- Pipeline: JSX component → renderer (PNG) → Sharp (BMP) → TRMNL-specific header.
+- Pipeline: recipe component → renderer PNG → device color reduction → encoder
+  selected by `model.mime_type`.
 - Caching: 60-second cache with background revalidation by Next.js (development uses in-memory cache).
 
 ## Additional Endpoints
