@@ -1,4 +1,18 @@
-import type { Glyph, NewBitmapFontMetrics } from "./schema/v2";
+import type { Glyph, NewBitmapFont, NewBitmapFontMetrics } from "./schema/v2";
+
+type FontSourceGrid = {
+	width: number;
+	height: number;
+	v2Metrics?: NewBitmapFontMetrics;
+};
+
+type FontSourceEntry = {
+	bitmapGrids?: FontSourceGrid[];
+};
+
+type ApplyDerivedMetricsOptions = {
+	manualFaceKeys?: string[];
+};
 
 const CAP_CHARS = /^[A-Z]$/;
 const DESC_CHARS = /^[gjpqy]$/;
@@ -105,4 +119,80 @@ export function deriveTypographyMetrics(
 		baselineY: 0,
 		lineGap: Math.max(fallback.lineGap, maxY - minY + 1),
 	};
+}
+
+export function applyDerivedMetricsToV2Pack(
+	pack: NewBitmapFont,
+	options: ApplyDerivedMetricsOptions = {},
+): NewBitmapFont {
+	const manualFaceKeys = new Set(options.manualFaceKeys ?? []);
+
+	if (pack.faces && Object.keys(pack.faces).length > 0) {
+		const faces = { ...pack.faces };
+		for (const [key, face] of Object.entries(faces)) {
+			if (manualFaceKeys.has(key)) continue;
+			faces[key] = {
+				...face,
+				metrics: deriveTypographyMetrics(
+					face.glyphs,
+					face.metrics ?? pack.metadata.metrics,
+				),
+			};
+		}
+		return { ...pack, faces };
+	}
+
+	if (pack.glyphs && !manualFaceKeys.has("__root__")) {
+		return {
+			...pack,
+			metadata: {
+				...pack.metadata,
+				metrics: deriveTypographyMetrics(pack.glyphs, pack.metadata.metrics),
+			},
+		};
+	}
+
+	return pack;
+}
+
+export function applyManualMetricsFromSource(
+	v2Pack: NewBitmapFont,
+	source: FontSourceEntry | null | undefined,
+): NewBitmapFont {
+	if (!source?.bitmapGrids?.length || !v2Pack.faces) return v2Pack;
+
+	const faces = { ...v2Pack.faces };
+	for (const grid of source.bitmapGrids) {
+		if (!grid.v2Metrics) continue;
+		const height = grid.height;
+		if (!height) continue;
+		const faceKey = grid.width > 0 ? `${grid.width}x${height}` : `0x${height}`;
+		if (!faces[faceKey]) continue;
+		faces[faceKey] = {
+			...faces[faceKey],
+			metrics: { ...grid.v2Metrics },
+		};
+	}
+
+	const firstManual = source.bitmapGrids.find((grid) => grid.v2Metrics);
+
+	return {
+		...v2Pack,
+		faces,
+		metadata: {
+			...v2Pack.metadata,
+			metrics: firstManual?.v2Metrics ?? v2Pack.metadata.metrics,
+		},
+	};
+}
+
+export function manualFaceKeysFromSource(
+	source: FontSourceEntry | null | undefined,
+): string[] {
+	if (!source?.bitmapGrids?.length) return [];
+	return source.bitmapGrids
+		.filter((grid) => grid.v2Metrics && grid.height)
+		.map((grid) =>
+			grid.width > 0 ? `${grid.width}x${grid.height}` : `0x${grid.height}`,
+		);
 }

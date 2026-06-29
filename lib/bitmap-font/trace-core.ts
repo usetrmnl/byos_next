@@ -3,7 +3,7 @@
  * and browser preload tracer.
  */
 
-export type TraceMode = "fit" | "pixelSnap";
+export type TraceMode = "fit" | "pixelSnap" | "metricSnap";
 export type InkDetection = "luminance" | "nonWhite" | "anyDark";
 
 export type TraceGridOptions = {
@@ -77,7 +77,6 @@ export function sampleToBinaryGrid(
 		targetWidth,
 		targetHeight,
 		threshold = 128,
-		mode = "fit",
 		inkDetection = "luminance",
 	} = options;
 	const cropW = bounds.maxX - bounds.minX + 1;
@@ -136,14 +135,88 @@ export function directCropToGrid(
 	return binary;
 }
 
+/** Place ink in a fixed cell, optionally centering horizontally. */
+export function embedInkInCell(
+	pixels: Uint8ClampedArray,
+	sourceWidth: number,
+	sourceHeight: number,
+	bounds: { minX: number; minY: number; maxX: number; maxY: number },
+	options: TraceGridOptions & { centerHorizontally?: boolean },
+): string {
+	const {
+		targetWidth,
+		targetHeight,
+		threshold = 128,
+		inkDetection = "luminance",
+		centerHorizontally = false,
+	} = options;
+	const inkW = bounds.maxX - bounds.minX + 1;
+	const offsetX = centerHorizontally
+		? Math.floor((targetWidth - inkW) / 2) - bounds.minX
+		: 0;
+
+	let binary = "";
+	for (let y = 0; y < targetHeight; y++) {
+		for (let x = 0; x < targetWidth; x++) {
+			const sx = x - offsetX;
+			if (sx < 0 || sx >= sourceWidth || y >= sourceHeight) {
+				binary += "0";
+				continue;
+			}
+			const i = (y * sourceWidth + sx) * 4;
+			binary += isInkPixel(pixels, i, threshold, inkDetection) ? "1" : "0";
+		}
+	}
+	return binary;
+}
+
+/** Center a glyph horizontally in a fixed-width cell without scaling ink. */
+export function measureHorizontalCenterOffset(
+	pixels: Uint8ClampedArray,
+	sourceWidth: number,
+	sourceHeight: number,
+	targetWidth: number,
+	threshold = 128,
+	inkDetection: InkDetection = "luminance",
+): number {
+	const bounds = findInkBounds(
+		pixels,
+		sourceWidth,
+		sourceHeight,
+		threshold,
+		"metricSnap",
+		inkDetection,
+	);
+	if (!bounds) return 0;
+
+	const inkW = bounds.maxX - bounds.minX + 1;
+	return Math.floor((targetWidth - inkW) / 2) - bounds.minX;
+}
+
 export function rgbaToBinaryGrid(
 	pixels: Uint8ClampedArray,
 	sourceWidth: number,
 	sourceHeight: number,
-	options: TraceGridOptions,
+	options: TraceGridOptions & { centerHorizontally?: boolean },
 ): string {
 	if (options.mode === "pixelSnap") {
 		return directCropToGrid(pixels, sourceWidth, sourceHeight, options);
+	}
+
+	if (options.mode === "metricSnap") {
+		const bounds = findInkBounds(
+			pixels,
+			sourceWidth,
+			sourceHeight,
+			options.threshold,
+			options.mode,
+			options.inkDetection,
+		);
+		if (!bounds) {
+			return "0".repeat(options.targetWidth * options.targetHeight);
+		}
+
+		return embedInkInCell(pixels, sourceWidth, sourceHeight, bounds, options);
 	}
 
 	const bounds = findInkBounds(
@@ -166,3 +239,6 @@ export const BASIC_ASCII_CHAR_CODES = Array.from(
 	{ length: 95 },
 	(_, i) => i + 32,
 );
+
+/** Alias used by font trace scripts. */
+export const BASIC_ASCII = BASIC_ASCII_CHAR_CODES;

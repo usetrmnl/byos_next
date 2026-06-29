@@ -5,7 +5,14 @@ import {
 	discoverGridForGrid,
 	discoverGridForSource,
 } from "./discover-pixel-grid.mjs";
-import { BASIC_ASCII, directCropToGrid, findInkBounds, measureHorizontalCenterOffset, rgbaToBinaryGrid, sampleToBinaryGrid } from "./trace-core.mjs";
+import {
+	BASIC_ASCII,
+	directCropToGrid,
+	findInkBounds,
+	measureHorizontalCenterOffset,
+	rgbaToBinaryGrid,
+	sampleToBinaryGrid,
+} from "../../lib/bitmap-font/trace-core.ts";
 import {
 	legacyMetricsFromTraceLayout,
 	resolveMetricFontSize,
@@ -246,11 +253,13 @@ export function traceGlyphNode(source, char, grid, metrics) {
 					canvasWidth,
 					canvasHeight,
 					bounds,
-					targetWidth,
-					traceHeight,
-					128,
-					traceMode,
-					inkDetection,
+					{
+						targetWidth,
+						targetHeight: traceHeight,
+						threshold: 128,
+						mode: traceMode,
+						inkDetection,
+					},
 				)
 			: "0".repeat(targetWidth * traceHeight);
 	} else {

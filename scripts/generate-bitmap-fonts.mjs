@@ -3,12 +3,12 @@ import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { generateBitmapFontJson } from "./lib/trace-glyph-node.mjs";
-import { convertLegacyPackToV2 } from "./lib/convert-legacy-font.mjs";
+import { convertLegacyPackToV2 } from "../lib/bitmap-font/convert-legacy-font.ts";
 import {
 	applyDerivedMetricsToV2Pack,
 	applyManualMetricsFromSource,
 	manualFaceKeysFromSource,
-} from "./lib/metrics-derive.mjs";
+} from "../lib/bitmap-font/metrics-derive.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
