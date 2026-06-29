@@ -557,3 +557,32 @@ Do not render from top-left unless converting to a specific raster buffer.
 Do not use SVG path rasterisation rules.
 
 The glyph data is already rasterised.
+
+⸻
+
+17. Font pack curation workflow
+
+Shipped packs under `components/bitmap-font/generated/*.json` are **curated artifacts**, not disposable build output.
+
+### Why generation is manual
+
+`pnpm generate:fonts` traces web fonts into v2 JSON. That pipeline is useful as an **assistant** to bootstrap a pack, but it is lossy and font-dependent:
+
+- Many “pixel vibe” web fonts do not snap cleanly to a grid (gaps, x-height, descenders).
+- Symbols and edge-case characters often need to be added or redrawn in the bitmap font designer.
+- Grid discovery and metrics derivation work for some sources (e.g. Geist Pixel) but not universally.
+
+**Practical workflow:** trace → human pass in the designer → commit the tuned JSON.
+
+### Commands
+
+```bash
+pnpm generate:fonts   # optional: re-bootstrap from lib/font-sources.json
+pnpm convert:font     # one-off legacy → v2 conversion CLI
+```
+
+`pnpm build` and `pnpm dev` do **not** run `generate:fonts`, so a normal build cannot overwrite hand-edited packs.
+
+### Longer term
+
+Either improve tracing until unattended generation is reliable, or treat all packs as hand-authored in the designer and drop generation.
