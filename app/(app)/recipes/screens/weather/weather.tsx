@@ -70,6 +70,7 @@ export const dataSchema = z.object({
 	sunrise: z.string().default("Loading..."),
 	latitude: z.number().default(0),
 	longitude: z.number().default(0),
+	suggestion: z.string().default(""),
 });
 
 interface WeatherProps {
@@ -87,6 +88,7 @@ interface WeatherProps {
 	sunrise?: string;
 	latitude?: number;
 	longitude?: number;
+	suggestion?: string;
 	width?: number;
 	height?: number;
 	screen?: ScreenProfile;
@@ -105,6 +107,7 @@ export default function Weather({
 	pressure = "Loading...",
 	sunset = "Loading...",
 	sunrise = "Loading...",
+	suggestion = "",
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
 	screen,
@@ -189,8 +192,13 @@ export default function Weather({
 					/>
 					<ScreenFooter
 						screen={screenProfile}
-						left={location}
-						right={lastUpdated ? `Last updated: ${lastUpdated}` : ""}
+						left={suggestion || location}
+						right={
+							location
+								? `${location}${lastUpdated ? ` · ${lastUpdated}` : ""}`
+								: lastUpdated
+						}
+						style={{ backgroundColor: "#000" }}
 					/>
 				</div>
 			</div>
