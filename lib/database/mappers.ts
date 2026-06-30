@@ -15,6 +15,12 @@ function nullableString(value: unknown): string | null {
 	return typeof value === "string" ? value : null;
 }
 
+function nullableTimestamp(value: unknown): string | null {
+	if (typeof value === "string") return value;
+	if (value instanceof Date) return value.toISOString();
+	return null;
+}
+
 function nullableNumber(value: unknown): number | null {
 	if (typeof value === "number" && Number.isFinite(value)) return value;
 	if (typeof value === "string") {
@@ -51,14 +57,14 @@ export function mapDeviceRow(row: DeviceRow): Device {
 		screen: nullableString(row.screen),
 		refresh_schedule: normalizeRefreshSchedule(row.refresh_schedule),
 		timezone: stringValue(row.timezone, DEFAULT_DEVICE_TIMEZONE),
-		last_update_time: nullableString(row.last_update_time),
-		next_expected_update: nullableString(row.next_expected_update),
+		last_update_time: nullableTimestamp(row.last_update_time),
+		next_expected_update: nullableTimestamp(row.next_expected_update),
 		last_refresh_duration: nullableNumber(row.last_refresh_duration),
 		battery_voltage: nullableNumber(row.battery_voltage),
 		firmware_version: nullableString(row.firmware_version),
 		rssi: nullableNumber(row.rssi),
-		created_at: nullableString(row.created_at),
-		updated_at: nullableString(row.updated_at),
+		created_at: nullableTimestamp(row.created_at),
+		updated_at: nullableTimestamp(row.updated_at),
 		playlist_id: nullableString(row.playlist_id),
 		mixup_id: nullableString(row.mixup_id),
 		display_mode: normalizeDisplayMode(row.display_mode),
