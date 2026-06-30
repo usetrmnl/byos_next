@@ -2,9 +2,10 @@
 
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Button } from "@/components/ui/button";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import { cn } from "@/lib/utils";
 
 export interface PreviewFrame {
@@ -104,9 +105,9 @@ export function PlaylistLivePreview({
 							Add a frame to preview the playlist
 						</div>
 					) : (
-						<BitmapPreview
+						<ScreenPreviewImage
 							key={active.id}
-							path={active.screen_id}
+							src={buildBitmapPreviewSrc(active.screen_id)}
 							alt={active.label}
 							className="absolute inset-0"
 						/>

@@ -1,14 +1,15 @@
 "use client";
 
 import { Edit3, LayoutGrid, Plus, Trash2 } from "lucide-react";
-import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { FormattedDate } from "@/components/common/formatted-date";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Button } from "@/components/ui/button";
 import { getLayoutById } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import type { Mixup } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -87,8 +88,8 @@ export function MixupList({
 								aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
 							}}
 						>
-							<BitmapPreview
-								path={`mixup/${mixup.id}`}
+							<ScreenPreviewImage
+								src={buildBitmapPreviewSrc(`mixup/${mixup.id}`)}
 								alt={`${mixup.name} preview`}
 								className="absolute inset-0"
 							/>

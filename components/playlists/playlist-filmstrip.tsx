@@ -2,8 +2,9 @@
 
 import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
-import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import { cn } from "@/lib/utils";
 
 export interface FilmstripFrame {
@@ -112,8 +113,8 @@ export function PlaylistFilmstrip({
 
 							<div className="mx-3">
 								<DeviceFrame size="sm" flat>
-									<BitmapPreview
-										path={frame.screen_id}
+									<ScreenPreviewImage
+										src={buildBitmapPreviewSrc(frame.screen_id)}
 										alt={frame.label}
 										className="absolute inset-0"
 									/>

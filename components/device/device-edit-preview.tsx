@@ -2,9 +2,9 @@
 
 import { AlertTriangle } from "lucide-react";
 import type React from "react";
-import { DeviceBitmapImage } from "@/components/common/device-bitmap-image";
 import { DeviceFrame } from "@/components/common/device-frame";
 import { PanelHeader } from "@/components/common/panel-header";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
 import { getOrientedDeviceDimensions } from "@/lib/device/dimensions";
@@ -103,7 +103,11 @@ export function DeviceEditPreview({
 							portrait={isPortrait}
 							screenAspectRatio={`${deviceWidth} / ${deviceHeight}`}
 						>
-							<DeviceBitmapImage src={heroSrc} alt="Device screen preview" />
+							<ScreenPreviewImage
+								src={heroSrc}
+								alt="Device screen preview"
+								className="absolute inset-0"
+							/>
 						</DeviceFrame>
 					</div>
 				)}

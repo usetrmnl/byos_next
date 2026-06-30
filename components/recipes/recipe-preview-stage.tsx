@@ -1,10 +1,10 @@
 "use client";
 
 import { Monitor, Smartphone } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -13,6 +13,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { buildScreenPreviewSrc } from "@/lib/render/preview-image";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
@@ -100,6 +101,9 @@ export function RecipePreviewStage({
 	const [paletteId, setPaletteId] = useState<string>(() =>
 		chooseDefaultPaletteId(initialModel ?? null),
 	);
+	const [loadedReactPreviewSrc, setLoadedReactPreviewSrc] = useState<
+		string | null
+	>(null);
 
 	const deviceSimActive = sortedModels.length > 0;
 
@@ -197,6 +201,8 @@ export function RecipePreviewStage({
 					reactFrameSize.height / simHeight,
 				)
 			: 1;
+	const reactPreviewLoading =
+		reactPreviewSrc != null && loadedReactPreviewSrc !== reactPreviewSrc;
 
 	useEffect(() => {
 		if (activeKey !== "react" || !reactPreviewSrc) return;
@@ -232,14 +238,10 @@ export function RecipePreviewStage({
 		}
 		if (activeKey === "device" && devicePreviewSrc) {
 			return (
-				<Image
-					width={simWidth}
-					height={simHeight}
+				<ScreenPreviewImage
 					src={devicePreviewSrc}
-					unoptimized
-					style={{ imageRendering: "pixelated" }}
 					alt={`${selectedModel.label} ${FORMAT_LABELS[activeKey]} preview`}
-					className="absolute inset-0 h-full w-full object-cover"
+					className="absolute inset-0"
 				/>
 			);
 		}
@@ -250,6 +252,12 @@ export function RecipePreviewStage({
 		) {
 			return (
 				<div ref={reactFrameRef} className="absolute inset-0 overflow-hidden">
+					{reactPreviewLoading && (
+						<Skeleton
+							aria-hidden
+							className="absolute inset-0 h-full w-full rounded-none bg-neutral-300 dark:bg-neutral-700"
+						/>
+					)}
 					<iframe
 						title={`${selectedModel.label} recipe preview`}
 						src={reactPreviewSrc}
@@ -258,7 +266,10 @@ export function RecipePreviewStage({
 							width: simWidth,
 							height: simHeight,
 							transform: `scale(${reactPreviewScale})`,
+							opacity: reactPreviewLoading ? 0 : 1,
+							transition: "opacity 150ms",
 						}}
+						onLoad={() => setLoadedReactPreviewSrc(reactPreviewSrc)}
 					/>
 				</div>
 			);

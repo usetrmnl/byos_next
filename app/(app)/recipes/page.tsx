@@ -1,8 +1,8 @@
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Suspense } from "react";
-import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { PageTemplate } from "@/components/common/page-template";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type CatalogRecipe, listAllRecipes } from "@/lib/recipes/catalog";
@@ -10,6 +10,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 
 const RecipeCard = ({ recipe }: { recipe: CatalogRecipe }) => {
 	return (
@@ -24,8 +25,8 @@ const RecipeCard = ({ recipe }: { recipe: CatalogRecipe }) => {
 					aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
 				}}
 			>
-				<BitmapPreview
-					path={recipe.slug}
+				<ScreenPreviewImage
+					src={buildBitmapPreviewSrc(recipe.slug)}
 					alt={`${recipe.name} preview`}
 					className="absolute inset-0"
 				/>

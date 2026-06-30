@@ -2,8 +2,8 @@
 
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import Link from "next/link";
-import { DeviceBitmapImage } from "@/components/common/device-bitmap-image";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -104,9 +104,10 @@ export default function DashboardClientPage({
 									portrait={isPortrait}
 									screenAspectRatio={`${previewWidth} / ${previewHeight}`}
 								>
-									<DeviceBitmapImage
+									<ScreenPreviewImage
 										src={latestScreenSrc}
 										alt={`${lastUpdatedDevice.name} screen`}
+										className="absolute inset-0"
 									/>
 								</DeviceFrame>
 							</div>

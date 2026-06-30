@@ -1,13 +1,14 @@
 "use client";
 
 import { Edit3, Film, Trash2 } from "lucide-react";
-import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { FormattedDate } from "@/components/common/formatted-date";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Button } from "@/components/ui/button";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import type { Playlist, PlaylistItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -81,8 +82,8 @@ export function PlaylistReelCard({
 									aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
 								}}
 							>
-								<BitmapPreview
-									path={item.screen_id}
+								<ScreenPreviewImage
+									src={buildBitmapPreviewSrc(item.screen_id)}
 									alt={getRecipeName(item.screen_id)}
 								/>
 								<div className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-semibold text-white tabular-nums">

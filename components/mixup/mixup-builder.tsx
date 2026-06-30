@@ -2,8 +2,8 @@
 
 import { ArrowLeft, LayoutGrid, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { BitmapPreview } from "@/components/common/bitmap-preview";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -20,6 +20,7 @@ import {
 	type LayoutSlot,
 	type MixupLayoutId,
 } from "@/lib/mixup/constants";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import { cn } from "@/lib/utils";
 
 type MixupRecipe = {
@@ -270,8 +271,11 @@ export function MixupBuilder({
 												aria-pressed={isActive}
 											>
 												{recipe ? (
-													<BitmapPreview
-														path={recipe.slug}
+													<ScreenPreviewImage
+														src={buildBitmapPreviewSrc(recipe.slug, {
+															width: slot.width,
+															height: slot.height,
+														})}
 														alt={`${recipe.title} preview`}
 														width={slot.width}
 														height={slot.height}
