@@ -13,6 +13,7 @@ import { RecipePreviewStage } from "@/components/recipes/recipe-preview-stage";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { Badge } from "@/components/ui/badge";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { listAllRecipes } from "@/lib/recipes/catalog";
@@ -74,13 +75,15 @@ const LiquidRenderComponent = ({
 	imageWidth,
 	imageHeight,
 	customFieldOverrides,
+	userId,
 }: {
 	slug: string;
 	imageWidth: number;
 	imageHeight: number;
 	customFieldOverrides?: Record<string, unknown>;
+	userId?: string;
 }) => {
-	const result = use(renderLiquidRecipe(slug, customFieldOverrides));
+	const result = use(renderLiquidRecipe(slug, customFieldOverrides, userId));
 
 	if (!result) {
 		return <EmptyState>Failed to render liquid template</EmptyState>;
@@ -343,14 +346,17 @@ export default async function RecipePage({
 		);
 	}
 
-	// Liquid recipe path
+	// Liquid recipe path. Recipes installed from the catalog are scoped to the
+	// owning user, so the in-browser preview must look them up under that user
+	// rather than the shared (user_id IS NULL) set.
 	const liquidMeta = await fetchLiquidRecipeMeta(slug);
 	if (!liquidMeta) notFound();
 
 	const title = liquidMeta.name;
 	const description = liquidMeta.description;
 
-	const liquidSettings = await fetchLiquidRecipeSettings(slug);
+	const userId = (await getCurrentUserId()) ?? undefined;
+	const liquidSettings = await fetchLiquidRecipeSettings(slug, userId);
 	const customFields = liquidSettings?.custom_fields ?? [];
 	const paramDefinitions = customFieldsToParamDefinitions(customFields);
 	const hasParams = Object.keys(paramDefinitions).length > 0;
@@ -403,6 +409,7 @@ export default async function RecipePage({
 								imageWidth={imageWidth}
 								imageHeight={imageHeight}
 								customFieldOverrides={storedValues}
+								userId={userId}
 							/>
 						</Suspense>
 					}

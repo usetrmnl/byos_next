@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import {
 	resolveDeviceProfileForRequest,
 	resolveDeviceProfileOrNull,
@@ -38,10 +39,13 @@ export async function GET(
 
 		logger.info(`Bitmap request for: ${bitmapPath}`);
 
-		// Resolve the device owner so DB queries are scoped to the right user
-		const userId = headers.apiKey
+		// Devices send an Access-Token; browser previews (an <img> fetch) send the
+		// session cookie instead, so fall back to the signed-in user — otherwise
+		// user-scoped recipes are invisible and render as "Unknown recipe".
+		const apiKeyOwnerId = headers.apiKey
 			? await resolveUserIdFromApiKey(headers.apiKey)
 			: null;
+		const userId = apiKeyOwnerId ?? (await getCurrentUserId());
 
 		// Forward cookies so browser rendering can reuse the caller's auth session.
 		const cookieHeader = req.headers.get("cookie");
