@@ -476,7 +476,7 @@ export const findOrCreateDevice = async (
 			try {
 				const newDevice = await createProvisionedDevice(scopedDb, {
 					macAddress: macAddress || mockMacAddress,
-					name: `Unknown device with API ${apiKey.substring(0, 4)}...`,
+					name: `TRMNL Device ${friendly_id}`,
 					friendlyId: friendly_id,
 					apiKey: new_api_key,
 					userId: currentUserId,
