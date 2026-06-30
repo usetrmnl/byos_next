@@ -2,11 +2,10 @@
 
 import { Pencil, RefreshCw, Save, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { fetchDeviceByFriendlyId, updateDevice } from "@/app/actions/device";
 import { PageTemplate } from "@/components/common/page-template";
-import { StatusIndicator } from "@/components/common/status-indicator";
 import DeviceEditForm from "@/components/device/device-edit-form";
 import DeviceView from "@/components/device/device-view";
 import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
@@ -67,6 +66,17 @@ export default function DeviceClientPage({
 	// State for validation error messages
 	const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 	const [friendlyIdError, setFriendlyIdError] = useState<string | null>(null);
+
+	// Adopt fresh server data (e.g. from the dashboard auto-refresh) without
+	// clobbering in-progress edits. Keyed on `initialDevice` only so toggling
+	// edit mode off after a save doesn't re-apply a now-stale prop.
+	const isEditingRef = useRef(isEditing);
+	isEditingRef.current = isEditing;
+	useEffect(() => {
+		if (isEditingRef.current) return;
+		setDevice(initialDevice);
+		setEditedDevice(JSON.parse(JSON.stringify(initialDevice)));
+	}, [initialDevice]);
 
 	// State for device size preset
 	const [deviceSizePreset, setDeviceSizePreset] = useState<DeviceSizePreset>(
@@ -417,20 +427,6 @@ export default function DeviceClientPage({
 			title={
 				<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 					<h1 className="text-2xl font-bold tracking-tight">{device.name}</h1>
-					<span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
-						<StatusIndicator
-							status={
-								device.status === "online" || device.status === "offline"
-									? device.status
-									: "offline"
-							}
-							size="sm"
-						/>
-						{device.status}
-					</span>
-					<span className="font-mono text-[11px] text-muted-foreground">
-						{device.friendly_id}
-					</span>
 				</div>
 			}
 			left={

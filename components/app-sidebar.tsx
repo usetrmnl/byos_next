@@ -545,15 +545,7 @@ function DeviceSubItem({
 	currentPath: string;
 	prefetch: (path: string) => void;
 }) {
-	const [status, setStatus] = useState(getDeviceStatus(device));
-
-	useEffect(() => {
-		setStatus(getDeviceStatus(device));
-		const interval = setInterval(() => {
-			setStatus(getDeviceStatus(device));
-		}, 30000);
-		return () => clearInterval(interval);
-	}, [device]);
+	const status = getDeviceStatus(device);
 
 	return (
 		<SidebarMenuSubItem>

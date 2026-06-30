@@ -12,10 +12,10 @@ function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import type React from "react";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import type { ComponentConfig } from "@/components/component-config";
@@ -65,12 +65,14 @@ interface ClientMainLayoutProps {
 export function ClientMainLayout({
 	children,
 	devices,
+	dbStatus,
 	recipeSidebarItems,
 	toolsComponents,
 	user,
 	authEnabled,
 }: ClientMainLayoutProps) {
 	const pathname = usePathname() ?? "/";
+	const router = useRouter();
 	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 	const { theme, setTheme } = useTheme();
 
@@ -78,6 +80,14 @@ export function ClientMainLayout({
 
 	// Only nag the operator about server updates (mono-user mode or admins).
 	const canSeeUpdates = !authEnabled || user?.role === "admin";
+
+	useEffect(() => {
+		if (!dbStatus.ready || devices.length === 0) return;
+		const interval = setInterval(() => {
+			if (document.visibilityState === "visible") router.refresh();
+		}, 30_000);
+		return () => clearInterval(interval);
+	}, [dbStatus.ready, devices.length, router]);
 
 	return (
 		<SidebarProvider>
