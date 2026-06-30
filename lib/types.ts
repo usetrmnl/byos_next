@@ -44,7 +44,6 @@ export type Device = {
 	screen_width: number | null;
 	screen_height: number | null;
 	screen_orientation: string | null;
-	grayscale: number | null;
 	model: string | null;
 	palette_id: string | null;
 	sleep_mode_enabled: boolean;

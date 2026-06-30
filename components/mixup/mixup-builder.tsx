@@ -3,6 +3,7 @@
 import { ArrowLeft, LayoutGrid, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -19,6 +20,7 @@ import {
 	type LayoutSlot,
 	type MixupLayoutId,
 } from "@/lib/mixup/constants";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import { cn } from "@/lib/utils";
 
 type MixupRecipe = {
@@ -269,18 +271,16 @@ export function MixupBuilder({
 												aria-pressed={isActive}
 											>
 												{recipe ? (
-													<picture>
-														<source
-															srcSet={`/api/bitmap/${recipe.slug}.bmp?width=${slot.width}&height=${slot.height}`}
-															type="image/bmp"
-														/>
-														<img
-															src={`/api/bitmap/${recipe.slug}.bmp`}
-															alt={`${recipe.title} preview`}
-															className="absolute inset-0 h-full w-full object-cover"
-															style={{ imageRendering: "pixelated" }}
-														/>
-													</picture>
+													<ScreenPreviewImage
+														src={buildBitmapPreviewSrc(recipe.slug, {
+															width: slot.width,
+															height: slot.height,
+														})}
+														alt={`${recipe.title} preview`}
+														width={slot.width}
+														height={slot.height}
+														className="absolute inset-0"
+													/>
 												) : (
 													<div className="absolute inset-0 flex items-center justify-center bg-muted/40 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
 														Empty

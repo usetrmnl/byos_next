@@ -3,11 +3,9 @@
 import { Pause, Play, SkipBack, SkipForward } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Button } from "@/components/ui/button";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import { cn } from "@/lib/utils";
 
 export interface PreviewFrame {
@@ -107,20 +105,12 @@ export function PlaylistLivePreview({
 							Add a frame to preview the playlist
 						</div>
 					) : (
-						<picture key={active.id}>
-							<source
-								srcSet={`/api/bitmap/${active.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-								type="image/bmp"
-							/>
-							<img
-								src={`/api/bitmap/${active.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-								alt={active.label}
-								width={DEFAULT_IMAGE_WIDTH}
-								height={DEFAULT_IMAGE_HEIGHT}
-								className="absolute inset-0 h-full w-full object-cover"
-								style={{ imageRendering: "pixelated" }}
-							/>
-						</picture>
+						<ScreenPreviewImage
+							key={active.id}
+							src={buildBitmapPreviewSrc(active.screen_id)}
+							alt={active.label}
+							className="absolute inset-0"
+						/>
 					)}
 				</DeviceFrame>
 

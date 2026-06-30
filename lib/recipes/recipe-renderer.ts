@@ -12,36 +12,20 @@ import {
 	isLiquidRecipe,
 	renderLiquidRecipe,
 } from "./liquid-renderer";
-import {
-	type RasterizeFormat,
-	type RasterizeResults,
-	rasterize,
-} from "./render/rasterize";
+import { type RasterizeResults, rasterize } from "./render/rasterize";
 import { resolveReactRecipe } from "./runtime/react";
 
 /**
  * Thin orchestrator. The heavy lifting now lives in:
  *   - `lib/recipes/registry.ts`        (built-in React recipe lookup)
  *   - `lib/recipes/runtime/react.ts`   (params + data resolution)
- *   - `lib/recipes/render/rasterize.ts` (PNG / bitmap pipeline)
+ *   - `lib/recipes/render/rasterize.ts` (PNG pipeline)
  *   - `lib/recipes/liquid-renderer.ts` (TRMNL-plugin liquid path)
  *
  * Two top-level entry points: `renderRecipeToImage` and
  * `renderRecipeForDevice`. Both branch React vs liquid internally so API
  * routes don't need to know the difference.
  */
-
-export { DEFAULT_IMAGE_HEIGHT, DEFAULT_IMAGE_WIDTH } from "./constants";
-export { logger } from "./logger";
-export { getReactRecipeDefinition, listReactRecipes } from "./registry";
-export { getRendererType } from "./render/rasterize";
-export { resolveReactRecipe } from "./runtime/react";
-export type { RecipeMeta } from "./types";
-export type {
-	RecipeParamDefinition,
-	RecipeParamDefinitions,
-	RecipeParamType,
-} from "./zod-form";
 
 export const isBuildPhase = (): boolean =>
 	process.env.NEXT_PHASE === "phase-production-build";
@@ -50,13 +34,12 @@ type RenderRecipeArgs = {
 	slug: string;
 	imageWidth: number;
 	imageHeight: number;
-	formats?: RasterizeFormat[];
-	grayscale?: number;
 	userId?: string | null;
 	cookies?: string;
 	model?: TrmnlModel | null;
 	palette?: TrmnlPalette | null;
 	paletteId?: string | null;
+	deviceProfile?: DeviceProfile | null;
 };
 
 /**
@@ -66,14 +49,16 @@ export async function renderRecipeToImage({
 	slug,
 	imageWidth,
 	imageHeight,
-	formats = ["bitmap", "png"],
-	grayscale,
 	userId,
 	cookies,
 	model,
 	palette,
 	paletteId,
+	deviceProfile,
 }: RenderRecipeArgs): Promise<RasterizeResults> {
+	const profile =
+		deviceProfile ?? (model ? { model, palette: palette ?? null } : null);
+
 	// React path
 	const resolved = await resolveReactRecipe(slug, userId ?? undefined);
 	if (resolved) {
@@ -98,10 +83,9 @@ export async function renderRecipeToImage({
 			imageHeight,
 			layoutWidth: screen.logicalWidth,
 			layoutHeight: screen.logicalHeight,
-			formats,
-			grayscale,
 			cookies,
 			model,
+			profile,
 			paletteId,
 			userId,
 			renderSettings: definition.meta.renderSettings ?? null,
@@ -119,10 +103,9 @@ export async function renderRecipeToImage({
 			html,
 			imageWidth,
 			imageHeight,
-			formats,
-			grayscale,
 			cookies,
 			model,
+			profile,
 			paletteId,
 			renderSettings: null,
 		});
@@ -162,7 +145,6 @@ export async function renderRecipeForDevice({
 		slug,
 		imageWidth: renderProfile.model.width,
 		imageHeight: renderProfile.model.height,
-		formats: ["png"],
 		userId,
 		cookies,
 		model: profile.model,

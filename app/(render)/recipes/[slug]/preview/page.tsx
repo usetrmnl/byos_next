@@ -4,14 +4,16 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { resolveReactRecipe } from "@/lib/recipes/recipe-renderer";
 import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
-import { getRenderScale } from "@/lib/recipes/render/settings";
-import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import {
-	getTrmnlModelClassName,
-	getTrmnlModelStyle,
-} from "@/lib/trmnl/model-css";
+	wrapLogicalCanvasToTarget,
+	wrapWithTrmnlCss,
+} from "@/lib/recipes/render/frame";
+import { rewriteReactImagesForDevice } from "@/lib/recipes/render/image-dither-intercept";
+import { resolveImageDitherPolicy } from "@/lib/recipes/render/image-dither-policy";
+import { getRenderScale } from "@/lib/recipes/render/settings";
+import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
+import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
 
 export default async function RecipePreviewPage({
@@ -58,8 +60,6 @@ export default async function RecipePreviewPage({
 		model: profile?.model,
 		palette: profile?.palette,
 	});
-	const className = getTrmnlModelClassName(profile?.model);
-	const style = getTrmnlModelStyle(profile?.model);
 
 	const recipe = (
 		<Component
@@ -70,44 +70,27 @@ export default async function RecipePreviewPage({
 			data={data}
 		/>
 	);
+	const imageDitherPolicy = resolveImageDitherPolicy({
+		renderSettings: definition.meta.renderSettings ?? null,
+		profile,
+	});
+	const renderedRecipe = await rewriteReactImagesForDevice(
+		recipe,
+		imageDitherPolicy,
+	);
 	const targetWidth = screen.physicalWidth * renderScale;
 	const targetHeight = screen.physicalHeight * renderScale;
-	const scaleX = targetWidth / screen.logicalWidth;
-	const scaleY = targetHeight / screen.logicalHeight;
-	const rendered = (
-		<div
-			style={{
-				display: "flex",
-				width: targetWidth,
-				height: targetHeight,
-				overflow: "hidden",
-			}}
-		>
-			<div
-				style={{
-					display: "flex",
-					width: screen.logicalWidth,
-					height: screen.logicalHeight,
-					transform: `scale(${scaleX}, ${scaleY})`,
-					transformOrigin: "top left",
-				}}
-			>
-				{recipe}
-			</div>
-		</div>
+	const rendered = wrapLogicalCanvasToTarget(
+		renderedRecipe,
+		screen.logicalWidth,
+		screen.logicalHeight,
+		targetWidth,
+		targetHeight,
 	);
-	if (!className && !style) return rendered;
-	return (
-		<div
-			className={className || undefined}
-			style={{
-				width: targetWidth,
-				height: targetHeight,
-				display: "flex",
-				...style,
-			}}
-		>
-			{rendered}
-		</div>
+	return wrapWithTrmnlCss(
+		rendered,
+		profile?.model ?? null,
+		targetWidth,
+		targetHeight,
 	);
 }

@@ -14,6 +14,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { z } from "zod";
 
 const TRMNL_API_BASE = "https://usetrmnl.com";
 const DATA_DIR = path.join(process.cwd(), "data", "trmnl");
@@ -27,17 +28,53 @@ export type {
 } from "./types";
 
 import type { RegistryResource, TrmnlModel, TrmnlPalette } from "./types";
+import { trmnlModelSchema, trmnlPaletteSchema } from "./types";
 
-type WrappedList<T> = { data: T[] };
+/**
+ * Validate a `{ data: [...] }` registry payload against `itemSchema`,
+ * returning only the entries that parse. Invalid entries are dropped and
+ * logged rather than throwing, so a single malformed item (or an upstream
+ * shape change) can't blank the whole catalog and break rendering.
+ */
+export function parseRegistryList<S extends z.ZodType>(
+	resource: RegistryResource,
+	itemSchema: S,
+	payload: unknown,
+): z.infer<S>[] {
+	const rawData = (payload as { data?: unknown } | null | undefined)?.data;
+	if (!Array.isArray(rawData)) {
+		console.warn(`[registry] ${resource}: payload has no "data" array`);
+		return [];
+	}
+	const items: z.infer<S>[] = [];
+	for (const entry of rawData) {
+		const result = itemSchema.safeParse(entry);
+		if (result.success) {
+			items.push(result.data);
+		} else {
+			console.warn(
+				`[registry] ${resource}: dropping invalid entry`,
+				result.error.issues,
+			);
+		}
+	}
+	return items;
+}
 
 export async function listModels(): Promise<TrmnlModel[]> {
-	const payload = (await getRegistry("models")) as WrappedList<TrmnlModel>;
-	return payload?.data ?? [];
+	return parseRegistryList(
+		"models",
+		trmnlModelSchema,
+		await getRegistry("models"),
+	);
 }
 
 export async function listPalettes(): Promise<TrmnlPalette[]> {
-	const payload = (await getRegistry("palettes")) as WrappedList<TrmnlPalette>;
-	return payload?.data ?? [];
+	return parseRegistryList(
+		"palettes",
+		trmnlPaletteSchema,
+		await getRegistry("palettes"),
+	);
 }
 
 export async function findModel(name: string): Promise<TrmnlModel | null> {
@@ -141,4 +178,24 @@ export async function getRegistry(
 	}
 
 	return refresh(resource);
+}
+
+/**
+ * GET handler for a registry resource. The `/api/{models,palettes,categories,
+ * ips}` routes are otherwise identical, so they share this factory.
+ */
+export function createRegistryRouteHandler(resource: RegistryResource) {
+	return async function GET(): Promise<Response> {
+		try {
+			return Response.json(await getRegistry(resource));
+		} catch (error) {
+			return Response.json(
+				{
+					error: `Failed to load ${resource} registry`,
+					message: error instanceof Error ? error.message : "Unknown error",
+				},
+				{ status: 502 },
+			);
+		}
+	};
 }

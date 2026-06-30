@@ -9,7 +9,7 @@
  * of silently dropping the recipe from the catalog.
  *
  * The generated file is committed (matches the pattern of
- * `lib/database/db.d.ts` and `lib/trmnl/types.gen.ts`).
+ * `lib/database/db.d.ts`).
  */
 import { readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";

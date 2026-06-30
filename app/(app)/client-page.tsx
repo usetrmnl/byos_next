@@ -1,26 +1,14 @@
 "use client";
 
-import { AlertTriangle, ArrowRight } from "lucide-react";
-import Image from "next/image";
+import { AlertTriangle } from "lucide-react";
 import Link from "next/link";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { StatusIndicator } from "@/components/common/status-indicator";
-import { Badge } from "@/components/ui/badge";
+import { RecentSystemLogs } from "@/components/system-logs/recent-system-logs";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
-import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
+import { getOrientedDeviceDimensions } from "@/lib/device/dimensions";
+import { buildDevicePreviewSrc } from "@/lib/render/preview-image";
 import type { Device, SystemLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDate, getDeviceStatus } from "@/utils/helpers";
@@ -28,11 +16,13 @@ import { formatDate, getDeviceStatus } from "@/utils/helpers";
 interface DashboardClientPageProps {
 	devices: Device[];
 	systemLogs: SystemLog[];
+	firstScreenByPlaylistId: Record<string, string>;
 }
 
 export default function DashboardClientPage({
 	devices,
 	systemLogs,
+	firstScreenByPlaylistId,
 }: DashboardClientPageProps) {
 	const processedDevices = devices.map((device) => ({
 		...device,
@@ -44,24 +34,26 @@ export default function DashboardClientPage({
 
 	const lastUpdatedDevice =
 		processedDevices.length > 0
-			? processedDevices.sort(
+			? [...processedDevices].sort(
 					(a, b) =>
 						new Date(b.last_update_time || "").getTime() -
 						new Date(a.last_update_time || "").getTime(),
 				)[0]
 			: null;
 
-	const isPortrait = lastUpdatedDevice?.screen_orientation === "portrait";
-	// Orientation-adjusted device resolution, used for BOTH the rendered image
-	// and the frame aspect ratio so the preview isn't cropped by object-cover.
-	const previewWidth = isPortrait
-		? lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT
-		: lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH;
-	const previewHeight = isPortrait
-		? lastUpdatedDevice?.screen_width || DEFAULT_IMAGE_WIDTH
-		: lastUpdatedDevice?.screen_height || DEFAULT_IMAGE_HEIGHT;
+	const {
+		width: previewWidth,
+		height: previewHeight,
+		isPortrait,
+	} = getOrientedDeviceDimensions(lastUpdatedDevice);
 	const latestScreenSrc = lastUpdatedDevice
-		? buildLatestScreenSrc(lastUpdatedDevice, previewWidth, previewHeight)
+		? buildDevicePreviewSrc(lastUpdatedDevice, {
+				width: previewWidth,
+				height: previewHeight,
+				playlistScreen: lastUpdatedDevice.playlist_id
+					? firstScreenByPlaylistId[lastUpdatedDevice.playlist_id]
+					: null,
+			})
 		: "";
 
 	return (
@@ -104,13 +96,10 @@ export default function DashboardClientPage({
 									portrait={isPortrait}
 									screenAspectRatio={`${previewWidth} / ${previewHeight}`}
 								>
-									<Image
+									<ScreenPreviewImage
 										src={latestScreenSrc}
 										alt={`${lastUpdatedDevice.name} screen`}
-										fill
-										className="absolute inset-0 h-full w-full object-cover"
-										style={{ imageRendering: "pixelated" }}
-										unoptimized
+										className="absolute inset-0"
 									/>
 								</DeviceFrame>
 							</div>
@@ -164,113 +153,9 @@ export default function DashboardClientPage({
 				</section>
 			</div>
 
-			{/* System logs */}
-			<section className="overflow-hidden rounded-2xl border bg-card">
-				<header className="flex flex-wrap items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
-					<div className="flex items-center gap-2">
-						<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-							Recent system logs
-						</h3>
-						<span className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-							{systemLogs.length}
-						</span>
-					</div>
-					<Link
-						href="/system-logs"
-						className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-					>
-						See all
-						<ArrowRight className="h-3.5 w-3.5" />
-					</Link>
-				</header>
-				<div className="overflow-x-auto">
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead className="w-[80px]">Time</TableHead>
-								<TableHead className="w-[80px]">Level</TableHead>
-								<TableHead>Source</TableHead>
-								<TableHead>Message</TableHead>
-								<TableHead className="max-w-[220px]">Metadata</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{systemLogs.length > 0 ? (
-								systemLogs.map((log, index) => {
-									const prevLog = index > 0 ? systemLogs[index - 1] : null;
-									const diffSec =
-										prevLog &&
-										Math.abs(
-											new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
-										) / 1000;
-									const showTime = index === 0 || (diffSec && diffSec >= 3);
-									const showLevel =
-										index === 0 ||
-										(prevLog && prevLog.level !== log.level) ||
-										(diffSec && diffSec >= 3);
-
-									return (
-										<TableRow key={log.id}>
-											<TableCell
-												className="text-xs tabular-nums text-muted-foreground"
-												suppressHydrationWarning
-											>
-												{showTime ? formatDate(log.created_at) : ""}
-											</TableCell>
-											<TableCell>
-												{showLevel ? <LevelBadge level={log.level} /> : ""}
-											</TableCell>
-											<TableCell className="text-xs text-muted-foreground">
-												{log.source || "—"}
-											</TableCell>
-											<TableCell className="text-sm">{log.message}</TableCell>
-											<TableCell className="max-w-[220px] truncate text-xs text-muted-foreground">
-												{log.metadata}
-											</TableCell>
-										</TableRow>
-									);
-								})
-							) : (
-								<TableRow>
-									<TableCell
-										colSpan={5}
-										className="h-32 text-center text-sm text-muted-foreground"
-									>
-										No system logs to show
-									</TableCell>
-								</TableRow>
-							)}
-						</TableBody>
-					</Table>
-				</div>
-			</section>
+			<RecentSystemLogs systemLogs={systemLogs} />
 		</div>
 	);
-}
-
-function buildLatestScreenSrc(
-	device: Device,
-	width: number,
-	height: number,
-): string {
-	const params = new URLSearchParams({
-		width: String(width),
-		height: String(height),
-		grayscale: String(normalizeGrayscale(device.grayscale)),
-		model: device.model?.trim() || DEFAULT_MODEL_NAME,
-	});
-	const paletteId = device.palette_id?.trim();
-	if (paletteId) {
-		params.set("palette_id", paletteId);
-	}
-
-	if (!device.screen) {
-		params.set("message", "Device screen is not configured");
-		return `/api/bitmap/error.png?${params.toString()}`;
-	}
-
-	return `/api/bitmap/${device.screen}.png?${params.toString()}`;
 }
 
 function Stat({
@@ -354,24 +239,5 @@ function DeviceColumn({
 				)}
 			</div>
 		</div>
-	);
-}
-
-function LevelBadge({ level }: { level: SystemLog["level"] }) {
-	const styles: Record<NonNullable<SystemLog["level"]>, string> = {
-		error: "bg-destructive/10 text-destructive border-destructive/20",
-		warning:
-			"bg-amber-500/10 text-amber-700 border-amber-500/20 dark:text-amber-400",
-		info: "bg-primary/10 text-primary border-primary/20",
-		debug: "bg-muted text-muted-foreground border-border",
-	};
-	if (!level) return null;
-	return (
-		<Badge
-			variant="outline"
-			className={cn("text-[10px] uppercase tracking-wider", styles[level])}
-		>
-			{level}
-		</Badge>
 	);
 }

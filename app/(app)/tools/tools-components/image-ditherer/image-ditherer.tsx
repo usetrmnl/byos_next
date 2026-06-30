@@ -19,6 +19,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
+import { encodeGrayBmp } from "@/lib/render/bmp-encoder";
 import { cn } from "@/lib/utils";
 import {
 	DitheringMethod,
@@ -174,62 +175,16 @@ export default function ImageDitherer() {
 
 		if (!imageData) return;
 
-		// BMP file header (14 bytes)
-		const fileHeaderSize = 14;
-		// DIB header (40 bytes for BITMAPINFOHEADER)
-		const dibHeaderSize = 40;
-		// Each row must be padded to a multiple of 4 bytes
-		const rowSize = Math.floor((width * 3 + 3) / 4) * 4;
-		const pixelArraySize = rowSize * height;
-		const fileSize = fileHeaderSize + dibHeaderSize + pixelArraySize;
-
-		const buffer = new ArrayBuffer(fileSize);
-		const view = new DataView(buffer);
-
-		// BMP file header (14 bytes)
-		view.setUint8(0, 0x42); // 'B'
-		view.setUint8(1, 0x4d); // 'M'
-		view.setUint32(2, fileSize, true); // File size
-		view.setUint16(6, 0, true); // Reserved
-		view.setUint16(8, 0, true); // Reserved
-		view.setUint32(10, fileHeaderSize + dibHeaderSize, true); // Offset to pixel array
-
-		// DIB header (40 bytes for BITMAPINFOHEADER)
-		view.setUint32(14, dibHeaderSize, true); // DIB header size
-		view.setInt32(18, width, true); // Width
-		view.setInt32(22, -height, true); // Height (negative for top-down)
-		view.setUint16(26, 1, true); // Color planes
-		view.setUint16(28, 24, true); // Bits per pixel (24 for RGB)
-		view.setUint32(30, 0, true); // No compression
-		view.setUint32(34, pixelArraySize, true); // Size of pixel array
-		view.setInt32(38, 2835, true); // Horizontal resolution (72 DPI)
-		view.setInt32(42, 2835, true); // Vertical resolution (72 DPI)
-		view.setUint32(46, 0, true); // Number of colors in palette
-		view.setUint32(50, 0, true); // All colors are important
-
-		// Pixel array (bottom-up, padded rows)
 		const data = imageData.data;
-		let offset = fileHeaderSize + dibHeaderSize;
-
-		for (let y = 0; y < height; y++) {
-			let rowOffset = 0;
-			for (let x = 0; x < width; x++) {
-				const index = (y * width + x) * 4;
-				view.setUint8(offset++, data[index + 2]); // Blue
-				view.setUint8(offset++, data[index + 1]); // Green
-				view.setUint8(offset++, data[index]); // Red
-				rowOffset += 3;
-			}
-
-			// Pad row to multiple of 4 bytes
-			while (rowOffset % 4 !== 0) {
-				view.setUint8(offset++, 0);
-				rowOffset++;
-			}
+		const gray = new Uint8Array(width * height);
+		for (let index = 0; index < width * height; index++) {
+			gray[index] = data[index * 4] ?? 0;
 		}
 
-		// Create blob and download
-		const blob = new Blob([buffer], { type: "image/bmp" });
+		const bmp = encodeGrayBmp({ gray, width, height, levels: 2 });
+		const bmpBuffer = new ArrayBuffer(bmp.byteLength);
+		new Uint8Array(bmpBuffer).set(bmp);
+		const blob = new Blob([bmpBuffer], { type: "image/bmp" });
 		const link = document.createElement("a");
 		link.href = URL.createObjectURL(blob);
 		link.download = "dithered-image.bmp";

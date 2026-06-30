@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { canReadSystemLogs } from "@/app/actions/system";
+import { mapDeviceRows } from "@/lib/database/mappers";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { getDbStatus } from "@/lib/database/utils";
 import type {
@@ -73,7 +74,12 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 					// Fetch playlists (RLS filters by user)
 					scopedDb.selectFrom("playlists").selectAll().execute(),
 					// Fetch playlist items
-					scopedDb.selectFrom("playlist_items").selectAll().execute(),
+					scopedDb
+						.selectFrom("playlist_items")
+						.selectAll()
+						.orderBy("playlist_id", "asc")
+						.orderBy("order_index", "asc")
+						.execute(),
 					// Fetch mixups (RLS filters by user)
 					scopedDb
 						.selectFrom("mixups")
@@ -108,7 +114,7 @@ export const getInitData = cache(async (): Promise<InitialData> => {
 				]),
 			);
 
-			devices = devicesResult as unknown as Device[];
+			devices = mapDeviceRows(devicesResult);
 			playlists = playlistsResult as unknown as Playlist[];
 			playlistItems = playlistItemsResult as unknown as PlaylistItem[];
 			mixups = mixupsResult as unknown as Mixup[];

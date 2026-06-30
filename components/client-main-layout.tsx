@@ -12,10 +12,10 @@ function GithubIcon(props: React.SVGProps<SVGSVGElement>) {
 }
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import type React from "react";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import type { ComponentConfig } from "@/components/component-config";
@@ -65,12 +65,14 @@ interface ClientMainLayoutProps {
 export function ClientMainLayout({
 	children,
 	devices,
+	dbStatus,
 	recipeSidebarItems,
 	toolsComponents,
 	user,
 	authEnabled,
 }: ClientMainLayoutProps) {
 	const pathname = usePathname() ?? "/";
+	const router = useRouter();
 	const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 	const { theme, setTheme } = useTheme();
 
@@ -78,6 +80,14 @@ export function ClientMainLayout({
 
 	// Only nag the operator about server updates (mono-user mode or admins).
 	const canSeeUpdates = !authEnabled || user?.role === "admin";
+
+	useEffect(() => {
+		if (!dbStatus.ready || devices.length === 0) return;
+		const interval = setInterval(() => {
+			if (document.visibilityState === "visible") router.refresh();
+		}, 30_000);
+		return () => clearInterval(interval);
+	}, [dbStatus.ready, devices.length, router]);
 
 	return (
 		<SidebarProvider>
@@ -95,13 +105,13 @@ export function ClientMainLayout({
 			<SidebarInset>
 				{/* Header */}
 				<header className="flex h-14 items-center gap-2 border-b px-4">
-					<SidebarTrigger />
+					<SidebarTrigger className="size-11 md:size-8" />
 
 					{/* Search */}
 					<Button
 						variant="outline"
 						size="sm"
-						className="ml-4 hidden md:flex gap-2 text-muted-foreground"
+						className="ml-4 hidden h-11 gap-2 text-muted-foreground md:flex"
 						onClick={() => setCommandPaletteOpen(true)}
 					>
 						<Search className="h-4 w-4" />
@@ -113,15 +123,28 @@ export function ClientMainLayout({
 
 					{/* Right actions */}
 					<div className="ml-auto flex items-center gap-1">
-						<Button variant="ghost" size="icon" onClick={toggleTheme}>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-11 md:size-9"
+							onClick={toggleTheme}
+							aria-label="Toggle theme"
+						>
 							<Sun className="size-5 dark:hidden" />
 							<Moon className="hidden size-5 dark:block" />
 						</Button>
 
-						<Button variant="ghost" size="icon" asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-11 md:size-9"
+							asChild
+						>
 							<Link
 								href="https://github.com/usetrmnl/byos_next"
 								target="_blank"
+								rel="noopener noreferrer"
+								aria-label="Open GitHub repository"
 							>
 								<GithubIcon className="size-5" />
 							</Link>

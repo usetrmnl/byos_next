@@ -10,6 +10,8 @@ import {
 	type ScreenProfile,
 } from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
+import { resolveCalendarDayCount } from "./day-count";
+import { getEventAppearance } from "./event-appearance";
 import getCalendarData, { type CalendarData } from "./getData";
 
 export const paramsSchema = z.object({
@@ -36,6 +38,16 @@ export const paramsSchema = z.object({
 		.default(22)
 		.describe("Latest hour to show")
 		.meta({ title: "Day end hour" }),
+	daysToShow: z.coerce
+		.number()
+		.int()
+		.min(0)
+		.max(7)
+		.default(0)
+		.describe(
+			"How many days to show. 0 = auto (7 on wide screens, 3 when narrow).",
+		)
+		.meta({ title: "Days to display", placeholder: "0 = auto" }),
 });
 
 export const dataSchema = z.object({
@@ -43,6 +55,9 @@ export const dataSchema = z.object({
 	tzLabel: z.string().default(""),
 	dayStartHour: z.number().default(7),
 	dayEndHour: z.number().default(22),
+	daysToShow: z.number().default(0),
+	nowMinutes: z.number().default(0),
+	calendarCount: z.number().default(0),
 	hours: z.array(z.number()).default([]),
 	days: z
 		.array(
@@ -59,6 +74,7 @@ export const dataSchema = z.object({
 				dayIndex: z.number(),
 				span: z.number(),
 				title: z.string(),
+				calendarIndex: z.number().default(0),
 			}),
 		)
 		.default([]),
@@ -72,6 +88,7 @@ export const dataSchema = z.object({
 				lanes: z.number(),
 				title: z.string(),
 				timeLabel: z.string(),
+				calendarIndex: z.number().default(0),
 			}),
 		)
 		.default([]),
@@ -100,6 +117,9 @@ export default function Calendar({
 	timedItems = [],
 	dayStartHour = 7,
 	dayEndHour = 22,
+	daysToShow = 0,
+	nowMinutes = -1,
+	calendarCount = 0,
 	tzLabel = "",
 	updatedLabel = "",
 	message,
@@ -123,10 +143,27 @@ export default function Calendar({
 	const gutter = s(40);
 	const headerHeight = s(54);
 	const footerHeight = s(22);
-	const visibleAllDayItems = allDayItems.slice(0, 3);
+	// Auto-fold to 3 days when narrow, full week otherwise; `daysToShow` (0 =
+	// auto) overrides with an explicit count. See `resolveCalendarDayCount`.
+	const dayCount = resolveCalendarDayCount({
+		logicalWidth: width,
+		availableDays: days.length,
+		daysToShow,
+	});
+	const visibleDays = days.slice(0, dayCount);
+	const visibleAllDayItems = allDayItems
+		.filter((item) => item.dayIndex < dayCount)
+		.map((item) => ({
+			...item,
+			span: Math.min(item.span, dayCount - item.dayIndex),
+		}))
+		.slice(0, 3);
+	const visibleTimedItems = timedItems.filter(
+		(event) => event.dayIndex < dayCount,
+	);
 	const allDayHeight = visibleAllDayItems.length > 0 ? s(48) : 0;
-	const colWidth = (width - gutter) / 7;
-	const gridWidth = colWidth * 7;
+	const colWidth = (width - gutter) / dayCount;
+	const gridWidth = colWidth * dayCount;
 	const bodyHeight = height - headerHeight - allDayHeight - footerHeight;
 	const verticalPadding = s(14);
 	const visibleMinutes = Math.max(1, (dayEndHour - dayStartHour) * 60);
@@ -138,6 +175,11 @@ export default function Calendar({
 				(bodyHeight - 2 * verticalPadding)
 		);
 	};
+	// Current-time indicator: only drawn when "now" falls inside the visible
+	// hour window. Today is always column 0, so the line sits in that column.
+	const showNowLine =
+		nowMinutes >= dayStartHour * 60 && nowMinutes <= dayEndHour * 60;
+	const nowY = showNowLine ? yForMinute(nowMinutes) : null;
 	const footer = message
 		? message
 		: [tzLabel, updatedLabel && `Updated ${updatedLabel}`]
@@ -155,7 +197,7 @@ export default function Calendar({
 			>
 				<div style={{ display: "flex", height: headerHeight }}>
 					<div style={{ width: gutter }} />
-					{days.map((day, index) => (
+					{visibleDays.map((day, index) => (
 						<div
 							key={`${day.weekday}-${index}`}
 							style={{
@@ -209,7 +251,7 @@ export default function Calendar({
 								height: allDayHeight,
 							}}
 						>
-							{days.map((_, index) => (
+							{visibleDays.map((_, index) => (
 								<div
 									key={`all-day-col-${index}`}
 									className="bg-black"
@@ -222,27 +264,34 @@ export default function Calendar({
 									}}
 								/>
 							))}
-							{visibleAllDayItems.map((item, index) => (
-								<div
-									key={`${item.title}-${index}`}
-									className="bg-black text-white"
-									style={{
-										position: "absolute",
-										left: item.dayIndex * colWidth + s(2),
-										top: s(3) + index * s(16),
-										width: item.span * colWidth - s(4),
-										height: s(16),
-										fontSize: f(13),
-										paddingLeft: s(5),
-										display: "flex",
-										alignItems: "center",
-										overflow: "hidden",
-										borderRadius: s(2),
-									}}
-								>
-									{clip(item.title, Math.round(item.span * 13))}
-								</div>
-							))}
+							{visibleAllDayItems.map((item, index) => {
+								const appearance = getEventAppearance({
+									calendarIndex: item.calendarIndex,
+									calendarCount,
+								});
+								return (
+									<div
+										key={`${item.title}-${index}`}
+										style={{
+											position: "absolute",
+											left: item.dayIndex * colWidth + s(2),
+											top: s(3) + index * s(16),
+											width: item.span * colWidth - s(4),
+											height: s(16),
+											fontSize: f(13),
+											paddingLeft: s(5),
+											display: "flex",
+											alignItems: "center",
+											overflow: "hidden",
+											borderRadius: s(2),
+											backgroundColor: appearance.background,
+											color: appearance.text,
+										}}
+									>
+										{clip(item.title, Math.round(item.span * 13))}
+									</div>
+								);
+							})}
 						</div>
 					</div>
 				)}
@@ -292,7 +341,7 @@ export default function Calendar({
 								}}
 							/>
 						))}
-						{Array.from({ length: 8 }).map((_, index) => (
+						{Array.from({ length: dayCount + 1 }).map((_, index) => (
 							<div
 								key={`col-${index}`}
 								className="bg-black"
@@ -305,7 +354,7 @@ export default function Calendar({
 								}}
 							/>
 						))}
-						{timedItems
+						{visibleTimedItems
 							.filter(
 								(event) =>
 									event.endMin > dayStartHour * 60 &&
@@ -318,10 +367,20 @@ export default function Calendar({
 									yForMinute(event.endMin) - top,
 								);
 								const laneWidth = (colWidth - s(3)) / event.lanes;
+								// "In a meeting": today's column, now inside the event.
+								const isCurrent =
+									showNowLine &&
+									event.dayIndex === 0 &&
+									event.startMin <= nowMinutes &&
+									nowMinutes < event.endMin;
+								const appearance = getEventAppearance({
+									calendarIndex: event.calendarIndex,
+									calendarCount,
+									isCurrent,
+								});
 								return (
 									<div
 										key={`${event.title}-${index}`}
-										className="bg-black text-white"
 										style={{
 											position: "absolute",
 											left:
@@ -338,6 +397,8 @@ export default function Calendar({
 											flexDirection: "column",
 											overflow: "hidden",
 											borderRadius: s(3),
+											backgroundColor: appearance.background,
+											color: appearance.text,
 										}}
 									>
 										<div style={{ overflow: "hidden" }}>
@@ -347,6 +408,32 @@ export default function Calendar({
 									</div>
 								);
 							})}
+						{nowY !== null && (
+							<div
+								style={{
+									position: "absolute",
+									left: 0,
+									top: nowY - lineW,
+									width: colWidth,
+									height: Math.max(2, lineW * 2),
+									backgroundColor: "#000",
+									borderRadius: lineW,
+								}}
+							/>
+						)}
+						{nowY !== null && (
+							<div
+								style={{
+									position: "absolute",
+									left: 0,
+									top: nowY - s(4),
+									width: s(8),
+									height: s(8),
+									borderRadius: s(4),
+									backgroundColor: "#000",
+								}}
+							/>
+						)}
 					</div>
 				</div>
 
@@ -384,7 +471,9 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2026-06-14T00:00:00Z",
 		updatedAt: "2026-06-14T00:00:00Z",
-		renderSettings: { supersample: true },
+		renderSettings: {
+			supersample: true,
+		},
 	},
 	paramsSchema,
 	dataSchema,

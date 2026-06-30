@@ -279,7 +279,9 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2026-06-14T00:00:00Z",
 		updatedAt: "2026-06-14T00:00:00Z",
-		renderSettings: { supersample: true },
+		renderSettings: {
+			supersample: true,
+		},
 	},
 	paramsSchema,
 	dataSchema,

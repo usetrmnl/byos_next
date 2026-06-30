@@ -1,10 +1,10 @@
 import { sql } from "kysely";
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/auth/get-user";
+import { mapTrmnlDeviceSummary } from "@/lib/database/mappers";
 import { withExplicitUserScope, withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { logError, logInfo } from "@/lib/logger";
-import type { Device } from "@/lib/types";
 
 const MINUTE_OF_DAY_MIN = 0;
 const MINUTE_OF_DAY_MAX = 23 * 60 + 59;
@@ -99,36 +99,9 @@ export async function GET(
 			);
 		}
 
-		const deviceObj = device as unknown as Device;
-
-		// Transform device to match TRMNL API format
-		const deviceData = {
-			id: Number.parseInt(device.id.toString(), 10),
-			name: deviceObj.name,
-			friendly_id: deviceObj.friendly_id,
-			mac_address: deviceObj.mac_address,
-			battery_voltage: deviceObj.battery_voltage
-				? Number.parseFloat(deviceObj.battery_voltage.toString())
-				: null,
-			rssi: deviceObj.rssi,
-			percent_charged: deviceObj.battery_voltage
-				? Math.min(
-						100,
-						Math.max(
-							0,
-							((Number.parseFloat(deviceObj.battery_voltage.toString()) - 3.0) /
-								(4.2 - 3.0)) *
-								100,
-						),
-					)
-				: null,
-			wifi_strength: deviceObj.rssi
-				? Math.min(100, Math.max(0, ((deviceObj.rssi + 100) / 70) * 100))
-				: null,
-			sleep_mode_enabled: deviceObj.sleep_mode_enabled,
-			sleep_start_time: deviceObj.sleep_start_time,
-			sleep_end_time: deviceObj.sleep_end_time,
-		};
+		const deviceData = mapTrmnlDeviceSummary(device, {
+			includeSleepMode: true,
+		});
 
 		logInfo("Device data request successful", {
 			source: "api/devices/[id]",
@@ -157,7 +130,7 @@ export async function GET(
 
 /**
  * PATCH /api/devices/{id}
- * Update device sleep-mode settings. TRMNL contract — see openapi.yaml.
+ * Update device sleep-mode settings (TRMNL device contract).
  *
  * Accepts a subset of fields. Unknown keys are ignored, unsupported keys
  * (`percent_charged` is computed at read time, never stored) are dropped

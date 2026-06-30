@@ -5,6 +5,7 @@ import {
 	DISPLAY_FALLBACK_REFRESH_SECONDS,
 	normalizeRefreshSchedule,
 } from "@/lib/device/defaults";
+import { parseRequestHeaders } from "@/lib/device/request-headers";
 import { selectDisplayForDevice } from "@/lib/display/select";
 import { getLatestFirmware, isUpdateAvailable } from "@/lib/firmware";
 import { logError, logInfo } from "@/lib/logger";
@@ -20,7 +21,6 @@ import {
 	calculateRefreshRate,
 	findOrCreateDevice,
 	getActivePlaylistItem,
-	parseRequestHeaders,
 	precacheImageInBackground,
 	updateDeviceStatus,
 } from "./utils";
@@ -89,7 +89,6 @@ export async function GET(request: Request) {
 			hostUrl: headers.hostUrl,
 			width: headers.width,
 			height: headers.height,
-			base64: headers.base64,
 		});
 
 		let { screen: screenToDisplay, imageUrl } = selection;

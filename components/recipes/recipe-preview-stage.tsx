@@ -1,10 +1,10 @@
 "use client";
 
 import { Monitor, Smartphone } from "lucide-react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Label } from "@/components/ui/label";
 import {
 	Select,
@@ -13,18 +13,19 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { buildScreenPreviewSrc } from "@/lib/render/preview-image";
 import { DEFAULT_MODEL_NAME } from "@/lib/trmnl/types";
 import { cn } from "@/lib/utils";
 
-type FormatKey = "bmp" | "png" | "react";
+type FormatKey = "device" | "react";
 
 type PreviewModel = {
 	name: string;
 	label: string;
 	width: number;
 	height: number;
-	mime_type: string;
 	palette_ids: string[];
 };
 
@@ -32,16 +33,6 @@ type PreviewPalette = {
 	id: string;
 	name: string;
 };
-
-/** Aligns with `getImageFilenameExtension` in `lib/render/device-image.ts` (client-safe). */
-function modelImagePathExtension(mimeType: string): string {
-	const map: Record<string, string> = {
-		"image/bmp": "bmp",
-		"image/png": "png",
-		"image/webp": "webp",
-	};
-	return map[mimeType] ?? mimeType.split("/").pop() ?? "png";
-}
 
 function chooseDefaultPaletteId(model: PreviewModel | null): string {
 	if (!model) return "";
@@ -55,14 +46,12 @@ function chooseDefaultPaletteId(model: PreviewModel | null): string {
 interface RecipePreviewStageProps {
 	slug: string;
 	isPortrait: boolean;
-	bmpNode?: ReactNode;
-	pngNode?: ReactNode;
+	deviceNode?: ReactNode;
 	reactNode?: ReactNode;
-	bmpPipeline?: ReactNode;
-	pngPipeline?: ReactNode;
+	devicePipeline?: ReactNode;
 	reactPipeline?: ReactNode;
 	defaultFormat?: FormatKey;
-	/** When provided, a model selector drives BMP / React preview resolution. */
+	/** When provided, a model selector drives device / React preview resolution. */
 	trmnlModels?: PreviewModel[];
 	trmnlPalettes?: PreviewPalette[];
 	/**
@@ -73,21 +62,18 @@ interface RecipePreviewStageProps {
 }
 
 const FORMAT_LABELS: Record<FormatKey, string> = {
-	bmp: "BMP",
-	png: "PNG",
+	device: "Device",
 	react: "React",
 };
 
 export function RecipePreviewStage({
 	slug,
 	isPortrait,
-	bmpNode,
-	pngNode,
+	deviceNode,
 	reactNode,
-	bmpPipeline,
-	pngPipeline,
+	devicePipeline,
 	reactPipeline,
-	defaultFormat = "bmp",
+	defaultFormat = "device",
 	trmnlModels,
 	trmnlPalettes,
 	simulateReactPreviewInIframe = true,
@@ -115,6 +101,9 @@ export function RecipePreviewStage({
 	const [paletteId, setPaletteId] = useState<string>(() =>
 		chooseDefaultPaletteId(initialModel ?? null),
 	);
+	const [loadedReactPreviewSrc, setLoadedReactPreviewSrc] = useState<
+		string | null
+	>(null);
 
 	const deviceSimActive = sortedModels.length > 0;
 
@@ -155,8 +144,7 @@ export function RecipePreviewStage({
 			: null;
 
 	const formats: { key: FormatKey; node: ReactNode; pipeline: ReactNode }[] = [
-		{ key: "bmp", node: bmpNode, pipeline: bmpPipeline },
-		{ key: "png", node: pngNode, pipeline: pngPipeline },
+		{ key: "device", node: deviceNode, pipeline: devicePipeline },
 		{ key: "react", node: reactNode, pipeline: reactPipeline },
 	].filter((f) => f.node !== undefined) as typeof formats;
 
@@ -167,8 +155,7 @@ export function RecipePreviewStage({
 		deviceSimActive &&
 		simWidth != null &&
 		simHeight != null &&
-		(activeKey === "bmp" ||
-			activeKey === "png" ||
+		(activeKey === "device" ||
 			(activeKey === "react" && simulateReactPreviewInIframe));
 
 	const screenAspectRatio =
@@ -181,18 +168,12 @@ export function RecipePreviewStage({
 		selectedModel != null &&
 		simWidth != null &&
 		simHeight != null
-			? (() => {
-					const ext = modelImagePathExtension(selectedModel.mime_type);
-					const params = new URLSearchParams();
-					params.set("model", selectedModel.name);
-					if (selectedPaletteId) params.set("palette_id", selectedPaletteId);
-					params.set("width", String(simWidth));
-					params.set("height", String(simHeight));
-					if (selectedModel.mime_type === "image/bmp") {
-						params.set("grayscale", "2");
-					}
-					return `/api/bitmap/${slug}.${ext}?${params.toString()}`;
-				})()
+			? buildScreenPreviewSrc(
+					slug,
+					{ model: selectedModel.name, palette_id: selectedPaletteId || null },
+					simWidth,
+					simHeight,
+				)
 			: null;
 
 	const reactPreviewSrc =
@@ -220,6 +201,8 @@ export function RecipePreviewStage({
 					reactFrameSize.height / simHeight,
 				)
 			: 1;
+	const reactPreviewLoading =
+		reactPreviewSrc != null && loadedReactPreviewSrc !== reactPreviewSrc;
 
 	useEffect(() => {
 		if (activeKey !== "react" || !reactPreviewSrc) return;
@@ -253,16 +236,12 @@ export function RecipePreviewStage({
 		) {
 			return active?.node;
 		}
-		if ((activeKey === "bmp" || activeKey === "png") && devicePreviewSrc) {
+		if (activeKey === "device" && devicePreviewSrc) {
 			return (
-				<Image
-					width={simWidth}
-					height={simHeight}
+				<ScreenPreviewImage
 					src={devicePreviewSrc}
-					unoptimized
-					style={{ imageRendering: "pixelated" }}
 					alt={`${selectedModel.label} ${FORMAT_LABELS[activeKey]} preview`}
-					className="absolute inset-0 h-full w-full object-cover"
+					className="absolute inset-0"
 				/>
 			);
 		}
@@ -273,6 +252,12 @@ export function RecipePreviewStage({
 		) {
 			return (
 				<div ref={reactFrameRef} className="absolute inset-0 overflow-hidden">
+					{reactPreviewLoading && (
+						<Skeleton
+							aria-hidden
+							className="absolute inset-0 h-full w-full rounded-none bg-neutral-300 dark:bg-neutral-700"
+						/>
+					)}
 					<iframe
 						title={`${selectedModel.label} recipe preview`}
 						src={reactPreviewSrc}
@@ -281,7 +266,10 @@ export function RecipePreviewStage({
 							width: simWidth,
 							height: simHeight,
 							transform: `scale(${reactPreviewScale})`,
+							opacity: reactPreviewLoading ? 0 : 1,
+							transition: "opacity 150ms",
 						}}
+						onLoad={() => setLoadedReactPreviewSrc(reactPreviewSrc)}
 					/>
 				</div>
 			);
@@ -433,8 +421,8 @@ export function RecipePreviewStage({
 							</span>
 						)}
 						<span className="text-muted-foreground/80">
-							BMP/PNG use <code className="font-mono">/api/bitmap</code>; React
-							scales the selected screen size into the frame.
+							Device preview uses <code className="font-mono">/api/bitmap</code>
+							; React scales the selected screen size into the frame.
 						</span>
 					</div>
 				)}

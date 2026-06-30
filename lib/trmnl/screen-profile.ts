@@ -1,3 +1,8 @@
+import {
+	getPaletteChannelBitDepth,
+	getPaletteGrayLevels,
+	paletteSupportsColor,
+} from "@/lib/trmnl/palette-colors";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 
 export type ScreenSizeTier = "sm" | "md" | "lg";
@@ -151,17 +156,10 @@ export function createScreenProfile({
 		isHalfScreen ||
 		logicalWidth < 640 ||
 		logicalHeight < 420;
-	const colors = model?.colors ?? palette?.colors?.length ?? 2;
-	const bitDepth =
-		model?.bit_depth ??
-		palette?.grayscale_bit_depth ??
-		palette?.channel_bit_depth ??
-		1;
-	const supportsColor = Boolean(
-		palette?.colors?.length ||
-			palette?.id?.startsWith("color-") ||
-			(palette?.channel_bit_depth && palette.channel_bit_depth > 0),
-	);
+	const colors =
+		model?.colors ?? palette?.colors?.length ?? getPaletteGrayLevels(palette);
+	const bitDepth = model?.bit_depth ?? getPaletteChannelBitDepth(palette) ?? 1;
+	const supportsColor = paletteSupportsColor(palette);
 
 	return {
 		modelName: model?.name,

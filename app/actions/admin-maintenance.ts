@@ -1,16 +1,8 @@
 "use server";
 
-import { getCurrentUser } from "@/lib/auth/get-user";
+import { requireAdmin } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
 import { checkDbConnection } from "@/lib/database/utils";
-
-async function requireAdmin() {
-	const user = await getCurrentUser();
-	if (!user || user.role !== "admin") {
-		throw new Error("Unauthorized");
-	}
-	return user;
-}
 
 export async function deleteAllSystemLogs(): Promise<{
 	success: boolean;

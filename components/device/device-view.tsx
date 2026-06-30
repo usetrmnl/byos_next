@@ -1,21 +1,40 @@
 "use client";
 
-import { ExternalLink } from "lucide-react";
-import Image from "next/image";
+import {
+	Battery,
+	BatteryCharging,
+	BatteryLow,
+	ExternalLink,
+	ListMusic,
+	Monitor,
+	RefreshCw,
+	Shuffle,
+	TimerReset,
+	Wifi,
+	WifiOff,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
+import { PanelHeader } from "@/components/common/panel-header";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { StatusIndicator } from "@/components/common/status-indicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
+import { getOrientedDeviceDimensions } from "@/lib/device/dimensions";
 import { DeviceDisplayMode } from "@/lib/mixup/constants";
 import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
-import { normalizeGrayscale } from "@/lib/trmnl/grayscale";
+	buildDeviceErrorPreviewSrc,
+	buildDevicePreviewSrc,
+	buildScreenPreviewSrc,
+} from "@/lib/render/preview-image";
+import { resolveDeviceProfileFromCatalog } from "@/lib/trmnl/device-profile-client";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import type { Device } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -74,23 +93,6 @@ interface DeviceViewProps {
 	trmnlPalettes: TrmnlPalette[];
 }
 
-function PanelHeader({
-	label,
-	right,
-}: {
-	label: string;
-	right?: React.ReactNode;
-}) {
-	return (
-		<div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-2">
-			<h3 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-				{label}
-			</h3>
-			{right}
-		</div>
-	);
-}
-
 function MetaPair({
 	label,
 	children,
@@ -142,64 +144,41 @@ export default function DeviceView({
 		fetchLatestFirmware();
 	}, [device.firmware_version]);
 
-	const isPortrait = device.screen_orientation === "portrait";
-	const deviceWidth = isPortrait
-		? device.screen_height || DEFAULT_IMAGE_HEIGHT
-		: device.screen_width || DEFAULT_IMAGE_WIDTH;
-	const deviceHeight = isPortrait
-		? device.screen_width || DEFAULT_IMAGE_WIDTH
-		: device.screen_height || DEFAULT_IMAGE_HEIGHT;
-	const grayscaleLevels = normalizeGrayscale(device.grayscale);
-	const selectedModel =
-		trmnlModels.find((model) => model.name === device.model) ??
-		trmnlModels.find((model) => model.name === "og_plus") ??
-		trmnlModels[0];
-	const selectedPalette =
-		trmnlPalettes.find((palette) => palette.id === device.palette_id) ??
-		trmnlPalettes.find(
-			(palette) => palette.id === selectedModel?.palette_ids[0],
-		);
-	const imageExtension = getModelImageExtension(selectedModel);
-	const screenAspectRatio = `${deviceWidth} / ${deviceHeight}`;
-	const profileQuery = new URLSearchParams({
-		width: String(deviceWidth),
-		height: String(deviceHeight),
-		grayscale: String(grayscaleLevels),
+	const {
+		width: deviceWidth,
+		height: deviceHeight,
+		isPortrait,
+	} = getOrientedDeviceDimensions(device);
+	const { selectedPalette } = resolveDeviceProfileFromCatalog({
+		modelName: device.model,
+		paletteId: device.palette_id,
+		models: trmnlModels,
+		palettes: trmnlPalettes,
 	});
-	if (selectedModel?.name) {
-		profileQuery.set("model", selectedModel.name);
-	}
-	if (selectedPalette?.id) {
-		profileQuery.set("palette_id", selectedPalette.id);
-	}
-	const errorImageSrc = (message: string) => {
-		const params = new URLSearchParams(profileQuery);
-		params.set("message", message);
-		return `/api/bitmap/error.${imageExtension}?${params}`;
-	};
+	const screenAspectRatio = `${deviceWidth} / ${deviceHeight}`;
 
-	const status: "online" | "offline" =
-		device.status === "online" ? "online" : "offline";
 	const refreshPerDay = calculateRefreshPerDay(device);
 	const batteryEstimate = device.battery_voltage
 		? estimateBatteryLife(device.battery_voltage, refreshPerDay)
 		: null;
+	const defaultRefreshRate =
+		device.refresh_schedule?.default_refresh_rate ||
+		UI_REFRESH_FALLBACK_SECONDS;
+	const healthItems = getHealthItems(
+		device,
+		batteryEstimate,
+		defaultRefreshRate,
+	);
 
 	const isPlaylist =
 		device.display_mode === DeviceDisplayMode.PLAYLIST &&
-		device.playlist_id &&
+		!!device.playlist_id &&
 		playlistScreens.length > 0;
-	const isMixup =
-		device.display_mode === DeviceDisplayMode.MIXUP && device.mixup_id;
-	const heroSrc = isPlaylist
-		? playlistScreens[0].screen
-			? `/api/bitmap/${playlistScreens[0].screen}.${imageExtension}?${profileQuery}`
-			: errorImageSrc("Playlist item has no screen")
-		: isMixup
-			? `/api/bitmap/mixup/${device.mixup_id}.${imageExtension}?${profileQuery}`
-			: device.screen
-				? `/api/bitmap/${device.screen}.${imageExtension}?${profileQuery}`
-				: errorImageSrc("Device screen is not configured");
+	const heroSrc = buildDevicePreviewSrc(device, {
+		width: deviceWidth,
+		height: deviceHeight,
+		playlistScreen: playlistScreens[0]?.screen,
+	});
 
 	return (
 		<div className="grid gap-4 lg:grid-cols-[1.3fr_1fr]">
@@ -212,8 +191,8 @@ export default function DeviceView({
 							{deviceWidth}×{deviceHeight}px ·{" "}
 							<span className="capitalize">
 								{isPortrait ? "portrait" : "landscape"}
-							</span>{" "}
-							· {grayscaleLevels} levels
+							</span>
+							{selectedPalette ? ` · ${selectedPalette.name}` : ""}
 						</span>
 					}
 				/>
@@ -229,13 +208,10 @@ export default function DeviceView({
 							portrait={isPortrait}
 							screenAspectRatio={screenAspectRatio}
 						>
-							<Image
+							<ScreenPreviewImage
 								src={heroSrc}
 								alt="Device screen"
-								fill
-								className="absolute inset-0 h-full w-full object-cover"
-								style={{ imageRendering: "pixelated" }}
-								unoptimized
+								className="absolute inset-0"
 							/>
 						</DeviceFrame>
 					</div>
@@ -261,17 +237,24 @@ export default function DeviceView({
 										screenAspectRatio={screenAspectRatio}
 										flat
 									>
-										<Image
+										<ScreenPreviewImage
 											src={
 												screen.screen
-													? `/api/bitmap/${screen.screen}.${imageExtension}?${profileQuery}`
-													: errorImageSrc("Playlist item has no screen")
+													? buildScreenPreviewSrc(
+															screen.screen,
+															device,
+															deviceWidth,
+															deviceHeight,
+														)
+													: buildDeviceErrorPreviewSrc(
+															device,
+															deviceWidth,
+															deviceHeight,
+															"Playlist item has no screen",
+														)
 											}
 											alt={`Frame ${i + 1}`}
-											fill
-											className="absolute inset-0 h-full w-full object-cover"
-											style={{ imageRendering: "pixelated" }}
-											unoptimized
+											className="absolute inset-0"
 										/>
 									</DeviceFrame>
 									<div className="flex items-center justify-between text-[10px] text-muted-foreground">
@@ -293,6 +276,16 @@ export default function DeviceView({
 
 			{/* Right column: stacked detail panels */}
 			<div className="flex flex-col gap-4">
+				{/* Health */}
+				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
+					<PanelHeader label="Health" />
+					<div className="flex flex-wrap items-center gap-2 p-4">
+						{healthItems.map((item) => (
+							<HealthChip key={item.id} {...item} />
+						))}
+					</div>
+				</section>
+
 				{/* Identity */}
 				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
 					<PanelHeader
@@ -309,12 +302,6 @@ export default function DeviceView({
 						}
 					/>
 					<div className="grid gap-3 p-4 sm:grid-cols-2">
-						<MetaPair label="Status">
-							<span className="inline-flex items-center gap-1.5 capitalize">
-								<StatusIndicator status={status} size="sm" />
-								{device.status}
-							</span>
-						</MetaPair>
 						<MetaPair label="Friendly ID" mono>
 							{device.friendly_id}
 						</MetaPair>
@@ -360,108 +347,131 @@ export default function DeviceView({
 						</div>
 					</div>
 				</section>
-
-				{/* Health: WiFi + battery */}
-				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
-					<PanelHeader label="Health" />
-					<div className="space-y-3 p-4">
-						<div className="flex items-center justify-between text-sm">
-							<span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-								WiFi
-							</span>
-							<span className="tabular-nums">
-								{device.rssi
-									? `${device.rssi} dBm · ${getSignalQuality(device.rssi)}`
-									: "Unknown"}
-							</span>
-						</div>
-						{batteryEstimate && (
-							<div className="space-y-2">
-								<div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-									Battery
-								</div>
-								<div className="flex flex-wrap items-center gap-3 text-sm">
-									<div className="flex items-center">
-										<Progress
-											value={batteryEstimate.batteryPercentage}
-											className={cn(
-												"h-5 w-12 rounded-sm border border-primary",
-												batteryEstimate.batteryPercentage < 20 &&
-													"[&>[data-slot=progress-indicator]]:bg-destructive",
-												batteryEstimate.batteryPercentage >= 20 &&
-													batteryEstimate.batteryPercentage < 50 &&
-													"[&>[data-slot=progress-indicator]]:bg-amber-500",
-											)}
-										/>
-										<div className="ml-[1px] h-2 w-0.5 rounded-r-sm bg-primary" />
-									</div>
-									<span className="font-medium tabular-nums">
-										{batteryEstimate.isCharging
-											? "Charging"
-											: `${batteryEstimate.batteryPercentage}%`}
-									</span>
-									<span className="text-muted-foreground tabular-nums">
-										{device.battery_voltage}V
-									</span>
-									<span className="text-xs text-muted-foreground">
-										{batteryEstimate.isCharging
-											? "Estimating while charging"
-											: `~${batteryEstimate.remainingDays} days at ${refreshPerDay} refreshes/day`}
-									</span>
-								</div>
-							</div>
-						)}
-					</div>
-				</section>
-
-				{/* Display + refresh */}
-				<section className="flex flex-col overflow-hidden rounded-2xl border bg-card">
-					<PanelHeader
-						label="Display"
-						right={
-							<span
-								className="text-[11px] text-muted-foreground tabular-nums"
-								suppressHydrationWarning
-							>
-								Next:{" "}
-								{device.next_expected_update
-									? formatDate(device.next_expected_update)
-									: "—"}
-							</span>
-						}
-					/>
-					<div className="grid gap-3 p-4 sm:grid-cols-3">
-						<MetaPair label="Mode">
-							<span className="capitalize">{device.display_mode}</span>
-						</MetaPair>
-						<MetaPair label="Last refresh">
-							{device.last_refresh_duration
-								? `${device.last_refresh_duration}s`
-								: "Unknown"}
-						</MetaPair>
-						<MetaPair label="Default refresh">
-							{device?.refresh_schedule?.default_refresh_rate ||
-								UI_REFRESH_FALLBACK_SECONDS}
-							s
-						</MetaPair>
-					</div>
-					<p className="border-t bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
-						{device.display_mode === DeviceDisplayMode.PLAYLIST
-							? "Rotating screens from the selected playlist."
-							: device.display_mode === DeviceDisplayMode.MIXUP
-								? "Split-screen layout combining multiple recipes."
-								: "Single screen rendering the selected component."}
-					</p>
-				</section>
 			</div>
 		</div>
 	);
 }
 
-function getModelImageExtension(model: TrmnlModel | undefined): string {
-	if (!model) return "png";
-	if (model.mime_type === "image/webp") return "webp";
-	if (model.mime_type === "image/bmp") return "bmp";
-	if (model.mime_type === "image/jpeg") return "jpg";
-	return "png";
+type HealthItem = {
+	id: string;
+	icon: React.ReactNode;
+	text: string;
+	label: string;
+};
+
+function getHealthItems(
+	device: Device & { status?: string },
+	battery: ReturnType<typeof estimateBatteryLife> | null,
+	defaultRefreshRate: number,
+): HealthItem[] {
+	const status = device.status === "online" ? "online" : "offline";
+	const { rssi } = device;
+	const mode = device.display_mode;
+	const next = device.next_expected_update;
+
+	const wifiTone =
+		rssi == null
+			? "text-muted-foreground"
+			: rssi >= -60
+				? "text-green-600 dark:text-green-400"
+				: rssi >= -70
+					? "text-amber-600 dark:text-amber-400"
+					: rssi >= -80
+						? "text-orange-600 dark:text-orange-400"
+						: "text-red-600 dark:text-red-400";
+	const WifiIcon = rssi != null ? Wifi : WifiOff;
+
+	const batteryTone = !battery
+		? "text-muted-foreground"
+		: battery.isCharging || battery.batteryPercentage >= 50
+			? "text-green-600 dark:text-green-400"
+			: battery.batteryPercentage < 20
+				? "text-red-600 dark:text-red-400"
+				: "text-amber-600 dark:text-amber-400";
+	const BatteryIcon = battery?.isCharging
+		? BatteryCharging
+		: battery && battery.batteryPercentage < 20
+			? BatteryLow
+			: Battery;
+
+	const ModeIcon =
+		mode === DeviceDisplayMode.PLAYLIST
+			? ListMusic
+			: mode === DeviceDisplayMode.MIXUP
+				? Shuffle
+				: Monitor;
+	const modeText =
+		mode === DeviceDisplayMode.PLAYLIST
+			? "Playlist"
+			: mode === DeviceDisplayMode.MIXUP
+				? "Mixup"
+				: "Screen";
+
+	return [
+		{
+			id: "status",
+			icon: <StatusIndicator status={status} size="sm" />,
+			text: status === "online" ? "Online" : "Offline",
+			label: `Status: ${status}`,
+		},
+		{
+			id: "wifi",
+			icon: <WifiIcon className={cn("h-4 w-4", wifiTone)} />,
+			text: rssi != null ? `${rssi} dBm` : "No RSSI",
+			label:
+				rssi != null
+					? `WiFi ${rssi} dBm · ${getSignalQuality(rssi)}`
+					: "WiFi RSSI not reported",
+		},
+		{
+			id: "battery",
+			icon: <BatteryIcon className={cn("h-4 w-4", batteryTone)} />,
+			text: battery
+				? battery.isCharging
+					? "Charging"
+					: `${battery.batteryPercentage}%`
+				: "No batt",
+			label: battery
+				? `Battery ${battery.isCharging ? "charging" : `${battery.batteryPercentage}%`} (${device.battery_voltage}V)`
+				: "Battery not reported",
+		},
+		{
+			id: "mode",
+			icon: <ModeIcon className="h-4 w-4 text-muted-foreground" />,
+			text: modeText,
+			label: `Mode: ${mode}`,
+		},
+		{
+			id: "next",
+			icon: <TimerReset className="h-4 w-4 text-muted-foreground" />,
+			text: next ? formatDate(next) : "—",
+			label: next
+				? `Next refresh: ${formatDate(next)}`
+				: "Next refresh unknown",
+		},
+		{
+			id: "refresh",
+			icon: <RefreshCw className="h-4 w-4 text-muted-foreground" />,
+			text: `${defaultRefreshRate}s`,
+			label: `Default refresh: ${defaultRefreshRate}s`,
+		},
+	];
+}
+
+function HealthChip({ icon, text, label }: HealthItem) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<span
+					className="flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg border bg-muted/30 px-2 transition-colors hover:bg-muted/60"
+					role="img"
+					aria-label={label}
+				>
+					{icon}
+					<span className="text-xs font-medium tabular-nums">{text}</span>
+				</span>
+			</TooltipTrigger>
+			<TooltipContent side="top">{label}</TooltipContent>
+		</Tooltip>
+	);
 }

@@ -11,14 +11,14 @@
 [![GitHub Forks](https://img.shields.io/github/forks/usetrmnl/byos_next?style=social)](https://github.com/usetrmnl/byos_next/network/members)
 
 ## 🚀 Overview
-**BYOS (Build Your Own Server) Next.js** is a Next.js implementation that powers device management, playlist-driven content scheduling, and on-demand BMP generation for e-ink displays.
+**BYOS (Build Your Own Server) Next.js** is a Next.js implementation that powers device management, playlist-driven content scheduling, and on-demand device image generation for e-ink displays.
 
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fusetrmnl%2Fbyos_next&env=AUTH_ENABLED&envDefaults=%7B%22AUTH_ENABLED%22%3A%22false%22%7D&envDescription=User%20authentication%20is%20disabled.&envLink=https%3A%2F%2Fgithub.com%2Fusetrmnl%2Fbyos_next%3Ftab%3Dreadme-ov-file&project-name=byos-next&repository-name=byos_next&demo-title=BYOS%20NextJS&demo-description=BYOS%20(Build%20Your%20Own%20Server)%20Next.js%2C%20TRMNL%20server%20with%20local%20recipe%20rendering%20and%20cloud%20proxy%20support.&demo-url=https%3A%2F%2Fbyos-next-demo.vercel.app&demo-image=https%3A%2F%2Fusetrmnl.com%2Fimages%2Fbrand%2Ficons%2Ficon--brand.svg&products=%5B%7B%22type%22%3A%22integration%22%2C%22integrationSlug%22%3A%22neon%22%2C%22productSlug%22%3A%22neon%22%2C%22protocol%22%3A%22storage%22%2C%22group%22%3A%22postgres%22%7D%5D)
 
 ### ✨ Features
 - Device management UI with MAC/API key registration, status tracking, and refresh scheduling.
 - Playlist-based screen rotation with time and weekday rules, custom durations, and per-device assignment.
-- On-demand screen rendering to 1-bit BMP via Takumi/Satori with caching and revalidation.
+- On-demand screen rendering via Takumi/Satori with model-driven image encoding, palette hard snap, and default image-only dithering.
 - Postgres backed persistence for devices, logs, and playlists.
 - Recipes gallery to prototype screens and compare direct vs. bitmap rendering before pushing to hardware.
 - Tailwind v4 + TypeScript + Next.js 16 + React 19; Biome lint/format baseline.
@@ -47,7 +47,7 @@
   - [License](#license)
 
 ## Highlights
-- Dynamic BMP generation with Next.js 16, React 19, Tailwind CSS v4, and TypeScript.
+- Dynamic device image generation with Next.js 16, React 19, Tailwind CSS v4, and TypeScript.
 - Supabase-backed device management, logging, and playlist scheduling.
 - No-DB fallback mode for quickly previewing screens without a database.
 - Docker Compose support for local PostgreSQL.

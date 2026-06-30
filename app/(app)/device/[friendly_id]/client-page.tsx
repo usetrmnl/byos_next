@@ -2,16 +2,19 @@
 
 import { Pencil, RefreshCw, Save, X } from "lucide-react";
 import type React from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { fetchDeviceByFriendlyId, updateDevice } from "@/app/actions/device";
 import { PageTemplate } from "@/components/common/page-template";
-import { StatusIndicator } from "@/components/common/status-indicator";
 import DeviceEditForm from "@/components/device/device-edit-form";
 import DeviceView from "@/components/device/device-view";
 import DeviceLogsContainer from "@/components/device-logs/device-logs-container";
 import { Button } from "@/components/ui/button";
 import { UI_REFRESH_FALLBACK_SECONDS } from "@/lib/device/defaults";
+import {
+	getPlaylistScreens,
+	type PlaylistScreen,
+} from "@/lib/playlists/playlist-items";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -57,14 +60,23 @@ export default function DeviceClientPage({
 	const [editedDevice, setEditedDevice] = useState<
 		Device & { status?: string; type?: string }
 	>(JSON.parse(JSON.stringify(initialDevice)));
-	const [playlistScreens, setPlaylistScreens] = useState<
-		{ screen: string; duration: number }[]
-	>([]);
+	const [playlistScreens, setPlaylistScreens] = useState<PlaylistScreen[]>([]);
 	const [isSaving, setIsSaving] = useState(false);
 
 	// State for validation error messages
 	const [apiKeyError, setApiKeyError] = useState<string | null>(null);
 	const [friendlyIdError, setFriendlyIdError] = useState<string | null>(null);
+
+	// Adopt fresh server data (e.g. from the dashboard auto-refresh) without
+	// clobbering in-progress edits. Keyed on `initialDevice` only so toggling
+	// edit mode off after a save doesn't re-apply a now-stale prop.
+	const isEditingRef = useRef(isEditing);
+	isEditingRef.current = isEditing;
+	useEffect(() => {
+		if (isEditingRef.current) return;
+		setDevice(initialDevice);
+		setEditedDevice(JSON.parse(JSON.stringify(initialDevice)));
+	}, [initialDevice]);
 
 	// State for device size preset
 	const [deviceSizePreset, setDeviceSizePreset] = useState<DeviceSizePreset>(
@@ -176,13 +188,7 @@ export default function DeviceClientPage({
 				},
 			});
 		} else {
-			// Convert grayscale to number
-			if (name === "grayscale") {
-				setEditedDevice({
-					...editedDevice,
-					[name]: Number.parseInt(value, 10),
-				});
-			} else if (name === "model") {
+			if (name === "model") {
 				const model = trmnlModels.find((item) => item.name === value);
 				const nextPaletteId = model?.palette_ids[0] ?? null;
 				setEditedDevice({
@@ -298,7 +304,6 @@ export default function DeviceClientPage({
 				screen_width: editedDevice.screen_width,
 				screen_height: editedDevice.screen_height,
 				screen_orientation: editedDevice.screen_orientation,
-				grayscale: editedDevice.grayscale,
 				model: editedDevice.model,
 				palette_id: editedDevice.palette_id,
 				temperature_profile: editedDevice.temperature_profile,
@@ -412,15 +417,9 @@ export default function DeviceClientPage({
 	};
 
 	useEffect(() => {
-		if (editedDevice.playlist_id) {
-			const playlistScreens = playlistItems
-				.filter((item) => item.playlist_id === editedDevice.playlist_id)
-				.map((item) => ({
-					screen: item.screen_id,
-					duration: item.duration,
-				}));
-			setPlaylistScreens(playlistScreens);
-		}
+		setPlaylistScreens(
+			getPlaylistScreens(playlistItems, editedDevice.playlist_id),
+		);
 	}, [editedDevice.playlist_id, playlistItems]);
 
 	return (
@@ -428,20 +427,6 @@ export default function DeviceClientPage({
 			title={
 				<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
 					<h1 className="text-2xl font-bold tracking-tight">{device.name}</h1>
-					<span className="inline-flex items-center gap-1.5 rounded-full border bg-muted/40 px-2 py-0.5 text-[11px] font-medium capitalize text-muted-foreground">
-						<StatusIndicator
-							status={
-								device.status === "online" || device.status === "offline"
-									? device.status
-									: "offline"
-							}
-							size="sm"
-						/>
-						{device.status}
-					</span>
-					<span className="font-mono text-[11px] text-muted-foreground">
-						{device.friendly_id}
-					</span>
 				</div>
 			}
 			left={
@@ -489,6 +474,7 @@ export default function DeviceClientPage({
 					editedDevice={editedDevice}
 					availableScreens={availableScreens}
 					availablePlaylists={availablePlaylists}
+					playlistItems={playlistItems}
 					availableMixups={availableMixups}
 					trmnlModels={trmnlModels}
 					trmnlPalettes={trmnlPalettes}

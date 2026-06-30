@@ -1,5 +1,4 @@
 import { revalidateTag } from "next/cache";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
@@ -14,25 +13,22 @@ import { RecipePreviewStage } from "@/components/recipes/recipe-preview-stage";
 import RecipeProps from "@/components/recipes/recipe-props";
 import { ScreenParamsForm } from "@/components/recipes/screen-params-form";
 import { Badge } from "@/components/ui/badge";
+import { getCurrentUserId } from "@/lib/auth/get-user";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import { listAllRecipes } from "@/lib/recipes/catalog";
+import {
+	DEFAULT_IMAGE_HEIGHT,
+	DEFAULT_IMAGE_WIDTH,
+} from "@/lib/recipes/constants";
 import LiquidPreview from "@/lib/recipes/liquid-preview";
 import {
 	customFieldsToParamDefinitions,
 	fetchLiquidRecipeSettings,
 	renderLiquidRecipe,
 } from "@/lib/recipes/liquid-renderer";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-	getRendererType,
-	isBuildPhase,
-	logger,
-	renderRecipeToImage,
-	resolveReactRecipe,
-} from "@/lib/recipes/recipe-renderer";
-import { rasterize } from "@/lib/recipes/render/rasterize";
+import { getRendererType } from "@/lib/recipes/render/rasterize";
+import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { zodObjectToParamDefinitions } from "@/lib/recipes/zod-form";
 import { listModels, listPalettes } from "@/lib/trmnl/registry";
 
@@ -76,117 +72,40 @@ const fetchLiquidRecipeMeta = cache(async (slug: string) => {
 
 const LiquidRenderComponent = ({
 	slug,
-	format,
-	title,
 	imageWidth,
 	imageHeight,
 	customFieldOverrides,
+	userId,
 }: {
 	slug: string;
-	format: "bitmap" | "png" | "react";
-	title: string;
 	imageWidth: number;
 	imageHeight: number;
 	customFieldOverrides?: Record<string, unknown>;
+	userId?: string;
 }) => {
-	const result = use(renderLiquidRecipe(slug, customFieldOverrides));
+	const result = use(renderLiquidRecipe(slug, customFieldOverrides, userId));
 
 	if (!result) {
 		return <EmptyState>Failed to render liquid template</EmptyState>;
 	}
 
-	if (format === "react") {
-		return (
-			<ScaledToFit imageWidth={imageWidth} imageHeight={imageHeight}>
-				<LiquidPreview
-					html={result.html}
-					width={imageWidth}
-					height={imageHeight}
-				/>
-			</ScaledToFit>
-		);
-	}
-
-	const renders = use(
-		rasterize({
-			slug,
-			html: result.html,
-			imageWidth,
-			imageHeight,
-			renderSettings: null,
-		}),
+	return (
+		<ScaledToFit imageWidth={imageWidth} imageHeight={imageHeight}>
+			<LiquidPreview
+				html={result.html}
+				width={imageWidth}
+				height={imageHeight}
+			/>
+		</ScaledToFit>
 	);
-
-	if (format === "bitmap") {
-		if (!renders.bitmap)
-			return <EmptyState>Failed to generate bitmap</EmptyState>;
-		return (
-			<Image
-				width={imageWidth}
-				height={imageHeight}
-				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
-				style={{ imageRendering: "pixelated" }}
-				alt={`${title} BMP render`}
-				className="absolute inset-0 h-full w-full object-cover"
-			/>
-		);
-	}
-
-	if (format === "png") {
-		if (!renders.png) return <EmptyState>Failed to generate PNG</EmptyState>;
-		return (
-			<Image
-				width={imageWidth}
-				height={imageHeight}
-				src={`data:image/png;base64,${renders.png.toString("base64")}`}
-				style={{ imageRendering: "pixelated" }}
-				alt={`${title} PNG render`}
-				className="absolute inset-0 h-full w-full object-cover"
-			/>
-		);
-	}
-
-	return null;
 };
-
-const renderReactFormats = cache(
-	async (
-		slug: string,
-		imageWidth: number,
-		imageHeight: number,
-	): Promise<{
-		bitmap: Buffer | null;
-		png: Buffer | null;
-	}> => {
-		if (isBuildPhase()) {
-			logger.info(`Skipping render for ${slug} during build prerender`);
-			return { bitmap: null, png: null };
-		}
-		try {
-			logger.info(`🔄 Generating all formats for: ${slug}`);
-			return await renderRecipeToImage({
-				slug,
-				imageWidth,
-				imageHeight,
-				formats: ["bitmap", "png"],
-			});
-		} catch (error) {
-			logger.error(`Error generating formats for ${slug}:`, error);
-			return { bitmap: null, png: null };
-		}
-	},
-);
 
 const RenderComponent = ({
 	slug,
-	format,
-	title,
 	imageWidth,
 	imageHeight,
 }: {
 	slug: string;
-	format: "bitmap" | "png" | "react";
-	title: string;
 	imageWidth: number;
 	imageHeight: number;
 }) => {
@@ -196,51 +115,16 @@ const RenderComponent = ({
 	const { definition, params, data } = resolved;
 	const Component = definition.Component;
 
-	if (format === "react") {
-		return (
-			<ScaledToFit imageWidth={imageWidth} imageHeight={imageHeight}>
-				<Component
-					width={imageWidth}
-					height={imageHeight}
-					params={params}
-					data={data}
-				/>
-			</ScaledToFit>
-		);
-	}
-
-	const renders = use(renderReactFormats(slug, imageWidth, imageHeight));
-
-	if (format === "bitmap") {
-		if (!renders.bitmap)
-			return <EmptyState>Failed to generate bitmap</EmptyState>;
-		return (
-			<Image
+	return (
+		<ScaledToFit imageWidth={imageWidth} imageHeight={imageHeight}>
+			<Component
 				width={imageWidth}
 				height={imageHeight}
-				src={`data:image/bmp;base64,${renders.bitmap.toString("base64")}`}
-				style={{ imageRendering: "pixelated" }}
-				alt={`${title} BMP render`}
-				className="absolute inset-0 h-full w-full object-cover"
+				params={params}
+				data={data}
 			/>
-		);
-	}
-
-	if (format === "png") {
-		if (!renders.png) return <EmptyState>Failed to generate PNG</EmptyState>;
-		return (
-			<Image
-				width={imageWidth}
-				height={imageHeight}
-				src={`data:image/png;base64,${renders.png.toString("base64")}`}
-				style={{ imageRendering: "pixelated" }}
-				alt={`${title} PNG render`}
-				className="absolute inset-0 h-full w-full object-cover"
-			/>
-		);
-	}
-
-	return null;
+		</ScaledToFit>
+	);
 };
 
 function ScaledToFit({
@@ -414,52 +298,21 @@ export default async function RecipePage({
 						isPortrait={isPortrait}
 						trmnlModels={trmnlModels}
 						trmnlPalettes={trmnlPalettes}
-						bmpNode={
-							<Suspense fallback={<LoadingState label="Rendering bitmap…" />}>
-								<RenderComponent
-									slug={slug}
-									format="bitmap"
-									title={meta.title}
-									imageWidth={imageWidth}
-									imageHeight={imageHeight}
-								/>
-							</Suspense>
-						}
-						pngNode={
-							<Suspense fallback={<LoadingState label="Rendering PNG…" />}>
-								<RenderComponent
-									slug={slug}
-									format="png"
-									title={meta.title}
-									imageWidth={imageWidth}
-									imageHeight={imageHeight}
-								/>
-							</Suspense>
-						}
+						deviceNode={<EmptyState>Device preview unavailable</EmptyState>}
 						reactNode={
 							<Suspense fallback={<LoadingState label="Rendering recipe…" />}>
 								<RenderComponent
 									slug={slug}
-									format="react"
-									title={meta.title}
 									imageWidth={imageWidth}
 									imageHeight={imageHeight}
 								/>
 							</Suspense>
 						}
-						bmpPipeline={
+						devicePipeline={
 							<span>
-								JSX → pre-satori → {getRendererType()} PNG → render-bmp →{" "}
-								<Link href={`/api/bitmap/${slug}.bmp`}>
-									/api/bitmap/{slug}.bmp
-								</Link>
-							</span>
-						}
-						pngPipeline={
-							<span>
-								JSX → pre-satori → {getRendererType()} PNG →{" "}
-								<Link href={`/api/bitmap/${slug}.bmp`}>
-									/api/bitmap/{slug}.bmp
+								JSX → {getRendererType()} PNG → renderDeviceImage →{" "}
+								<Link href={`/api/bitmap/${slug}.png`}>
+									/api/bitmap/{slug}.png
 								</Link>
 							</span>
 						}
@@ -493,14 +346,17 @@ export default async function RecipePage({
 		);
 	}
 
-	// Liquid recipe path
+	// Liquid recipe path. Recipes installed from the catalog are scoped to the
+	// owning user, so the in-browser preview must look them up under that user
+	// rather than the shared (user_id IS NULL) set.
 	const liquidMeta = await fetchLiquidRecipeMeta(slug);
 	if (!liquidMeta) notFound();
 
 	const title = liquidMeta.name;
 	const description = liquidMeta.description;
 
-	const liquidSettings = await fetchLiquidRecipeSettings(slug);
+	const userId = (await getCurrentUserId()) ?? undefined;
+	const liquidSettings = await fetchLiquidRecipeSettings(slug, userId);
 	const customFields = liquidSettings?.custom_fields ?? [];
 	const paramDefinitions = customFieldsToParamDefinitions(customFields);
 	const hasParams = Object.keys(paramDefinitions).length > 0;
@@ -545,51 +401,26 @@ export default async function RecipePage({
 					trmnlModels={trmnlModels}
 					trmnlPalettes={trmnlPalettes}
 					simulateReactPreviewInIframe={false}
-					bmpNode={
-						<Suspense fallback={<LoadingState label="Rendering bitmap…" />}>
-							<LiquidRenderComponent
-								slug={slug}
-								format="bitmap"
-								title={title}
-								imageWidth={imageWidth}
-								imageHeight={imageHeight}
-								customFieldOverrides={storedValues}
-							/>
-						</Suspense>
-					}
-					pngNode={
-						<Suspense fallback={<LoadingState label="Rendering PNG…" />}>
-							<LiquidRenderComponent
-								slug={slug}
-								format="png"
-								title={title}
-								imageWidth={imageWidth}
-								imageHeight={imageHeight}
-								customFieldOverrides={storedValues}
-							/>
-						</Suspense>
-					}
+					deviceNode={<EmptyState>Device preview unavailable</EmptyState>}
 					reactNode={
 						<Suspense fallback={<LoadingState label="Rendering recipe…" />}>
 							<LiquidRenderComponent
 								slug={slug}
-								format="react"
-								title={title}
 								imageWidth={imageWidth}
 								imageHeight={imageHeight}
 								customFieldOverrides={storedValues}
+								userId={userId}
 							/>
 						</Suspense>
 					}
-					bmpPipeline={
+					devicePipeline={
 						<span>
-							Liquid → liquidjs → HTML → Puppeteer PNG → render-bmp →{" "}
-							<Link href={`/api/bitmap/${slug}.bmp`}>
-								/api/bitmap/{slug}.bmp
+							Liquid → liquidjs → HTML → renderer PNG → renderDeviceImage →{" "}
+							<Link href={`/api/bitmap/${slug}.png`}>
+								/api/bitmap/{slug}.png
 							</Link>
 						</span>
 					}
-					pngPipeline={<span>Liquid → liquidjs → HTML → Puppeteer PNG</span>}
 					reactPipeline={
 						<span>Liquid → liquidjs → HTML → browser preview</span>
 					}

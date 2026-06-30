@@ -1,22 +1,21 @@
 import { NextResponse } from "next/server";
 import { getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
-import {
-	withDeviceApiKey,
-	withExplicitUserScope,
-} from "@/lib/database/scoped-db";
+import { withExplicitUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
-	createDefaultRefreshSchedule,
 	DEFAULT_DEVICE_SCREEN,
-	DEFAULT_DEVICE_TIMEZONE,
 	DEVICE_SETUP_REFRESH_SECONDS,
 	DEVICE_SLEEP_REFRESH_SECONDS,
-	serializeRefreshSchedule,
 } from "@/lib/device/defaults";
 import { createOrRefreshPendingDeviceClaim } from "@/lib/device/pending-device-claims";
+import { createProvisionedDevice } from "@/lib/device/provisioning";
+import {
+	type RequestHeaders,
+	resolveUserIdFromApiKey,
+} from "@/lib/device/request-headers";
 import { logError, logInfo, logWarn } from "@/lib/logger";
-import { logger } from "@/lib/recipes/recipe-renderer";
+import { logger } from "@/lib/recipes/logger";
 import {
 	type ModelStorageResolution,
 	resolveModelForStorage,
@@ -34,54 +33,9 @@ import {
 	timezones,
 } from "@/utils/helpers";
 
-// --- Types ---
-
-export interface RequestHeaders {
-	apiKey: string | null;
-	macAddress: string | null;
-	refreshRate: string | null;
-	batteryVoltage: string | null;
-	fwVersion: string | null;
-	rssi: string | null;
-	width: number | null;
-	height: number | null;
-	model: string | null;
-	specialFunction: boolean;
-	base64: boolean;
-	supportsTemperatureProfile: boolean;
-	hostUrl: string;
-}
-
 export type DeviceLookupResult = {
 	device: Device | null;
 	claimCode?: string;
-};
-
-// --- Header Parsing ---
-
-export const parseRequestHeaders = (request: Request): RequestHeaders => {
-	const headers = request.headers;
-	const widthStr = headers.get("Width");
-	const heightStr = headers.get("Height");
-
-	return {
-		apiKey: headers.get("Access-Token"),
-		macAddress: headers.get("ID")?.toUpperCase() || null,
-		refreshRate: headers.get("Refresh-Rate"),
-		batteryVoltage: headers.get("Battery-Voltage"),
-		fwVersion: headers.get("FW-Version"),
-		rssi: headers.get("RSSI"),
-		width: widthStr ? Number.parseInt(widthStr, 10) : null,
-		height: heightStr ? Number.parseInt(heightStr, 10) : null,
-		model: headers.get("Model")?.trim() || null,
-		specialFunction: headers.get("Special-Function") === "true",
-		base64: headers.get("BASE64") === "true",
-		supportsTemperatureProfile: headers.get("temperature-profile") === "true",
-		hostUrl:
-			(headers.get("x-forwarded-proto") || "http") +
-			"://" +
-			(headers.get("x-forwarded-host") || headers.get("host") || "localhost"),
-	};
 };
 
 // --- Helper Functions ---
@@ -236,32 +190,6 @@ export const getActivePlaylistItem = async (
 	}
 
 	return null;
-};
-
-// --- User Resolution ---
-
-/**
- * Resolve the user_id that owns a device identified by API key.
- * Returns null if no device or no owner is found.
- */
-export const resolveUserIdFromApiKey = async (
-	apiKey: string,
-	options: { assumeDbReady?: boolean } = {},
-): Promise<string | null> => {
-	if (!options.assumeDbReady) {
-		const { ready } = await checkDbConnection();
-		if (!ready) return null;
-	}
-
-	const device = await withDeviceApiKey(apiKey, (scopedDb) =>
-		scopedDb
-			.selectFrom("devices")
-			.select("user_id")
-			.where("api_key", "=", apiKey)
-			.executeTakeFirst(),
-	);
-
-	return device?.user_id ?? null;
 };
 
 // --- Device Management ---
@@ -479,30 +407,18 @@ export const findOrCreateDevice = async (
 					new Date().toISOString().replace(/[-:Z]/g, ""),
 				);
 				try {
-					const newDevice = await scopedDb
-						.insertInto("devices")
-						.values({
-							mac_address: macAddress,
-							name: `TRMNL Device ${friendly_id}`,
-							friendly_id: friendly_id,
-							api_key: apiKey,
-							refresh_schedule: serializeRefreshSchedule({
-								default_refresh_rate: headers.refreshRate
-									? Number.parseInt(headers.refreshRate, 10)
-									: createDefaultRefreshSchedule().default_refresh_rate,
-								time_ranges: [],
-							}),
-							last_update_time: new Date().toISOString(),
-							next_expected_update: new Date(
-								Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
-							).toISOString(),
-							timezone: DEFAULT_DEVICE_TIMEZONE,
-							screen: DEFAULT_DEVICE_SCREEN,
-							model: modelResolution.modelName ?? null,
-							user_id: currentUserId,
-						})
-						.returningAll()
-						.executeTakeFirst();
+					const newDevice = await createProvisionedDevice(scopedDb, {
+						macAddress,
+						name: `TRMNL Device ${friendly_id}`,
+						friendlyId: friendly_id,
+						apiKey,
+						userId: currentUserId,
+						nextExpectedRefreshSeconds: headers.refreshRate
+							? Number.parseInt(headers.refreshRate, 10)
+							: DEVICE_SLEEP_REFRESH_SECONDS,
+						screen: DEFAULT_DEVICE_SCREEN,
+						model: modelResolution.modelName ?? null,
+					});
 
 					if (newDevice) {
 						logUnknownReportedModel(modelResolution, friendly_id);
@@ -558,27 +474,16 @@ export const findOrCreateDevice = async (
 					);
 
 			try {
-				const newDevice = await scopedDb
-					.insertInto("devices")
-					.values({
-						mac_address: macAddress || mockMacAddress,
-						name: `Unknown device with API ${apiKey.substring(0, 4)}...`,
-						friendly_id: friendly_id,
-						api_key: new_api_key,
-						refresh_schedule: serializeRefreshSchedule(
-							createDefaultRefreshSchedule(),
-						),
-						last_update_time: new Date().toISOString(),
-						next_expected_update: new Date(
-							Date.now() + DEVICE_SLEEP_REFRESH_SECONDS * 1000,
-						).toISOString(),
-						timezone: DEFAULT_DEVICE_TIMEZONE,
-						screen: DEFAULT_DEVICE_SCREEN,
-						model: modelResolution.modelName ?? null,
-						user_id: currentUserId,
-					})
-					.returningAll()
-					.executeTakeFirst();
+				const newDevice = await createProvisionedDevice(scopedDb, {
+					macAddress: macAddress || mockMacAddress,
+					name: `TRMNL Device ${friendly_id}`,
+					friendlyId: friendly_id,
+					apiKey: new_api_key,
+					userId: currentUserId,
+					nextExpectedRefreshSeconds: DEVICE_SLEEP_REFRESH_SECONDS,
+					screen: DEFAULT_DEVICE_SCREEN,
+					model: modelResolution.modelName ?? null,
+				});
 
 				if (newDevice) {
 					logUnknownReportedModel(modelResolution, friendly_id);

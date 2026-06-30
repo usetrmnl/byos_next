@@ -2,12 +2,14 @@
 
 import { Edit3, LayoutGrid, Plus, Trash2 } from "lucide-react";
 import { FormattedDate } from "@/components/common/formatted-date";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
 import { Button } from "@/components/ui/button";
 import { getLayoutById } from "@/lib/mixup/constants";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import type { Mixup } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -86,20 +88,11 @@ export function MixupList({
 								aspectRatio: `${DEFAULT_IMAGE_WIDTH} / ${DEFAULT_IMAGE_HEIGHT}`,
 							}}
 						>
-							<picture>
-								<source
-									srcSet={`/api/bitmap/mixup/${mixup.id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-									type="image/bmp"
-								/>
-								<img
-									src={`/api/bitmap/mixup/${mixup.id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-									alt={`${mixup.name} preview`}
-									width={DEFAULT_IMAGE_WIDTH}
-									height={DEFAULT_IMAGE_HEIGHT}
-									className="absolute inset-0 h-full w-full object-cover"
-									style={{ imageRendering: "pixelated" }}
-								/>
-							</picture>
+							<ScreenPreviewImage
+								src={buildBitmapPreviewSrc(`mixup/${mixup.id}`)}
+								alt={`${mixup.name} preview`}
+								className="absolute inset-0"
+							/>
 						</div>
 
 						<div className="flex flex-1 flex-col gap-2 p-4">

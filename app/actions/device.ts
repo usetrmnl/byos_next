@@ -2,6 +2,7 @@
 
 import { BYOS_MONO_USER_ID, getCurrentUserId } from "@/lib/auth/get-user";
 import { db } from "@/lib/database/db";
+import { mapDeviceRow } from "@/lib/database/mappers";
 import { withUserScope } from "@/lib/database/scoped-db";
 import { checkDbConnection } from "@/lib/database/utils";
 import {
@@ -43,7 +44,7 @@ export async function fetchDeviceByFriendlyId(
 		return null;
 	}
 
-	return device as unknown as Device;
+	return mapDeviceRow(device);
 }
 
 /**
@@ -280,7 +281,6 @@ export async function updateDevice(
 		updateData.screen_height = device.screen_height;
 	if (device.screen_orientation !== undefined)
 		updateData.screen_orientation = device.screen_orientation;
-	if (device.grayscale !== undefined) updateData.grayscale = device.grayscale;
 	if (device.model !== undefined) updateData.model = device.model || null;
 	if (device.palette_id !== undefined)
 		updateData.palette_id = device.palette_id || null;

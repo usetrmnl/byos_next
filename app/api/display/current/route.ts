@@ -5,11 +5,14 @@ import {
 	DISPLAY_FALLBACK_REFRESH_SECONDS,
 	normalizeRefreshSchedule,
 } from "@/lib/device/defaults";
+import {
+	parseRequestHeaders,
+	resolveUserIdFromApiKey,
+} from "@/lib/device/request-headers";
 import { selectDisplayForDevice } from "@/lib/display/select";
 import { logError, logInfo } from "@/lib/logger";
 import { buildDeviceImageFilename } from "@/lib/render/device-image-url";
 import type { Device } from "@/lib/types";
-import { parseRequestHeaders, resolveUserIdFromApiKey } from "../utils";
 
 /**
  * GET /api/display/current

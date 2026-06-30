@@ -1,38 +1,15 @@
 "use client";
 
-import {
-	AlertTriangle,
-	BatteryCharging,
-	Clock,
-	Coffee,
-	Cpu,
-	FileCode,
-	Filter,
-	HardDrive,
-	RefreshCw,
-	Search,
-	Timer,
-	Wifi,
-	WifiOff,
-	X,
-} from "lucide-react";
+import { Filter, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fetchDeviceLogsWithFilters } from "@/app/actions/device";
+import { LogPagination } from "@/components/common/log-pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-	Pagination,
-	PaginationContent,
-	PaginationEllipsis,
-	PaginationItem,
-	PaginationLink,
-	PaginationNext,
-	PaginationPrevious,
-} from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
@@ -46,6 +23,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
 import type { Log } from "@/lib/types";
 import { formatDate, getLogType } from "@/utils/helpers";
+import { DeviceLogEntries } from "./device-log-entry";
 
 const ITEMS_PER_PAGE = 15;
 
@@ -61,7 +39,6 @@ export default function DeviceLogsViewer({
 	const router = useRouter();
 	const pathname = usePathname() ?? "/";
 	const searchParams = useSearchParams();
-	const scrollRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 
 	// Get URL params with defaults
@@ -171,18 +148,6 @@ export default function DeviceLogsViewer({
 		loadLogs();
 	}, [page, searchQuery, typeFilter, friendlyId]);
 
-	// Maintain scroll position
-	useEffect(() => {
-		if (scrollRef.current && !isLoading) {
-			scrollRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-		}
-	}, [isLoading]);
-
-	// Calculate pagination values
-	const totalPages = Math.ceil(totalLogs / ITEMS_PER_PAGE);
-	const showingFrom = (page - 1) * ITEMS_PER_PAGE + 1;
-	const showingTo = Math.min(page * ITEMS_PER_PAGE, totalLogs);
-
 	// Check if any filters are active
 	const hasActiveFilters = searchQuery || typeFilter !== "all";
 
@@ -214,35 +179,8 @@ export default function DeviceLogsViewer({
 		return gridColsMap[count] || "grid-cols-3";
 	};
 
-	// Generate page numbers for pagination
-	const getPageNumbers = () => {
-		const pages: (number | "ellipsis")[] = [];
-		if (totalPages <= 5) {
-			for (let i = 1; i <= totalPages; i++) pages.push(i);
-		} else if (page <= 3) {
-			for (let i = 1; i <= Math.min(5, totalPages); i++) pages.push(i);
-			if (totalPages > 5) {
-				pages.push("ellipsis");
-				pages.push(totalPages);
-			}
-		} else if (page >= totalPages - 2) {
-			pages.push(1);
-			pages.push("ellipsis");
-			for (let i = totalPages - 4; i <= totalPages; i++) {
-				if (i > 1) pages.push(i);
-			}
-		} else {
-			pages.push(1);
-			pages.push("ellipsis");
-			for (let i = page - 1; i <= page + 1; i++) pages.push(i);
-			pages.push("ellipsis");
-			pages.push(totalPages);
-		}
-		return pages;
-	};
-
 	return (
-		<div ref={scrollRef} className="space-y-4">
+		<div className="space-y-4">
 			{/* Search and filters */}
 			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<div className="relative flex-1">
@@ -253,6 +191,7 @@ export default function DeviceLogsViewer({
 						defaultValue={searchQuery}
 						onChange={handleSearchChange}
 						className="pl-9"
+						suppressHydrationWarning
 					/>
 				</div>
 
@@ -395,313 +334,7 @@ export default function DeviceLogsViewer({
 											)}
 										</TableCell>
 										<TableCell className="px-4 py-3 text-sm">
-											{(() => {
-												interface subLogType {
-													creation_timestamp: number;
-													device_status_stamp: {
-														wifi_rssi_level: number;
-														wifi_status: string;
-														refresh_rate: number;
-														time_since_last_sleep_start: number;
-														current_fw_version: string;
-														special_function: string;
-														battery_voltage: number;
-														wakeup_reason: string;
-														free_heap_size: number;
-													};
-													log_id: number;
-													log_message: string;
-													log_codeline: number;
-													log_sourcefile: string;
-													additional_info?: {
-														retry_attempt: number;
-													};
-													timestamp: string;
-												}
-												interface subLogTypeII {
-													logs_array: subLogType[];
-												}
-												try {
-													const logData: subLogType | subLogTypeII = JSON.parse(
-														log.log_data,
-													);
-
-													// Define DeviceStatusStamp component
-													const DeviceStatusStamp = ({
-														deviceStatusStamp,
-														logMessage,
-														logCodeline,
-														logSourcefile,
-														timestamp,
-													}: {
-														deviceStatusStamp:
-															| subLogType["device_status_stamp"]
-															| undefined;
-														logMessage: string;
-														logCodeline: number;
-														logSourcefile: string;
-														timestamp: string;
-													}) => {
-														// Add null check before destructuring
-														if (!deviceStatusStamp) {
-															// Return a simplified version when device status is not available
-															return (
-																<div className="flex flex-col gap-2 py-1">
-																	{/* Log Message with Prefix */}
-																	<div className="flex items-start gap-2 pl-1 text-xs font-mono">
-																		{/* Source Info Prefix */}
-																		<FileCode className="h-3.5 w-3.5" />
-																		<span>
-																			[{logSourcefile}:{logCodeline}]
-																		</span>
-																		<Clock className="h-3.5 w-3.5 ml-1" />
-																		<span>
-																			{
-																				new Date(timestamp)
-																					.toISOString()
-																					.split("T")[1]
-																					.split(".")[0]
-																			}
-																		</span>
-																		{/* Log Message */}
-																		<span className="break-words flex items-center gap-1">
-																			{logMessage
-																				.toLowerCase()
-																				.includes("error") && (
-																				<AlertTriangle className="inline h-3.5 w-3.5 text-red-500 mr-1" />
-																			)}
-																			{logMessage}
-																		</span>
-																	</div>
-																</div>
-															);
-														}
-
-														const {
-															wifi_rssi_level,
-															wifi_status,
-															battery_voltage,
-															refresh_rate,
-															free_heap_size,
-															current_fw_version,
-															wakeup_reason,
-															time_since_last_sleep_start,
-														} = deviceStatusStamp;
-
-														// Determine log type for prefix color
-														const logType = logMessage
-															.toLowerCase()
-															.includes("error")
-															? "error"
-															: logMessage.toLowerCase().includes("warn")
-																? "warning"
-																: "info";
-
-														return (
-															<div className="flex flex-col gap-2 py-1">
-																{/* Status Icons Row */}
-																<div className="flex flex-wrap items-center gap-3 text-xs">
-																	{/* WiFi Signal */}
-																	<div
-																		className="flex items-center gap-1 bg-blue-400/10 px-2 py-1 rounded-md"
-																		title="WiFi Signal"
-																	>
-																		{wifi_status === "connected" && (
-																			<Wifi className="h-3.5 w-3.5 text-primary" />
-																		)}
-																		{wifi_status === "disconnected" && (
-																			<WifiOff className="h-3.5 w-3.5 text-red-500" />
-																		)}
-																		<span>{wifi_rssi_level || "N/A"} dBm</span>
-																	</div>
-
-																	{/* Battery */}
-																	<div
-																		className="flex items-center gap-1 bg-green-400/10 px-2 py-1 rounded-md"
-																		title="Battery Voltage"
-																	>
-																		<BatteryCharging className="h-3.5 w-3.5 text-green-500" />
-																		<span>
-																			{battery_voltage
-																				? battery_voltage.toFixed(2)
-																				: "N/A"}{" "}
-																			V
-																		</span>
-																	</div>
-
-																	{/* Refresh Rate */}
-																	{refresh_rate !== undefined && (
-																		<div
-																			className="flex items-center gap-1 bg-purple-400/10 px-2 py-1 rounded-md"
-																			title="Refresh Rate"
-																		>
-																			<RefreshCw className="h-3.5 w-3.5 text-purple-500" />
-																			<span>{refresh_rate} s</span>
-																		</div>
-																	)}
-
-																	{/* Free Heap Size */}
-																	{free_heap_size !== undefined && (
-																		<div
-																			className="flex items-center gap-1 bg-cyan-400/10 px-2 py-1 rounded-md"
-																			title="Free Heap Size"
-																		>
-																			<Cpu className="h-3.5 w-3.5 text-cyan-500" />
-																			<span>{free_heap_size} B</span>
-																		</div>
-																	)}
-
-																	{/* Firmware Version */}
-																	{current_fw_version && (
-																		<div
-																			className="flex items-center gap-1 bg-gray-400/10 px-2 py-1 rounded-md"
-																			title="Firmware Version"
-																		>
-																			<HardDrive className="h-3.5 w-3.5 text-gray-500" />
-																			<span>v{current_fw_version}</span>
-																		</div>
-																	)}
-
-																	{/* Wakeup Reason */}
-																	{wakeup_reason && (
-																		<div
-																			className="flex items-center gap-1 bg-amber-400/10 px-2 py-1 rounded-md"
-																			title="Wakeup Reason"
-																		>
-																			<Coffee className="h-3.5 w-3.5 text-amber-500" />
-																			<span>{wakeup_reason}</span>
-																		</div>
-																	)}
-
-																	{/* Time Since Last Sleep */}
-																	{time_since_last_sleep_start !==
-																		undefined && (
-																		<div
-																			className="flex items-center gap-1 bg-indigo-400/10 px-2 py-1 rounded-md"
-																			title="Time Since Last Sleep"
-																		>
-																			<Timer className="h-3.5 w-3.5 text-indigo-500" />
-																			<span>
-																				{time_since_last_sleep_start}s
-																			</span>
-																		</div>
-																	)}
-																</div>
-
-																{/* Log Message with Prefix */}
-																<div className="flex items-start gap-2 pl-1 text-xs font-mono ">
-																	{/* Source Info Prefix */}
-																	<FileCode className="h-3.5 w-3.5" />
-																	<span>
-																		[{logSourcefile}:{logCodeline}]
-																	</span>
-																	<Clock className="h-3.5 w-3.5 ml-1" />
-																	<span>
-																		{
-																			new Date(timestamp)
-																				.toISOString()
-																				.split("T")[1]
-																				.split(".")[0]
-																		}
-																	</span>
-																	{/* Log Message */}
-																	<span className="break-words flex items-center gap-1">
-																		{logType === "error" && (
-																			<AlertTriangle className="inline h-3.5 w-3.5 text-red-500 mr-1" />
-																		)}
-																		{logMessage}
-																	</span>
-																</div>
-															</div>
-														);
-													};
-
-													// Check if it's a single log or an array of logs
-													if (Array.isArray(logData)) {
-														return logData.map(
-															(subLog: subLogType, subIndex: number) => (
-																<DeviceStatusStamp
-																	key={`${log.id}-${subIndex}`}
-																	deviceStatusStamp={
-																		subLog?.device_status_stamp
-																	}
-																	logMessage={
-																		subLog?.log_message || "No message"
-																	}
-																	logCodeline={subLog?.log_codeline || 0}
-																	logSourcefile={
-																		subLog?.log_sourcefile || "unknown"
-																	}
-																	timestamp={
-																		subLog?.timestamp ||
-																		new Date().toISOString()
-																	}
-																/>
-															),
-														);
-													}
-													if (
-														"logs_array" in logData &&
-														Array.isArray(logData.logs_array)
-													) {
-														return logData.logs_array.map(
-															(subLog: subLogType, subIndex: number) => (
-																<DeviceStatusStamp
-																	key={`${log.id}-${subIndex}`}
-																	deviceStatusStamp={
-																		subLog?.device_status_stamp
-																	}
-																	logMessage={
-																		subLog?.log_message || "No message"
-																	}
-																	logCodeline={subLog?.log_codeline || 0}
-																	logSourcefile={
-																		subLog?.log_sourcefile || "unknown"
-																	}
-																	timestamp={
-																		subLog?.timestamp ||
-																		new Date().toISOString()
-																	}
-																/>
-															),
-														);
-													}
-													if ("log_message" in logData) {
-														// Handle case where logData is a single log entry but not in an array
-														return (
-															<DeviceStatusStamp
-																deviceStatusStamp={logData?.device_status_stamp}
-																logMessage={
-																	logData?.log_message || "No message"
-																}
-																logCodeline={logData?.log_codeline || 0}
-																logSourcefile={
-																	logData?.log_sourcefile || "unknown"
-																}
-																timestamp={
-																	logData?.timestamp || new Date().toISOString()
-																}
-															/>
-														);
-													}
-													// If we can't determine the structure, just show the raw data
-													return (
-														<div className="max-w-[500px] truncate">
-															{log.log_data}
-														</div>
-													);
-												} catch (error) {
-													console.log(
-														"Failed to parse log data as JSON, fallback to plain string",
-														error,
-													);
-													return (
-														<div className="max-w-[500px] truncate">
-															{log.log_data}
-														</div>
-													);
-												}
-											})()}
+											<DeviceLogEntries log={log} />
 										</TableCell>
 									</TableRow>
 								);
@@ -713,59 +346,12 @@ export default function DeviceLogsViewer({
 
 			{/* Pagination */}
 			{!isLoading && logs.length > 0 && (
-				<div className="flex flex-col items-center justify-between gap-4 md:flex-row">
-					<div className="text-sm text-muted-foreground">
-						Showing <span className="font-medium">{showingFrom}</span> to{" "}
-						<span className="font-medium">{showingTo}</span> of{" "}
-						<span className="font-medium">{totalLogs}</span> logs
-					</div>
-
-					<Pagination>
-						<PaginationContent>
-							<PaginationItem>
-								<PaginationPrevious
-									onClick={() => page > 1 && handlePageChange(page - 1)}
-									className={
-										page <= 1
-											? "pointer-events-none opacity-50"
-											: "cursor-pointer"
-									}
-								/>
-							</PaginationItem>
-
-							{getPageNumbers().map((pageNum, i) =>
-								pageNum === "ellipsis" ? (
-									<PaginationItem key={`ellipsis-${i}`}>
-										<PaginationEllipsis />
-									</PaginationItem>
-								) : (
-									<PaginationItem key={pageNum}>
-										<PaginationLink
-											isActive={page === pageNum}
-											onClick={() => handlePageChange(pageNum)}
-											className="cursor-pointer"
-										>
-											{pageNum}
-										</PaginationLink>
-									</PaginationItem>
-								),
-							)}
-
-							<PaginationItem>
-								<PaginationNext
-									onClick={() =>
-										page < totalPages && handlePageChange(page + 1)
-									}
-									className={
-										page >= totalPages
-											? "pointer-events-none opacity-50"
-											: "cursor-pointer"
-									}
-								/>
-							</PaginationItem>
-						</PaginationContent>
-					</Pagination>
-				</div>
+				<LogPagination
+					page={page}
+					perPage={ITEMS_PER_PAGE}
+					totalItems={totalLogs}
+					onPageChange={handlePageChange}
+				/>
 			)}
 		</div>
 	);

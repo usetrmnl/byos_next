@@ -3,10 +3,8 @@
 import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
 import { DeviceFrame } from "@/components/common/device-frame";
-import {
-	DEFAULT_IMAGE_HEIGHT,
-	DEFAULT_IMAGE_WIDTH,
-} from "@/lib/recipes/constants";
+import { ScreenPreviewImage } from "@/components/common/screen-preview-image";
+import { buildBitmapPreviewSrc } from "@/lib/render/preview-image";
 import { cn } from "@/lib/utils";
 
 export interface FilmstripFrame {
@@ -115,20 +113,11 @@ export function PlaylistFilmstrip({
 
 							<div className="mx-3">
 								<DeviceFrame size="sm" flat>
-									<picture>
-										<source
-											srcSet={`/api/bitmap/${frame.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-											type="image/bmp"
-										/>
-										<img
-											src={`/api/bitmap/${frame.screen_id}.bmp?width=${DEFAULT_IMAGE_WIDTH}&height=${DEFAULT_IMAGE_HEIGHT}`}
-											alt={frame.label}
-											width={DEFAULT_IMAGE_WIDTH}
-											height={DEFAULT_IMAGE_HEIGHT}
-											className="absolute inset-0 h-full w-full object-cover"
-											style={{ imageRendering: "pixelated" }}
-										/>
-									</picture>
+									<ScreenPreviewImage
+										src={buildBitmapPreviewSrc(frame.screen_id)}
+										alt={frame.label}
+										className="absolute inset-0"
+									/>
 								</DeviceFrame>
 							</div>
 

@@ -1,11 +1,6 @@
-/** Quantize a single pixel value to the nearest available gray level
- *  e.g. levels=2 → 0 or 255, levels=4 → 0, 85, 170, 256
- **/
-export const quantizeValue = (value: number, levels: number): number => {
-	const step = 255 / (levels - 1);
-	const quantized = Math.round(value / step) * step;
-	return Math.min(255, Math.max(0, quantized));
-};
+import { floydSteinbergGray, quantizeValue } from "@/lib/render/quantize";
+
+export { quantizeValue };
 
 /** Quantize each pixel to the nearest gray level with no dithering */
 export const quantize = (grayscale: Uint8Array, levels = 2): Uint8Array => {
@@ -35,31 +30,7 @@ export const ditherFloydSteinberg = (
 	height: number,
 	levels = 2,
 ): Uint8Array => {
-	const result = new Uint8Array(grayscale.length);
-	const buffer = new Float32Array(grayscale.length);
-
-	for (let i = 0; i < grayscale.length; i++) {
-		buffer[i] = grayscale[i];
-	}
-
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			const index = y * width + x;
-			const oldPixel = buffer[index];
-			const newPixel = quantizeValue(oldPixel, levels);
-			result[index] = newPixel;
-			const error = oldPixel - newPixel;
-
-			if (x + 1 < width) buffer[index + 1] += (error * 7) / 16;
-			if (y + 1 < height && x > 0)
-				buffer[index + width - 1] += (error * 3) / 16;
-			if (y + 1 < height) buffer[index + width] += (error * 5) / 16;
-			if (y + 1 < height && x + 1 < width)
-				buffer[index + width + 1] += (error * 1) / 16;
-		}
-	}
-
-	return result;
+	return floydSteinbergGray(grayscale, width, height, levels);
 };
 
 /** Atkinson error diffusion dithering */
