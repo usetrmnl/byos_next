@@ -105,13 +105,13 @@ export function ClientMainLayout({
 			<SidebarInset>
 				{/* Header */}
 				<header className="flex h-14 items-center gap-2 border-b px-4">
-					<SidebarTrigger />
+					<SidebarTrigger className="size-11 md:size-8" />
 
 					{/* Search */}
 					<Button
 						variant="outline"
 						size="sm"
-						className="ml-4 hidden md:flex gap-2 text-muted-foreground"
+						className="ml-4 hidden h-11 gap-2 text-muted-foreground md:flex"
 						onClick={() => setCommandPaletteOpen(true)}
 					>
 						<Search className="h-4 w-4" />
@@ -123,15 +123,28 @@ export function ClientMainLayout({
 
 					{/* Right actions */}
 					<div className="ml-auto flex items-center gap-1">
-						<Button variant="ghost" size="icon" onClick={toggleTheme}>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-11 md:size-9"
+							onClick={toggleTheme}
+							aria-label="Toggle theme"
+						>
 							<Sun className="size-5 dark:hidden" />
 							<Moon className="hidden size-5 dark:block" />
 						</Button>
 
-						<Button variant="ghost" size="icon" asChild>
+						<Button
+							variant="ghost"
+							size="icon"
+							className="size-11 md:size-9"
+							asChild
+						>
 							<Link
 								href="https://github.com/usetrmnl/byos_next"
 								target="_blank"
+								rel="noopener noreferrer"
+								aria-label="Open GitHub repository"
 							>
 								<GithubIcon className="size-5" />
 							</Link>

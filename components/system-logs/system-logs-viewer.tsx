@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, Filter, Search, X } from "lucide-react";
+import { Filter, Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,28 +18,12 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useSearchWithDebounce } from "@/hooks/useSearchWithDebounce";
 import type { SystemLog } from "@/lib/types";
-import { formatDate } from "@/utils/helpers";
+import { SystemLogsList } from "./system-logs-list";
 
 const DEFAULT_ITEMS_PER_PAGE = 100;
-
-function formatLogMetadata(metadata: string): string {
-	try {
-		return JSON.stringify(JSON.parse(metadata), null, 2);
-	} catch {
-		return metadata;
-	}
-}
 
 // Define the type for the fetch function parameters
 export type SystemLogsFetchParams = {
@@ -241,6 +225,7 @@ export default function SystemLogsViewer({
 						defaultValue={searchQuery}
 						onChange={handleSearchChange}
 						className="pl-9"
+						suppressHydrationWarning
 					/>
 				</div>
 
@@ -322,145 +307,19 @@ export default function SystemLogsViewer({
 				</TabsList>
 			</Tabs>
 
-			{/* Logs table */}
+			{/* Logs */}
 			<Card className="overflow-hidden p-0">
-				<Table>
-					<TableHeader>
-						<TableRow className="bg-muted/50">
-							<TableHead className="px-4 py-3">Time</TableHead>
-							<TableHead className="px-4 py-3">Level</TableHead>
-							<TableHead className="px-4 py-3">Source</TableHead>
-							<TableHead className="px-4 py-3">Message</TableHead>
-							<TableHead className="px-4 py-3">Metadata</TableHead>
-						</TableRow>
-					</TableHeader>
-					<TableBody>
-						{isLoading ? (
-							Array.from({ length: 5 }).map((_, i) => (
-								<TableRow key={i}>
-									<TableCell className="px-4 py-3">
-										<Skeleton className="h-4 w-24" />
-									</TableCell>
-									<TableCell className="px-4 py-3">
-										<Skeleton className="h-4 w-16" />
-									</TableCell>
-									<TableCell className="px-4 py-3">
-										<Skeleton className="h-4 w-20" />
-									</TableCell>
-									<TableCell className="px-4 py-3">
-										<Skeleton className="h-4 w-full" />
-									</TableCell>
-									<TableCell className="px-4 py-3">
-										<Skeleton className="h-4 w-20" />
-									</TableCell>
-								</TableRow>
-							))
-						) : logs.length === 0 ? (
-							<TableRow>
-								<TableCell
-									colSpan={5}
-									className="px-4 py-8 text-center text-muted-foreground"
-								>
-									No logs found matching your criteria
-								</TableCell>
-							</TableRow>
-						) : (
-							logs.map((log, index) => {
-								const prevLog = index > 0 ? logs[index - 1] : null;
-								// Check if we should show time based on time difference with previous log
-								const shouldTimeBeShown =
-									index === 0 ||
-									(prevLog &&
-										Math.abs(
-											new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
-										) /
-											1000 >=
-											3);
-								// Check if we should show level based on level difference with previous log or time difference
-								const shouldLevelBeShown =
-									index === 0 ||
-									(prevLog && prevLog.level !== log.level) ||
-									(prevLog &&
-										Math.abs(
-											new Date(log.created_at || "").getTime() -
-												new Date(prevLog.created_at || "").getTime(),
-										) /
-											1000 >=
-											3);
-
-								return (
-									<TableRow key={log.id}>
-										<TableCell className="px-4 py-3 text-sm">
-											{shouldTimeBeShown ? formatDate(log.created_at) : ""}
-										</TableCell>
-										<TableCell className="px-4 py-3">
-											{shouldLevelBeShown ? (
-												<Badge
-													variant="outline"
-													className={`
-                                        ${log.level === "error" ? "bg-red-100 text-red-800 border-red-200" : ""}
-                                        ${log.level === "warning" ? "bg-amber-100 text-amber-800 border-amber-200" : ""}
-                                        ${log.level === "info" ? "bg-blue-100 text-blue-800 border-blue-200" : ""}
-                                        ${log.level === "debug" ? "bg-gray-100 text-gray-800 border-gray-200" : ""}
-                                        `}
-												>
-													{log.level}
-												</Badge>
-											) : (
-												""
-											)}
-										</TableCell>
-										<TableCell className="px-4 py-3 text-sm max-w-[120px] truncate">
-											{log.source}
-										</TableCell>
-										<TableCell className="px-4 py-3 text-sm max-w-[200px] md:max-w-[250px] lg:max-w-[300px] truncate">
-											{log.message}
-										</TableCell>
-										<TableCell className="px-4 py-3 text-sm">
-											{log.metadata ? (
-												<div className="flex items-start gap-1 justify-between">
-													<div className="font-mono text-xs w-full max-w-[120px] md:max-w-[200px] lg:max-w-[400px]">
-														{expandedLogs[log.id] ? (
-															<div className="pt-2 h-[200px] w-full overflow-auto">
-																<pre className="whitespace-pre-wrap break-words">
-																	{formatLogMetadata(log.metadata)}
-																</pre>
-															</div>
-														) : (
-															<div className="pt-2 h-8 truncate">
-																{log.metadata}
-															</div>
-														)}
-													</div>
-													<Button
-														variant="ghost"
-														size="sm"
-														onClick={() => toggleExpanded(log.id)}
-														aria-label={
-															expandedLogs[log.id]
-																? "Collapse details"
-																: "Expand details"
-														}
-														className="bg-transparent"
-													>
-														{expandedLogs[log.id] ? (
-															<ChevronUp className="h-4 w-4" />
-														) : (
-															<ChevronDown className="h-4 w-4" />
-														)}
-													</Button>
-												</div>
-											) : (
-												<span className="text-muted-foreground"> - </span>
-											)}
-										</TableCell>
-									</TableRow>
-								);
-							})
-						)}
-					</TableBody>
-				</Table>
+				{isLoading ? (
+					<SystemLogsLoadingRows />
+				) : (
+					<SystemLogsList
+						logs={logs}
+						emptyLabel="No logs found matching your criteria"
+						metadataMode="button"
+						expandedLogs={expandedLogs}
+						onToggleExpanded={toggleExpanded}
+					/>
+				)}
 			</Card>
 
 			{/* Pagination */}
@@ -472,6 +331,25 @@ export default function SystemLogsViewer({
 					onPageChange={handlePageChange}
 				/>
 			)}
+		</div>
+	);
+}
+
+function SystemLogsLoadingRows() {
+	return (
+		<div className="divide-y">
+			{Array.from({ length: 5 }).map((_, i) => (
+				<div
+					key={i}
+					className="grid gap-3 px-4 py-3 md:grid-cols-[90px_80px_120px_1fr_180px]"
+				>
+					<Skeleton className="h-4 w-24" />
+					<Skeleton className="h-4 w-16" />
+					<Skeleton className="h-4 w-20" />
+					<Skeleton className="h-4 w-full" />
+					<Skeleton className="h-4 w-20" />
+				</div>
+			))}
 		</div>
 	);
 }

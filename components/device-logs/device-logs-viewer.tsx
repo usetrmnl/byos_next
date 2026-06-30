@@ -191,6 +191,7 @@ export default function DeviceLogsViewer({
 						defaultValue={searchQuery}
 						onChange={handleSearchChange}
 						className="pl-9"
+						suppressHydrationWarning
 					/>
 				</div>
 
