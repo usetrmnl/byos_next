@@ -4,7 +4,6 @@ import {
 	type Parser,
 	Tag,
 	type TagToken,
-	type Template,
 	type TopLevelToken,
 } from "liquidjs";
 import { db } from "@/lib/database/db";
@@ -38,11 +37,10 @@ type LiquidRenderResult = {
 
 /**
  * Custom liquidjs block tag for TRMNL's {% template name %}...{% endtemplate %}.
- * Simply renders its body content — the tag is organizational in TRMNL.
+ * Definition-only: partials are extracted separately into the engine's
+ * templates map, then rendered explicitly via {% render "name" %}.
  */
 class TemplateTag extends Tag {
-	private templates: Template[] = [];
-
 	constructor(
 		token: TagToken,
 		remainTokens: TopLevelToken[],
@@ -54,9 +52,6 @@ class TemplateTag extends Tag {
 			.parseStream(remainTokens)
 			.on("tag:endtemplate", () => {
 				stream.stop();
-			})
-			.on("template", (tpl: Template) => {
-				this.templates.push(tpl);
 			})
 			.on("end", () => {
 				throw new Error("{% template %} block missing {% endtemplate %}");
@@ -281,6 +276,7 @@ async function fetchPollingData(
 		const single = data.IDX_0;
 		if (single && typeof single === "object" && !Array.isArray(single)) {
 			Object.assign(data, single as Record<string, unknown>);
+			data.IDX_0 = single;
 		}
 	}
 
