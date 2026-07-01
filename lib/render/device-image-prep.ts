@@ -1,9 +1,9 @@
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import {
 	type ImageDitherMethod,
-	prepareDeviceImage,
 	type PrepareDeviceImageInput,
 	type PreparedDeviceImage,
+	prepareDeviceImage,
 } from "./prepare-device-image";
 
 export type { ImageDitherMethod, PrepareDeviceImageInput, PreparedDeviceImage };

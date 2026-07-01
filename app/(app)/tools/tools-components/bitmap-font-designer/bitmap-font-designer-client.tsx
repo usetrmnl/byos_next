@@ -641,7 +641,7 @@ const SentencePreview = memo(
 		glyphMeta,
 		v2Pack,
 		getEditorGlyphs,
-		editorGlyphsRevision,
+		editorGlyphsRevision: _editorGlyphsRevision,
 		onPreviewTextChange,
 		onPreviewScaleChange,
 		onPreviewGapChange,

@@ -277,13 +277,11 @@ export default async function RecipePage({
 						</div>
 					}
 					subtitle={
-						<>
-							{meta.description && (
-								<p className="text-sm text-muted-foreground max-w-prose">
-									{meta.description}
-								</p>
-							)}
-						</>
+						meta.description && (
+							<p className="text-sm text-muted-foreground max-w-prose">
+								{meta.description}
+							</p>
+						)
 					}
 					left={meta.system ? null : <DeleteRecipeButton slug={slug} />}
 				>

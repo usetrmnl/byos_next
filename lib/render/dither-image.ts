@@ -1,6 +1,5 @@
 import { unstable_cache } from "next/cache";
 import type { RecipeDeviceContext } from "@/lib/recipes/types";
-import type { TrmnlPalette } from "@/lib/trmnl/types";
 import {
 	DEFAULT_IMAGE_DITHER_METHOD,
 	type ImageDitherMethod,
@@ -8,8 +7,8 @@ import {
 } from "@/lib/render/prepare-device-image";
 import { DitheringMethod } from "@/utils/image-processing";
 
-export { DitheringMethod, DEFAULT_IMAGE_DITHER_METHOD };
 export type { ImageDitherMethod };
+export { DEFAULT_IMAGE_DITHER_METHOD, DitheringMethod };
 
 export type DitherImageOptions = {
 	width: number;
@@ -27,7 +26,6 @@ export type EmbedImageOptions = {
 
 export type PrepareRecipeImageOptions = {
 	method?: ImageDitherMethod;
-	palette?: TrmnlPalette | null;
 };
 
 function ditheringMethodToImageMethod(
@@ -156,7 +154,6 @@ export async function prepareRecipeImageToDataUrl(
 	return prepareDeviceImageFromContext({
 		src: source,
 		ctx,
-		palette: options.palette,
 		method: options.method ?? DEFAULT_IMAGE_DITHER_METHOD,
 	});
 }

@@ -1,9 +1,9 @@
 import { createElement } from "react";
+import { buildRecipeDeviceContext } from "@/lib/recipes/device-context";
 import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
 } from "@/lib/render/device-image";
-import { buildRecipeDeviceContext } from "@/lib/recipes/device-context";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
@@ -152,8 +152,6 @@ export async function renderRecipeForDevice({
 					},
 				}
 			: profile;
-
-	const resolved = await resolveReactRecipe(slug, userId ?? undefined);
 
 	const renders = await renderRecipeToImage({
 		slug,

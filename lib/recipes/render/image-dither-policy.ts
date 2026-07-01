@@ -1,14 +1,14 @@
+import {
+	DEFAULT_IMAGE_DITHER_METHOD,
+	type ImageDitherMethod,
+	parseRecipeImageDitherSetting,
+} from "@/lib/render/image-dither-method";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import {
 	deviceRenderTargetNeedsReduction,
 	resolveDeviceRenderTarget,
 } from "@/lib/trmnl/palette-colors";
 import type { RecipeRenderSettings } from "../types";
-import {
-	DEFAULT_IMAGE_DITHER_METHOD,
-	type ImageDitherMethod,
-	parseRecipeImageDitherSetting,
-} from "@/lib/render/image-dither-method";
 
 export type ImageDitherPolicy =
 	| { mode: "off" }

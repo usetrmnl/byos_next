@@ -21,9 +21,7 @@ export function rgbToLStar(color: RGB): number {
 }
 
 /** Convert interleaved RGB buffer to L* grayscale bytes (0–255). */
-export function rgbBufferToLStarGray(
-	data: Uint8Array | Buffer,
-): Uint8Array {
+export function rgbBufferToLStarGray(data: Uint8Array | Buffer): Uint8Array {
 	const output = new Uint8Array(data.length / 3);
 	for (let index = 0; index < data.length; index += 3) {
 		const lStar = rgbToLStar({

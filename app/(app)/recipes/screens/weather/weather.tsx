@@ -111,7 +111,7 @@ export default function Weather({
 	pressure = "Loading...",
 	sunset = "Loading...",
 	sunrise = "Loading...",
-	suggestion = "",
+	suggestion: _suggestion = "",
 	width = DEFAULT_IMAGE_WIDTH,
 	height = DEFAULT_IMAGE_HEIGHT,
 	screen,

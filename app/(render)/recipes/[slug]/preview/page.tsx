@@ -4,8 +4,8 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
 import { buildRecipeDeviceContext } from "@/lib/recipes/device-context";
+import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
 import {
 	wrapLogicalCanvasToTarget,
 	wrapWithTrmnlCss,

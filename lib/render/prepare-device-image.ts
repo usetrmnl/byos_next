@@ -7,11 +7,7 @@ import {
 	paletteSupportsColor,
 	resolveDeviceRenderTarget,
 } from "@/lib/trmnl/palette-colors";
-import type { TrmnlPalette } from "@/lib/trmnl/types";
-import {
-	applyDithering,
-	DitheringMethod,
-} from "@/utils/image-processing";
+import { applyDithering, DitheringMethod } from "@/utils/image-processing";
 import {
 	DEFAULT_IMAGE_DITHER_METHOD,
 	type ImageDitherMethod,
@@ -20,10 +16,7 @@ import {
 	normalizeImageDitherMethod,
 } from "./image-dither-method";
 import { rgbBufferToLStarGray } from "./luminance";
-import {
-	quantizePngChannels,
-	reducePngToPalette,
-} from "./palette-reduction";
+import { quantizePngChannels, reducePngToPalette } from "./palette-reduction";
 
 export type { ImageDitherMethod };
 export { DEFAULT_IMAGE_DITHER_METHOD };
@@ -41,7 +34,6 @@ export type PrepareDeviceImageInput = {
 export type PrepareDeviceImageFromContextInput = {
 	src: string | Buffer;
 	ctx: RecipeDeviceContext;
-	palette?: TrmnlPalette | null;
 	method?: ImageDitherMethod;
 };
 
@@ -225,7 +217,7 @@ export async function prepareDeviceImage({
 	const target = resolveDeviceRenderTarget(profile.palette);
 	const levels = paletteSupportsColor(profile.palette)
 		? null
-		: profile.palette?.grays ?? 2;
+		: (profile.palette?.grays ?? 2);
 
 	let buffer = normalized;
 	if (!deviceRenderTargetNeedsReduction(target)) {
@@ -255,7 +247,6 @@ export async function prepareDeviceImage({
 export async function prepareDeviceImageFromContext({
 	src,
 	ctx,
-	palette,
 	method = DEFAULT_IMAGE_DITHER_METHOD,
 }: PrepareDeviceImageFromContextInput): Promise<string> {
 	const originalSource = typeof src === "string" ? src : null;

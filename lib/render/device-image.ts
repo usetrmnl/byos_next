@@ -1,10 +1,10 @@
 import sharp from "sharp";
 import { type BmpGrayLevel, encodeGrayBmp } from "@/lib/render/bmp-encoder";
+import { rgbBufferToLStarGray } from "@/lib/render/luminance";
 import {
 	quantizePngChannels,
 	reducePngToPalette,
 } from "@/lib/render/palette-reduction";
-import { rgbBufferToLStarGray } from "@/lib/render/luminance";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import {
 	resolveDeviceRenderTarget,

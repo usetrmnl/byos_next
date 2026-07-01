@@ -1,7 +1,8 @@
 /// <reference types="jest" />
-import { buildRecipeDeviceContext } from "./device-context";
+
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
 import type { TrmnlPalette } from "@/lib/trmnl/types";
+import { buildRecipeDeviceContext } from "./device-context";
 
 describe("buildRecipeDeviceContext", () => {
 	it("sets levels for grayscale palettes and null colorPalette", () => {
@@ -26,7 +27,14 @@ describe("buildRecipeDeviceContext", () => {
 			id: "color-6a",
 			name: "Color 6",
 			grays: 2,
-			colors: ["#FF0000", "#00FF00", "#0000FF", "#FFFF00", "#000000", "#FFFFFF"],
+			colors: [
+				"#FF0000",
+				"#00FF00",
+				"#0000FF",
+				"#FFFF00",
+				"#000000",
+				"#FFFFFF",
+			],
 		};
 		const screen = createScreenProfile({
 			width: 800,
