@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 import * as React from "react";
 
+import { suppressDevHydrationWarning } from "@/lib/suppress-dev-hydration-warning";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
@@ -56,6 +57,7 @@ function Button({
 			data-variant={variant}
 			data-size={size}
 			className={cn(buttonVariants({ variant, size, className }))}
+			suppressHydrationWarning={suppressDevHydrationWarning}
 			{...props}
 		/>
 	);

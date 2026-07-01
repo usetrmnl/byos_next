@@ -1,3 +1,8 @@
+import {
+	DEFAULT_IMAGE_DITHER_METHOD,
+	type ImageDitherMethod,
+	parseRecipeImageDitherSetting,
+} from "@/lib/render/image-dither-method";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import {
 	deviceRenderTargetNeedsReduction,
@@ -7,9 +12,11 @@ import type { RecipeRenderSettings } from "../types";
 
 export type ImageDitherPolicy =
 	| { mode: "off" }
-	// Palette targets use Floyd-Steinberg; low channel-depth targets use local
-	// channel snapping inside prepareImageForDevice.
-	| { mode: "floyd-steinberg"; profile: DeviceProfile };
+	| {
+			mode: "on";
+			profile: DeviceProfile;
+			method: ImageDitherMethod;
+	  };
 
 export const IMAGE_DITHER_OFF: ImageDitherPolicy = { mode: "off" };
 
@@ -31,11 +38,14 @@ export function resolveImageDitherPolicy({
 	renderSettings: RecipeRenderSettings | null | undefined;
 	profile: DeviceProfile | null | undefined;
 }): ImageDitherPolicy {
-	if (renderSettings?.imageDither === false) {
+	const method = parseRecipeImageDitherSetting(renderSettings?.imageDither);
+	if (method === null) {
 		return IMAGE_DITHER_OFF;
 	}
 
 	return hasDeviceImagePreparationTarget(profile)
-		? { mode: "floyd-steinberg", profile }
+		? { mode: "on", profile, method }
 		: IMAGE_DITHER_OFF;
 }
+
+export { DEFAULT_IMAGE_DITHER_METHOD };

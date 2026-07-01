@@ -117,7 +117,7 @@ async function renderErrorPng(message: string, width: number, height: number) {
   <line x1="${iconX + iconSize / 2}" y1="${iconY + iconSize * 0.48}" x2="${iconX + iconSize / 2}" y2="${iconY + iconSize * 0.75}" stroke="#000" stroke-width="${Math.max(7, Math.round(iconSize * 0.07))}" stroke-linecap="round"/>
   ${body}
   <rect x="${pad + Math.round(pad * 0.7)}" y="${actionTop}" width="${width - pad * 3.4}" height="${actionHeight}" rx="${Math.round(actionHeight * 0.35)}" fill="#fff" stroke="#000" stroke-width="${Math.max(3, Math.round(stroke * 0.72))}"/>
-  <text x="${pad + Math.round(pad * 1.15)}" y="${hintY}" class="hint">Open the BYOS dashboard to fix this screen or recipe</text>
+  <text x="${pad + Math.round(pad * 1.15)}" y="${hintY}" class="hint">Use Edit device on the BYOS dashboard to choose a recipe</text>
   <style>
     .title { font: 800 ${titleSize}px sans-serif; letter-spacing: ${Math.max(0.5, width * 0.001)}px; fill: #000; }
     .label { font: 800 ${labelSize}px sans-serif; letter-spacing: ${Math.max(1, Math.round(width * 0.003))}px; fill: #000; }

@@ -56,7 +56,7 @@ export default async function Dashboard() {
 							variant="outline"
 							className="border-primary/30 bg-primary/10 text-primary"
 						>
-							noDB mode
+							{dbStatus.databaseConfigured ? "setup required" : "noDB mode"}
 						</Badge>
 					)}
 				</h1>

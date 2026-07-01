@@ -1,3 +1,4 @@
+import { NO_DEFAULT_RECIPE_MESSAGE } from "@/lib/device/defaults";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -68,7 +69,7 @@ export async function selectDisplayForDevice(
 	const width = hints.width || dimensions.width;
 	const height = hints.height || dimensions.height;
 	if (!device.screen) {
-		throw new Error("Device screen is not configured");
+		throw new Error(NO_DEFAULT_RECIPE_MESSAGE);
 	}
 	const screen = device.screen;
 

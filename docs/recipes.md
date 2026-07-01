@@ -156,19 +156,32 @@ channel depth. It does not run Floyd-Steinberg over the whole screen, so text,
 icons, and flat fills stay crisp.
 
 Image-only preparation is enabled by default when the request includes a device
-profile with a reducible palette or channel depth. Opt out per recipe with:
+profile with a reducible palette or channel depth. Authors choose the algorithm
+via `renderSettings.imageDither` (default **Bayer** ordered dither — retro
+crosshatch, local and fast):
 
 ```ts
 renderSettings: {
-  imageDither: false,
+  imageDither: "bayer",        // default
+  // imageDither: "white-noise", // stochastic
+  // imageDither: "floyd-steinberg", // smooth gradients, slower
+  // imageDither: false,         // opt out
 }
 ```
 
-`imageDither: "floyd-steinberg"` is still accepted for explicitness. When active,
-the renderer rewrites plain `<img src="...">` and simple `<source srcSet="...">`
-image URLs to prepared PNG data URLs before the recipe is composed into the
-unified PNG. Existing `data:` URLs and CSS `background-image` values are not
-rewritten.
+Supported methods: `bayer`, `white-noise`, `floyd-steinberg`, `atkinson`,
+`threshold`, `snap`, `none`. Grayscale targets dither to palette gray levels
+using perceptual **Lab L\*** luminance; discrete color palettes dither to palette
+colors (including Spectra / ACeP families).
+
+For explicit recipe data prep (album photos, Wikipedia thumbnails), use
+`prepareForDevice` with `prepareRecipeImageToDataUrl` or the `<DeviceImage>`
+component. See `docs/trmnl/eink-palette-mapping.md` for palette ↔ device specs.
+
+When active, the renderer rewrites plain `<img src="...">` and simple
+`<source srcSet="...">` image URLs to prepared PNG data URLs before the recipe
+is composed into the unified PNG. Existing `data:` URLs and CSS
+`background-image` values are not rewritten.
 
 ## Responsive Design
 

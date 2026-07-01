@@ -17,7 +17,11 @@ import {
 	normalizeClaimCode,
 } from "@/lib/device/pending-device-claims";
 import type { Device, Log } from "@/lib/types";
-import { generateFriendlyId, generateMockMacAddress } from "@/utils/helpers";
+import {
+	generateFriendlyId,
+	generateMockMacAddress,
+	normalizeMacAddress,
+} from "@/utils/helpers";
 
 /**
  * Fetch a single device by friendly_id
@@ -310,11 +314,12 @@ export async function updateDevice(
 
 /**
  * Add a new device for the current user.
- * Creates a device record with a placeholder MAC address that will be
- * replaced when the physical device connects via /api/setup.
+ * When importing from trmnl.com/devices, pass the hardware MAC so /api/setup
+ * can recognize the device even though TRMNL firmware omits Access-Token there.
  */
 export async function addUserDevice(input: {
 	apiKey: string;
+	macAddress?: string;
 	name?: string;
 }): Promise<{
 	success: boolean;
@@ -340,6 +345,16 @@ export async function addUserDevice(input: {
 		};
 	}
 
+	const normalizedMac = input.macAddress?.trim()
+		? normalizeMacAddress(input.macAddress)
+		: null;
+	if (input.macAddress?.trim() && !normalizedMac) {
+		return {
+			success: false,
+			error: "MAC address must look like AA:BB:CC:DD:EE:FF",
+		};
+	}
+
 	try {
 		// Check uniqueness of API key (bypass RLS to check across all users)
 		const existing = await db
@@ -355,18 +370,32 @@ export async function addUserDevice(input: {
 			};
 		}
 
-		// Generate a placeholder MAC from the API key (will be replaced on /api/setup)
-		const mockMac = generateMockMacAddress(apiKey);
+		const macAddress = normalizedMac ?? generateMockMacAddress(apiKey);
+
+		if (normalizedMac) {
+			const existingMac = await db
+				.selectFrom("devices")
+				.select("id")
+				.where("mac_address", "=", normalizedMac)
+				.executeTakeFirst();
+
+			if (existingMac) {
+				return {
+					success: false,
+					error: "A device with this MAC address already exists",
+				};
+			}
+		}
 
 		const timestamp = new Date().toISOString().replace(/[-:Z]/g, "");
-		const friendlyId = generateFriendlyId(mockMac, timestamp);
+		const friendlyId = generateFriendlyId(macAddress, timestamp);
 		const deviceName = input.name?.trim() || `TRMNL Device ${friendlyId}`;
 
 		await withUserScope((scopedDb) =>
 			scopedDb
 				.insertInto("devices")
 				.values({
-					mac_address: mockMac,
+					mac_address: macAddress,
 					name: deviceName,
 					friendly_id: friendlyId,
 					api_key: apiKey,

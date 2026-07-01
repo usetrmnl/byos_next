@@ -1,5 +1,6 @@
 "use client";
 
+import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -22,8 +23,13 @@ interface SignInFormProps {
 export default function SignInForm({ dbReady, dbError }: SignInFormProps) {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
+	const [showPassword, setShowPassword] = useState(false);
 	const [error, setError] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
+
+	const handleTogglePasswordVisibility = () => {
+		setShowPassword((prev) => !prev);
+	};
 
 	const handleSubmit = async (e: React.SubmitEvent) => {
 		e.preventDefault();
@@ -113,16 +119,35 @@ export default function SignInForm({ dbReady, dbError }: SignInFormProps) {
 									Forgot password?
 								</Link>
 							</div>
-							<Input
-								id="password"
-								type="password"
-								placeholder="••••••••"
-								value={password}
-								onChange={(e) => setPassword(e.target.value)}
-								required
-								autoComplete="current-password"
-								disabled={formDisabled}
-							/>
+							<div className="relative">
+								<Input
+									id="password"
+									type={showPassword ? "text" : "password"}
+									placeholder="••••••••"
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									required
+									autoComplete="current-password"
+									disabled={formDisabled}
+									className="pr-10"
+								/>
+								<Button
+									type="button"
+									variant="ghost"
+									size="icon-sm"
+									className="absolute top-1/2 right-1 -translate-y-1/2 text-muted-foreground"
+									onClick={handleTogglePasswordVisibility}
+									disabled={formDisabled}
+									aria-label={showPassword ? "Hide password" : "Show password"}
+									aria-pressed={showPassword}
+								>
+									{showPassword ? (
+										<EyeOff aria-hidden="true" />
+									) : (
+										<Eye aria-hidden="true" />
+									)}
+								</Button>
+							</div>
 						</div>
 						<Button type="submit" className="w-full" disabled={formDisabled}>
 							{isLoading ? "Signing in..." : "Sign In"}

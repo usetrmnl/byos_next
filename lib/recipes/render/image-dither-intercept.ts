@@ -69,7 +69,7 @@ async function prepareSrc({
 }): Promise<string> {
 	if (policy.mode === "off" || isSkippableImageSrc(src)) return src;
 
-	const key = `${src}|${width ?? ""}|${height ?? ""}`;
+	const key = `${src}|${width ?? ""}|${height ?? ""}|${policy.method}`;
 	const cached = cache.get(key);
 	if (cached) return cached;
 
@@ -78,7 +78,7 @@ async function prepareSrc({
 		profile: policy.profile,
 		width,
 		height,
-		dither: "floyd-steinberg",
+		method: policy.method,
 	})
 		.then((image) => image.dataUrl)
 		.catch((error) => {

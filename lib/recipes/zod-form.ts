@@ -15,6 +15,7 @@ export type RecipeParamDefinition = {
 	description?: string;
 	default?: unknown;
 	placeholder?: string;
+	options?: Array<{ value: string; label: string }>;
 };
 
 export type RecipeParamDefinitions = Record<string, RecipeParamDefinition>;
@@ -62,10 +63,27 @@ function detectFieldType(schema: z.ZodTypeAny): RecipeParamType | null {
 	const base = unwrapToBaseType(schema);
 	const internals = (base as unknown as { _zod?: ZodInternals })._zod;
 	const t = internals?.def.type;
-	if (t === "string") return "string";
+	if (t === "string" || t === "enum") return "string";
 	if (t === "number") return "number";
 	if (t === "boolean") return "boolean";
 	return null;
+}
+
+function readEnumOptions(
+	schema: z.ZodTypeAny,
+): Array<{ value: string; label: string }> | undefined {
+	const base = unwrapToBaseType(schema);
+	const internals = (base as unknown as { _zod?: ZodInternals })._zod;
+	if (internals?.def.type !== "enum") return undefined;
+
+	const entries = (internals.def as { entries?: Record<string, string> })
+		.entries;
+	if (!entries) return undefined;
+
+	return Object.values(entries).map((value) => ({
+		value,
+		label: humanizeKey(value),
+	}));
 }
 
 /**
@@ -113,7 +131,7 @@ function humanizeKey(key: string): string {
 	return key
 		.replace(/[_-]+/g, " ")
 		.replace(/([a-z])([A-Z])/g, "$1 $2")
-		.replace(/^./, (c) => c.toUpperCase());
+		.replace(/\b\w/g, (character) => character.toUpperCase());
 }
 
 /**
@@ -134,6 +152,7 @@ export function zodObjectToParamDefinitions(
 		const meta = readMeta(fieldSchema);
 		const description = readDescription(fieldSchema);
 		const defaultValue = readDefault(fieldSchema);
+		const options = readEnumOptions(fieldSchema);
 
 		definitions[key] = {
 			label: meta.title ?? humanizeKey(key),
@@ -143,6 +162,7 @@ export function zodObjectToParamDefinitions(
 			...(meta.placeholder !== undefined
 				? { placeholder: meta.placeholder }
 				: {}),
+			...(options !== undefined ? { options } : {}),
 		};
 	}
 

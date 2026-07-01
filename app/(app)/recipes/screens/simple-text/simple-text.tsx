@@ -1,6 +1,8 @@
 import { z } from "zod";
 import fontData from "@/components/bitmap-font/bitmap-font.json";
 import { BitmapText } from "@/components/bitmap-font/bitmap-text";
+import genevaFontData from "@/components/bitmap-font/generated/geneva.json";
+import pixelifySansFontData from "@/components/bitmap-font/generated/pixelify-sans.json";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -41,32 +43,54 @@ export default function SimpleText({
 	screen?: ScreenProfile;
 }) {
 	const screenProfile = screen ?? createScreenProfile({ width, height });
+	const bitmapScale = bitmapFontScaleForScreen(screenProfile);
+
 	return (
 		<PreSatori
 			width={screenProfile.logicalWidth}
 			height={screenProfile.logicalHeight}
 		>
 			<div className="w-full h-full p-4 sm:p-6 lg:p-12 2xl:p-20 bg-white flex flex-col items-center justify-center gap-2 lg:gap-4 2xl:gap-6 text-center text-black">
-				<div className="text-4xl lg:text-6xl 2xl:text-8xl font-blockkie">
-					Hello World - blockkie font
+				<div className="text-4xl lg:text-6xl 2xl:text-8xl font-pixelify-sans">
+					Hello World — Pixelify Sans
 				</div>
 				<div className="text-base lg:text-2xl 2xl:text-4xl font-geneva9">
 					small text with geneva9 font
 				</div>
 				<div className="text-3xl lg:text-5xl 2xl:text-7xl font-inter">
-					Hello World - inter font not anti-aliased
+					Hello World — inter font not anti-aliased
 				</div>
-				<div className="text-3xl lg:text-5xl 2xl:text-7xl font-blockkie leading-none tracking-tight">
-					Hello World - leading none tracking tight
+				<div className="text-2xl lg:text-4xl 2xl:text-5xl font-pixelify-sans leading-none">
+					Pixelify Sans — leading none
 				</div>
-				<div className="text-3xl lg:text-5xl 2xl:text-7xl font-blockkie leading-loose tracking-wider">
-					Hello World - leading loose tracking wider
+				<div className="text-base lg:text-2xl 2xl:text-4xl font-geneva12">
+					small text with geneva12 font
+				</div>
+				<div className="text-3xl lg:text-5xl 2xl:text-7xl font-geneva12 leading-none tracking-tight">
+					Geneva 12 — leading none tracking tight
+				</div>
+				<div className="text-3xl lg:text-5xl 2xl:text-7xl font-geneva12 leading-loose tracking-wider">
+					Geneva 12 — leading loose tracking wider
 				</div>
 				<BitmapText
-					text={`FT font: Great for headlines`}
+					text="FT font: Great for headlines"
 					fontData={fontData}
-					gridSize={`8x16`}
-					scale={bitmapFontScaleForScreen(screenProfile)}
+					gridSize="10x16"
+					scale={bitmapScale}
+					gap={0}
+				/>
+				<BitmapText
+					text="Geneva bitmap: The quick brown fox"
+					fontData={genevaFontData}
+					gridSize="7x11"
+					scale={bitmapScale}
+					gap={0}
+				/>
+				<BitmapText
+					text="Pixelify Sans: ypq gjy descenders"
+					fontData={pixelifySansFontData}
+					gridSize="0x28"
+					scale={Math.max(1, bitmapScale - 1)}
 					gap={0}
 				/>
 			</div>
@@ -86,9 +110,6 @@ export const definition: RecipeDefinition<typeof paramsSchema> = {
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-01T00:00:00Z",
-		renderSettings: {
-			supersample: true,
-		},
 	},
 	paramsSchema,
 	dataSchema,

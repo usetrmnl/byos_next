@@ -4,6 +4,7 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
+import { buildRecipeDeviceContext } from "@/lib/recipes/device-context";
 import { consumeBrowserRenderContext } from "@/lib/recipes/render/browser-context";
 import {
 	wrapLogicalCanvasToTarget,
@@ -11,10 +12,10 @@ import {
 } from "@/lib/recipes/render/frame";
 import { rewriteReactImagesForDevice } from "@/lib/recipes/render/image-dither-intercept";
 import { resolveImageDitherPolicy } from "@/lib/recipes/render/image-dither-policy";
-import { getRenderScale } from "@/lib/recipes/render/settings";
 import { resolveReactRecipe } from "@/lib/recipes/runtime/react";
 import { getDeviceProfile } from "@/lib/trmnl/device-profile";
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
+import { DEFAULT_DITHER_SALT } from "@/utils/image-processing";
 
 export default async function RecipePreviewPage({
 	params,
@@ -48,7 +49,6 @@ export default async function RecipePreviewPage({
 
 	const { definition, params: parsedParams, data } = resolved;
 	const Component = definition.Component;
-	const renderScale = getRenderScale(definition.meta.renderSettings ?? null);
 
 	const profile =
 		modelParam || paletteParam
@@ -61,13 +61,24 @@ export default async function RecipePreviewPage({
 		palette: profile?.palette,
 	});
 
+	const deviceContext = buildRecipeDeviceContext({
+		palette: profile?.palette ?? null,
+		screen,
+		salt: DEFAULT_DITHER_SALT,
+	});
+
+	let renderData = data;
+	if (definition.prepareForDevice) {
+		renderData = await definition.prepareForDevice(data, deviceContext);
+	}
+
 	const recipe = (
 		<Component
 			width={screen.logicalWidth}
 			height={screen.logicalHeight}
 			screen={screen}
 			params={parsedParams}
-			data={data}
+			data={renderData}
 		/>
 	);
 	const imageDitherPolicy = resolveImageDitherPolicy({
@@ -78,8 +89,8 @@ export default async function RecipePreviewPage({
 		recipe,
 		imageDitherPolicy,
 	);
-	const targetWidth = screen.physicalWidth * renderScale;
-	const targetHeight = screen.physicalHeight * renderScale;
+	const targetWidth = screen.physicalWidth;
+	const targetHeight = screen.physicalHeight;
 	const rendered = wrapLogicalCanvasToTarget(
 		renderedRecipe,
 		screen.logicalWidth,

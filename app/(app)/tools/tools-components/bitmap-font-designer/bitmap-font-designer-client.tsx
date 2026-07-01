@@ -1,6 +1,7 @@
 "use client";
 
 import { Download, Info, Upload } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
 	memo,
 	useCallback,
@@ -13,17 +14,70 @@ import {
 import { toast } from "sonner";
 import bitmapFontFile from "@/components/bitmap-font/bitmap-font.json";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+	type BitmapFontPackData,
+	convertLegacyMetrics,
+	convertLegacyPackToV2,
+	convertV2MetricsToLegacy,
+	normalizeToLegacyPack,
+} from "@/lib/bitmap-font";
+import {
+	type BitmapFontMetrics,
+	layoutBitmapText,
+} from "@/lib/bitmap-font/layout";
+import {
+	getV2DefaultCharGap,
+	getV2LayoutHeight,
+	getV2MetricGuides,
+	layoutV2Text,
+} from "@/lib/bitmap-font/layout-v2";
+import {
+	isV2BitmapFont,
+	listV2FaceKeys,
+	resolveV2Face,
+} from "@/lib/bitmap-font/pack-utils";
+import {
+	fetchBuiltInPack,
+	getBuiltInPackOptions,
+} from "@/lib/bitmap-font/packs";
+import type { LegacyFontMetrics } from "@/lib/bitmap-font/schema/legacy";
+import type {
+	Glyph,
+	NewBitmapFont,
+	NewBitmapFontMetrics,
+} from "@/lib/bitmap-font/schema/v2";
 import { cn } from "@/lib/utils";
 import AddGridSize from "./add-grid-size";
 import BitmapFontEditor from "./bitmap-font-editor";
-import { base64ToBinary, binaryToBase64 } from "./bitmap-font-utils";
+import {
+	buildBitmapCacheFromGlyphs,
+	buildPreviewGlyphsFromEditorStore,
+	computeGlyphBoundsFromRows,
+	type EditorGlyph,
+	editorGlyphToPackBinary,
+	getGlyphBitmapStride,
+	glyphRowsToSvgPath,
+	packBinaryToEditorGlyph,
+	packMetricsFromV2Metrics,
+	packMetricsToLegacySave,
+	packMetricsToV2PreviewMetrics,
+	resizeGlyphRows,
+	shiftEditorGlyphRowsY,
+	syncPackMetricsFromV2,
+} from "./bitmap-font-utils";
 
 // Custom debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -42,12 +96,134 @@ function useDebounce<T>(value: T, delay: number): T {
 	return debouncedValue;
 }
 
-const bitmapFont = bitmapFontFile.fonts;
+const initialLegacyPack = normalizeToLegacyPack(bitmapFontFile);
+
+const _gridSizeKey = (font: BitmapFont) =>
+	font.width > 0 ? `${font.width}x${font.height}` : `0x${font.height}`;
+
+const formatGridSizeLabel = (size: string) => {
+	const [width, height] = size.split("x");
+	if (width === "0" || width === "dynamic") return `dyn×${height}`;
+	return size.replace("x", "×");
+};
+
+const DEFAULT_DESIGNER_PACK_ID = "ft";
+
+const DESIGNER_URL_KEYS = {
+	pack: "pack",
+	size: "size",
+	char: "char",
+} as const;
+
+const normalizeDesignerSizeParam = (value: string) =>
+	value.replaceAll("×", "x").replaceAll("%C3%97", "x");
+
+const parseDesignerPackParam = (value: string | null | undefined): string => {
+	if (!value) return DEFAULT_DESIGNER_PACK_ID;
+	const validIds = new Set(getBuiltInPackOptions().map((pack) => pack.id));
+	return validIds.has(value) ? value : DEFAULT_DESIGNER_PACK_ID;
+};
+
+const parseDesignerCharParam = (
+	value: string | null | undefined,
+): number | null => {
+	if (!value) return null;
+	const asNumber = Number.parseInt(value, 10);
+	if (!Number.isNaN(asNumber) && asNumber > 0) return asNumber;
+	if (value.length === 1) return value.codePointAt(0) ?? null;
+	return null;
+};
+
+const parseDesignerSizeParam = (
+	value: string | null | undefined,
+	availableSizes: string[],
+): string | null => {
+	if (!value) return null;
+	const normalized = normalizeDesignerSizeParam(value);
+	return availableSizes.includes(normalized) ? normalized : null;
+};
+
+type LoadFontDataOptions = {
+	gridSize?: string;
+	charCode?: number;
+	silent?: boolean;
+};
+
+const ensureLegacyMetricsForSave = (
+	packMetrics: BitmapFontMetrics,
+	firstFont?: { height: number },
+): LegacyFontMetrics => {
+	const synced = packMetricsToLegacySave(packMetrics, firstFont?.height);
+
+	return {
+		cellHeight: synced.cellHeight ?? firstFont?.height ?? 8,
+		capTop: synced.capTop ?? 0,
+		baselineRow: synced.baselineRow ?? (firstFont?.height ?? 8) - 1,
+		descenderDepth: synced.descenderDepth ?? 0,
+		xHeight: synced.xHeight ?? synced.xHeightY ?? 1,
+		lineHeight: synced.lineHeight ?? firstFont?.height ?? 8,
+		pixelUnitX: synced.pixelUnitX ?? synced.pixelUnit ?? 1,
+		pixelUnitY: synced.pixelUnitY ?? synced.pixelUnit ?? 1,
+		dynamicWidth: synced.dynamicWidth ?? false,
+	};
+};
+
+export type GlyphMeta = { width?: number; advance?: number };
+
+const buildEditorMapsFromV2Pack = (pack: NewBitmapFont) => {
+	const glyphDataObj: Record<string, Map<number, EditorGlyph>> = {};
+	const glyphMetaObj: Record<string, Map<number, GlyphMeta>> = {};
+
+	for (const faceKey of listV2FaceKeys(pack)) {
+		const face = resolveV2Face(pack, faceKey);
+		if (!face) continue;
+
+		const glyphStore = new Map<number, EditorGlyph>();
+		const glyphMap = new Map<number, GlyphMeta>();
+
+		for (const glyph of Object.values(face.glyphs)) {
+			glyphStore.set(glyph.charCode, {
+				rows: glyph.rows,
+				width: glyph.width,
+				advance: glyph.advance,
+			});
+			glyphMap.set(glyph.charCode, {
+				width: glyph.width,
+				advance: glyph.advance,
+			});
+		}
+
+		glyphDataObj[faceKey] = glyphStore;
+		glyphMetaObj[faceKey] = glyphMap;
+	}
+
+	return { glyphDataObj, glyphMetaObj };
+};
+
+const editorMapsToBitmapCache = (
+	glyphDataObj: Record<string, Map<number, EditorGlyph>>,
+	pack: NewBitmapFont,
+): Record<string, Map<number, string>> => {
+	const cache: Record<string, Map<number, string>> = {};
+	for (const faceKey of Object.keys(glyphDataObj)) {
+		const face = resolveV2Face(pack, faceKey);
+		const glyphs = glyphDataObj[faceKey];
+		if (!face || !glyphs) continue;
+		cache[faceKey] = buildBitmapCacheFromGlyphs(
+			glyphs,
+			face.metrics,
+			face.gridHeight,
+		);
+	}
+	return cache;
+};
 
 export interface BitmapFontCharacter {
 	charCode: number;
 	char: string;
 	data: string;
+	width?: number;
+	advance?: number;
 }
 
 export interface BitmapFont {
@@ -220,6 +396,7 @@ const ITEM_HEIGHT = 60;
 
 // Create a flat array of all characters
 const allCharacters = charCodesGroups.flatMap((group) => group.charCodes);
+export const editorCharacterCodes = allCharacters.map((char) => char.charCode);
 
 interface Character {
 	charCode: number;
@@ -230,52 +407,70 @@ const CharacterItem = memo(
 	({
 		charCode,
 		charData,
+		glyphRows,
+		rowStride,
+		layoutHeight,
+		metrics,
+		gridHeight,
 		onCharacterClick,
 		selectedGridSize,
 		isSelected = false,
 	}: {
 		charCode: number;
 		charData: string;
+		glyphRows?: EditorGlyph["rows"];
+		rowStride?: number;
+		layoutHeight?: number;
+		metrics?: NewBitmapFontMetrics;
+		gridHeight?: number;
 		onCharacterClick: (e: React.MouseEvent<HTMLButtonElement>) => void;
 		selectedGridSize: string;
 		isSelected?: boolean;
 	}) => {
 		const [width, height] = selectedGridSize.split("x").map(Number);
+		const bitmapWidth = rowStride && rowStride > 0 ? rowStride : width || 8;
+		const bitmapHeight =
+			layoutHeight ??
+			(charData.length > 0 && charData.length % bitmapWidth === 0
+				? charData.length / bitmapWidth
+				: height);
 
-		// Render SVG content inline instead of using a separate component
 		const renderSvgContent = () => {
-			if (!charData && charCode !== 32) {
+			if (!charData && !glyphRows?.length && charCode !== 32) {
 				return (
-					<div className="size-5 border border-border border-dashed flex items-center justify-center">
-						{String.fromCharCode(charCode)}
-					</div>
+					<div
+						className="size-5 border border-dashed border-border"
+						aria-hidden="true"
+					/>
 				);
 			}
 
 			try {
-				// Use binary string directly, ensure it's the right length
-				const binaryArray = charData
-					.padEnd(width * height, "0")
-					.slice(0, width * height);
-
-				// Create a single path element instead of multiple rects
-				const pathData = Array.from({ length: width * height })
-					.map((_, i) => {
-						if (i >= binaryArray.length) return "";
-						const isBlack = binaryArray[i] === "1";
-						if (!isBlack) return "";
-						const x = i % width;
-						const y = Math.floor(i / width);
-						return `M ${x} ${y} h 1 v 1 h -1 z`;
-					})
-					.join(" ");
+				const pathData =
+					glyphRows && metrics && gridHeight != null
+						? glyphRowsToSvgPath(glyphRows, metrics, gridHeight)
+						: Array.from({
+								length: bitmapWidth * bitmapHeight,
+							})
+								.map((_, i) => {
+									const binaryArray = charData
+										.padEnd(bitmapWidth * bitmapHeight, "0")
+										.slice(0, bitmapWidth * bitmapHeight);
+									if (i >= binaryArray.length) return "";
+									const isBlack = binaryArray[i] === "1";
+									if (!isBlack) return "";
+									const x = i % bitmapWidth;
+									const y = Math.floor(i / bitmapWidth);
+									return `M ${x} ${y} h 1 v 1 h -1 z`;
+								})
+								.join(" ");
 
 				return (
 					<svg
 						className="w-full h-full dark:invert border-[0.5px] border-border"
-						width={width}
-						height={height}
-						viewBox={`0 0 ${width} ${height}`}
+						width={bitmapWidth}
+						height={bitmapHeight}
+						viewBox={`0 0 ${bitmapWidth} ${bitmapHeight}`}
 						role="img"
 						aria-label={`Character ${String.fromCharCode(charCode)} bitmap`}
 					>
@@ -283,9 +478,9 @@ const CharacterItem = memo(
 					</svg>
 				);
 			} catch (error) {
-				console.error("Error processing binary:", error);
+				console.error("Error processing glyph:", error);
 				return (
-					<div className="size-5 border border-border border-dashed flex items-center justify-center text-xs">
+					<div className="flex size-5 items-center justify-center border border-dashed border-border text-xs text-muted-foreground">
 						?
 					</div>
 				);
@@ -307,8 +502,9 @@ const CharacterItem = memo(
 				onClick={onCharacterClick}
 				data-char-code={charCode}
 				aria-label={`Character ${String.fromCharCode(charCode)}`}
+				title={`Character ${String.fromCharCode(charCode)}`}
 			>
-				<span className="text-sm mb-1 font-mono">
+				<span className="mb-1 max-w-full truncate font-mono text-[10px] leading-none text-muted-foreground">
 					{String.fromCharCode(charCode)}
 				</span>
 				<div className="flex-1 flex items-center justify-center">
@@ -322,7 +518,11 @@ const CharacterItem = memo(
 			prevProps.selectedGridSize === nextProps.selectedGridSize &&
 			prevProps.isSelected === nextProps.isSelected &&
 			prevProps.charCode === nextProps.charCode &&
-			prevProps.charData === nextProps.charData
+			prevProps.charData === nextProps.charData &&
+			prevProps.rowStride === nextProps.rowStride &&
+			prevProps.glyphRows === nextProps.glyphRows &&
+			prevProps.layoutHeight === nextProps.layoutHeight &&
+			prevProps.gridHeight === nextProps.gridHeight
 		);
 	},
 );
@@ -335,12 +535,18 @@ const CharacterGrid = ({
 	selectedCharCode,
 	characterBitmaps,
 	currentCharacterBitmap,
+	glyphMeta,
+	glyphStore,
+	v2Face,
 }: {
 	selectedGridSize: string;
 	onCharacterSelect: (charCode: string) => void;
 	selectedCharCode: number;
 	characterBitmaps: Map<number, string>;
 	currentCharacterBitmap: string | null;
+	glyphMeta: Map<number, GlyphMeta>;
+	glyphStore: Map<number, EditorGlyph>;
+	v2Face: ReturnType<typeof resolveV2Face> | null;
 }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 
@@ -374,13 +580,28 @@ const CharacterGrid = ({
 			className="w-full overflow-auto border border-border rounded-md p-2 h-[32vh]"
 		>
 			<div className="flex flex-wrap gap-1 p-1">
-				{allCharacters.map((char: Character) =>
-					char.charCode === selectedCharCode ? (
+				{allCharacters.map((char: Character) => {
+					const storedGlyph = glyphStore.get(char.charCode);
+					const rowStride = getGlyphBitmapStride(
+						selectedGridSize,
+						char.charCode,
+						glyphMeta,
+					);
+					const layoutHeight = v2Face
+						? getV2LayoutHeight(v2Face.metrics, v2Face.gridHeight)
+						: undefined;
+
+					return char.charCode === selectedCharCode ? (
 						<CharacterItem
 							key={char.charCode}
 							charCode={char.charCode}
 							onCharacterClick={handleCharacterClick}
 							charData={currentCharacterBitmap ?? ""}
+							glyphRows={storedGlyph?.rows}
+							rowStride={rowStride}
+							layoutHeight={layoutHeight}
+							metrics={v2Face?.metrics}
+							gridHeight={v2Face?.gridHeight}
 							selectedGridSize={selectedGridSize}
 							isSelected={true}
 						/>
@@ -390,10 +611,15 @@ const CharacterGrid = ({
 							charCode={char.charCode}
 							onCharacterClick={handleCharacterClick}
 							charData={characterBitmaps.get(char.charCode) ?? ""}
+							glyphRows={storedGlyph?.rows}
+							rowStride={rowStride}
+							layoutHeight={layoutHeight}
+							metrics={v2Face?.metrics}
+							gridHeight={v2Face?.gridHeight}
 							selectedGridSize={selectedGridSize}
 						/>
-					),
-				)}
+					);
+				})}
 			</div>
 		</div>
 	);
@@ -411,6 +637,11 @@ const SentencePreview = memo(
 		previewGap,
 		selectedCharCode,
 		currentCharacterBitmap,
+		packMetrics,
+		glyphMeta,
+		v2Pack,
+		getEditorGlyphs,
+		editorGlyphsRevision: _editorGlyphsRevision,
 		onPreviewTextChange,
 		onPreviewScaleChange,
 		onPreviewGapChange,
@@ -422,13 +653,28 @@ const SentencePreview = memo(
 		previewGap: number;
 		selectedCharCode: number;
 		currentCharacterBitmap: string | null;
+		packMetrics: BitmapFontMetrics;
+		glyphMeta: Map<number, GlyphMeta>;
+		v2Pack: NewBitmapFont | null;
+		getEditorGlyphs: () => Map<number, EditorGlyph> | undefined;
+		editorGlyphsRevision: number;
 		onPreviewTextChange: (newPreviewText: string) => void;
 		onPreviewScaleChange: (newScale: number) => void;
 		onPreviewGapChange: (newGap: number) => void;
 	}) => {
 		const [width, height] = selectedGridSize.split("x").map(Number);
+		const v2Face = v2Pack ? resolveV2Face(v2Pack, selectedGridSize) : null;
 		const charMap = characterBitmaps;
 		const uniqueChars = new Set(Array.from(previewText)).size;
+
+		const previewMetrics = useMemo((): NewBitmapFontMetrics | null => {
+			if (!v2Face) return null;
+			return packMetricsToV2PreviewMetrics(packMetrics, v2Face.metrics);
+		}, [v2Face, packMetrics]);
+
+		const defaultCharGap = previewMetrics
+			? getV2DefaultCharGap(previewMetrics)
+			: 0;
 
 		// State for the input field to prevent jank during typing
 		const [inputValue, setInputValue] = useState(previewText);
@@ -448,7 +694,7 @@ const SentencePreview = memo(
 			}
 		}, [debouncedInputValue, onPreviewTextChange, previewText]);
 
-		const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
 			setInputValue(e.target.value);
 		};
 
@@ -461,100 +707,91 @@ const SentencePreview = memo(
 		};
 
 		// Count how many characters have bitmap data defined
+		const previewGlyphs = useMemo(() => {
+			if (!v2Face || !previewMetrics) return null;
+			return buildPreviewGlyphsFromEditorStore(
+				getEditorGlyphs(),
+				previewMetrics,
+				v2Face.gridHeight,
+				selectedGridSize,
+				glyphMeta,
+				currentCharacterBitmap
+					? { charCode: selectedCharCode, binary: currentCharacterBitmap }
+					: undefined,
+				packMetrics,
+			);
+		}, [
+			v2Face,
+			previewMetrics,
+			getEditorGlyphs,
+			selectedGridSize,
+			glyphMeta,
+			packMetrics,
+			selectedCharCode,
+			currentCharacterBitmap,
+		]);
+
 		const definedChars = useMemo(() => {
+			if (previewGlyphs) {
+				return Array.from(previewText).filter(
+					(char) => char !== " " && previewGlyphs[char] != null,
+				).length;
+			}
+
 			if (!charMap) return 0;
 			return Array.from(previewText).filter(
 				(char) => char !== " " && charMap.has(char.charCodeAt(0)),
 			).length;
-		}, [previewText, charMap]);
+		}, [previewText, previewGlyphs, charMap]);
 
-		// Calculate SVG dimensions
-		const svgData = useMemo(() => {
-			const charWidth = width * previewScale;
-			const charHeight = height * previewScale;
-			const spaceWidth = width * previewScale * 0.5; // Space width is half a character
-			const gapWidth = previewGap;
+		const effectiveCharMap = useMemo(() => {
+			const map = new Map(charMap);
+			if (currentCharacterBitmap && selectedCharCode) {
+				map.set(selectedCharCode, currentCharacterBitmap);
+			}
+			return map;
+		}, [charMap, currentCharacterBitmap, selectedCharCode]);
 
-			// Calculate total width by summing all character widths + gaps
-			let totalWidth = 0;
-			const paths: {
-				path: string;
-				x: number;
-				charCode: number;
-				isSelected: boolean;
-			}[] = [];
-
-			// Process each character
-			Array.from(previewText).forEach((char) => {
-				const charCode = char.charCodeAt(0);
-
-				// Handle spaces
-				if (char === " ") {
-					totalWidth += spaceWidth;
-					return;
-				}
-
-				// Check if this is the selected character
-				const isSelected = charCode === selectedCharCode;
-
-				// Get the correct bitmap data
-				// Use currentCharacterBitmap for selected char, or from the main map for others
-				const binaryString =
-					isSelected && currentCharacterBitmap
-						? currentCharacterBitmap
-						: charMap?.get(charCode);
-
-				if (!binaryString) {
-					// If no data, just add the width
-					totalWidth += charWidth;
-					return;
-				}
-
-				// Generate path for this character
-				const binaryArray = binaryString
-					.padEnd(width * height, "0")
-					.slice(0, width * height);
-				const pathData = Array.from({ length: width * height })
-					.map((_, i) => {
-						if (i >= binaryArray.length) return "";
-						const isBlack = binaryArray[i] === "1";
-						if (!isBlack) return "";
-						const x = i % width;
-						const y = Math.floor(i / width);
-						return `M ${x} ${y} h 1 v 1 h -1 z`;
-					})
-					.join(" ");
-
-				// Add path with position
-				paths.push({
-					path: pathData,
-					x: totalWidth,
-					charCode,
-					isSelected,
+		const layout = useMemo(() => {
+			if (v2Face && previewMetrics && previewGlyphs) {
+				return layoutV2Text({
+					text: previewText,
+					glyphs: previewGlyphs,
+					metrics: previewMetrics,
+					gridWidth: v2Face.gridWidth,
+					gridHeight: v2Face.gridHeight,
+					scale: previewScale,
+					gap: previewGap,
 				});
+			}
 
-				// Increase total width
-				totalWidth += charWidth;
-				totalWidth += gapWidth; // Add gap after each character
+			const font = { width, height, characters: [] as BitmapFontCharacter[] };
+			return layoutBitmapText({
+				text: previewText,
+				font,
+				charMap: effectiveCharMap,
+				glyphMeta,
+				metrics: packMetrics,
+				scale: previewScale,
+				gap: previewGap,
 			});
-
-			return {
-				width: totalWidth,
-				height: charHeight,
-				paths,
-				charWidth,
-				charHeight,
-			};
 		}, [
+			v2Face,
+			previewMetrics,
+			previewGlyphs,
 			previewText,
-			charMap,
+			effectiveCharMap,
+			glyphMeta,
+			packMetrics,
 			width,
 			height,
 			previewScale,
 			previewGap,
-			selectedCharCode,
-			currentCharacterBitmap,
 		]);
+
+		const metricGuides = previewMetrics
+			? getV2MetricGuides(previewMetrics, previewScale)
+			: [];
 
 		return (
 			<div className="w-full overflow-hidden rounded-2xl border bg-card">
@@ -584,12 +821,11 @@ const SentencePreview = memo(
 				</div>
 
 				<div className="space-y-3 p-4">
-					<Input
-						type="text"
+					<textarea
 						value={inputValue}
 						onChange={handleInputChange}
-						placeholder="Type a custom preview sentence…"
-						className="w-full"
+						placeholder="Type preview text (use Enter for overlapping lines)…"
+						className="flex min-h-[72px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						aria-label="Preview sentence"
 					/>
 
@@ -618,7 +854,7 @@ const SentencePreview = memo(
 								htmlFor="preview-gap"
 								className="text-xs whitespace-nowrap"
 							>
-								Gap:
+								Gap (+{defaultCharGap}):
 							</label>
 							<input
 								id="preview-gap"
@@ -630,32 +866,61 @@ const SentencePreview = memo(
 								onChange={handleGapChange}
 								className="w-24 accent-primary"
 							/>
-							<span className="text-xs">{previewGap}px</span>
+							<span className="text-xs">{defaultCharGap + previewGap}px</span>
 						</div>
 					</div>
 
 					<div className="overflow-x-auto rounded-md border bg-muted/20 p-3">
 						<svg
-							width={svgData.width}
-							height={svgData.height}
-							viewBox={`0 0 ${svgData.width} ${svgData.height}`}
+							width={layout.width}
+							height={layout.height}
+							viewBox={`0 0 ${layout.width} ${layout.height}`}
 							className="dark:invert"
 							role="img"
 							aria-label="Font preview"
 						>
-							{svgData.paths.map((item, index) => (
-								<g
-									key={index}
-									transform={`translate(${item.x}, 0) scale(${previewScale})`}
-								>
-									<path d={item.path} fill={"black"} />
+							{metricGuides.length > 0 && layout.lines[0] && (
+								<g>
+									{metricGuides.map((guide) => (
+										<line
+											key={guide.label}
+											x1={0}
+											y1={guide.svgY}
+											x2={layout.lines[0]?.width ?? layout.width}
+											y2={guide.svgY}
+											stroke={
+												guide.emphasis === "strong"
+													? "rgba(59, 130, 246, 0.45)"
+													: "rgba(148, 163, 184, 0.35)"
+											}
+											strokeWidth={guide.emphasis === "strong" ? 1 : 0.75}
+											strokeDasharray={
+												guide.emphasis === "light" ? "4 3" : undefined
+											}
+										/>
+									))}
 								</g>
-							))}
+							)}
+							{layout.lines.flatMap((line, lineIndex) =>
+								line.paths.map((item, index) => (
+									<g
+										key={`${lineIndex}-${index}`}
+										transform={`translate(${item.x}, ${item.y}) scale(${previewScale})`}
+									>
+										<path d={item.path} fill="black" />
+									</g>
+								)),
+							)}
 						</svg>
 					</div>
 				</div>
 				<div className="flex items-center justify-between gap-2 border-t bg-muted/20 px-4 py-2 text-[11px] text-muted-foreground">
-					<span>Font size: {selectedGridSize}</span>
+					<span>
+						Grid: {formatGridSizeLabel(selectedGridSize)}
+						{packMetrics.lineHeight && packMetrics.cellHeight
+							? ` · line ${packMetrics.lineHeight}px / cell ${packMetrics.cellHeight}px`
+							: null}
+					</span>
 					<span className="tabular-nums">
 						{previewText.length} characters · {uniqueChars} unique
 					</span>
@@ -671,8 +936,13 @@ const SentencePreview = memo(
 			prevProps.previewText === nextProps.previewText &&
 			prevProps.previewScale === nextProps.previewScale &&
 			prevProps.previewGap === nextProps.previewGap &&
+			prevProps.packMetrics === nextProps.packMetrics &&
+			prevProps.glyphMeta === nextProps.glyphMeta &&
+			prevProps.v2Pack === nextProps.v2Pack &&
+			prevProps.characterBitmaps === nextProps.characterBitmaps &&
 			prevProps.selectedCharCode === nextProps.selectedCharCode &&
-			prevProps.currentCharacterBitmap === nextProps.currentCharacterBitmap
+			prevProps.currentCharacterBitmap === nextProps.currentCharacterBitmap &&
+			prevProps.editorGlyphsRevision === nextProps.editorGlyphsRevision
 		);
 	},
 );
@@ -743,106 +1013,201 @@ const FontFileLoader = memo(
 
 FontFileLoader.displayName = "FontFileLoader";
 
+const initialV2Pack: NewBitmapFont = isV2BitmapFont(bitmapFontFile)
+	? bitmapFontFile
+	: convertLegacyPackToV2(initialLegacyPack);
+const initialEditorMaps = buildEditorMapsFromV2Pack(initialV2Pack);
+const initialBitmapCache = editorMapsToBitmapCache(
+	initialEditorMaps.glyphDataObj,
+	initialV2Pack,
+);
+
 export default function BitmapFontDesignerClient() {
+	const router = useRouter();
+	const pathname = usePathname() ?? "";
+	const searchParams = useSearchParams();
+	const skipUrlSyncRef = useRef(true);
+	const urlHydratedRef = useRef(false);
+
 	// Process and organize font data into a structured map for efficient access
-	// Format: { "8x8": Map(65 => "10101010..."), "16x16": Map(65 => "10101010..."), ... }
-	const initialFontDataObj = useMemo(() => {
-		const fontDataObj: { [fontSize: string]: Map<number, string> } = {};
-		bitmapFont.forEach((font) => {
-			const fontSizeKey = `${font.width}x${font.height}`;
-			const characterBitmapMap = new Map<number, string>();
-			font.characters.forEach((char) => {
-				// Convert base64 encoded data to binary string representation (1s and 0s)
-				characterBitmapMap.set(char.charCode, base64ToBinary(char.data));
-			});
-			fontDataObj[fontSizeKey] = characterBitmapMap;
-		});
-		return fontDataObj;
-	}, []);
+	const initialGlyphDataObj = initialEditorMaps.glyphDataObj;
+	const initialGridKeys = Object.keys(initialGlyphDataObj);
+	const defaultGridSize = initialGridKeys[0] ?? "0x8";
+	const defaultCharCode = 65;
 
-	// Create a ref to store the font data to avoid dependency issues in callbacks
-	const fontDataRef = useRef(initialFontDataObj);
-	// Keep the ref updated with the initial value
-	fontDataRef.current = initialFontDataObj;
+	// Create a ref to store v2 glyph rows (source of truth — avoids flat-binary wrap)
+	const fontDataRef = useRef(initialGlyphDataObj);
+	fontDataRef.current = initialGlyphDataObj;
 
-	// Available grid sizes extracted from the font data (e.g., ["8x8", "16x16"])
-	const [availableGridSizes, setAvailableGridSizes] = useState(
-		bitmapFont.map((font) => `${font.width}x${font.height}`),
+	// Available grid sizes extracted from the font data
+	const [availableGridSizes, setAvailableGridSizes] = useState(() =>
+		Object.keys(initialGlyphDataObj),
 	);
 
-	// Currently selected grid size (e.g., "8x8")
-	const [selectedGridSize, setSelectedGridSize] = useState<string>("7x8");
+	// Currently selected grid size (e.g., "0x8")
+	const [selectedGridSize, setSelectedGridSize] =
+		useState<string>(defaultGridSize);
 
 	// Currently selected character (default: 'A' which has charCode 65)
-	const [selectedCharCode, setSelectedCharCode] = useState<number>(65);
+	const [selectedCharCode, setSelectedCharCode] =
+		useState<number>(defaultCharCode);
 
 	// Text used for previewing the font
 	const [previewText, setPreviewText] = useState(
-		"Hello World! The quick brown fox jumps over the lazy dog.",
+		"Hello World!\nThe quick brown fox jumps over the lazy dog.",
 	);
 
 	// Preview display settings
 	const [previewScale, setPreviewScale] = useState(2); // Size multiplier
 	const [previewGap, setPreviewGap] = useState(0); // Space between characters
 
-	// Map of all character bitmap data for the current grid size
-	const [characterBitmaps, setCharacterBitmaps] = useState<Map<number, string>>(
-		initialFontDataObj[selectedGridSize] ?? new Map(),
+	const [selectedPackId, setSelectedPackId] = useState(
+		DEFAULT_DESIGNER_PACK_ID,
+	);
+	const [v2Pack, setV2Pack] = useState<NewBitmapFont | null>(
+		() => initialV2Pack,
+	);
+	const [packMetrics, setPackMetrics] = useState<BitmapFontMetrics>(() => {
+		if (isV2BitmapFont(bitmapFontFile)) {
+			const face = resolveV2Face(bitmapFontFile, defaultGridSize);
+			if (face) {
+				const legacy = convertV2MetricsToLegacy(face.metrics, face.gridHeight);
+				return packMetricsFromV2Metrics(face.metrics, legacy);
+			}
+		}
+		return initialLegacyPack.metadata?.metrics ?? {};
+	});
+	const [editorGlyphsRevision, setEditorGlyphsRevision] = useState(0);
+	const glyphMetaRef = useRef<Record<string, Map<number, GlyphMeta>>>(
+		initialEditorMaps.glyphMetaObj,
+	);
+	const [glyphMeta, setGlyphMeta] = useState<Map<number, GlyphMeta>>(
+		() => initialEditorMaps.glyphMetaObj[defaultGridSize] ?? new Map(),
 	);
 
-	// Bitmap data for the currently selected character
+	// Derived flat binary cache for the editor canvas (built from v2 rows)
+	const [characterBitmaps, setCharacterBitmaps] = useState<Map<number, string>>(
+		() => initialBitmapCache[defaultGridSize] ?? new Map(),
+	);
+
 	const [currentCharacterBitmap, setCurrentCharacterBitmap] = useState<
 		string | null
-	>(characterBitmaps.get(selectedCharCode) ?? null);
+	>(() => initialBitmapCache[defaultGridSize]?.get(defaultCharCode) ?? null);
 
 	const [, startTransition] = useTransition();
 
 	// Handle adding a new grid size
-	const handleAddSize = useCallback((newSize: string) => {
-		// Create a new entry in the initialFontDataObj for this size
-		if (!fontDataRef.current[newSize]) {
-			fontDataRef.current[newSize] = new Map<number, string>();
-		}
+	const handleAddSize = useCallback(
+		(newSize: string) => {
+			if (!fontDataRef.current[newSize]) {
+				fontDataRef.current[newSize] = new Map<number, EditorGlyph>();
+			}
 
-		// Update the availableGridSizes list
-		setAvailableGridSizes((prev) => {
-			const newSizes = [...prev, newSize].sort(
-				(a, b) => parseInt(a.split("x")[0], 10) - parseInt(b.split("x")[0], 10),
+			// Update the availableGridSizes list
+			setAvailableGridSizes((prev) => {
+				const newSizes = [...prev, newSize].sort(
+					(a, b) =>
+						parseInt(a.split("x")[0], 10) - parseInt(b.split("x")[0], 10),
+				);
+				return newSizes;
+			});
+
+			// Switch to the new grid size
+			setSelectedGridSize(newSize);
+
+			// Update character bitmaps for the new size
+			setCharacterBitmaps(
+				v2Pack
+					? (editorMapsToBitmapCache(fontDataRef.current, v2Pack)[newSize] ??
+							new Map())
+					: new Map(),
 			);
-			return newSizes;
-		});
 
-		// Switch to the new grid size
-		setSelectedGridSize(newSize);
-
-		// Update character bitmaps for the new size
-		setCharacterBitmaps(fontDataRef.current[newSize]);
-
-		// Update current character bitmap
-		setCurrentCharacterBitmap(null);
-	}, []);
+			// Update current character bitmap
+			setCurrentCharacterBitmap(null);
+		},
+		[v2Pack],
+	);
 
 	const handleDataChange = useCallback(
 		(newBinaryData: string, charCode: number) => {
-			// Update state for rerender, then update global data non-blockingly using useTransition
+			const face = v2Pack ? resolveV2Face(v2Pack, selectedGridSize) : null;
+			if (!face) return;
+
 			startTransition(() => {
-				// Update both the maps and current character data
-				characterBitmaps.set(charCode, newBinaryData);
+				const sizeMeta = glyphMetaRef.current[selectedGridSize];
+				const rowWidth = getGlyphBitmapStride(
+					selectedGridSize,
+					charCode,
+					sizeMeta,
+				);
+				const layoutHeight = getV2LayoutHeight(face.metrics, face.gridHeight);
+				const meta = sizeMeta?.get(charCode);
 
-				// Ensure the map exists before trying to set a value on it
+				const glyph = packBinaryToEditorGlyph(
+					newBinaryData,
+					rowWidth,
+					layoutHeight,
+					packMetrics,
+					meta?.advance ?? meta?.width ?? rowWidth,
+				);
+
 				if (!fontDataRef.current[selectedGridSize]) {
-					fontDataRef.current[selectedGridSize] = new Map<number, string>();
+					fontDataRef.current[selectedGridSize] = new Map();
 				}
+				fontDataRef.current[selectedGridSize].set(charCode, glyph);
 
-				fontDataRef.current[selectedGridSize].set(charCode, newBinaryData);
+				setCharacterBitmaps((prev) => {
+					const next = new Map(prev);
+					next.set(charCode, newBinaryData);
+					return next;
+				});
 
-				// If this is the currently selected character, update its bitmap too
+				setEditorGlyphsRevision((revision) => revision + 1);
+
 				if (charCode === selectedCharCode) {
 					setCurrentCharacterBitmap(newBinaryData);
 				}
 			});
 		},
-		[selectedGridSize, selectedCharCode, characterBitmaps],
+		[selectedGridSize, selectedCharCode, v2Pack, packMetrics],
+	);
+
+	const applyGridSize = useCallback(
+		(size: string, charCode: number) => {
+			setSelectedGridSize(size);
+
+			if (!fontDataRef.current[size]) {
+				fontDataRef.current[size] = new Map<number, EditorGlyph>();
+			}
+
+			const faceForSize = v2Pack ? resolveV2Face(v2Pack, size) : null;
+			const newCharacterBitmaps =
+				faceForSize && fontDataRef.current[size]
+					? buildBitmapCacheFromGlyphs(
+							fontDataRef.current[size],
+							faceForSize.metrics,
+							faceForSize.gridHeight,
+						)
+					: new Map();
+			setCharacterBitmaps(newCharacterBitmaps);
+			setGlyphMeta(glyphMetaRef.current[size] ?? new Map());
+
+			if (v2Pack) {
+				const face = resolveV2Face(v2Pack, size);
+				if (face) {
+					const legacy = convertV2MetricsToLegacy(
+						face.metrics,
+						face.gridHeight,
+					);
+					setPackMetrics(packMetricsFromV2Metrics(face.metrics, legacy));
+				}
+			}
+
+			setSelectedCharCode(charCode);
+			setCurrentCharacterBitmap(newCharacterBitmaps.get(charCode) ?? null);
+		},
+		[v2Pack],
 	);
 
 	const handleSizeChange = useCallback(
@@ -850,24 +1215,9 @@ export default function BitmapFontDesignerClient() {
 			const size = e.currentTarget.dataset.size;
 			if (!size) return;
 
-			// Update grid size
-			setSelectedGridSize(size);
-
-			// Ensure the font data object has an entry for this size
-			if (!fontDataRef.current[size]) {
-				fontDataRef.current[size] = new Map<number, string>();
-			}
-
-			// Get the character maps for this size
-			const newCharacterBitmaps = fontDataRef.current[size] ?? new Map();
-			setCharacterBitmaps(newCharacterBitmaps);
-
-			// Update the current character bitmap for the selected character in the new size
-			setCurrentCharacterBitmap(
-				newCharacterBitmaps.get(selectedCharCode) ?? null,
-			);
+			applyGridSize(size, selectedCharCode);
 		},
-		[selectedCharCode],
+		[applyGridSize, selectedCharCode],
 	);
 
 	const handleCharacterSelect = useCallback(
@@ -892,85 +1242,200 @@ export default function BitmapFontDesignerClient() {
 		setPreviewGap(newGap);
 	}, []);
 
+	const getEditorGlyphs = useCallback(
+		() => fontDataRef.current[selectedGridSize],
+		[selectedGridSize],
+	);
+
+	const handlePackMetricsChange = useCallback(
+		(partial: Partial<BitmapFontMetrics>) => {
+			setPackMetrics((prev) =>
+				syncPackMetricsFromV2(
+					prev,
+					partial,
+					partial.baselineRow ?? prev.baselineRow ?? 0,
+				),
+			);
+		},
+		[],
+	);
+
+	const handleBaselineReanchor = useCallback(
+		(newBaselineRow: number) => {
+			const face = v2Pack ? resolveV2Face(v2Pack, selectedGridSize) : null;
+			if (!face) return;
+
+			const store = fontDataRef.current[selectedGridSize];
+			if (!store) return;
+
+			const layoutHeight = getV2LayoutHeight(face.metrics, face.gridHeight);
+			const sizeMeta = glyphMetaRef.current[selectedGridSize];
+			const oldBaseline =
+				packMetrics.baselineRow ??
+				convertV2MetricsToLegacy(face.metrics, face.gridHeight).baselineRow ??
+				layoutHeight - 1;
+			const deltaRows = newBaselineRow - oldBaseline;
+			if (deltaRows === 0) return;
+
+			// Flush live canvas edits for the selected glyph using the current baseline.
+			if (currentCharacterBitmap && selectedCharCode) {
+				const rowWidth = getGlyphBitmapStride(
+					selectedGridSize,
+					selectedCharCode,
+					sizeMeta,
+				);
+				const meta = sizeMeta?.get(selectedCharCode);
+				store.set(
+					selectedCharCode,
+					packBinaryToEditorGlyph(
+						currentCharacterBitmap,
+						rowWidth,
+						layoutHeight,
+						packMetrics,
+						meta?.advance ?? meta?.width ?? rowWidth,
+					),
+				);
+			}
+
+			// Reanchor v2 y coords to the new baseline row; keep editor pixels in place.
+			for (const [charCode, glyph] of store) {
+				store.set(charCode, shiftEditorGlyphRowsY(glyph, deltaRows));
+			}
+
+			setPackMetrics(syncPackMetricsFromV2(packMetrics, {}, newBaselineRow));
+			setEditorGlyphsRevision((revision) => revision + 1);
+		},
+		[
+			v2Pack,
+			selectedGridSize,
+			selectedCharCode,
+			currentCharacterBitmap,
+			packMetrics,
+		],
+	);
+
+	const handleGlyphMetaChange = useCallback(
+		(charCode: number, meta: Partial<GlyphMeta>) => {
+			const sizeMap =
+				glyphMetaRef.current[selectedGridSize] ?? new Map<number, GlyphMeta>();
+			glyphMetaRef.current[selectedGridSize] = sizeMap;
+			const nextMeta = { ...sizeMap.get(charCode), ...meta };
+			sizeMap.set(charCode, nextMeta);
+
+			setGlyphMeta((prev) => {
+				const next = new Map(prev);
+				next.set(charCode, nextMeta);
+				return next;
+			});
+
+			if (meta.width == null || !v2Pack) return;
+
+			const face = resolveV2Face(v2Pack, selectedGridSize);
+			const store = fontDataRef.current[selectedGridSize];
+			const existing = store?.get(charCode);
+			if (!face || !store || !existing) return;
+
+			const newWidth = meta.width;
+			const resized: EditorGlyph = {
+				width: newWidth,
+				advance: meta.advance ?? Math.max(existing.advance, newWidth),
+				rows: resizeGlyphRows(existing.rows, newWidth),
+			};
+			store.set(charCode, resized);
+
+			const rowWidth = getGlyphBitmapStride(
+				selectedGridSize,
+				charCode,
+				sizeMap,
+			);
+			const binary = editorGlyphToPackBinary(
+				resized,
+				packMetrics,
+				getV2LayoutHeight(face.metrics, face.gridHeight),
+				rowWidth,
+			);
+
+			setCharacterBitmaps((prev) => {
+				const next = new Map(prev);
+				next.set(charCode, binary);
+				return next;
+			});
+
+			if (charCode === selectedCharCode) {
+				setCurrentCharacterBitmap(binary);
+			}
+		},
+		[selectedGridSize, selectedCharCode, v2Pack, packMetrics],
+	);
+
 	// Function to load font data from uploaded JSON file
 	const loadFontData = useCallback(
-		(fontData: { fonts: BitmapFont[] }) => {
+		(fontData: BitmapFontPackData, options?: LoadFontDataOptions) => {
 			try {
-				// Validate that the file has the expected structure
-				if (!fontData.fonts || !Array.isArray(fontData.fonts)) {
+				const legacyPack = normalizeToLegacyPack(fontData);
+
+				if (!legacyPack.fonts || !Array.isArray(legacyPack.fonts)) {
 					throw new Error("Invalid font data format: missing 'fonts' array");
 				}
 
-				// Create a new object to replace initialFontDataObj
-				const newFontDataObj: { [fontSize: string]: Map<number, string> } = {};
+				const loadedV2Pack = isV2BitmapFont(fontData)
+					? fontData
+					: convertLegacyPackToV2(legacyPack);
+				const built = buildEditorMapsFromV2Pack(loadedV2Pack);
+				const newGlyphDataObj = built.glyphDataObj;
+				const newGlyphMetaObj = built.glyphMetaObj;
+				const newGridSizes = Object.keys(newGlyphDataObj);
+				const newBitmapCache = editorMapsToBitmapCache(
+					newGlyphDataObj,
+					loadedV2Pack,
+				);
 
-				// Create a new set of font sizes
-				const newGridSizes: string[] = [];
-
-				// Process each font in the uploaded file
-				fontData.fonts.forEach((font: BitmapFont) => {
-					if (
-						typeof font.width !== "number" ||
-						typeof font.height !== "number" ||
-						!Array.isArray(font.characters)
-					) {
-						throw new Error("Invalid font data structure");
-					}
-
-					const fontSizeKey = `${font.width}x${font.height}`;
-					newGridSizes.push(fontSizeKey);
-
-					// Create a new map for this font size
-					const characterBitmapMap = new Map<number, string>();
-
-					// Process each character in the font
-					font.characters.forEach((char: BitmapFontCharacter) => {
-						if (
-							typeof char.charCode !== "number" ||
-							typeof char.data !== "string"
-						) {
-							throw new Error("Invalid character data structure");
-						}
-
-						// Convert base64 to binary representation
-						characterBitmapMap.set(char.charCode, base64ToBinary(char.data));
-					});
-
-					// Add this font size to the new font data object
-					newFontDataObj[fontSizeKey] = characterBitmapMap;
-				});
-
-				// Replace the initialFontDataObj with the new data
 				Object.keys(fontDataRef.current).forEach((key) => {
 					delete fontDataRef.current[key];
 				});
 
-				// Copy new data to initialFontDataObj
-				Object.keys(newFontDataObj).forEach((key) => {
-					fontDataRef.current[key] = newFontDataObj[key];
+				Object.keys(newGlyphDataObj).forEach((key) => {
+					fontDataRef.current[key] = newGlyphDataObj[key];
 				});
 
-				// Update application state
+				glyphMetaRef.current = newGlyphMetaObj;
+				setV2Pack(loadedV2Pack);
+
+				const firstSize = newGridSizes[0];
+				const targetSize =
+					options?.gridSize && newGridSizes.includes(options.gridSize)
+						? options.gridSize
+						: firstSize;
+				const targetChar = options?.charCode ?? selectedCharCode;
+				const v2Face = targetSize
+					? resolveV2Face(loadedV2Pack, targetSize)
+					: null;
+				setPackMetrics(
+					v2Face
+						? packMetricsFromV2Metrics(
+								v2Face.metrics,
+								convertV2MetricsToLegacy(v2Face.metrics, v2Face.gridHeight),
+							)
+						: (legacyPack.metadata?.metrics ?? {}),
+				);
 				setAvailableGridSizes(newGridSizes);
 
-				// Set the first font size as selected if available, otherwise keep current
-				if (newGridSizes.length > 0) {
-					const firstSize = newGridSizes[0];
-					setSelectedGridSize(firstSize);
+				if (newGridSizes.length > 0 && targetSize) {
+					setSelectedGridSize(targetSize);
+					setSelectedCharCode(targetChar);
 
-					// Update character bitmaps for the new selected size
-					const newCharacterBitmaps =
-						fontDataRef.current[firstSize] ?? new Map();
+					const newCharacterBitmaps = newBitmapCache[targetSize] ?? new Map();
 					setCharacterBitmaps(newCharacterBitmaps);
+					setGlyphMeta(newGlyphMetaObj[targetSize] ?? new Map());
 
-					// Update current character bitmap
 					setCurrentCharacterBitmap(
-						newCharacterBitmaps.get(selectedCharCode) ?? null,
+						newCharacterBitmaps.get(targetChar) ?? null,
 					);
 				}
 
-				// Show success notification
-				toast.success("Font data loaded successfully!");
+				if (!options?.silent) {
+					toast.success("Font data loaded successfully!");
+				}
 			} catch (error) {
 				console.error("Error loading font data:", error);
 				toast.error(
@@ -981,56 +1446,128 @@ export default function BitmapFontDesignerClient() {
 		[selectedCharCode],
 	);
 
-	// Function to save the font data to JSON
-	const saveFontData = useCallback(() => {
-		// Get the latest character maps from the local state object
-		const fontDataToSave = availableGridSizes
-			.map((size) => {
-				const [width, height] = size.split("x").map(Number);
-				const charMap = fontDataRef.current[size] || new Map();
-
-				// Make sure to use the latest data for the current grid size
-				const currentMap =
-					size === selectedGridSize ? characterBitmaps : charMap;
-
-				// Special handling for current character being edited
-				if (
-					size === selectedGridSize &&
-					currentCharacterBitmap &&
-					selectedCharCode
-				) {
-					currentMap.set(selectedCharCode, currentCharacterBitmap);
+	const handleBuiltInPackChange = useCallback(
+		(packId: string) => {
+			setSelectedPackId(packId);
+			void (async () => {
+				const pack = await fetchBuiltInPack(packId);
+				if (!pack) {
+					toast.error("Built-in font pack not found");
+					return;
 				}
+				loadFontData(pack);
+			})();
+		},
+		[loadFontData],
+	);
 
-				return {
-					width,
-					height,
-					characters: Array.from(currentMap.entries())
-						.filter(([, binaryString]) => binaryString?.includes("1")) // Only include non-empty characters
-						.map(([charCode, binaryString]) => ({
-							charCode,
-							char: String.fromCharCode(charCode),
-							// Convert binary string to base64 for storage
-							data: binaryToBase64(binaryString),
-						}))
-						.sort((a, b) => a.charCode - b.charCode), // Sort by charCode in ascending order
+	// Function to save the font data to JSON (v2 row runs — no legacy flat binary)
+	const saveFontData = useCallback(() => {
+		if (!v2Pack) return;
+
+		// Flush in-progress editor bitmap into v2 row store
+		if (currentCharacterBitmap && selectedCharCode) {
+			const face = resolveV2Face(v2Pack, selectedGridSize);
+			if (face) {
+				const sizeMeta = glyphMetaRef.current[selectedGridSize];
+				const rowWidth = getGlyphBitmapStride(
+					selectedGridSize,
+					selectedCharCode,
+					sizeMeta,
+				);
+				const layoutHeight = getV2LayoutHeight(face.metrics, face.gridHeight);
+				const meta = sizeMeta?.get(selectedCharCode);
+				const glyph = packBinaryToEditorGlyph(
+					currentCharacterBitmap,
+					rowWidth,
+					layoutHeight,
+					packMetrics,
+					meta?.advance ?? meta?.width ?? rowWidth,
+				);
+				if (!fontDataRef.current[selectedGridSize]) {
+					fontDataRef.current[selectedGridSize] = new Map();
+				}
+				fontDataRef.current[selectedGridSize].set(selectedCharCode, glyph);
+			}
+		}
+
+		const [firstSize] = availableGridSizes;
+		const firstFace = firstSize ? resolveV2Face(v2Pack, firstSize) : null;
+		const sharedMetrics = firstFace
+			? {
+					...convertLegacyMetrics(
+						ensureLegacyMetricsForSave(
+							packMetrics,
+							firstFace.gridHeight > 0
+								? { height: firstFace.gridHeight }
+								: undefined,
+						),
+					),
+					defaultCharGap:
+						v2Pack.metadata.metrics.defaultCharGap ??
+						firstFace.metrics.defaultCharGap ??
+						0,
+				}
+			: v2Pack.metadata.metrics;
+
+		const faces: NonNullable<NewBitmapFont["faces"]> = {};
+
+		for (const size of availableGridSizes) {
+			const face = resolveV2Face(v2Pack, size);
+			if (!face) continue;
+
+			const glyphStore = fontDataRef.current[size] ?? new Map();
+			const faceMetrics =
+				size === selectedGridSize
+					? {
+							...convertLegacyMetrics(
+								ensureLegacyMetricsForSave(packMetrics, {
+									height: face.gridHeight,
+								}),
+							),
+							defaultCharGap: face.metrics.defaultCharGap ?? 0,
+						}
+					: face.metrics;
+
+			const glyphs: Record<string, Glyph> = {};
+
+			for (const [charCode, editorGlyph] of glyphStore) {
+				if (editorGlyph.rows.length === 0) continue;
+
+				const char = String.fromCharCode(charCode);
+				glyphs[char] = {
+					charCode,
+					char,
+					width: editorGlyph.width,
+					advance: editorGlyph.advance,
+					leftBearing: 0,
+					bounds: computeGlyphBoundsFromRows(
+						editorGlyph.rows,
+						editorGlyph.width,
+					),
+					rows: editorGlyph.rows,
 				};
-			})
-			.filter((font) => font.characters.length > 0); // Only include fonts with characters
+			}
 
-		// Add metadata to the exported font
-		const exportData = {
+			if (Object.keys(glyphs).length === 0) continue;
+
+			faces[size] = {
+				metrics: faceMetrics,
+				glyphs,
+			};
+		}
+
+		const exportData: NewBitmapFont = {
 			metadata: {
-				name: "Bitmap Font",
-				creator: "Bitmap Font Designer",
+				...v2Pack.metadata,
+				name: v2Pack.metadata.name ?? "Bitmap Font",
+				version: v2Pack.metadata.version ?? "2.0",
+				metrics: sharedMetrics,
 				createdAt: new Date().toISOString(),
-				version: "1.0",
-				description: "Custom bitmap font created with Bitmap Font Designer",
 			},
-			fonts: fontDataToSave,
+			faces,
 		};
 
-		// Create a JSON string with the font data
 		const jsonData = JSON.stringify(exportData, null, 2);
 
 		// Create a meaningful filename with date
@@ -1056,13 +1593,131 @@ export default function BitmapFontDesignerClient() {
 	}, [
 		availableGridSizes,
 		selectedGridSize,
-		characterBitmaps,
 		currentCharacterBitmap,
 		selectedCharCode,
+		packMetrics,
+		v2Pack,
+	]);
+
+	// biome-ignore lint/correctness/useExhaustiveDependencies: hydrate URL state once after mount
+	useEffect(() => {
+		if (urlHydratedRef.current) return;
+		urlHydratedRef.current = true;
+		skipUrlSyncRef.current = true;
+
+		const packId = parseDesignerPackParam(
+			searchParams?.get(DESIGNER_URL_KEYS.pack),
+		);
+		const urlChar = parseDesignerCharParam(
+			searchParams?.get(DESIGNER_URL_KEYS.char),
+		);
+		const urlSize = parseDesignerSizeParam(
+			searchParams?.get(DESIGNER_URL_KEYS.size),
+			initialGridKeys,
+		);
+		const targetChar = urlChar ?? defaultCharCode;
+
+		const finishHydration = () => {
+			skipUrlSyncRef.current = false;
+		};
+
+		if (packId !== DEFAULT_DESIGNER_PACK_ID) {
+			setSelectedPackId(packId);
+			void (async () => {
+				const pack = await fetchBuiltInPack(packId);
+				if (!pack) {
+					toast.error("Built-in font pack not found");
+					finishHydration();
+					return;
+				}
+
+				const packV2 = isV2BitmapFont(pack)
+					? pack
+					: convertLegacyPackToV2(normalizeToLegacyPack(pack));
+				const packGridKeys = Object.keys(
+					buildEditorMapsFromV2Pack(packV2).glyphDataObj,
+				);
+				const packUrlSize = parseDesignerSizeParam(
+					searchParams?.get(DESIGNER_URL_KEYS.size),
+					packGridKeys,
+				);
+
+				loadFontData(pack, {
+					gridSize: packUrlSize ?? undefined,
+					charCode: targetChar,
+					silent: true,
+				});
+				finishHydration();
+			})();
+			return;
+		}
+
+		const hasSizeOverride = urlSize !== null && urlSize !== defaultGridSize;
+		const hasCharOverride = urlChar !== null && urlChar !== defaultCharCode;
+
+		if (hasSizeOverride || hasCharOverride) {
+			applyGridSize(urlSize ?? defaultGridSize, targetChar);
+		}
+
+		finishHydration();
+	}, []);
+
+	useEffect(() => {
+		if (skipUrlSyncRef.current) return;
+
+		const params = new URLSearchParams(searchParams?.toString());
+		params.set(DESIGNER_URL_KEYS.pack, selectedPackId);
+		params.set(DESIGNER_URL_KEYS.size, selectedGridSize);
+		params.set(DESIGNER_URL_KEYS.char, String(selectedCharCode));
+
+		const nextQuery = params.toString();
+		const currentQuery = searchParams?.toString() ?? "";
+		if (nextQuery === currentQuery) return;
+
+		router.replace(nextQuery ? `${pathname}?${nextQuery}` : pathname, {
+			scroll: false,
+		});
+	}, [
+		pathname,
+		router,
+		searchParams,
+		selectedCharCode,
+		selectedGridSize,
+		selectedPackId,
 	]);
 
 	return (
 		<div className="w-full flex flex-col gap-4">
+			<div className="flex flex-col gap-3 rounded-2xl border bg-card p-4 sm:flex-row sm:items-end sm:justify-between">
+				<div className="flex min-w-[200px] flex-col gap-1.5">
+					<label
+						htmlFor="reference-font"
+						className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground"
+					>
+						Reference font
+					</label>
+					<Select
+						value={selectedPackId}
+						onValueChange={handleBuiltInPackChange}
+					>
+						<SelectTrigger id="reference-font" className="w-full sm:w-[240px]">
+							<SelectValue placeholder="Select font" />
+						</SelectTrigger>
+						<SelectContent>
+							{getBuiltInPackOptions().map((pack) => (
+								<SelectItem key={pack.id} value={pack.id}>
+									{pack.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+				<p className="max-w-xl text-xs text-muted-foreground">
+					Reference packs are traced at build time with grid discovery and
+					baseline-relative v2 output. Switch grid sizes to edit each preset.
+				</p>
+			</div>
+
 			<div className="flex flex-wrap gap-2 mb-4 justify-between">
 				<div className="flex flex-wrap gap-2">
 					{availableGridSizes.map((size) => (
@@ -1076,7 +1731,7 @@ export default function BitmapFontDesignerClient() {
 							data-size={size}
 							size="sm"
 						>
-							{size}
+							{formatGridSizeLabel(size)}
 						</Button>
 					))}
 					<AddGridSize
@@ -1105,6 +1760,9 @@ export default function BitmapFontDesignerClient() {
 				selectedCharCode={selectedCharCode}
 				characterBitmaps={characterBitmaps}
 				currentCharacterBitmap={currentCharacterBitmap}
+				glyphMeta={glyphMeta}
+				glyphStore={fontDataRef.current[selectedGridSize] ?? new Map()}
+				v2Face={v2Pack ? resolveV2Face(v2Pack, selectedGridSize) : null}
 			/>
 
 			<div className="space-y-2">
@@ -1116,6 +1774,11 @@ export default function BitmapFontDesignerClient() {
 					previewGap={previewGap}
 					selectedCharCode={selectedCharCode}
 					currentCharacterBitmap={currentCharacterBitmap}
+					packMetrics={packMetrics}
+					glyphMeta={glyphMeta}
+					v2Pack={v2Pack}
+					getEditorGlyphs={getEditorGlyphs}
+					editorGlyphsRevision={editorGlyphsRevision}
 					onPreviewTextChange={handlePreviewTextChange}
 					onPreviewScaleChange={handlePreviewScaleChange}
 					onPreviewGapChange={handlePreviewGapChange}
@@ -1129,6 +1792,16 @@ export default function BitmapFontDesignerClient() {
 					currentCharacterBitmap={currentCharacterBitmap ?? ""}
 					setCurrentCharacterBitmap={setCurrentCharacterBitmap}
 					onDataChange={handleDataChange}
+					glyphMeta={glyphMeta}
+					packMetrics={packMetrics}
+					onPackMetricsChange={handlePackMetricsChange}
+					onBaselineReanchor={handleBaselineReanchor}
+					onGlyphMetaChange={handleGlyphMetaChange}
+					characterCharCodes={editorCharacterCodes}
+					characterBitmaps={characterBitmaps}
+					onCharacterSelect={(charCode) =>
+						handleCharacterSelect(String(charCode))
+					}
 				/>
 			</div>
 		</div>
