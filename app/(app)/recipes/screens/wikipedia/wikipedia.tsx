@@ -8,7 +8,7 @@ import type {
 	RecipeDefinition,
 	RecipeDeviceContext,
 } from "@/lib/recipes/types";
-import { ditherImageToDataUrl } from "@/lib/render/dither-image";
+import { prepareRecipeImageToDataUrl } from "@/lib/render/dither-image";
 import {
 	createScreenProfile,
 	type ScreenProfile,
@@ -298,23 +298,26 @@ export const definition: RecipeDefinition<
 		const thumbnail = data.thumbnail as
 			| { source?: string; width?: number; height?: number }
 			| undefined;
-		if (
-			!thumbnail?.source ||
-			typeof thumbnail.source !== "string" ||
-			ctx.levels === null
-		) {
+		if (!thumbnail?.source || typeof thumbnail.source !== "string") {
+			return data;
+		}
+
+		if (ctx.levels === null && !ctx.colorPalette) {
 			return data;
 		}
 
 		const size = getWikipediaThumbnailPhysicalSize(ctx, thumbnail);
 		if (!size) return data;
 
-		const ditheredSource = await ditherImageToDataUrl(thumbnail.source, {
-			width: size.width,
-			height: size.height,
-			levels: ctx.levels,
-			salt: ctx.salt,
-		});
+		const ditheredSource = await prepareRecipeImageToDataUrl(
+			thumbnail.source,
+			{
+				...ctx,
+				width: size.width,
+				height: size.height,
+			},
+			{ method: "bayer" },
+		);
 
 		return {
 			...data,

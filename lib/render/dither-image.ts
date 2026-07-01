@@ -1,18 +1,21 @@
 import { unstable_cache } from "next/cache";
-import sharp from "sharp";
+import type { RecipeDeviceContext } from "@/lib/recipes/types";
+import type { TrmnlPalette } from "@/lib/trmnl/types";
 import {
-	applyDithering,
-	DEFAULT_DITHER_SALT,
-	DitheringMethod,
-} from "@/utils/image-processing";
+	DEFAULT_IMAGE_DITHER_METHOD,
+	type ImageDitherMethod,
+	prepareDeviceImageFromContext,
+} from "@/lib/render/prepare-device-image";
+import { DitheringMethod } from "@/utils/image-processing";
 
-export { DitheringMethod };
+export { DitheringMethod, DEFAULT_IMAGE_DITHER_METHOD };
+export type { ImageDitherMethod };
 
 export type DitherImageOptions = {
 	width: number;
 	height: number;
 	levels: number;
-	method?: DitheringMethod;
+	method?: DitheringMethod | ImageDitherMethod;
 	bayerPatternSize?: 2 | 4 | 8;
 	salt?: number;
 };
@@ -22,35 +25,23 @@ export type EmbedImageOptions = {
 	height: number;
 };
 
-async function loadImageBytes(source: string | Buffer): Promise<Buffer | null> {
-	if (Buffer.isBuffer(source)) {
-		return source;
-	}
+export type PrepareRecipeImageOptions = {
+	method?: ImageDitherMethod;
+	palette?: TrmnlPalette | null;
+};
 
-	if (source.startsWith("data:")) {
-		const commaIndex = source.indexOf(",");
-		if (commaIndex === -1) return null;
-		const metadata = source.slice(0, commaIndex);
-		const payload = source.slice(commaIndex + 1);
-		if (metadata.includes(";base64")) {
-			return Buffer.from(payload, "base64");
-		}
-		return Buffer.from(decodeURIComponent(payload), "utf8");
-	}
-
-	if (source.startsWith("http://") || source.startsWith("https://")) {
-		const response = await fetch(source, {
-			headers: {
-				"User-Agent":
-					"BYOS-Next/1.0 (image embed; +https://github.com/ghcpuman902/byos_next)",
-			},
-			signal: AbortSignal.timeout(10_000),
-		});
-		if (!response.ok) return null;
-		return Buffer.from(await response.arrayBuffer());
-	}
-
-	return null;
+function ditheringMethodToImageMethod(
+	method: DitheringMethod | ImageDitherMethod | undefined,
+): ImageDitherMethod {
+	if (!method) return DEFAULT_IMAGE_DITHER_METHOD;
+	if (method === DitheringMethod.WHITE_NOISE) return "white-noise";
+	if (method === DitheringMethod.FLOYD_STEINBERG) return "floyd-steinberg";
+	if (method === DitheringMethod.ATKINSON) return "atkinson";
+	if (method === DitheringMethod.THRESHOLD) return "threshold";
+	if (method === DitheringMethod.NONE) return "none";
+	if (method === DitheringMethod.BAYER) return "bayer";
+	if (method === DitheringMethod.RANDOM) return "white-noise";
+	return method as ImageDitherMethod;
 }
 
 function cacheKeyForSource(source: string | Buffer): string {
@@ -64,25 +55,21 @@ export async function embedImageToDataUrlUncached(
 	source: string | Buffer,
 	options: EmbedImageOptions,
 ): Promise<string> {
-	const originalSource = typeof source === "string" ? source : null;
-	const { width, height } = options;
-
-	try {
-		const bytes = await loadImageBytes(source);
-		if (!bytes) {
-			return originalSource ?? "";
-		}
-
-		const png = await sharp(bytes)
-			.resize(width, height, { fit: "cover" })
-			.png()
-			.toBuffer();
-
-		return `data:image/png;base64,${png.toString("base64")}`;
-	} catch (error) {
-		console.warn("[embedImageToDataUrl] Failed to embed image:", error);
-		return originalSource ?? "";
-	}
+	const ctx: RecipeDeviceContext = {
+		levels: null,
+		colorPalette: null,
+		width: options.width,
+		height: options.height,
+		logicalWidth: options.width,
+		logicalHeight: options.height,
+		pixelRatio: 1,
+		salt: 0,
+	};
+	return prepareDeviceImageFromContext({
+		src: source,
+		ctx,
+		method: "none",
+	});
 }
 
 export async function embedImageToDataUrl(
@@ -113,57 +100,22 @@ export async function ditherImageToDataUrlUncached(
 	source: string | Buffer,
 	options: DitherImageOptions,
 ): Promise<string> {
-	const {
-		width,
-		height,
-		levels,
-		method = DitheringMethod.WHITE_NOISE,
-		bayerPatternSize = 8,
-		salt = DEFAULT_DITHER_SALT,
-	} = options;
-	const originalSource = typeof source === "string" ? source : null;
+	const ctx: RecipeDeviceContext = {
+		levels: options.levels,
+		colorPalette: null,
+		width: options.width,
+		height: options.height,
+		logicalWidth: options.width,
+		logicalHeight: options.height,
+		pixelRatio: 1,
+		salt: options.salt ?? 0,
+	};
 
-	try {
-		const bytes = await loadImageBytes(source);
-		if (!bytes) {
-			return originalSource ?? "";
-		}
-
-		const resized = await sharp(bytes)
-			.resize(width, height, { fit: "cover" })
-			.grayscale()
-			.raw()
-			.toBuffer({ resolveWithObject: true });
-		const { width: outWidth, height: outHeight } = resized.info;
-		const grayscale = new Uint8Array(resized.data);
-
-		const ditherOptions: Parameters<typeof applyDithering>[2] = {
-			width: outWidth,
-			height: outHeight,
-			levels,
-			bayerPatternSize,
-		};
-
-		if (method === DitheringMethod.WHITE_NOISE) {
-			ditherOptions.salt = salt;
-			ditherOptions.meanLightness =
-				grayscale.reduce((sum, value) => sum + value, 0) /
-				Math.max(grayscale.length, 1);
-		}
-
-		const dithered = applyDithering(method, grayscale, ditherOptions);
-
-		const png = await sharp(Buffer.from(dithered), {
-			raw: { width: outWidth, height: outHeight, channels: 1 },
-		})
-			.png()
-			.toBuffer();
-
-		return `data:image/png;base64,${png.toString("base64")}`;
-	} catch (error) {
-		console.warn("[ditherImageToDataUrl] Failed to dither image:", error);
-		return originalSource ?? "";
-	}
+	return prepareDeviceImageFromContext({
+		src: source,
+		ctx,
+		method: ditheringMethodToImageMethod(options.method),
+	});
 }
 
 export async function ditherImageToDataUrl(
@@ -174,7 +126,7 @@ export async function ditherImageToDataUrl(
 		return ditherImageToDataUrlUncached(source, options);
 	}
 
-	const method = options.method ?? DitheringMethod.WHITE_NOISE;
+	const method = ditheringMethodToImageMethod(options.method);
 	const bayerPatternSize = options.bayerPatternSize ?? 8;
 	const cacheKey = [
 		"dither-image",
@@ -184,14 +136,27 @@ export async function ditherImageToDataUrl(
 		String(options.levels),
 		method,
 		String(bayerPatternSize),
-		String(options.salt ?? DEFAULT_DITHER_SALT),
+		String(options.salt ?? 0),
 	].join(":");
 
 	const cached = unstable_cache(
 		async () => ditherImageToDataUrlUncached(source, options),
 		[cacheKey],
-		{ revalidate: 3600, tags: ["dither-image"] },
+		{ revalidate: 3600, tags: ["embed-image"] },
 	);
 
 	return cached();
+}
+
+export async function prepareRecipeImageToDataUrl(
+	source: string | Buffer,
+	ctx: RecipeDeviceContext,
+	options: PrepareRecipeImageOptions = {},
+): Promise<string> {
+	return prepareDeviceImageFromContext({
+		src: source,
+		ctx,
+		palette: options.palette,
+		method: options.method ?? DEFAULT_IMAGE_DITHER_METHOD,
+	});
 }

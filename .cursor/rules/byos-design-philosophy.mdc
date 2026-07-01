@@ -36,9 +36,18 @@ const levels = getPaletteGrayLevels(palette);
 
 ## Graphics
 
+Three content policies:
+
+1. **Text / icons / SVG** — hard snap on full frame; stay crisp.
+2. **UI fills** — Tailwind `dither-*` on 1-bit; solid color on color e-ink.
+3. **Photos** — author chooses method via `renderSettings.imageDither` or
+   `prepareForDevice` / `<DeviceImage>`; default **Bayer** (retro, local, fast).
+   Also: `white-noise`, `floyd-steinberg` (opt-in smooth gradients). Gray reduction
+   uses perceptual **Lab L\*** (`lib/render/luminance.ts`), not BT.601 average.
+
 - Tailwind grays (`dither-50` via `utils/dither-patterns.ts`): pipeline quantizes to device dither — no prep needed.
-- Photos/complex images: authors pre-dither via `prepareForDevice` + server helpers; provide CPU-friendly methods, not opaque runtime magic.
-- Match TRMNL `image-dither` semantics server-side; document API gaps, don't block on CSS parity.
+- Photos/complex images: `prepareDeviceImage` + `prepareForDevice`; CPU-friendly methods, not opaque runtime magic.
+- Color e-ink: dither to palette colors (`docs/trmnl/eink-palette-mapping.md`).
 
 ## Agent checklist
 

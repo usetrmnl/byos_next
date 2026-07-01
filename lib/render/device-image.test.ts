@@ -40,54 +40,20 @@ async function makeSolidPng(
 		.toBuffer();
 }
 
-function countRowTransitions(raw: Buffer, width: number, row: number): number {
-	let transitions = 0;
-	let previous = raw[row * width * 3] ?? 0;
-	for (let x = 1; x < width; x++) {
-		const value = raw[(row * width + x) * 3] ?? 0;
-		if (value !== previous) transitions += 1;
-		previous = value;
-	}
-	return transitions;
-}
-
 describe("renderDeviceImage quantization", () => {
-	it("defaults to pure palette quantization without error diffusion", async () => {
+	it("hard-snaps the full frame to the palette (no frame-wide dither)", async () => {
 		const profile = await getDeviceProfile("og_png", "bw");
 		const png = await makeHorizontalGradientPng(64, 8);
-		const pure = await renderDeviceImage({ png, profile, dither: false });
-		const defaultResult = await renderDeviceImage({ png, profile });
+		const first = await renderDeviceImage({ png, profile });
+		const second = await renderDeviceImage({ png, profile });
 
-		expect(defaultResult.buffer.equals(pure.buffer)).toBe(true);
-	});
-
-	it("produces a different output when dither is enabled", async () => {
-		const profile = await getDeviceProfile("og_png", "bw");
-		const png = await makeHorizontalGradientPng(64, 8);
-		const pure = await renderDeviceImage({ png, profile, dither: false });
-		const dithered = await renderDeviceImage({ png, profile, dither: true });
-
-		expect(dithered.buffer.equals(pure.buffer)).toBe(false);
-
-		const pureRaw = await sharp(pure.buffer)
-			.raw()
-			.toBuffer({ resolveWithObject: true });
-		const ditherRaw = await sharp(dithered.buffer)
-			.raw()
-			.toBuffer({ resolveWithObject: true });
-		const centerRow = Math.floor(pureRaw.info.height / 2);
-
-		expect(
-			countRowTransitions(ditherRaw.data, pureRaw.info.width, centerRow),
-		).toBeGreaterThan(
-			countRowTransitions(pureRaw.data, pureRaw.info.width, centerRow),
-		);
+		expect(second.buffer.equals(first.buffer)).toBe(true);
 	});
 
 	it("quantizes to the discrete palette for gray-4 devices", async () => {
 		const profile = await getDeviceProfile("og_plus", "gray-4");
 		const png = await makeHorizontalGradientPng(32, 4);
-		const result = await renderDeviceImage({ png, profile, dither: false });
+		const result = await renderDeviceImage({ png, profile });
 		const { data } = await sharp(result.buffer).raw().toBuffer({
 			resolveWithObject: true,
 		});
@@ -104,10 +70,10 @@ describe("renderDeviceImage quantization", () => {
 		expect(uniqueGrays.size).toBeGreaterThan(1);
 	});
 
-	it("uses luminance for pure grayscale palette quantization", async () => {
-		const profile = await getDeviceProfile("og_png", "bw");
+	it("uses Lab perceptual luminance for BMP gray encoding", async () => {
+		const profile = await getDeviceProfile("og_bmp", "bw");
 		const png = await makeSolidPng(8, 8, { r: 0, g: 0, b: 255 });
-		const result = await renderDeviceImage({ png, profile, dither: false });
+		const result = await renderDeviceImage({ png, profile });
 		const { data } = await sharp(result.buffer).raw().toBuffer({
 			resolveWithObject: true,
 		});

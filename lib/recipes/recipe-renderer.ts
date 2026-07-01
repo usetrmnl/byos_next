@@ -3,8 +3,8 @@ import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
 } from "@/lib/render/device-image";
+import { buildRecipeDeviceContext } from "@/lib/recipes/device-context";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
-import { getPaletteGrayLevels } from "@/lib/trmnl/palette-colors";
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
 import { DEFAULT_DITHER_SALT } from "@/utils/image-processing";
@@ -73,15 +73,12 @@ export async function renderRecipeToImage({
 		});
 		let renderData = data;
 		if (definition.prepareForDevice) {
-			renderData = await definition.prepareForDevice(data, {
-				levels: getPaletteGrayLevels(palette),
-				width: imageWidth,
-				height: imageHeight,
-				logicalWidth: screen.logicalWidth,
-				logicalHeight: screen.logicalHeight,
-				pixelRatio: screen.pixelRatio,
+			const deviceContext = buildRecipeDeviceContext({
+				palette,
+				screen,
 				salt: DEFAULT_DITHER_SALT,
 			});
+			renderData = await definition.prepareForDevice(data, deviceContext);
 		}
 		const element = createElement(definition.Component, {
 			width: screen.logicalWidth,
@@ -157,7 +154,6 @@ export async function renderRecipeForDevice({
 			: profile;
 
 	const resolved = await resolveReactRecipe(slug, userId ?? undefined);
-	const dither = resolved?.definition.meta.renderSettings?.dither ?? false;
 
 	const renders = await renderRecipeToImage({
 		slug,
@@ -174,7 +170,6 @@ export async function renderRecipeForDevice({
 	return renderDeviceImage({
 		png: renders.png,
 		profile: renderProfile,
-		dither,
 	});
 }
 

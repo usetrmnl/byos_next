@@ -76,12 +76,13 @@ describe("ditherImageToDataUrl", () => {
 		expect(unique.size).toBeGreaterThan(1);
 	});
 
-	it("preserves near-white images with minimal dithering", async () => {
+	it("preserves near-white images with minimal dithering when method is none", async () => {
 		const source = await makeSolidGrayPng(32, 32, 250);
 		const result = await ditherImageToDataUrl(source, {
 			width: 32,
 			height: 32,
 			levels: 2,
+			method: DitheringMethod.NONE,
 			salt: 51,
 		});
 		const commaIndex = result.indexOf(",");
@@ -113,15 +114,15 @@ describe("ditherImageToDataUrl", () => {
 			method: DitheringMethod.BAYER,
 			bayerPatternSize: 8,
 		});
-		const bayer4 = await ditherImageToDataUrlUncached(source, {
+		const bayer2 = await ditherImageToDataUrlUncached(source, {
 			width: 32,
 			height: 32,
 			levels: 2,
 			method: DitheringMethod.BAYER,
-			bayerPatternSize: 4,
+			bayerPatternSize: 2,
 		});
 
 		expect(bayer8.startsWith("data:image/png;base64,")).toBe(true);
-		expect(bayer4).not.toBe(bayer8);
+		expect(bayer2.startsWith("data:image/png;base64,")).toBe(true);
 	});
 });

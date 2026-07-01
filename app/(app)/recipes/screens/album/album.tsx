@@ -8,8 +8,7 @@ import {
 import type { RecipeDefinition } from "@/lib/recipes/types";
 import {
 	DitheringMethod,
-	ditherImageToDataUrl,
-	embedImageToDataUrl,
+	prepareRecipeImageToDataUrl,
 } from "@/lib/render/dither-image";
 import {
 	createScreenProfile,
@@ -147,23 +146,14 @@ export const definition: RecipeDefinition<
 			return data;
 		}
 
-		if (ctx.levels === null) {
-			const embeddedImageUrl = await embedImageToDataUrl(imageUrl, {
-				width: ctx.width,
-				height: ctx.height,
-			});
-			return { ...data, embeddedImageUrl };
-		}
-
-		const ditheredImageUrl = await ditherImageToDataUrl(imageUrl, {
-			width: ctx.width,
-			height: ctx.height,
-			levels: ctx.levels,
+		const preparedUrl = await prepareRecipeImageToDataUrl(imageUrl, ctx, {
 			method: DitheringMethod.BAYER,
-			bayerPatternSize: 8,
 		});
+		const isDithered = ctx.levels !== null || Boolean(ctx.colorPalette);
 
-		return { ...data, ditheredImageUrl };
+		return isDithered
+			? { ...data, ditheredImageUrl: preparedUrl }
+			: { ...data, embeddedImageUrl: preparedUrl };
 	},
 	Component: ({ width, height, screen, data }) => (
 		<Album {...data} width={width} height={height} screen={screen} />
