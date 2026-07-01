@@ -94,6 +94,18 @@ export async function checkDbConnection(): Promise<DbStatus> {
 	}
 }
 
+export function parsePendingMigrationNames(error?: string): string[] {
+	if (!error?.startsWith("Pending database migrations: ")) {
+		return [];
+	}
+
+	return error
+		.replace("Pending database migrations: ", "")
+		.split(",")
+		.map((name) => name.trim())
+		.filter(Boolean);
+}
+
 export async function getDbStatus(): Promise<DbStatus> {
 	if (!process.env.DATABASE_URL) {
 		return {
