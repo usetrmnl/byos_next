@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UpdateNotification } from "@/components/update-notification";
+import type { DeviceApiServerUrlInfo } from "@/lib/byos-api-server-url";
 import type { Device, RecipeSidebarItem } from "@/lib/types";
 
 // Loading skeleton for main content
@@ -60,6 +61,7 @@ interface ClientMainLayoutProps {
 		role?: string;
 	} | null;
 	authEnabled: boolean;
+	deviceApiServerUrl: DeviceApiServerUrlInfo;
 }
 
 export function ClientMainLayout({
@@ -70,6 +72,7 @@ export function ClientMainLayout({
 	toolsComponents,
 	user,
 	authEnabled,
+	deviceApiServerUrl,
 }: ClientMainLayoutProps) {
 	const pathname = usePathname() ?? "/";
 	const router = useRouter();
@@ -99,6 +102,7 @@ export function ClientMainLayout({
 				toolsComponents={toolsComponents}
 				user={user}
 				authEnabled={authEnabled}
+				deviceApiServerUrl={deviceApiServerUrl}
 			/>
 
 			{/* Main area */}

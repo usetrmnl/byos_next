@@ -14,7 +14,7 @@ type Lab = {
 
 type LabPaletteColor = RGB & { lab: Lab };
 
-export type PaletteReductionMode = "snap" | "floyd-steinberg";
+export type PaletteReductionMode = "snap" | "floyd-steinberg" | "bayer";
 
 function pivotRgb(value: number): number {
 	const normalized = value / 255;
@@ -121,20 +121,103 @@ function floydSteinbergRgbToPalette(
 	});
 }
 
+const BAYER_MATRICES: Record<2 | 4 | 8, number[][]> = {
+	2: [
+		[0, 2],
+		[3, 1],
+	],
+	4: [
+		[0, 8, 2, 10],
+		[12, 4, 14, 6],
+		[3, 11, 1, 9],
+		[15, 7, 13, 5],
+	],
+	8: [
+		[0, 32, 8, 40, 2, 34, 10, 42],
+		[48, 16, 56, 24, 50, 18, 58, 26],
+		[12, 44, 4, 36, 14, 46, 6, 38],
+		[60, 28, 52, 20, 62, 30, 54, 22],
+		[3, 35, 11, 43, 1, 33, 9, 41],
+		[51, 19, 59, 27, 49, 17, 57, 25],
+		[15, 47, 7, 39, 13, 45, 5, 37],
+		[63, 31, 55, 23, 61, 29, 53, 21],
+	],
+};
+
+function bayerThresholdAt(
+	x: number,
+	y: number,
+	patternSize: 2 | 4 | 8,
+): number {
+	const matrixSize = patternSize <= 2 ? 2 : patternSize <= 4 ? 4 : 8;
+	const matrix = BAYER_MATRICES[matrixSize];
+	const matrixLength = matrix.length;
+	const value = matrix[y % matrixLength][x % matrixLength];
+	return Math.floor((value * 255) / (matrixLength * matrixLength));
+}
+
+function bayerRgbToPalette(
+	data: Uint8Array | Buffer,
+	width: number,
+	height: number,
+	paletteColors: RGB[],
+	patternSize: 2 | 4 | 8 = 8,
+): Uint8Array {
+	const palette = createLabPalette(paletteColors);
+	const output = new Uint8Array(data.length);
+
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const index = (y * width + x) * 3;
+			const threshold = bayerThresholdAt(x, y, patternSize);
+			const offset = threshold - 128;
+			const nextColor = nearestPaletteColor(
+				{
+					r: clampByte((data[index] ?? 0) + offset),
+					g: clampByte((data[index + 1] ?? 0) + offset),
+					b: clampByte((data[index + 2] ?? 0) + offset),
+				},
+				palette,
+			);
+			output[index] = nextColor.r;
+			output[index + 1] = nextColor.g;
+			output[index + 2] = nextColor.b;
+		}
+	}
+
+	return output;
+}
+
 export async function reducePngToPalette(
 	png: Buffer,
 	paletteColors: RGB[],
 	mode: PaletteReductionMode,
+	options: { bayerPatternSize?: 2 | 4 | 8 } = {},
 ): Promise<Buffer> {
 	const source = await sharp(png)
 		.removeAlpha()
 		.raw()
 		.toBuffer({ resolveWithObject: true });
 	const { width, height } = source.info;
-	const output =
-		mode === "floyd-steinberg"
-			? floydSteinbergRgbToPalette(source.data, width, height, paletteColors)
-			: snapRgbToPalette(source.data, paletteColors);
+	let output: Uint8Array;
+	if (mode === "floyd-steinberg") {
+		output = floydSteinbergRgbToPalette(
+			source.data,
+			width,
+			height,
+			paletteColors,
+		);
+	} else if (mode === "bayer") {
+		output = bayerRgbToPalette(
+			source.data,
+			width,
+			height,
+			paletteColors,
+			options.bayerPatternSize ?? 8,
+		);
+	} else {
+		output = snapRgbToPalette(source.data, paletteColors);
+	}
 
 	return sharp(output, { raw: { width, height, channels: 3 } })
 		.png()

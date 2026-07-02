@@ -1,6 +1,7 @@
 import type { Page } from "puppeteer-core";
 import React from "react";
 import { prepareImageForDevice } from "@/lib/render/device-image-prep";
+import { toPhysicalImageDimensions } from "@/lib/render/image-display-dimensions";
 import { logger } from "../logger";
 import type { ImageDitherPolicy } from "./image-dither-policy";
 
@@ -23,13 +24,16 @@ type PreparedImageEntry = {
 
 type FunctionComponent = (props: Record<string, unknown>) => React.ReactNode;
 
+const RAW_BASE64_IMAGE_PREFIX = /^(?:iVBORw0KGgo|\/9j\/|R0lGOD)/;
+
 function isSkippableImageSrc(src: string): boolean {
 	const trimmed = src.trim();
 	return (
 		trimmed.length === 0 ||
 		trimmed.startsWith("data:") ||
 		trimmed.startsWith("blob:") ||
-		trimmed.startsWith("#")
+		trimmed.startsWith("#") ||
+		RAW_BASE64_IMAGE_PREFIX.test(trimmed)
 	);
 }
 
@@ -69,16 +73,20 @@ async function prepareSrc({
 }): Promise<string> {
 	if (policy.mode === "off" || isSkippableImageSrc(src)) return src;
 
-	const key = `${src}|${width ?? ""}|${height ?? ""}`;
+	// `width`/`height` are logical layout px (the space the `<img>` was
+	// authored in); dither at the physical screen size the recipe is
+	// eventually composited to, or the pattern gets resampled away.
+	const physical = toPhysicalImageDimensions(width, height, policy.pixelRatio);
+	const key = `${src}|${physical.width ?? ""}|${physical.height ?? ""}|${policy.method}`;
 	const cached = cache.get(key);
 	if (cached) return cached;
 
 	const prepared = prepareImageForDevice({
 		src,
 		profile: policy.profile,
-		width,
-		height,
-		dither: "floyd-steinberg",
+		width: physical.width,
+		height: physical.height,
+		method: policy.method,
 	})
 		.then((image) => image.dataUrl)
 		.catch((error) => {
@@ -102,6 +110,12 @@ async function rewriteSrcSet({
 	height?: number;
 	cache: Map<string, Promise<string>>;
 }): Promise<string> {
+	const trimmed = srcSet.trim();
+	// Data URLs contain a comma before the payload; naive splitting breaks them.
+	if (trimmed.startsWith("data:") || isSkippableImageSrc(trimmed)) {
+		return srcSet;
+	}
+
 	const candidates = srcSet
 		.split(",")
 		.map((candidate) => candidate.trim())
@@ -145,12 +159,21 @@ async function rewriteNode(
 	const dimensions = getImageDimensions(props);
 
 	if (type === "img" && typeof props.src === "string") {
+		const willBeQuantized =
+			policy.mode === "on" && !isSkippableImageSrc(props.src);
 		nextProps.src = await prepareSrc({
 			src: props.src,
 			policy,
 			...dimensions,
 			cache,
 		});
+		if (willBeQuantized) {
+			// The prepared image is hard-quantized to the device palette/bit
+			// depth. Any smooth (bilinear/bicubic) upscale during compositing
+			// would blend those exact levels back into in-between grays,
+			// undoing the dither. Nearest-neighbor keeps it crisp.
+			nextProps.style = { ...nextProps.style, imageRendering: "pixelated" };
+		}
 	}
 
 	if (
@@ -212,6 +235,7 @@ export async function rewritePageImagesForDevice(
 	const replacements = await Promise.all(
 		(images as PreparedImageEntry[]).map(async (image) => ({
 			id: image.id,
+			pixelated: !isSkippableImageSrc(image.src),
 			src: await prepareSrc({
 				src: image.src,
 				policy,
@@ -227,7 +251,13 @@ export async function rewritePageImagesForDevice(
 			const node = document.querySelector<HTMLImageElement>(
 				`img[data-byos-device-image-id="${image.id}"]`,
 			);
-			if (!node || node.src === image.src) continue;
+			if (!node) continue;
+			if (image.pixelated) {
+				// See the matching comment in the React intercept: preserve
+				// the hard-quantized dither through any later scaling.
+				node.style.imageRendering = "pixelated";
+			}
+			if (node.src === image.src) continue;
 			node.src = image.src;
 			node.removeAttribute("srcset");
 			const picture = node.closest("picture");

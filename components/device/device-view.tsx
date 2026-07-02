@@ -112,6 +112,153 @@ function MetaPair({
 	);
 }
 
+type HealthChipProps = {
+	icon: React.ReactNode;
+	text: string;
+	label: string;
+};
+
+type HealthItem = HealthChipProps & {
+	id: string;
+};
+
+function HealthChip({ icon, text, label }: HealthChipProps) {
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<span
+					className="flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg border bg-muted/30 px-2 transition-colors hover:bg-muted/60"
+					role="img"
+					aria-label={label}
+				>
+					{icon}
+					<span className="text-xs font-medium tabular-nums">{text}</span>
+				</span>
+			</TooltipTrigger>
+			<TooltipContent side="top">{label}</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function NextRefreshHealthChip({ next }: { next: string | null | undefined }) {
+	const [relativeTime, setRelativeTime] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!next) {
+			setRelativeTime(null);
+			return;
+		}
+
+		const update = () => setRelativeTime(formatDate(next));
+		update();
+		const intervalId = window.setInterval(update, 1000);
+		return () => window.clearInterval(intervalId);
+	}, [next]);
+
+	const text = relativeTime ?? "—";
+	const label = relativeTime
+		? `Next refresh: ${relativeTime}`
+		: "Next refresh unknown";
+
+	return (
+		<HealthChip
+			icon={<TimerReset className="h-4 w-4 text-muted-foreground" />}
+			text={text}
+			label={label}
+		/>
+	);
+}
+
+function getHealthItems(
+	device: Device & { status?: string },
+	battery: ReturnType<typeof estimateBatteryLife> | null,
+	defaultRefreshRate: number,
+): HealthItem[] {
+	const status = device.status === "online" ? "online" : "offline";
+	const { rssi } = device;
+	const mode = device.display_mode;
+
+	const wifiTone =
+		rssi == null
+			? "text-muted-foreground"
+			: rssi >= -60
+				? "text-green-600 dark:text-green-400"
+				: rssi >= -70
+					? "text-amber-600 dark:text-amber-400"
+					: rssi >= -80
+						? "text-orange-600 dark:text-orange-400"
+						: "text-red-600 dark:text-red-400";
+	const WifiIcon = rssi != null ? Wifi : WifiOff;
+
+	const batteryTone = !battery
+		? "text-muted-foreground"
+		: battery.isCharging || battery.batteryPercentage >= 50
+			? "text-green-600 dark:text-green-400"
+			: battery.batteryPercentage < 20
+				? "text-red-600 dark:text-red-400"
+				: "text-amber-600 dark:text-amber-400";
+	const BatteryIcon = battery?.isCharging
+		? BatteryCharging
+		: battery && battery.batteryPercentage < 20
+			? BatteryLow
+			: Battery;
+
+	const ModeIcon =
+		mode === DeviceDisplayMode.PLAYLIST
+			? ListMusic
+			: mode === DeviceDisplayMode.MIXUP
+				? Shuffle
+				: Monitor;
+	const modeText =
+		mode === DeviceDisplayMode.PLAYLIST
+			? "Playlist"
+			: mode === DeviceDisplayMode.MIXUP
+				? "Mixup"
+				: "Screen";
+
+	return [
+		{
+			id: "status",
+			icon: <StatusIndicator status={status} size="sm" />,
+			text: status === "online" ? "Online" : "Offline",
+			label: `Status: ${status}`,
+		},
+		{
+			id: "wifi",
+			icon: <WifiIcon className={cn("h-4 w-4", wifiTone)} />,
+			text: rssi != null ? `${rssi} dBm` : "No RSSI",
+			label:
+				rssi != null
+					? `WiFi ${rssi} dBm · ${getSignalQuality(rssi)}`
+					: "WiFi RSSI not reported",
+		},
+		{
+			id: "battery",
+			icon: <BatteryIcon className={cn("h-4 w-4", batteryTone)} />,
+			text: battery
+				? battery.isCharging
+					? "Charging"
+					: `${battery.batteryPercentage}%`
+				: "No batt",
+			label: battery
+				? `Battery ${battery.isCharging ? "charging" : `${battery.batteryPercentage}%`} (${device.battery_voltage}V)`
+				: "Battery not reported",
+		},
+		{
+			id: "mode",
+			icon: <ModeIcon className="h-4 w-4 text-muted-foreground" />,
+			text: modeText,
+			label: `Mode: ${mode}`,
+		},
+		{
+			id: "refresh",
+			icon: <RefreshCw className="h-4 w-4 text-muted-foreground" />,
+			text: `${defaultRefreshRate}s`,
+			label: `Default refresh: ${defaultRefreshRate}s`,
+		},
+	];
+}
+
 export default function DeviceView({
 	device,
 	playlistScreens,
@@ -283,6 +430,7 @@ export default function DeviceView({
 						{healthItems.map((item) => (
 							<HealthChip key={item.id} {...item} />
 						))}
+						<NextRefreshHealthChip next={device.next_expected_update} />
 					</div>
 				</section>
 
@@ -349,129 +497,5 @@ export default function DeviceView({
 				</section>
 			</div>
 		</div>
-	);
-}
-
-type HealthItem = {
-	id: string;
-	icon: React.ReactNode;
-	text: string;
-	label: string;
-};
-
-function getHealthItems(
-	device: Device & { status?: string },
-	battery: ReturnType<typeof estimateBatteryLife> | null,
-	defaultRefreshRate: number,
-): HealthItem[] {
-	const status = device.status === "online" ? "online" : "offline";
-	const { rssi } = device;
-	const mode = device.display_mode;
-	const next = device.next_expected_update;
-
-	const wifiTone =
-		rssi == null
-			? "text-muted-foreground"
-			: rssi >= -60
-				? "text-green-600 dark:text-green-400"
-				: rssi >= -70
-					? "text-amber-600 dark:text-amber-400"
-					: rssi >= -80
-						? "text-orange-600 dark:text-orange-400"
-						: "text-red-600 dark:text-red-400";
-	const WifiIcon = rssi != null ? Wifi : WifiOff;
-
-	const batteryTone = !battery
-		? "text-muted-foreground"
-		: battery.isCharging || battery.batteryPercentage >= 50
-			? "text-green-600 dark:text-green-400"
-			: battery.batteryPercentage < 20
-				? "text-red-600 dark:text-red-400"
-				: "text-amber-600 dark:text-amber-400";
-	const BatteryIcon = battery?.isCharging
-		? BatteryCharging
-		: battery && battery.batteryPercentage < 20
-			? BatteryLow
-			: Battery;
-
-	const ModeIcon =
-		mode === DeviceDisplayMode.PLAYLIST
-			? ListMusic
-			: mode === DeviceDisplayMode.MIXUP
-				? Shuffle
-				: Monitor;
-	const modeText =
-		mode === DeviceDisplayMode.PLAYLIST
-			? "Playlist"
-			: mode === DeviceDisplayMode.MIXUP
-				? "Mixup"
-				: "Screen";
-
-	return [
-		{
-			id: "status",
-			icon: <StatusIndicator status={status} size="sm" />,
-			text: status === "online" ? "Online" : "Offline",
-			label: `Status: ${status}`,
-		},
-		{
-			id: "wifi",
-			icon: <WifiIcon className={cn("h-4 w-4", wifiTone)} />,
-			text: rssi != null ? `${rssi} dBm` : "No RSSI",
-			label:
-				rssi != null
-					? `WiFi ${rssi} dBm · ${getSignalQuality(rssi)}`
-					: "WiFi RSSI not reported",
-		},
-		{
-			id: "battery",
-			icon: <BatteryIcon className={cn("h-4 w-4", batteryTone)} />,
-			text: battery
-				? battery.isCharging
-					? "Charging"
-					: `${battery.batteryPercentage}%`
-				: "No batt",
-			label: battery
-				? `Battery ${battery.isCharging ? "charging" : `${battery.batteryPercentage}%`} (${device.battery_voltage}V)`
-				: "Battery not reported",
-		},
-		{
-			id: "mode",
-			icon: <ModeIcon className="h-4 w-4 text-muted-foreground" />,
-			text: modeText,
-			label: `Mode: ${mode}`,
-		},
-		{
-			id: "next",
-			icon: <TimerReset className="h-4 w-4 text-muted-foreground" />,
-			text: next ? formatDate(next) : "—",
-			label: next
-				? `Next refresh: ${formatDate(next)}`
-				: "Next refresh unknown",
-		},
-		{
-			id: "refresh",
-			icon: <RefreshCw className="h-4 w-4 text-muted-foreground" />,
-			text: `${defaultRefreshRate}s`,
-			label: `Default refresh: ${defaultRefreshRate}s`,
-		},
-	];
-}
-
-function HealthChip({ icon, text, label }: HealthItem) {
-	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<span
-					className="flex h-9 min-w-9 items-center justify-center gap-1.5 rounded-lg border bg-muted/30 px-2 transition-colors hover:bg-muted/60"
-					role="img"
-					aria-label={label}
-				>
-					{icon}
-					<span className="text-xs font-medium tabular-nums">{text}</span>
-				</span>
-			</TooltipTrigger>
-			<TooltipContent side="top">{label}</TooltipContent>
-		</Tooltip>
 	);
 }

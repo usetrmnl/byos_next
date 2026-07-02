@@ -4,13 +4,47 @@ import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
 } from "@/lib/recipes/constants";
-import type { RecipeDefinition } from "@/lib/recipes/types";
+import type {
+	RecipeDefinition,
+	RecipeDeviceContext,
+} from "@/lib/recipes/types";
+import { prepareRecipeImageToDataUrl } from "@/lib/render/dither-image";
 import {
 	createScreenProfile,
 	type ScreenProfile,
 } from "@/lib/trmnl/screen-profile";
 import { PreSatori } from "@/utils/pre-satori";
 import getWikipediaData, { WikipediaData } from "./getData";
+
+const getWikipediaThumbnailPhysicalSize = (
+	ctx: RecipeDeviceContext,
+	thumbnail: { width?: number; height?: number },
+): { width: number; height: number } | null => {
+	if (
+		typeof thumbnail.width !== "number" ||
+		thumbnail.width <= 0 ||
+		typeof thumbnail.height !== "number" ||
+		thumbnail.height <= 0
+	) {
+		return null;
+	}
+
+	const thumbnailDisplayWidth = Math.max(
+		240,
+		Math.round(ctx.logicalWidth * 0.18),
+	);
+	const thumbnailDisplayMaxHeight = Math.round(ctx.logicalHeight * 0.5);
+	const aspectRatio = thumbnail.height / thumbnail.width;
+	const displayHeight = Math.min(
+		Math.round(thumbnailDisplayWidth * aspectRatio),
+		thumbnailDisplayMaxHeight,
+	);
+
+	return {
+		width: Math.max(1, Math.round(thumbnailDisplayWidth * ctx.pixelRatio)),
+		height: Math.max(1, Math.round(displayHeight * ctx.pixelRatio)),
+	};
+};
 
 export const paramsSchema = z.object({});
 
@@ -80,7 +114,8 @@ export default function Wikipedia({
 	// Enhanced thumbnail validation to catch more edge cases
 	const hasValidThumbnail = thumbnail?.source
 		? typeof thumbnail.source === "string" &&
-			thumbnail.source.startsWith("https://") &&
+			(thumbnail.source.startsWith("https://") ||
+				thumbnail.source.startsWith("data:")) &&
 			typeof thumbnail.width === "number" &&
 			thumbnail.width > 0 &&
 			typeof thumbnail.height === "number" &&
@@ -181,7 +216,7 @@ export default function Wikipedia({
 					</h1>
 				</div>
 				<div className="flex flex-col flex-1 p-4 lg:p-8 2xl:p-12 pb-0 sm:flex-row">
-					<div className="text-2xl lg:text-4xl 2xl:text-5xl flex flex-grow tracking-tight leading-tight lg:leading-snug">
+					<div className="text-2xl lg:text-4xl 2xl:text-5xl flex grow tracking-tight leading-tight lg:leading-snug">
 						{truncatedExtract}
 					</div>
 					{hasValidThumbnail && thumbnail?.source && !isHalfScreen && (
@@ -191,7 +226,9 @@ export default function Wikipedia({
 						>
 							<picture>
 								{/* YOU CANNOT USE NEXTJS IMAGE COMPONENT HERE, BECAUSE SATORI DOES NOT SUPPORT IT */}
-								<source srcSet={thumbnail.source} type="image/webp" />
+								{!thumbnail.source.startsWith("data:") && (
+									<source srcSet={thumbnail.source} type="image/webp" />
+								)}
 								<img
 									src={thumbnail.source}
 									alt={safeTitle}
@@ -201,7 +238,13 @@ export default function Wikipedia({
 										width: imageDimensions.width,
 										height: imageDimensions.height,
 										objectFit: "contain",
-										filter: "grayscale(100%) contrast(0.9) brightness(1.05)",
+										imageRendering: "pixelated",
+										...(thumbnail.source.startsWith("data:")
+											? {}
+											: {
+													filter:
+														"grayscale(100%) contrast(0.9) brightness(1.05)",
+												}),
 									}}
 								/>
 							</picture>
@@ -244,15 +287,45 @@ export const definition: RecipeDefinition<
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-13T00:00:00Z",
-		renderSettings: {
-			supersample: true,
-		},
 	},
 	paramsSchema,
 	dataSchema,
 	getData: async () => {
 		const data = await getWikipediaData();
 		return data as z.infer<typeof dataSchema>;
+	},
+	prepareForDevice: async (data, ctx) => {
+		const thumbnail = data.thumbnail as
+			| { source?: string; width?: number; height?: number }
+			| undefined;
+		if (!thumbnail?.source || typeof thumbnail.source !== "string") {
+			return data;
+		}
+
+		if (ctx.levels === null && !ctx.colorPalette) {
+			return data;
+		}
+
+		const size = getWikipediaThumbnailPhysicalSize(ctx, thumbnail);
+		if (!size) return data;
+
+		const ditheredSource = await prepareRecipeImageToDataUrl(
+			thumbnail.source,
+			{
+				...ctx,
+				width: size.width,
+				height: size.height,
+			},
+			{ method: "bayer" },
+		);
+
+		return {
+			...data,
+			thumbnail: {
+				...thumbnail,
+				source: ditheredSource,
+			},
+		};
 	},
 	Component: ({ width, height, screen, data }) => (
 		<Wikipedia

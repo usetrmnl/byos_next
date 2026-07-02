@@ -1,4 +1,9 @@
 import type { CSSProperties, ReactNode } from "react";
+import {
+	BitmapMarker,
+	type BitmapMarkerFont,
+	bitmapSizeFromTarget,
+} from "@/components/bitmap-font/bitmap-marker";
 import type { ScreenProfile } from "@/lib/trmnl/screen-profile";
 import { cn } from "@/lib/utils";
 
@@ -81,15 +86,51 @@ export function ScreenFooter({
 	screen,
 	left,
 	right,
+	bitmap = false,
 	className,
 	style,
 }: {
 	screen: ScreenProfile;
 	left: ReactNode;
 	right?: ReactNode;
+	bitmap?: boolean;
 	className?: string;
 	style?: CSSProperties;
 }) {
+	const footerFontSize = screenFontSize(
+		screen,
+		screen.isCompact ? 16 : 20,
+		MIN_SCREEN_BODY_FONT_SIZE,
+	);
+	const footerPad = screenMetric(screen, 7);
+	const explicitHeight =
+		typeof style?.height === "number" ? style.height : undefined;
+	const footerInnerHeight = explicitHeight
+		? explicitHeight - footerPad * 2
+		: screenMetric(screen, screen.isCompact ? 20 : 28);
+	const footerBitmapSize = Math.max(
+		10,
+		Math.min(
+			bitmapSizeFromTarget(footerFontSize, 0.55),
+			Math.floor(footerInnerHeight * 0.45),
+			screenFontSize(screen, screen.isCompact ? 10 : 11, 10),
+		),
+	);
+
+	const renderFooterText = (content: ReactNode) => {
+		if (bitmap && typeof content === "string") {
+			return (
+				<BitmapMarker
+					text={content}
+					sizePx={footerBitmapSize}
+					className="text-white"
+				/>
+			);
+		}
+
+		return content;
+	};
+
 	return (
 		<div
 			className={cn(
@@ -105,13 +146,11 @@ export function ScreenFooter({
 				backgroundColor: SCREEN_FOOTER_BACKGROUND,
 				borderRadius: screenMetric(screen, 10),
 				color: "#fff",
-				padding: `${screenMetric(screen, 7)}px ${screenMetric(screen, 12)}px`,
-				fontSize: screenFontSize(
-					screen,
-					screen.isCompact ? 16 : 20,
-					MIN_SCREEN_BODY_FONT_SIZE,
-				),
-				fontFamily: "Inter, sans-serif",
+				padding: bitmap
+					? `${screenMetric(screen, 4)}px ${screenMetric(screen, 10)}px`
+					: `${screenMetric(screen, 7)}px ${screenMetric(screen, 12)}px`,
+				fontSize: footerFontSize,
+				fontFamily: bitmap ? undefined : "Inter, sans-serif",
 				lineHeight: 1,
 				gap: screenMetric(screen, 10),
 				...style,
@@ -119,21 +158,33 @@ export function ScreenFooter({
 		>
 			<div
 				style={{
+					display: "flex",
+					alignItems: "center",
 					overflow: "hidden",
 					whiteSpace: "nowrap",
+					minWidth: 0,
+					flex: right ? "1 1 52%" : undefined,
+					maxWidth: right ? "52%" : undefined,
 				}}
 			>
-				{left}
+				{renderFooterText(left)}
 			</div>
 			{right ? (
 				<div
 					style={{
+						display: "flex",
+						alignItems: "center",
+						justifyContent: "flex-end",
 						overflow: "hidden",
 						whiteSpace: "nowrap",
 						textAlign: "right",
+						minWidth: 0,
+						flex: "0 1 46%",
+						maxWidth: "46%",
+						marginLeft: screenMetric(screen, 8),
 					}}
 				>
-					{right}
+					{renderFooterText(right)}
 				</div>
 			) : null}
 		</div>
@@ -217,6 +268,10 @@ export function StatsGrid({
 	stats,
 	columns,
 	fill = false,
+	bitmap = false,
+	bitmapLabelFont = "ft",
+	bitmapTextGap,
+	bitmapIconGap,
 	gapSize,
 	rowHeight,
 	labelSize,
@@ -226,6 +281,10 @@ export function StatsGrid({
 	stats: ScreenStat[];
 	columns?: number;
 	fill?: boolean;
+	bitmap?: boolean;
+	bitmapLabelFont?: BitmapMarkerFont;
+	bitmapTextGap?: number;
+	bitmapIconGap?: number;
 	gapSize?: number;
 	rowHeight?: number;
 	labelSize?: number;
@@ -240,12 +299,63 @@ export function StatsGrid({
 	}
 	const gap = gapSize ?? screenMetric(screen, screen.isCompact ? 6 : 8);
 	const borderWidth = screen.isLarge ? 2 : 1;
+	const resolvedLabelSize =
+		labelSize ??
+		screenFontSize(
+			screen,
+			screen.isCompact ? 16 : 17,
+			MIN_SCREEN_STAT_LABEL_FONT_SIZE,
+		);
+	const resolvedValueSize =
+		valueSize ??
+		screenFontSize(
+			screen,
+			screen.isCompact ? 18 : 24,
+			MIN_SCREEN_BODY_FONT_SIZE,
+		);
+	const bitmapLabelSize =
+		bitmapLabelFont === "geneva12"
+			? bitmapSizeFromTarget(resolvedLabelSize, 0.9, 14)
+			: bitmapSizeFromTarget(resolvedLabelSize, 0.58, 10);
+	const bitmapValueSize = bitmapSizeFromTarget(resolvedValueSize, 0.58, 10);
+	const statTextGap = bitmapTextGap ?? (bitmap ? screenMetric(screen, 2) : 0);
+	const statIconGap =
+		bitmapIconGap ??
+		(bitmap ? screenMetric(screen, 5) : screenMetric(screen, 8));
+	const statCellPad = bitmap
+		? screenMetric(
+				screen,
+				bitmapLabelFont === "geneva12"
+					? screen.isCompact
+						? 6
+						: 8
+					: screen.isCompact
+						? 4
+						: 6,
+			)
+		: screenMetric(screen, screen.isCompact ? 6 : 9);
+	const statRowMinHeight = rowHeight
+		? undefined
+		: screenMetric(
+				screen,
+				bitmap
+					? bitmapLabelFont === "geneva12"
+						? screen.isCompact
+							? 52
+							: 56
+						: screen.isCompact
+							? 44
+							: 48
+					: screen.isCompact
+						? 48
+						: 64,
+			);
 
 	return (
 		<div
 			style={{
 				display: "flex",
-				flex: fill ? 1 : "none",
+				flex: fill && !bitmap ? 1 : "none",
 				flexDirection: "column",
 				gap,
 			}}
@@ -259,10 +369,8 @@ export function StatsGrid({
 						flexDirection: "row",
 						gap,
 						height: rowHeight,
-						minHeight: rowHeight
-							? undefined
-							: screenMetric(screen, screen.isCompact ? 48 : 64),
-						flex: fill && !rowHeight ? 1 : undefined,
+						minHeight: statRowMinHeight,
+						flex: fill && !rowHeight && !bitmap ? 1 : undefined,
 					}}
 				>
 					{row.map((stat) => (
@@ -273,13 +381,13 @@ export function StatsGrid({
 								display: "flex",
 								flex: 1,
 								flexDirection: "column",
-								justifyContent: "center",
+								justifyContent: bitmap ? "flex-start" : "center",
 								overflow: "hidden",
 								borderColor: SCREEN_FOREGROUND,
 								borderStyle: "solid",
 								borderWidth,
 								borderRadius: screenMetric(screen, 10),
-								padding: screenMetric(screen, screen.isCompact ? 6 : 9),
+								padding: statCellPad,
 							}}
 						>
 							<div
@@ -287,7 +395,7 @@ export function StatsGrid({
 									display: "flex",
 									flexDirection: stat.icon ? "row" : "column",
 									alignItems: stat.icon ? "center" : "flex-start",
-									gap: stat.icon ? screenMetric(screen, 8) : 0,
+									gap: stat.icon ? statIconGap : 0,
 									minWidth: 0,
 								}}
 							>
@@ -300,46 +408,67 @@ export function StatsGrid({
 									style={{
 										display: "flex",
 										minWidth: 0,
+										flex: 1,
 										flexDirection: "column",
+										gap: statTextGap,
 									}}
 								>
-									<div
-										className="whitespace-nowrap font-inter"
-										style={{
-											fontFamily: "Inter, sans-serif",
-											fontSize:
-												labelSize ??
-												screenFontSize(
-													screen,
-													screen.isCompact ? 16 : 17,
-													MIN_SCREEN_STAT_LABEL_FONT_SIZE,
-												),
-											fontWeight: 500,
-											lineHeight: 1.05,
-											overflow: "hidden",
-											whiteSpace: "nowrap",
-										}}
-									>
-										{stat.label}
-									</div>
-									<div
-										className="whitespace-nowrap font-inter"
-										style={{
-											fontFamily: "Inter, sans-serif",
-											fontSize:
-												valueSize ??
-												screenFontSize(
-													screen,
-													screen.isCompact ? 18 : 24,
-													MIN_SCREEN_BODY_FONT_SIZE,
-												),
-											lineHeight: 1.05,
-											overflow: "hidden",
-											whiteSpace: "nowrap",
-										}}
-									>
-										{stat.value}
-									</div>
+									{bitmap ? (
+										<div
+											style={{
+												display: "flex",
+												overflow: "hidden",
+												flex: "none",
+											}}
+										>
+											<BitmapMarker
+												text={stat.label}
+												sizePx={bitmapLabelSize}
+												font={bitmapLabelFont}
+											/>
+										</div>
+									) : (
+										<div
+											className="whitespace-nowrap font-inter"
+											style={{
+												fontFamily: "Inter, sans-serif",
+												fontSize: resolvedLabelSize,
+												fontWeight: 500,
+												lineHeight: 1.05,
+												overflow: "hidden",
+												whiteSpace: "nowrap",
+											}}
+										>
+											{stat.label}
+										</div>
+									)}
+									{bitmap && typeof stat.value === "string" ? (
+										<div
+											style={{
+												display: "flex",
+												overflow: "hidden",
+												flex: "none",
+											}}
+										>
+											<BitmapMarker
+												text={stat.value}
+												sizePx={bitmapValueSize}
+											/>
+										</div>
+									) : (
+										<div
+											className="whitespace-nowrap font-inter"
+											style={{
+												fontFamily: "Inter, sans-serif",
+												fontSize: resolvedValueSize,
+												lineHeight: 1.05,
+												overflow: "hidden",
+												whiteSpace: "nowrap",
+											}}
+										>
+											{stat.value}
+										</div>
+									)}
 								</div>
 							</div>
 						</div>

@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { BitmapMarker } from "@/components/bitmap-font/bitmap-marker";
+import { screenFontSize } from "@/components/trmnl/screen-layout";
 import {
 	DEFAULT_IMAGE_HEIGHT,
 	DEFAULT_IMAGE_WIDTH,
@@ -53,6 +55,14 @@ export default function BitmapPatterns({
 
 	// Calculate row height to evenly distribute across the container
 	const rowHeight = height / Math.ceil(ditherValues.length / 2);
+	const markerSize = screenFontSize(
+		screenProfile,
+		screenProfile.isLarge ? 36 : screenProfile.logicalWidth >= 1024 ? 28 : 22,
+	);
+	const legendSize = screenFontSize(
+		screenProfile,
+		screenProfile.isLarge ? 36 : screenProfile.logicalWidth >= 1024 ? 28 : 22,
+	);
 	return (
 		<PreSatori
 			width={screenProfile.logicalWidth}
@@ -126,21 +136,32 @@ export default function BitmapPatterns({
 								}}
 							>
 								<div
-									className="text-2xl lg:text-4xl 2xl:text-5xl"
 									style={{
 										display: "flex",
 										justifyContent: "center",
 										alignItems: "center",
 									}}
 								>
-									{value} | {1000 - value}
+									<BitmapMarker
+										text={`${value} | ${1000 - value}`}
+										sizePx={markerSize}
+										className="text-white"
+									/>
 								</div>
 							</div>
 						))}
 				</div>
-				<div className="absolute bottom-0 right-0 flex flex-col text-2xl lg:text-4xl 2xl:text-5xl p-2 lg:p-4 items-end text-white sm:text-black">
-					<div>22 shades of gray</div>
-					<div>0: white, 1000: black</div>
+				<div className="absolute bottom-0 right-0 flex flex-col p-2 lg:p-4 items-end text-white sm:text-black">
+					<BitmapMarker
+						text="22 shades of gray"
+						sizePx={legendSize}
+						className="text-white sm:text-black"
+					/>
+					<BitmapMarker
+						text="0: white, 1000: black"
+						sizePx={legendSize}
+						className="text-white sm:text-black"
+					/>
 				</div>
 			</div>
 		</PreSatori>
@@ -160,9 +181,6 @@ export const definition: RecipeDefinition<typeof paramsSchema> = {
 		version: "0.1.0",
 		createdAt: "2025-03-01T00:00:00Z",
 		updatedAt: "2025-03-01T00:00:00Z",
-		renderSettings: {
-			applyEdgeSnap: false,
-		},
 	},
 	paramsSchema,
 	dataSchema,

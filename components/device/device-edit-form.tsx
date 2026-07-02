@@ -2,7 +2,7 @@
 
 import { RefreshCw, Search, Trash2 } from "lucide-react";
 import type React from "react";
-import { type ChangeEvent, type ReactNode } from "react";
+import { type ChangeEvent, type ReactNode, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Command,
@@ -112,6 +112,15 @@ export default function DeviceEditForm({
 		models: trmnlModels,
 		palettes: trmnlPalettes,
 	});
+	const sortedModels = useMemo(
+		() =>
+			[...trmnlModels].sort(
+				(a, b) =>
+					a.label.localeCompare(b.label, undefined, { sensitivity: "base" }) ||
+					a.name.localeCompare(b.name),
+			),
+		[trmnlModels],
+	);
 
 	return (
 		<form onSubmit={onSubmit}>
@@ -382,7 +391,7 @@ export default function DeviceEditForm({
 										<SelectValue placeholder="Select model…" />
 									</SelectTrigger>
 									<SelectContent>
-										{trmnlModels.map((model) => (
+										{sortedModels.map((model) => (
 											<SelectItem key={model.name} value={model.name}>
 												{model.label} · {model.width}×{model.height} ·{" "}
 												{model.mime_type.replace("image/", "")}

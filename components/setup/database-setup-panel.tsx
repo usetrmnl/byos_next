@@ -1,4 +1,5 @@
 import { DbInitializer } from "@/components/dashboard/db-initializer";
+import { parsePendingMigrationNames } from "@/lib/database/utils";
 
 type DatabaseSetupPanelProps = {
 	dbStatus: {
@@ -28,6 +29,7 @@ function classifySetupIssue(
 
 export function DatabaseSetupPanel({ dbStatus }: DatabaseSetupPanelProps) {
 	const issue = classifySetupIssue(dbStatus);
+	const pendingMigrations = parsePendingMigrationNames(dbStatus.error);
 
 	return (
 		<div className="mt-4 rounded-lg border bg-card shadow-sm">
@@ -151,7 +153,11 @@ export function DatabaseSetupPanel({ dbStatus }: DatabaseSetupPanelProps) {
 				</div>
 			)}
 
-			<DbInitializer databaseConfigured={dbStatus.databaseConfigured} />
+			<DbInitializer
+				databaseConfigured={dbStatus.databaseConfigured}
+				setupIssue={issue}
+				pendingMigrations={pendingMigrations}
+			/>
 		</div>
 	);
 }

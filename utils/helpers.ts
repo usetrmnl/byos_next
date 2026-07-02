@@ -146,6 +146,14 @@ export function generateApiKey(macAddress: string, salt?: string): string {
 	);
 }
 
+export function normalizeMacAddress(value: string): string | null {
+	const cleaned = value.trim().toUpperCase().replace(/-/g, ":");
+	if (!/^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(cleaned)) {
+		return null;
+	}
+	return cleaned;
+}
+
 export function generateMockMacAddress(apiKey: string): string {
 	const hash = crypto.createHash("sha256").update(apiKey).digest("hex");
 	const macPart = hash.substring(hash.length - 6).toUpperCase();

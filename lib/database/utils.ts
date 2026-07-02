@@ -1,4 +1,5 @@
 import { sql } from "kysely";
+import { formatErrorMessage } from "../errors";
 import { DbStatus } from "../types";
 import { db } from "./db";
 import { SQL_STATEMENTS } from "./sql-statements";
@@ -87,10 +88,22 @@ export async function checkDbConnection(): Promise<DbStatus> {
 	} catch (error) {
 		return {
 			ready: false,
-			error: error instanceof Error ? error.message : String(error),
+			error: formatErrorMessage(error),
 			databaseConfigured: Boolean(process.env.DATABASE_URL),
 		};
 	}
+}
+
+export function parsePendingMigrationNames(error?: string): string[] {
+	if (!error?.startsWith("Pending database migrations: ")) {
+		return [];
+	}
+
+	return error
+		.replace("Pending database migrations: ", "")
+		.split(",")
+		.map((name) => name.trim())
+		.filter(Boolean);
 }
 
 export async function getDbStatus(): Promise<DbStatus> {
@@ -146,7 +159,7 @@ export async function getDatabaseSetupStatus(): Promise<DatabaseSetupStatus> {
 	} catch (error) {
 		return {
 			ready: false,
-			error: error instanceof Error ? error.message : String(error),
+			error: formatErrorMessage(error),
 			databaseConfigured: true,
 			needsSetup: true,
 			needsAdminBootstrap: false,

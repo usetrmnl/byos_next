@@ -2,6 +2,9 @@ import type { RefreshSchedule } from "@/lib/types";
 
 export const DEFAULT_DEVICE_SCREEN = "simple-text";
 
+export const NO_DEFAULT_RECIPE_MESSAGE =
+	"No default recipe. Set one from Edit device.";
+
 export const DEVICE_SETUP_REFRESH_SECONDS = 60;
 export const DISPLAY_FALLBACK_REFRESH_SECONDS = 180;
 export const DEVICE_SLEEP_REFRESH_SECONDS = 3600;

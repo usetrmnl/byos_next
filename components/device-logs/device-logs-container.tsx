@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useCallback } from "react";
 import { fetchDeviceSystemLogs } from "@/app/actions/system";
 import SystemLogsViewer from "@/components/system-logs/system-logs-viewer";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -75,8 +76,16 @@ function SystemLogsViewerWithDeviceFilter({
 	apiKey,
 	paramPrefix,
 }: SystemLogsViewerWithDeviceFilterProps) {
-	// This is a wrapper around the SystemLogsViewer that pre-filters for this device
-	// We're using the existing SystemLogsViewer component but with custom fetch logic
+	const fetchDeviceLogs = useCallback(
+		(params: Parameters<typeof fetchDeviceSystemLogs>[0]) =>
+			fetchDeviceSystemLogs({
+				...params,
+				friendlyId,
+				macAddress,
+				apiKey,
+			}),
+		[friendlyId, macAddress, apiKey],
+	);
 
 	return (
 		<div className="space-y-4">
@@ -84,14 +93,7 @@ function SystemLogsViewerWithDeviceFilter({
 				Showing system logs related to device {friendlyId}
 			</p>
 			<SystemLogsViewer
-				customFetchFunction={async (params) => {
-					return fetchDeviceSystemLogs({
-						...params,
-						friendlyId,
-						macAddress,
-						apiKey,
-					});
-				}}
+				customFetchFunction={fetchDeviceLogs}
 				paramPrefix={paramPrefix}
 			/>
 		</div>

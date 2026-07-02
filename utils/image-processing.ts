@@ -121,6 +121,49 @@ export const ditherBayer = (
 	return result;
 };
 
+export const DEFAULT_DITHER_SALT = 0x5bd1e995;
+
+/** Deterministic per-pixel noise in [0, 1) from (x, y, salt). */
+const noiseAt = (x: number, y: number, salt: number): number => {
+	let h = (x * 374761393 + y * 668265263 + salt * 0x9e3779b1) >>> 0;
+	h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+	return (h >>> 8) / 0x1000000;
+};
+
+/**
+ * White-noise threshold-map dithering. Amplitude peaks at mid-gray and
+ * tapers near black/white for clarity. Fixed salt yields deterministic output.
+ */
+export const ditherWhiteNoise = (
+	grayscale: Uint8Array,
+	width: number,
+	height: number,
+	levels = 2,
+	salt = DEFAULT_DITHER_SALT,
+	meanLightness?: number,
+): Uint8Array => {
+	const mean =
+		meanLightness ??
+		grayscale.reduce((sum, value) => sum + value, 0) /
+			Math.max(grayscale.length, 1);
+	const lightness = mean / 255;
+	const clarity = 4 * lightness * (1 - lightness);
+	const step = 255 / (levels - 1);
+	const amplitude = step * clarity;
+	const result = new Uint8Array(grayscale.length);
+
+	for (let y = 0; y < height; y++) {
+		for (let x = 0; x < width; x++) {
+			const index = y * width + x;
+			const adjusted =
+				grayscale[index] + amplitude * (noiseAt(x, y, salt) - 0.5);
+			result[index] = quantizeValue(adjusted, levels);
+		}
+	}
+
+	return result;
+};
+
 /** Random noise dithering */
 export const ditherRandom = (grayscale: Uint8Array, levels = 2): Uint8Array => {
 	const result = new Uint8Array(grayscale.length);
@@ -182,6 +225,7 @@ export enum DitheringMethod {
 	ATKINSON = "atkinson",
 	BAYER = "bayer",
 	RANDOM = "random",
+	WHITE_NOISE = "white-noise",
 	NONE = "none",
 }
 
@@ -193,6 +237,8 @@ export interface DitheringOptions {
 	applyEdgeSnap?: boolean;
 	edgeDetectionFuzziness?: number;
 	bayerPatternSize?: 2 | 4 | 8;
+	salt?: number;
+	meanLightness?: number;
 }
 
 export function applyDithering(
@@ -208,12 +254,15 @@ export function applyDithering(
 		applyEdgeSnap: edgeSnap = false,
 		edgeDetectionFuzziness,
 		bayerPatternSize,
+		salt,
+		meanLightness,
 	} = options;
 
 	const needsDimensions =
 		method === DitheringMethod.FLOYD_STEINBERG ||
 		method === DitheringMethod.ATKINSON ||
 		method === DitheringMethod.BAYER ||
+		method === DitheringMethod.WHITE_NOISE ||
 		edgeSnap;
 
 	if (needsDimensions && (width === undefined || height === undefined)) {
@@ -265,6 +314,18 @@ export function applyDithering(
 		case DitheringMethod.RANDOM:
 			result = ditherRandom(grayscale, levels);
 			break;
+		case DitheringMethod.WHITE_NOISE: {
+			const [resolvedWidth, resolvedHeight] = requireDimensions();
+			result = ditherWhiteNoise(
+				grayscale,
+				resolvedWidth,
+				resolvedHeight,
+				levels,
+				salt,
+				meanLightness,
+			);
+			break;
+		}
 		case DitheringMethod.NONE:
 			result = quantize(grayscale, levels);
 			break;

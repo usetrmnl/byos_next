@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BitmapMarker } from "@/components/bitmap-font/bitmap-marker";
 import { Graph } from "@/components/common/graph";
 import {
 	MIN_SCREEN_BODY_FONT_SIZE,
@@ -194,21 +195,12 @@ export default function CryptoPrice({
 					style={{ height: headerHeight, paddingBottom: gap }}
 				>
 					<div className="flex min-w-0 flex-col">
-						<div
-							className="font-inter tracking-tight"
-							style={{ fontSize: priceSize, lineHeight: 0.86 }}
-						>
-							{displayCurrency(price)}
-						</div>
-						<div
-							className="font-inter"
-							style={{
-								fontSize: changeSize,
-								lineHeight: 1,
-								marginTop: screenMetric(screenProfile, 6),
-							}}
-						>
-							{isPositive ? "Up" : "Down"} {changeValue}%
+						<BitmapMarker text={displayCurrency(price)} sizePx={priceSize} />
+						<div style={{ marginTop: screenMetric(screenProfile, 6) }}>
+							<BitmapMarker
+								text={`${isPositive ? "Up" : "Down"} ${changeValue}%`}
+								sizePx={changeSize}
+							/>
 						</div>
 					</div>
 
@@ -266,6 +258,7 @@ export default function CryptoPrice({
 
 				<StatsGrid
 					screen={screenProfile}
+					bitmap
 					stats={priceStats.map((stat) => ({
 						label: stat.label,
 						value: displayCurrency(stat.value),
@@ -280,6 +273,7 @@ export default function CryptoPrice({
 
 				<ScreenFooter
 					screen={screenProfile}
+					bitmap
 					left={`${cryptoName} price tracker`}
 					right={lastUpdated ? `Updated ${lastUpdated}` : ""}
 					style={{ height: footerHeight }}

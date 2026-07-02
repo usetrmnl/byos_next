@@ -3,6 +3,7 @@ import { connection } from "next/server";
 import tools from "@/app/(app)/tools/tools.json";
 import { ClientMainLayout } from "@/components/client-main-layout";
 import { auth } from "@/lib/auth/auth";
+import { getDeviceApiServerUrlFromRequest } from "@/lib/byos-api-server-url.server";
 import {
 	getInitData,
 	preloadDashboard,
@@ -75,6 +76,8 @@ export default async function MainLayout({
 		)
 		.sort((a, b) => a[1].title.localeCompare(b[1].title));
 
+	const deviceApiServerUrl = getDeviceApiServerUrlFromRequest(await headers());
+
 	// Pass all data to the ClientMainLayout
 	// This ensures data is shared across pages through the centralized cache
 	return (
@@ -85,6 +88,7 @@ export default async function MainLayout({
 			toolsComponents={toolsComponents}
 			user={user}
 			authEnabled={AUTH_ENABLED}
+			deviceApiServerUrl={deviceApiServerUrl}
 		>
 			{children}
 		</ClientMainLayout>

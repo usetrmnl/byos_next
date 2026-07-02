@@ -1,4 +1,5 @@
 import { createElement } from "react";
+import { buildRecipeDeviceContext } from "@/lib/recipes/device-context";
 import {
 	type RenderDeviceImageResult,
 	renderDeviceImage,
@@ -6,6 +7,7 @@ import {
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
 import { createScreenProfile } from "@/lib/trmnl/screen-profile";
 import type { TrmnlModel, TrmnlPalette } from "@/lib/trmnl/types";
+import { DEFAULT_DITHER_SALT } from "@/utils/image-processing";
 import {
 	customFieldsToParamDefinitions,
 	fetchLiquidRecipeSettings,
@@ -69,12 +71,21 @@ export async function renderRecipeToImage({
 			model,
 			palette,
 		});
+		let renderData = data;
+		if (definition.prepareForDevice) {
+			const deviceContext = buildRecipeDeviceContext({
+				palette,
+				screen,
+				salt: DEFAULT_DITHER_SALT,
+			});
+			renderData = await definition.prepareForDevice(data, deviceContext);
+		}
 		const element = createElement(definition.Component, {
 			width: screen.logicalWidth,
 			height: screen.logicalHeight,
 			screen,
 			params,
-			data,
+			data: renderData,
 		});
 		return rasterize({
 			slug,
@@ -141,6 +152,7 @@ export async function renderRecipeForDevice({
 					},
 				}
 			: profile;
+
 	const renders = await renderRecipeToImage({
 		slug,
 		imageWidth: renderProfile.model.width,
@@ -153,7 +165,10 @@ export async function renderRecipeForDevice({
 	});
 
 	if (!renders.png) return null;
-	return renderDeviceImage({ png: renders.png, profile: renderProfile });
+	return renderDeviceImage({
+		png: renders.png,
+		profile: renderProfile,
+	});
 }
 
 async function buildLiquidHtml(

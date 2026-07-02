@@ -17,6 +17,11 @@ function createAuth() {
 		return null;
 	}
 
+	const secret = process.env.BETTER_AUTH_SECRET;
+	if (!secret) {
+		return null;
+	}
+
 	const pool = new Pool({
 		connectionString: process.env.DATABASE_URL,
 	});
@@ -53,6 +58,7 @@ function createAuth() {
 	}
 
 	return betterAuth({
+		secret,
 		baseURL: getAppBaseUrl().origin,
 		database: pool,
 		emailAndPassword: {

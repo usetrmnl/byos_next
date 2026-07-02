@@ -1,5 +1,3 @@
-import Image from "next/image";
-
 export const dynamic = "force-static";
 
 export default function NotFound() {
@@ -8,11 +6,12 @@ export default function NotFound() {
 			<p className="hidden">
 				404 not found. the page you are looking for does not exist.
 			</p>
-			<Image
+			{/* biome-ignore lint/performance/noImgElement: indexed PNG; next/image optimizer returns null */}
+			<img
 				src="/not-found.png"
 				alt="404"
-				width={800}
-				height={480}
+				width={200}
+				height={120}
 				className="dark:invert"
 				style={{ imageRendering: "pixelated" }}
 			/>

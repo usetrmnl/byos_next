@@ -4,6 +4,7 @@ import { XIcon } from "lucide-react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { suppressDevHydrationWarning } from "@/lib/suppress-dev-hydration-warning";
 import { cn } from "@/lib/utils";
 
 function Dialog({
@@ -125,6 +126,7 @@ function DialogTitle({
 		<DialogPrimitive.Title
 			data-slot="dialog-title"
 			className={cn("text-lg leading-none font-semibold", className)}
+			suppressHydrationWarning={suppressDevHydrationWarning}
 			{...props}
 		/>
 	);
@@ -138,6 +140,7 @@ function DialogDescription({
 		<DialogPrimitive.Description
 			data-slot="dialog-description"
 			className={cn("text-sm text-muted-foreground", className)}
+			suppressHydrationWarning={suppressDevHydrationWarning}
 			{...props}
 		/>
 	);

@@ -1,5 +1,6 @@
 import sharp from "sharp";
 import { type BmpGrayLevel, encodeGrayBmp } from "@/lib/render/bmp-encoder";
+import { rgbBufferToLStarGray } from "@/lib/render/luminance";
 import {
 	quantizePngChannels,
 	reducePngToPalette,
@@ -73,12 +74,12 @@ async function encode(
 		);
 		const source = await sharp(png)
 			.removeAlpha()
-			.grayscale()
 			.raw()
 			.toBuffer({ resolveWithObject: true });
+		const gray = rgbBufferToLStarGray(source.data);
 		const buffer = Buffer.from(
 			encodeGrayBmp({
-				gray: source.data,
+				gray,
 				width: source.info.width,
 				height: source.info.height,
 				levels,

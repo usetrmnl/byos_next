@@ -6,6 +6,13 @@ import { useMemo, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import type {
 	RecipeParamDefinition,
@@ -88,6 +95,29 @@ const renderField = (
 				/>
 			);
 		default:
+			if (definition.options?.length) {
+				return (
+					<Select
+						value={
+							typeof value === "string" || typeof value === "number"
+								? String(value)
+								: ""
+						}
+						onValueChange={(nextValue) => onChange(key, nextValue)}
+					>
+						<SelectTrigger id={key} className="w-full">
+							<SelectValue placeholder={definition.placeholder} />
+						</SelectTrigger>
+						<SelectContent>
+							{definition.options.map((option) => (
+								<SelectItem key={option.value} value={option.value}>
+									{option.label}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				);
+			}
 			return (
 				<Input
 					type="text"

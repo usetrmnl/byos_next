@@ -20,17 +20,48 @@ import {
 import { SQL_STATEMENTS } from "@/lib/database/sql-statements";
 import { Button } from "../ui/button";
 
+type DbSetupIssue =
+	| "unconfigured"
+	| "missing-tables"
+	| "pending"
+	| "error"
+	| null;
+
 export function DbInitializer({
 	databaseConfigured,
+	setupIssue = null,
+	pendingMigrations = [],
 }: {
 	databaseConfigured: boolean;
+	setupIssue?: DbSetupIssue;
+	pendingMigrations?: string[];
 }) {
+	const hasPendingOnly =
+		setupIssue === "pending" && pendingMigrations.length > 0;
+	const statementEntries = Object.entries(SQL_STATEMENTS).filter(
+		([key]) => key !== "validate_schema",
+	);
+	const visibleEntries = hasPendingOnly
+		? statementEntries.filter(([key]) => pendingMigrations.includes(key))
+		: statementEntries;
+	const actionLabel = hasPendingOnly
+		? "Apply pending migrations"
+		: "Initialize database";
+	const actionPendingLabel = hasPendingOnly
+		? "Applying migrations…"
+		: "Initializing…";
+	const headerLabel = hasPendingOnly
+		? "Pending migration SQL"
+		: databaseConfigured
+			? "Database connection is configured"
+			: "Database initialization SQL";
+
 	const [isPending, startTransition] = useTransition();
 	const [copied, setCopied] = useState<string | null>(null);
 	const [copyError, setCopyError] = useState<string | null>(null);
 	const [executionState, setExecutionState] =
 		useState<SqlExecutionState | null>(null);
-	const [isExpanded, setIsExpanded] = useState(false);
+	const [isExpanded, setIsExpanded] = useState(hasPendingOnly);
 	const [copyAnimation, setCopyAnimation] = useState<string | null>(null);
 	const router = useRouter();
 
@@ -165,7 +196,7 @@ export function DbInitializer({
 		return sql;
 	};
 
-	const allSql = Object.entries(SQL_STATEMENTS)
+	const allSql = visibleEntries
 		.map(([key, item]) => generateCompleteSql(key, item))
 		.join("\n\n");
 
@@ -307,7 +338,7 @@ export function DbInitializer({
 						) : (
 							<Play className="h-4 w-4" />
 						)}
-						{isPending ? "Initializing…" : "Initialize database"}
+						{isPending ? actionPendingLabel : actionLabel}
 					</Button>
 
 					{allStatementsSucceeded() && (
@@ -323,15 +354,20 @@ export function DbInitializer({
 					)}
 				</div>
 			)}
+			{hasPendingOnly && (
+				<p className="mb-4 text-sm text-muted-foreground">
+					Already-applied migrations are skipped automatically. Only{" "}
+					{pendingMigrations.length === 1
+						? "this migration"
+						: "these migrations"}{" "}
+					will run.
+				</p>
+			)}
 			<div className="font-mono text-sm relative border rounded-md overflow-hidden bg-muted/30">
 				<div className="flex items-center justify-between p-2 border-b bg-muted/60">
 					<div className="flex items-center gap-2 px-2 py-1 rounded min-w-0 flex-1">
 						<Code className="h-4 w-4 text-muted-foreground shrink-0" />
-						<span className="font-medium min-w-0 flex-1">
-							{databaseConfigured
-								? "Database connection is configured"
-								: "Database initialization SQL"}
-						</span>
+						<span className="font-medium min-w-0 flex-1">{headerLabel}</span>
 						{getExecutionSummary()}
 					</div>
 
@@ -374,7 +410,7 @@ export function DbInitializer({
 					<div className="sql-content min-h-[200px] overflow-hidden transition-all duration-300 ease-in-out">
 						<pre className="overflow-auto p-4">
 							<code>
-								{Object.entries(SQL_STATEMENTS).map(([key, item], index) => {
+								{visibleEntries.map(([key, item], index) => {
 									const execution =
 										executionState?.[key as keyof typeof SQL_STATEMENTS];
 									const status = execution?.status || "idle";
@@ -494,7 +530,7 @@ export function DbInitializer({
 												</div>
 											)}
 
-											{index < Object.entries(SQL_STATEMENTS).length - 1 && (
+											{index < visibleEntries.length - 1 && (
 												<div className="border-b my-4" />
 											)}
 										</div>

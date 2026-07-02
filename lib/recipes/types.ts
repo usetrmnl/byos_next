@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { z } from "zod";
+import type { RGB } from "@/lib/trmnl/palette-colors";
 import type { ScreenProfile } from "@/lib/trmnl/screen-profile";
 
 export type RecipeAuthor = {
@@ -7,14 +8,36 @@ export type RecipeAuthor = {
 	github?: string;
 };
 
+export type RecipeDeviceContext = {
+	/** Gray levels for grayscale palettes; null when targeting a color palette. */
+	levels: number | null;
+	/** Discrete color palette for color e-ink targets; null for grayscale-only. */
+	colorPalette: RGB[] | null;
+	width: number;
+	height: number;
+	logicalWidth: number;
+	logicalHeight: number;
+	pixelRatio: number;
+	salt: number;
+};
+
+export type ImageDitherMethod =
+	| "bayer"
+	| "white-noise"
+	| "floyd-steinberg"
+	| "atkinson"
+	| "threshold"
+	| "snap"
+	| "none";
+
 export type RecipeRenderSettings = {
-	supersample?: boolean;
+	/** Legacy BMP path only: snap high-contrast edges instead of dithering them. */
 	applyEdgeSnap?: boolean;
 	/**
-	 * Image preparation is enabled by default for reducible device palettes.
-	 * Set to false to opt out, or use "floyd-steinberg" for explicitness.
+	 * Image preparation for `<img>` tags on reducible device palettes.
+	 * Default: Bayer ordered dither. Set false to opt out.
 	 */
-	imageDither?: false | "floyd-steinberg";
+	imageDither?: false | ImageDitherMethod;
 	[key: string]: boolean | string | number | undefined;
 };
 
@@ -65,6 +88,10 @@ export type RecipeDefinition<
 	paramsSchema: P;
 	dataSchema: D;
 	getData?: (params: z.infer<P>) => Promise<z.infer<D>>;
+	prepareForDevice?: (
+		data: Record<string, unknown>,
+		ctx: RecipeDeviceContext,
+	) => Promise<Record<string, unknown>>;
 	Component: ComponentType<
 		RecipeRenderProps & {
 			params: z.infer<P>;

@@ -92,10 +92,21 @@ This sets `REACT_RENDERER=browser` and starts a Chromium debugger that renders r
 ```bash
 git clone https://github.com/usetrmnl/byos_next
 cd byos_next
-pnpm install
+corepack pnpm install
 ```
 
-Start the dev server:
+Use the Node and pnpm versions pinned in `package.json` / `.nvmrc` when possible. Mismatched versions may still run, but engine warnings usually mean local results can drift from CI and other collaborators.
+
+For a full local app, point `DATABASE_URL` in `.env.local` at a reachable Postgres database, then run the app and follow the setup page:
+
+```bash
+pnpm dev
+# visit http://localhost:3000/setup
+```
+
+Local database state lives outside Git, so it can be reused while switching branches; keep branch-specific source changes in Git and keep local runtime data ignored.
+
+Start the dev server on later runs:
 ```bash
 pnpm dev
 ```
@@ -118,8 +129,7 @@ Create `.env.local` (for `pnpm dev`) or `.env` (for Docker Compose) with the key
 | `REACT_RENDERER` | `takumi` (default), `satori`, or `browser`. See below. |
 | `ENABLE_EXTERNAL_CATALOG` | Allow fetching the community / TRMNL recipe catalog. |
 
-When authentication is enabled, visit `/setup` after configuring the database.
-The first account created during setup is assigned the admin role automatically.
+After configuring the database, visit `/setup` and follow the setup prompts.
 
 ### Renderer Options
 - **`takumi`** (default): fast Rust-backed Satori-compatible renderer.
@@ -129,6 +139,7 @@ The first account created during setup is assigned the admin role automatically.
 ### Database Options
 - **Supabase or Neon:** run migrations in `migrations/` in order, or use the in-app Initialize button on first launch. **Note:** migration `0009_add_user_tenancy.sql` assumes a `postgres` superuser role. On managed providers where the connection role differs, edit `GRANT byos_app TO <your_role>` before running it (see [#46](https://github.com/usetrmnl/byos_next/issues/46)).
 - **Docker/Postgres:** set `POSTGRES_PASSWORD` and `BETTER_AUTH_SECRET` in `.env`, then run `docker-compose up -d`.
+- **Host-installed Postgres:** install Postgres with your platform package manager, start the service, create the database named in `DATABASE_URL`, and make sure the connecting role can create/grant the `byos_app` role during setup. On macOS with Homebrew, this usually means installing `postgresql@16`, starting it with `brew services`, then creating the local database and role used by `.env.local`.
 - **No-DB mode:** run `pnpm dev` without DB env vars to preview screens only (device management disabled).
 
 ## Project Structure

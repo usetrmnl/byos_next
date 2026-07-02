@@ -1,5 +1,4 @@
 import type React from "react";
-import sharp from "sharp";
 import { renderHtmlToImage } from "@/lib/recipes/html-screenshot";
 import {
 	wrapLogicalCanvasToTarget,
@@ -7,7 +6,6 @@ import {
 } from "@/lib/recipes/render/frame";
 import { rewriteReactImagesForDevice } from "@/lib/recipes/render/image-dither-intercept";
 import { resolveImageDitherPolicy } from "@/lib/recipes/render/image-dither-policy";
-import { getRenderScale } from "@/lib/recipes/render/settings";
 import { renderWithSatori } from "@/lib/recipes/renderers/satori";
 import { renderWithTakumi } from "@/lib/recipes/renderers/takumi";
 import type { DeviceProfile } from "@/lib/trmnl/device-profile";
@@ -47,15 +45,6 @@ export type RasterizeResults = {
 	png: Buffer | null;
 };
 
-function getRasterDimensions(
-	width: number,
-	height: number,
-	settings: RecipeRenderSettings | null | undefined,
-) {
-	const scaleFactor = getRenderScale(settings);
-	return { width: width * scaleFactor, height: height * scaleFactor };
-}
-
 export function getRendererType(): "takumi" | "satori" | "browser" {
 	const renderer = process.env.REACT_RENDERER?.toLowerCase();
 	if (renderer === "satori") return "satori";
@@ -77,14 +66,20 @@ export async function rasterize(
 		userId,
 		cookies,
 	} = options;
+	const target = { width: imageWidth, height: imageHeight };
+	const layoutWidth = options.layoutWidth ?? imageWidth;
+	const layoutHeight = options.layoutHeight ?? imageHeight;
+	// Matches the scale `wrapLogicalCanvasToTarget` applies below, so images
+	// dithered by the intercept land at the exact physical size the final
+	// composite needs — no additional resampling. Liquid/HTML rendering has
+	// no separate logical stage (layoutWidth defaults to imageWidth), so this
+	// naturally resolves to 1 there.
+	const pixelRatio = layoutWidth > 0 ? target.width / layoutWidth : 1;
 	const imageDitherPolicy = resolveImageDitherPolicy({
 		renderSettings,
 		profile,
+		pixelRatio,
 	});
-
-	const target = getRasterDimensions(imageWidth, imageHeight, renderSettings);
-	const layoutWidth = options.layoutWidth ?? imageWidth;
-	const layoutHeight = options.layoutHeight ?? imageHeight;
 
 	let pngBuffer: Buffer;
 	try {
@@ -144,10 +139,5 @@ export async function rasterize(
 		throw error;
 	}
 
-	const result =
-		target.width !== imageWidth
-			? await sharp(pngBuffer).resize(imageWidth, imageHeight).png().toBuffer()
-			: pngBuffer;
-
-	return { png: result };
+	return { png: pngBuffer };
 }
