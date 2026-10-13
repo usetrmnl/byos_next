@@ -30,6 +30,20 @@ const MIME_EXTENSION: Record<string, string> = {
 
 const BMP_GRAY_LEVELS = new Set<number>(VALID_GRAY_LEVELS);
 
+/**
+ * sharp derives the PNG bit depth from `colours` by rounding log2 down to a
+ * power of two, so 5–8 colours yield a 2-bit (4-entry) palette and distinct
+ * device colours get merged (e.g. Spectra 6 black+blue, green+yellow). Round
+ * up to a full PNG palette size; the image is already snapped to the target
+ * palette, so only the bit depth changes.
+ */
+function pngPaletteSize(colorCount: number): number {
+	if (colorCount <= 2) return 2;
+	if (colorCount <= 4) return 4;
+	if (colorCount <= 16) return 16;
+	return 256;
+}
+
 export function getImageFilenameExtension(profile: DeviceProfile): string {
 	return (
 		MIME_EXTENSION[profile.model.mime_type] ??
@@ -115,12 +129,13 @@ async function encode(
 			await sharp(png).png({ compressionLevel: 9, effort: 10 }).toBuffer(),
 		];
 		if (options.paletteColorCount && options.paletteColorCount <= 256) {
+			const paletteSize = pngPaletteSize(options.paletteColorCount);
 			candidates.push(
 				await sharp(png)
 					.png({
 						palette: true,
-						colours: options.paletteColorCount,
-						colors: options.paletteColorCount,
+						colours: paletteSize,
+						colors: paletteSize,
 						compressionLevel: 9,
 						effort: 10,
 						dither: 0,
