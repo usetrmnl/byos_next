@@ -125,7 +125,11 @@ export default function DeviceClientPage({
 				...editedDevice,
 				[parent]: {
 					...(editedDevice[parent as keyof Device] as Record<string, unknown>),
-					[child]: value,
+					// Inputs always give strings; the schedule stores seconds as a number
+					[child]:
+						name === "refresh_schedule.default_refresh_rate"
+							? Number.parseInt(value, 10)
+							: value,
 				},
 			});
 		} else {
